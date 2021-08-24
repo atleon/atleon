@@ -1,0 +1,15 @@
+# Code owners have rights to review & merge pull requests and create new releases.
+#
+# How to create a new release:
+# Step 0) Ensure local repository is up to date:
+#         `git co main && git pull upstream main`
+# Step 1) Push and checkout release branch for version `x.y.z`
+#         `git push upstream main:x.y.z && git co -t upstream/x.y.z`
+# Step 2) Update any necessary documentation (README, CHANGELOG, Wiki, etc.) and push
+# Step 3) Update pom versions, commit, and push
+#         `mvn release:prepare -Dresume=false -DskipTests -Darguments="-DskipTests"`
+# Step 4) In GitHub, PR release branch to main (but do not merge yet; Just saves time later on)
+# Step 5) In GitHub, publish a release for created tag (`rhapsody-x.y.z`) targeting release branch
+# Step 6) Await GitHub Action execution. On success, merge PR from step (4) to main
+#
+* @Sage-Pierce
