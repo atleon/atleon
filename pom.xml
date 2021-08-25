@@ -24,6 +24,13 @@
         </license>
     </licenses>
 
+    <scm>
+        <connection>scm:git:git@github.com:atleon/atleon.git</connection>
+        <developerConnection>scm:git:git@github.com:atleon/atleon.git</developerConnection>
+        <url>http://github.com/atleon/atleon</url>
+        <tag>HEAD</tag>
+    </scm>
+
     <distributionManagement>
         <snapshotRepository>
             <id>sonatype-nexus-snapshots</id>
