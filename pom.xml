@@ -52,12 +52,12 @@
     </repositories>
 
     <modules>
+        <module>bom</module>
         <module>core</module>
-        <module>parent</module>
         <module>kafka</module>
         <module>kafka-avro</module>
+        <module>parent</module>
         <module>util</module>
-        <module>bom</module>
     </modules>
 
     <properties>
