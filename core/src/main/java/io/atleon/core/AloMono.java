@@ -28,19 +28,19 @@ public class AloMono<T> implements Publisher<Alo<T>> {
     }
 
     public AloMono<T> filter(Predicate<? super T> predicate) {
-        return new AloMono<>(wrapped.filter(AloWrapping.wrapFilter(alo -> alo.filter(predicate, Alo::acknowledge))));
+        return new AloMono<>(wrapped.filter(AloOps.wrapFilter(alo -> alo.filter(predicate, Alo::acknowledge))));
     }
 
     public <V> AloMono<V> map(Function<? super T, ? extends V> mapper) {
-        return new AloMono<>(wrapped.map(AloWrapping.wrapMapper(alo -> alo.map(mapper))));
+        return new AloMono<>(wrapped.map(AloOps.wrapMapper(alo -> alo.map(mapper))));
     }
 
     public <V> AloMono<V> flatMap(Function<? super T, Mono<V>> mapper) {
-        return new AloMono<>(wrapped.flatMap(AloWrapping.wrapMapper(alo -> Mono.from(alo.publish(mapper)))));
+        return new AloMono<>(wrapped.flatMap(AloOps.wrapMapper(alo -> Mono.from(alo.publish(mapper)))));
     }
 
     public <R, C extends Collection<R>> AloFlux<R> flatMapCollection(Function<? super T, ? extends C> mapper) {
-        return new AloFlux<>(wrapped.flatMapIterable(AloWrapping.wrapMapper(alo -> alo.mapToMany(mapper, Alo::acknowledge))));
+        return new AloFlux<>(wrapped.flatMapIterable(AloOps.wrapMapper(alo -> alo.mapToMany(mapper, Alo::acknowledge))));
     }
 
     public <V> AloFlux<V> flatMapMany(Function<? super T, ? extends Publisher<V>> mapper) {

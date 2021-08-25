@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.atleon</groupId>
         <artifactId>atleon-parent</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>0.0.1-SNAPSHOT</version>
         <relativePath>../parent/pom.xml</relativePath>
     </parent>
 
@@ -19,8 +19,16 @@
             <groupId>io.atleon</groupId>
             <artifactId>atleon-core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-util</artifactId>
+        </dependency>
 
         <!-- Third Party Dependencies -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.projectreactor.kafka</groupId>
             <artifactId>reactor-kafka</artifactId>
@@ -28,6 +36,14 @@
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.reactivestreams</groupId>
+            <artifactId>reactive-streams</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
         </dependency>
     </dependencies>
 </project>

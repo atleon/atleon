@@ -7,25 +7,25 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public final class ConditionallyRandomizedConfigs implements ConfigFunction {
+public final class ConditionallyRandomizedConfigs implements ConfigInterceptor {
 
-    private static final String RANDOMIZE_SUFFIX = ".randomize";
+    public static final String PROPERTY_SUFFIX = ".randomize";
 
     private static final Map<String, Map<Object, String>> RANDOMIZATIONS_BY_NAME = new ConcurrentHashMap<>();
 
     @Override
-    public Map<String, Object> apply(String name, Map<String, Object> configs) {
+    public Map<String, Object> intercept(String name, Map<String, Object> configs) {
         return conditionallyRandomize(configs, createNamedRandomizer(name));
     }
 
     @Override
-    public Map<String, Object> apply(Map<String, Object> configs) {
+    public Map<String, Object> intercept(Map<String, Object> configs) {
         return conditionallyRandomize(configs, ConditionallyRandomizedConfigs::randomize);
     }
 
     private Map<String, Object> conditionallyRandomize(Map<String, Object> configs, Function<Object, String> randomizer) {
         return configs.entrySet().stream()
-            .filter(entry -> !entry.getKey().endsWith(RANDOMIZE_SUFFIX))
+            .filter(entry -> !entry.getKey().endsWith(PROPERTY_SUFFIX))
             .collect(Collectors.toMap(
                 Map.Entry::getKey,
                 entry -> shouldRandomize(configs, entry.getKey())
@@ -38,7 +38,7 @@ public final class ConditionallyRandomizedConfigs implements ConfigFunction {
     }
 
     private static boolean shouldRandomize(Map<String, Object> configs, String property) {
-        return Objects.equals(Boolean.toString(true), Objects.toString(configs.get(property + RANDOMIZE_SUFFIX)));
+        return Objects.equals(Boolean.toString(true), Objects.toString(configs.get(property + PROPERTY_SUFFIX)));
     }
 
     private static String randomize(Object value) {

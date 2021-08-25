@@ -1,4 +1,4 @@
-package io.atleon.core;
+package io.atelon.util;
 
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;

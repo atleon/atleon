@@ -6,14 +6,21 @@
     <parent>
         <groupId>io.atleon</groupId>
         <artifactId>atleon-parent</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>0.0.1-SNAPSHOT</version>
         <relativePath>../parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>alteon-kafka-avro</artifactId>
+    <artifactId>atleon-kafka-avro</artifactId>
     <packaging>jar</packaging>
 
     <dependencies>
+        <!-- Project Compile Dependencies -->
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-util</artifactId>
+        </dependency>
+
+        <!-- Third Party Compile Dependencies -->
         <dependency>
             <groupId>io.confluent</groupId>
             <artifactId>kafka-avro-serializer</artifactId>
@@ -25,6 +32,21 @@
         <dependency>
             <groupId>org.apache.avro</groupId>
             <artifactId>avro</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Third Party Test Dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

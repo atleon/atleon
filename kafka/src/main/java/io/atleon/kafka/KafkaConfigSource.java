@@ -1,20 +1,23 @@
 package io.atleon.kafka;
 
-import io.atleon.core.ConfigFactory;
+import io.atleon.core.ConfigSource;
+import io.atelon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
 
 import java.util.Map;
 
-public class KafkaConfigFactory extends ConfigFactory<Map<String, Object>> {
+public class KafkaConfigSource extends ConfigSource<Map<String, Object>, KafkaConfigSource> {
 
-    public KafkaConfigFactory copy() {
-        return copyInto(KafkaConfigFactory::new);
+    public KafkaConfigSource() {
+        super(properties -> ConfigLoading.load(properties, CommonClientConfigs.CLIENT_ID_CONFIG, Object::toString));
     }
 
-    @Override
-    public KafkaConfigFactory with(String key, Object value) {
-        put(key, value);
-        return this;
+    public KafkaConfigSource(String name) {
+        super(name);
+    }
+
+    public KafkaConfigSource copy() {
+        return copyInto(KafkaConfigSource::new);
     }
 
     @Override

@@ -50,6 +50,12 @@ public abstract class AbstractAlo<T> implements Alo<T> {
     }
 
     @Override
+    public void consume(Consumer<? super T> consumer, Consumer<? super Alo<T>> andThen) {
+        consumer.accept(get());
+        andThen.accept(this);
+    }
+
+    @Override
     public final <R> Alo<R> propagate(R result, Runnable acknowledger, Consumer<? super Throwable> nacknowledger) {
         return this.<R>createPropagator().create(result, acknowledger, nacknowledger);
     }

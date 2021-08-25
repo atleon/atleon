@@ -77,6 +77,15 @@ public interface Alo<T> {
     Alo<T> reduce(BinaryOperator<T> reducer, Alo<? extends T> other);
 
     /**
+     * Consume this Alo's Data item with the provided Consumer, followed by consumption of this Alo
+     * (i.e. Alo::acknowledge) upon not-exceptional completion of the data item consumer
+     *
+     * @param consumer The Consumer to accept this Alo's Data item
+     * @param andThen  A Consumer to accept this Alo after consumption of data item
+     */
+    void consume(Consumer<? super T> consumer, Consumer<? super Alo<T>> andThen);
+
+    /**
      * Method for allowing propagation of any metadata (like tracing context) from this
      * Alo to an Alo composed with the supplied Acknowledger and Nacknowledger
      *

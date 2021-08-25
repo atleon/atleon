@@ -2,7 +2,7 @@ package io.atleon.kafka;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
-import io.atleon.core.ConfigLoading;
+import io.atelon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.reactivestreams.Publisher;
@@ -61,11 +61,27 @@ public class AloKafkaSender<K, V> {
 
     private final Mono<KafkaSender<K, V>> futureKafkaSender;
 
-    private AloKafkaSender(KafkaConfigFactory configFactory) {
+    private AloKafkaSender(KafkaConfigSource configFactory) {
         this.futureKafkaSender = configFactory.create()
             .<SenderOptions<K, V>>map(AloKafkaSender::newSenderOptions)
             .map(KafkaSender::create)
             .cache();
+    }
+
+    public static <K, V> AloKafkaSender<K, V> from(KafkaConfigSource configSource) {
+        return new AloKafkaSender<>(configSource);
+    }
+
+    public static <V> AloKafkaSender<Object, V> forValues(KafkaConfigSource configSource) {
+        return new AloKafkaSender<>(configSource);
+    }
+
+    public Function<Publisher<ProducerRecord<K, V>>, Flux<KafkaSenderResult<ProducerRecord<K, V>>>> sendRecords() {
+        return this::sendRecords;
+    }
+
+    public Flux<KafkaSenderResult<ProducerRecord<K, V>>> sendRecords(Publisher<ProducerRecord<K, V>> records) {
+        return futureKafkaSender.flatMapMany(sender -> sendRecords(sender, records));
     }
 
     public Function<Publisher<V>, Flux<KafkaSenderResult<V>>>
@@ -118,18 +134,30 @@ public class AloKafkaSender<K, V> {
             .as(AloFlux::wrap);
     }
 
+    public Function<Publisher<Alo<ProducerRecord<K, V>>>, AloFlux<KafkaSenderResult<ProducerRecord<K, V>>>>
+    sendAloRecords() {
+        return this::sendAloRecords;
+    }
+
+    public AloFlux<KafkaSenderResult<ProducerRecord<K, V>>>
+    sendAloRecords(Publisher<Alo<ProducerRecord<K, V>>> aloRecords) {
+        return futureKafkaSender
+            .flatMapMany(sender -> sendAloRecords(sender, aloRecords))
+            .as(AloFlux::wrap);
+    }
+
     private Flux<KafkaSenderResult<V>> sendValues(
         KafkaSender<K, V> sender,
         Publisher<V> values,
         Function<? super V, String> valueToTopic,
         Function<? super V, ? extends K> valueToKey) {
         return Flux.from(values)
-            .map(aloValue -> createSenderRecord(aloValue, valueToTopic, valueToKey))
+            .map(aloValue -> createSenderRecordOfValue(aloValue, valueToTopic, valueToKey))
             .transform(sender::send)
             .map(KafkaSenderResult::fromSenderResult);
     }
 
-    private SenderRecord<K, V, V> createSenderRecord(
+    private SenderRecord<K, V, V> createSenderRecordOfValue(
         V value,
         Function<? super V, String> valueToTopic,
         Function<? super V, ? extends K> valueToKey) {
@@ -139,18 +167,26 @@ public class AloKafkaSender<K, V> {
         return SenderRecord.create(producerRecord, value);
     }
 
+    private Flux<KafkaSenderResult<ProducerRecord<K, V>>>
+    sendRecords(KafkaSender<K, V> sender, Publisher<ProducerRecord<K, V>> records) {
+        return Flux.from(records)
+            .map(record -> SenderRecord.create(record, record))
+            .transform(sender::send)
+            .map(KafkaSenderResult::fromSenderResult);
+    }
+
     private Flux<Alo<KafkaSenderResult<V>>> sendAloValues(
         KafkaSender<K, V> sender,
         Publisher<Alo<V>> aloValues,
         Function<? super V, String> valueToTopic,
         Function<? super V, ? extends K> valueToKey) {
         return Flux.from(aloValues)
-            .map(aloValue -> createSenderRecordOfAlo(aloValue, valueToTopic, valueToKey))
+            .map(aloValue -> createSenderRecordOfAloValue(aloValue, valueToTopic, valueToKey))
             .transform(sender::send)
             .map(KafkaSenderResult::fromSenderResultOfAlo);
     }
 
-    private SenderRecord<K, V, Alo<V>> createSenderRecordOfAlo(
+    private SenderRecord<K, V, Alo<V>> createSenderRecordOfAloValue(
         Alo<V> aloValue,
         Function<? super V, String> valueToTopic,
         Function<? super V, ? extends K> valueToKey) {
@@ -159,6 +195,14 @@ public class AloKafkaSender<K, V> {
         K key = valueToKey.apply(value);
         ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, null, key, value);
         return SenderRecord.create(producerRecord, aloValue);
+    }
+
+    private Flux<Alo<KafkaSenderResult<ProducerRecord<K, V>>>>
+    sendAloRecords(KafkaSender<K, V> sender, Publisher<Alo<ProducerRecord<K, V>>> aloRecords) {
+        return Flux.from(aloRecords)
+            .map(aloRecord -> SenderRecord.create(aloRecord.get(), aloRecord))
+            .transform(sender::send)
+            .map(KafkaSenderResult::fromSenderResultOfAlo);
     }
 
     private static <K, V> SenderOptions<K, V> newSenderOptions(Map<String, Object> config) {

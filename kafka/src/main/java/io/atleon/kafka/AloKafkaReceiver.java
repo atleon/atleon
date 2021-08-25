@@ -2,9 +2,9 @@ package io.atleon.kafka;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
-import io.atleon.core.ConfigLoading;
-import io.atleon.core.Defaults;
-import io.atleon.core.Instantiation;
+import io.atelon.util.ConfigLoading;
+import io.atelon.util.Defaults;
+import io.atelon.util.Instantiation;
 import io.atleon.core.OrderManagingAcknowledgementOperator;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -110,18 +110,18 @@ public class AloKafkaReceiver<K, V> {
 
     private static final Map<String, Scheduler> SCHEDULERS_BY_CLIENT_ID = new ConcurrentHashMap<>();
 
-    private final KafkaConfigFactory configFactory;
+    private final KafkaConfigSource configSource;
 
-    private AloKafkaReceiver(KafkaConfigFactory configFactory) {
-        this.configFactory = configFactory;
+    private AloKafkaReceiver(KafkaConfigSource configSource) {
+        this.configSource = configSource;
     }
 
-    public static <K, V> AloKafkaReceiver<K, V> from(KafkaConfigFactory configFactory) {
-        return new AloKafkaReceiver<>(configFactory);
+    public static <K, V> AloKafkaReceiver<K, V> from(KafkaConfigSource configSource) {
+        return new AloKafkaReceiver<>(configSource);
     }
 
-    public static <V> AloKafkaReceiver<Object, V> forValues(KafkaConfigFactory configFactory) {
-        return new AloKafkaReceiver<>(configFactory);
+    public static <V> AloKafkaReceiver<Object, V> forValues(KafkaConfigSource configSource) {
+        return new AloKafkaReceiver<>(configSource);
     }
 
     public AloFlux<V> receiveAloValues(Collection<String> topics) {
@@ -131,7 +131,7 @@ public class AloKafkaReceiver<K, V> {
     }
 
     public AloFlux<ConsumerRecord<K, V>> receiveAlo(Collection<String> topics) {
-        return configFactory.create()
+        return configSource.create()
             .flatMapMany(config -> receiveRecords(config, topics))
             .as(AloFlux::wrap);
     }

@@ -8,7 +8,7 @@ import java.util.function.Consumer;
  *
  * @param <T> The type data item
  */
-public class ComposedAlo<T> extends AbstractAlo<T> {
+public final class ComposedAlo<T> extends AbstractAlo<T> {
 
     private final T t;
 

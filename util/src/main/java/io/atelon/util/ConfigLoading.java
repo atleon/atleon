@@ -1,4 +1,4 @@
-package io.atleon.core;
+package io.atelon.util;
 
 import java.util.Arrays;
 import java.util.Collection;

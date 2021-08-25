@@ -34,11 +34,11 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     public AloFlux<T> filter(Predicate<? super T> predicate) {
-        return new AloFlux<>(wrapped.filter(AloWrapping.wrapFilter(alo -> alo.filter(predicate, Alo::acknowledge))));
+        return new AloFlux<>(wrapped.filter(AloOps.wrapFilter(alo -> alo.filter(predicate, Alo::acknowledge))));
     }
 
     public <V> AloFlux<V> map(Function<? super T, ? extends V> mapper) {
-        return new AloFlux<>(wrapped.map(AloWrapping.wrapMapper(alo -> alo.map(mapper))));
+        return new AloFlux<>(wrapped.map(AloOps.wrapMapper(alo -> alo.map(mapper))));
     }
 
     public <V> AloFlux<V> concatMap(Function<? super T, ? extends Publisher<V>> mapper) {
@@ -62,7 +62,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     public <R, C extends Collection<R>> AloFlux<R> flatMapCollection(Function<? super T, ? extends C> mapper) {
-        return new AloFlux<>(wrapped.concatMapIterable(AloWrapping.wrapMapper(alo -> alo.mapToMany(mapper, Alo::acknowledge))));
+        return new AloFlux<>(wrapped.concatMapIterable(AloOps.wrapMapper(alo -> alo.mapToMany(mapper, Alo::acknowledge))));
     }
 
     public AloMono<T> reduce(BinaryOperator<T> reducer) {

@@ -1,11 +1,13 @@
 package io.atleon.core;
 
+import io.atelon.util.Throwing;
+
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-public final class AloWrapping {
+public final class AloOps {
 
-    private AloWrapping() {
+    private AloOps() {
 
     }
 
