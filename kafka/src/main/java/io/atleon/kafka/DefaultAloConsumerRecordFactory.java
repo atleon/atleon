@@ -14,7 +14,8 @@ public class DefaultAloConsumerRecordFactory<K, V> implements AloConsumerRecordF
     }
 
     @Override
-    public Alo<ConsumerRecord<K, V>> create(ConsumerRecord<K, V> kvConsumerRecord, Runnable acknowledger, Consumer<? super Throwable> nacknowedger) {
-        return null;
+    public Alo<ConsumerRecord<K, V>>
+    create(ConsumerRecord<K, V> consumerRecord, Runnable acknowledger, Consumer<? super Throwable> nacknowedger) {
+        return new DefaultAloConsumerRecord<>(consumerRecord, acknowledger, nacknowedger);
     }
 }

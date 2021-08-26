@@ -2,6 +2,7 @@ package io.atleon.core;
 
 import io.atelon.util.Throwing;
 
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -28,6 +29,18 @@ public final class AloOps {
                 return mapper.apply(alo);
             } catch (Throwable error) {
                 Alo.nacknowledge(alo, error);
+                throw Throwing.propagate(error);
+            }
+        };
+    }
+
+    public static <T, A extends Alo<T>> BiFunction<A, A, A> wrapAggregator(BiFunction<A, A, A> aggregator) {
+        return (alo1, alo2) -> {
+            try {
+                return aggregator.apply(alo1, alo2);
+            } catch (Throwable error) {
+                Alo.nacknowledge(alo1, error);
+                Alo.nacknowledge(alo2, error);
                 throw Throwing.propagate(error);
             }
         };

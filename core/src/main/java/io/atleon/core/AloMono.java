@@ -51,4 +51,8 @@ public class AloMono<T> implements Publisher<Alo<T>> {
     public void subscribe(Subscriber<? super Alo<T>> subscriber) {
         wrapped.subscribe(subscriber);
     }
+
+    public <E extends Subscriber<? super Alo<T>>> E subscribeWith(E subscriber) {
+        return wrapped.subscribeWith(subscriber);
+    }
 }

@@ -14,7 +14,7 @@
     <packaging>jar</packaging>
 
     <dependencies>
-        <!-- Project Dependencies -->
+        <!-- Project Compile Dependencies -->
         <dependency>
             <groupId>io.atleon</groupId>
             <artifactId>atleon-core</artifactId>
@@ -24,7 +24,7 @@
             <artifactId>atleon-util</artifactId>
         </dependency>
 
-        <!-- Third Party Dependencies -->
+        <!-- Third Party Compile Dependencies -->
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-core</artifactId>
@@ -44,6 +44,27 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Project Test Dependencies -->
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-kafka-embedded</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

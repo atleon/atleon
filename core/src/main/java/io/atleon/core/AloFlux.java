@@ -4,7 +4,9 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
+import reactor.core.scheduler.Scheduler;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
@@ -42,36 +44,76 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     public <V> AloFlux<V> concatMap(Function<? super T, ? extends Publisher<V>> mapper) {
-        return new AloFlux<>(wrapped.concatMap(alo -> alo.publish(mapper)));
+        return new AloFlux<>(wrapped.concatMap(AloOps.wrapMapper(alo -> alo.publish(mapper))));
     }
 
     public <V> AloFlux<V> concatMap(Function<? super T, ? extends Publisher<V>> mapper, int prefetch) {
-        return new AloFlux<>(wrapped.concatMap(alo -> alo.publish(mapper), prefetch));
+        return new AloFlux<>(wrapped.concatMap(AloOps.wrapMapper(alo -> alo.publish(mapper)), prefetch));
     }
 
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper) {
-        return new AloFlux<>(wrapped.flatMap(alo -> alo.publish(mapper)));
+        return new AloFlux<>(wrapped.flatMap(AloOps.wrapMapper(alo -> alo.publish(mapper))));
     }
 
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper, int concurrency) {
-        return new AloFlux<>(wrapped.flatMap(alo -> alo.publish(mapper), concurrency));
+        return new AloFlux<>(wrapped.flatMap(AloOps.wrapMapper(alo -> alo.publish(mapper)), concurrency));
     }
 
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper, int concurrency, int prefetch) {
-        return new AloFlux<>(wrapped.flatMap(alo -> alo.publish(mapper), concurrency, prefetch));
+        return new AloFlux<>(wrapped.flatMap(AloOps.wrapMapper(alo -> alo.publish(mapper)), concurrency, prefetch));
     }
 
     public <R, C extends Collection<R>> AloFlux<R> flatMapCollection(Function<? super T, ? extends C> mapper) {
         return new AloFlux<>(wrapped.concatMapIterable(AloOps.wrapMapper(alo -> alo.mapToMany(mapper, Alo::acknowledge))));
     }
 
+    public AloFlux<T> deduplicate(DeduplicationConfig config, Deduplication<T> deduplication) {
+        return new AloFlux<>(wrapped.transform(DeduplicatingTransformer.alo(config, deduplication)));
+    }
+
+    public AloFlux<T> deduplicate(DeduplicationConfig config, Deduplication<T> deduplication, Scheduler scheduler) {
+        return new AloFlux<>(wrapped.transform(DeduplicatingTransformer.alo(config, deduplication, scheduler)));
+    }
+
     public AloMono<T> reduce(BinaryOperator<T> reducer) {
-        return new AloMono<>(wrapped.reduce((alo1, alo2) -> alo1.reduce(reducer, alo2)));
+        return new AloMono<>(wrapped.reduce(AloOps.wrapAggregator((alo1, alo2) -> alo1.reduce(reducer, alo2))));
+    }
+
+    public Flux<AloGroupedFlux<Integer, T>> groupByStringHash(Function<? super T, String> stringExtractor, int numGroups) {
+        return groupBy(StringHashGroupExtractor.composed(stringExtractor, numGroups));
     }
 
     public <K> Flux<AloGroupedFlux<K, T>> groupBy(Function<? super T, ? extends K> groupExtractor) {
         return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()))
             .map(AloGroupedFlux::new);
+    }
+
+    public AloFlux<T> enforceActivity(ActivityEnforcementConfig config) {
+        return new AloFlux<>(wrapped.transform(new ActivityEnforcingTransformer<>(config)));
+    }
+
+    public AloFlux<T> resubscribeOnError(String name) {
+        return resubscribeOnError(new ResubscriptionConfig(name));
+    }
+
+    public AloFlux<T> resubscribeOnError(String name, Duration duration) {
+        return resubscribeOnError(new ResubscriptionConfig(name, duration));
+    }
+
+    public AloFlux<T> resubscribeOnError(ResubscriptionConfig config) {
+        return new AloFlux<>(wrapped.transform(new ResubscribingTransformer<>(config)));
+    }
+
+    public AloFlux<T> limitPerSecond(double limitPerSecond) {
+        return limitPerSecond(new RateLimitingConfig(limitPerSecond));
+    }
+
+    public AloFlux<T> limitPerSecond(RateLimitingConfig config) {
+        return new AloFlux<>(wrapped.transform(new RateLimitingTransformer<>(config)));
+    }
+
+    public <P> P as(Function<? super AloFlux<T>, P> transformer) {
+        return transformer.apply(this);
     }
 
     @Override
