@@ -5,6 +5,8 @@ import io.atleon.core.ConfigSource;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
 
 public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQConfigSource> {
 
@@ -21,6 +23,26 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
     public static final String SSL_PROPERTY = "ssl";
 
     public static final String DISABLED_CONFIG = "disabled";
+
+    public RabbitMQConfigSource() {
+
+    }
+
+    public RabbitMQConfigSource(String name) {
+        super(name);
+    }
+
+    private RabbitMQConfigSource(Function<Map<String, Object>, Optional<String>> propertiesToName) {
+        super(propertiesToName);
+    }
+
+    public RabbitMQConfigSource copy() {
+        return copyInto(() -> new RabbitMQConfigSource(propertiesToName));
+    }
+
+    public RabbitMQConfigSource copyWithName(String name) {
+        return copyInto(() -> new RabbitMQConfigSource(name));
+    }
 
     @Override
     protected void validateProperties(Map<String, Object> properties) {

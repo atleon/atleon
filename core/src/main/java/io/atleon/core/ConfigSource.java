@@ -5,6 +5,8 @@ import io.atelon.util.Instantiation;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,16 +15,16 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * A Config Producer that reactively provides configurations for reactive resources
+ * A reactive Provider that creates configurations for reactive resources
  *
  * @param <T> The type of Config to reactively produce
  * @param <S> The type of this ConfigFactory
  */
-public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends ConfigProducer<S> {
+public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends ConfigProvider<S> {
 
-    public static final String PROCESSORS_PROPERTY = "sources";
+    public static final String PROCESSORS_PROPERTY = "atleon.config.processors";
 
-    private final Function<Map<String, Object>, Optional<String>> propertiesToName;
+    protected final Function<Map<String, Object>, Optional<String>> propertiesToName;
 
     public ConfigSource() {
         this(properties -> Optional.empty());
@@ -59,11 +61,15 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
     }
 
     protected List<ConfigProcessor> loadSources(Map<String, Object> properties) {
-        List<ConfigProcessor> sources = new ArrayList<>();
-        sources.add(new EnvironmentalConfigs().asProcessor());
-        sources.add(new ConditionallyRandomizedConfigs().asProcessor());
+        List<ConfigProcessor> processors = new ArrayList<>(defaultProcessors());
         ConfigLoading.loadCollection(properties, PROCESSORS_PROPERTY, Instantiation::<ConfigProcessor>one, Collectors.toList())
-            .ifPresent(sources::addAll);
-        return sources;
+            .ifPresent(processors::addAll);
+        return processors;
+    }
+
+    protected Collection<ConfigProcessor> defaultProcessors() {
+        return Arrays.asList(
+            new EnvironmentalConfigs().asProcessor(),
+            new ConditionallyRandomizedConfigs().asProcessor());
     }
 }

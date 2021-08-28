@@ -2,13 +2,17 @@ package io.atleon.core;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
 import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.BinaryOperator;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -37,6 +41,18 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
 
     public Flux<Alo<T>> unwrap() {
         return wrapped;
+    }
+
+    public AloFlux<T> doFirst(Runnable onFirst) {
+        return new AloFlux<>(wrapped.doFirst(onFirst));
+    }
+
+    public AloFlux<T> doOnNext(Consumer<? super T> onNext) {
+        return new AloFlux<>(wrapped.doOnNext(alo -> onNext.accept(alo.get())));
+    }
+
+    public AloFlux<T> doOnError(Consumer<? super Throwable> onError) {
+        return new AloFlux<>(wrapped.doOnError(onError));
     }
 
     public AloFlux<T> filter(Predicate<? super T> predicate) {
@@ -69,6 +85,28 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
 
     public <R, C extends Collection<R>> AloFlux<R> flatMapCollection(Function<? super T, ? extends C> mapper) {
         return new AloFlux<>(wrapped.concatMapIterable(AloOps.wrapMapper(alo -> alo.mapToMany(mapper, Alo::acknowledge))));
+    }
+
+    public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime) {
+        return bufferTimeout(maxSize, maxTime, Schedulers.parallel(), buffer -> buffer.get(0)::propagate);
+    }
+
+    public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime, Scheduler scheduler) {
+        return bufferTimeout(maxSize, maxTime, scheduler, buffer -> buffer.get(0)::propagate);
+    }
+
+    public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime, Function<? super List<Alo<T>>, AloFactory<List<T>>> bufferToAloFactory) {
+        return bufferTimeout(maxSize, maxTime, Schedulers.parallel(), buffer -> buffer.get(0)::propagate);
+    }
+
+    public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime, Scheduler scheduler, Function<? super List<Alo<T>>, AloFactory<List<T>>> bufferToAloFactory) {
+        return wrapped.bufferTimeout(maxSize, maxTime, scheduler)
+            .map(buffer -> AloFactory.invertList(buffer, bufferToAloFactory.apply(buffer)))
+            .as(AloFlux::wrap);
+    }
+
+    public AloFlux<T> delayUntil(Function<? super T, ? extends Publisher<?>> triggerProvider) {
+        return new AloFlux<>(wrapped.delayUntil(alo -> triggerProvider.apply(alo.get())));
     }
 
     public AloFlux<T> deduplicate(DeduplicationConfig config, Deduplication<T> deduplication) {
@@ -120,8 +158,20 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
         return wrap(transformer.apply(this));
     }
 
+    public <V> Flux<V> transformToFlux(Function<? super AloFlux<T>, ? extends Publisher<V>> transformer) {
+        return Flux.from(transformer.apply(this));
+    }
+
     public <P> P as(Function<? super AloFlux<T>, P> transformer) {
         return transformer.apply(this);
+    }
+
+    public Disposable subscribe(Consumer<? super Alo<? super T>> consumer) {
+        return wrapped.subscribe(consumer);
+    }
+
+    public Disposable subscribe(Consumer<? super Alo<? super T>> consumer, Consumer<? super Throwable> errorConsumer) {
+        return wrapped.subscribe(consumer, errorConsumer);
     }
 
     @Override
@@ -131,19 +181,5 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
 
     public <E extends Subscriber<? super Alo<T>>> E subscribeWith(E subscriber) {
         return wrapped.subscribeWith(subscriber);
-    }
-
-    public static final class AloGroupedFlux<K, T> extends AloFlux<T> {
-
-        private final K key;
-
-        private AloGroupedFlux(GroupedFlux<? extends K, Alo<T>> groupedFlux) {
-            super(groupedFlux);
-            this.key = groupedFlux.key();
-        }
-
-        public K key() {
-            return key;
-        }
     }
 }

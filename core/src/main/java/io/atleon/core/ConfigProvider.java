@@ -10,7 +10,7 @@ import java.util.function.Supplier;
  *
  * @param <P> The type of this ConfigProducer
  */
-public abstract class ConfigProducer<P extends ConfigProducer<P>> {
+public abstract class ConfigProvider<P extends ConfigProvider<P>> {
 
     final Map<String, Object> properties = new HashMap<>();
 

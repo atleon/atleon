@@ -2,9 +2,12 @@ package io.atleon.core;
 
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
+import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Collection;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -27,6 +30,18 @@ public class AloMono<T> implements Publisher<Alo<T>> {
         return wrapped;
     }
 
+    public AloMono<T> doFirst(Runnable onFirst) {
+        return new AloMono<>(wrapped.doFirst(onFirst));
+    }
+
+    public AloMono<T> doOnNext(Consumer<? super T> onNext) {
+        return new AloMono<>(wrapped.doOnNext(alo -> onNext.accept(alo.get())));
+    }
+
+    public AloMono<T> doOnError(Consumer<? super Throwable> onError) {
+        return new AloMono<>(wrapped.doOnError(onError));
+    }
+
     public AloMono<T> filter(Predicate<? super T> predicate) {
         return new AloMono<>(wrapped.filter(AloOps.wrapFilter(alo -> alo.filter(predicate, Alo::acknowledge))));
     }
@@ -45,6 +60,26 @@ public class AloMono<T> implements Publisher<Alo<T>> {
 
     public <V> AloFlux<V> flatMapMany(Function<? super T, ? extends Publisher<V>> mapper) {
         return new AloFlux<>(wrapped.flatMapMany(alo -> alo.publish(mapper)));
+    }
+
+    public AloMono<T> delayUntil(Function<? super T, ? extends Publisher<?>> triggerProvider) {
+        return new AloMono<>(wrapped.delayUntil(alo -> triggerProvider.apply(alo.get())));
+    }
+
+    public <V> Flux<V> transformToMono(Function<? super AloMono<T>, ? extends Publisher<V>> transformer) {
+        return Flux.from(transformer.apply(this));
+    }
+
+    public <P> P as(Function<? super AloMono<T>, P> transformer) {
+        return transformer.apply(this);
+    }
+
+    public Disposable subscribe(Consumer<? super Alo<? super T>> consumer) {
+        return wrapped.subscribe(consumer);
+    }
+
+    public Disposable subscribe(Consumer<? super Alo<? super T>> consumer, Consumer<? super Throwable> errorConsumer) {
+        return wrapped.subscribe(consumer, errorConsumer);
     }
 
     @Override
