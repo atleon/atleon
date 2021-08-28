@@ -24,12 +24,12 @@ public class AloProcessingTest {
 
     @BeforeEach
     public void setup() throws Exception {
-        ConnectionFactory connectionFactory = RABBIT_MQ_CONFIG_SOURCE.create()
+        RABBIT_MQ_CONFIG_SOURCE.create()
             .map(RabbitMQConfig::getConnectionFactory)
-            .block();
-        try (Connection connection = connectionFactory.newConnection()) {
-            connection.createChannel().queueDeclare(queue, false, false, false, null);
-        }
+            .block()
+            .newConnection()
+            .createChannel()
+            .queueDeclare(queue, false, false, false, null);
     }
 
     @Test

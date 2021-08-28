@@ -16,6 +16,11 @@
         <dependencies>
             <dependency>
                 <groupId>io.atleon</groupId>
+                <artifactId>atleon-amqp-embedded</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
                 <artifactId>atleon-core</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -31,7 +36,27 @@
             </dependency>
             <dependency>
                 <groupId>io.atleon</groupId>
+                <artifactId>atleon-kafka-avro-embedded</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
+                <artifactId>atleon-kafka-embedded</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
+                <artifactId>atleon-rabbitmq</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
                 <artifactId>atleon-util</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
+                <artifactId>atleon-zookeeper-embedded</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>

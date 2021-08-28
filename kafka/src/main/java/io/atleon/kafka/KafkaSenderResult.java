@@ -29,6 +29,15 @@ public class KafkaSenderResult<T> {
             new KafkaSenderResult<>(senderResult.recordMetadata(), senderResult.exception(), correlationMetadata));
     }
 
+    @Override
+    public String toString() {
+        return "KafkaSenderResult{" +
+            "recordMetadata=" + recordMetadata +
+            ", exception=" + exception +
+            ", correlationMetadata=" + correlationMetadata +
+            '}';
+    }
+
     public Optional<RecordMetadata> recordMetadata() {
         return Optional.ofNullable(recordMetadata);
     }

@@ -51,6 +51,17 @@ public class RabbitMQSenderResult<T> {
                 messageResult.isAck()));
     }
 
+    @Override
+    public String toString() {
+        return "RabbitMQSenderResult{" +
+            "exchange='" + exchange + '\'' +
+            ", routingKey='" + routingKey + '\'' +
+            ", properties=" + properties +
+            ", correlationMetadata=" + correlationMetadata +
+            ", ack=" + ack +
+            '}';
+    }
+
     public String getExchange() {
         return exchange;
     }
