@@ -15,9 +15,11 @@ import java.util.function.Function;
 
 public class AloRabbitMQSender<T> {
 
-    public static final String INTERCEPTORS_CONFIG = "send-interceptors";
+    public static final String CONFIG_PREFIX = "rabbitmq-sender-";
 
-    public static final String BODY_SERIALIZER_CONFIG = "body-serializer";
+    public static final String INTERCEPTORS_CONFIG = CONFIG_PREFIX + "send-interceptors";
+
+    public static final String BODY_SERIALIZER_CONFIG = CONFIG_PREFIX + "body-serializer";
 
     private static final SendOptions SEND_OPTIONS = new SendOptions();
 

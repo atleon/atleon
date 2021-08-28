@@ -20,7 +20,7 @@ public class AloRabbitMQReceiver<T> {
 
     public enum NackStrategy {EMIT, REQUEUE, DISCARD}
 
-    public static final String CONFIG_PREFIX = "atleon-receiver-";
+    public static final String CONFIG_PREFIX = "rabbitmq-receiver-";
 
     public static final String QOS_CONFIG = CONFIG_PREFIX + "qos";
 

@@ -30,7 +30,7 @@ public class ConfigSourceTest {
         Map<String, Object> properties = new HashMap<>();
         properties.put("client.id", CLIENT_ID);
         properties.put(PROPERTY, "ORIGINAL_VALUE");
-        configFactory = new DummyConfigSource(CLIENT_ID, properties);
+        configFactory = new DummyConfigSource(CLIENT_ID).withAll(properties);
     }
 
     @AfterEach
@@ -77,9 +77,9 @@ public class ConfigSourceTest {
 
     @Test
     public void propertiesCanBeRandomized() {
-        configFactory.put("client.id" + ConditionallyRandomizedConfigs.PROPERTY_SUFFIX, true);
-
-        Map<String, Object> result = configFactory.create().block();
+        Map<String, Object> result = configFactory
+            .with("client.id" + ConditionallyRandomizedConfigs.PROPERTY_SUFFIX, true)
+            .create().block();
 
         assertEquals(2, result.size());
         assertTrue(Objects.toString(result.get("client.id")).startsWith(CLIENT_ID));
@@ -89,9 +89,9 @@ public class ConfigSourceTest {
 
     @Test
     public void propertyProcessorsCanBeConfiguredAsList() {
-        configFactory.put(ConfigSource.PROCESSORS_PROPERTY, Arrays.asList(TestConfigProcessor.class.getName(), TestConfigProcessor.class.getName()));
-
-        Map<String, Object> result = configFactory.create().block();
+        Map<String, Object> result = configFactory
+            .with(ConfigSource.PROCESSORS_PROPERTY, Arrays.asList(TestConfigProcessor.class.getName(), TestConfigProcessor.class.getName()))
+            .create().block();
 
         assertEquals(5, result.size());
         assertEquals(CLIENT_ID, result.get("client.id"));
@@ -102,9 +102,9 @@ public class ConfigSourceTest {
 
     @Test
     public void propertyProcessorsCanBeConfiguredAsCommaSeparatedList() {
-        configFactory.put(ConfigSource.PROCESSORS_PROPERTY, String.format("%s,%s", TestConfigProcessor.class.getName(), TestConfigProcessor.class.getName()));
-
-        Map<String, Object> result = configFactory.create().block();
+        Map<String, Object> result = configFactory
+            .with(ConfigSource.PROCESSORS_PROPERTY, String.format("%s,%s", TestConfigProcessor.class.getName(), TestConfigProcessor.class.getName()))
+            .create().block();
 
         assertEquals(5, result.size());
         assertEquals(CLIENT_ID, result.get("client.id"));
@@ -115,9 +115,8 @@ public class ConfigSourceTest {
 
     private static final class DummyConfigSource extends ConfigSource<Map<String, Object>, DummyConfigSource> {
 
-        public DummyConfigSource(String name, Map<String, Object> properties) {
+        public DummyConfigSource(String name) {
             super(name);
-            properties.forEach(this::put);
         }
 
         @Override

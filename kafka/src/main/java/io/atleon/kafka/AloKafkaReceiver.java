@@ -42,7 +42,7 @@ public class AloKafkaReceiver<K, V> {
     /**
      * Prefix used on all AloKafkaReceiver-specific configurations
      */
-    public static final String CONFIG_PREFIX = "atleon.kafka.receiver.";
+    public static final String CONFIG_PREFIX = "kafka.receiver.";
 
     /**
      * Subscribers may want to block request Threads on assignment of partitions AND subsequent

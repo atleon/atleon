@@ -25,7 +25,7 @@ public class AloKafkaSender<K, V> {
     /**
      * Prefix used on all AloKafkaSender-specific configurations
      */
-    public static final String CONFIG_PREFIX = "atleon.kafka.sender.";
+    public static final String CONFIG_PREFIX = "kafka.sender.";
 
     /**
      * This is the maximum number of "in-flight" Records per sent Publisher. Note that this is

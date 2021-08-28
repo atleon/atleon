@@ -14,15 +14,14 @@ public final class TestKafkaConfigSourceFactory {
     }
 
     public static KafkaConfigSource createSource(String bootstrapServers) {
-        KafkaConfigSource kafkaConfigFactory = new KafkaConfigSource();
-        kafkaConfigFactory.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        kafkaConfigFactory.put(CommonClientConfigs.CLIENT_ID_CONFIG, "TEST_CLIENT");
-        kafkaConfigFactory.put(ConsumerConfig.GROUP_ID_CONFIG, "TEST_GROUP");
-        kafkaConfigFactory.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase());
-        kafkaConfigFactory.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        kafkaConfigFactory.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        kafkaConfigFactory.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        kafkaConfigFactory.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        return kafkaConfigFactory;
+        return new KafkaConfigSource()
+            .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
+            .with(CommonClientConfigs.CLIENT_ID_CONFIG, "TEST_CLIENT")
+            .with(ConsumerConfig.GROUP_ID_CONFIG, "TEST_GROUP")
+            .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase())
+            .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
+            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
+            .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
+            .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     }
 }

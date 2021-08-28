@@ -15,18 +15,17 @@ public abstract class ConfigProvider<P extends ConfigProvider<P>> {
     final Map<String, Object> properties = new HashMap<>();
 
     public P with(String key, Object value) {
-        put(key, value);
+        properties.put(key, value);
         return (P) this;
     }
 
-    public Object put(String key, Object value) {
-        return properties.put(key, value);
+    public P withAll(Map<String, ?> properties) {
+        this.properties.putAll(properties);
+        return (P) this;
     }
 
     protected P copyInto(Supplier<P> copySupplier) {
-        P copy = copySupplier.get();
-        properties.forEach(copy::put);
-        return copy;
+        return copySupplier.get().withAll(properties);
     }
 
     protected static void validateNonNullProperty(Map<String, Object> properties, String key) {

@@ -162,6 +162,13 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
         return Flux.from(transformer.apply(this));
     }
 
+    public Flux<T> consumeAloAndGet(Consumer<? super Alo<? super T>> aloConsumer) {
+        return wrapped.map(alo -> {
+            aloConsumer.accept(alo);
+            return alo.get();
+        });
+    }
+
     public <P> P as(Function<? super AloFlux<T>, P> transformer) {
         return transformer.apply(this);
     }
