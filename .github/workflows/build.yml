@@ -18,7 +18,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Maven Verify
-        run: mvn clean verify -B -U
+        run: ./mvnw clean verify -B -U
   snapshot:
     runs-on: ubuntu-latest
     needs: [build]
@@ -38,7 +38,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Publish SNAPSHOT Artifacts
-        run: mvn deploy --settings ./.mvn/settings/mvn-settings.xml -B -U -P oss-snapshot -DskipTests=true
+        run: ./mvnw deploy --settings ./.mvn/settings/mvn-settings.xml -B -U -P oss-snapshot -DskipTests=true
         env:
           SONATYPE_JIRA_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_JIRA_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
