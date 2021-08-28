@@ -1,6 +1,6 @@
 package io.atleon.kafka.embedded;
 
-import io.atleon.zookeeper.embedded.EmbeddedZookeeper;
+import io.atleon.zookeeper.embedded.EmbeddedZooKeeper;
 import kafka.server.KafkaConfig;
 import kafka.server.KafkaServerStartable;
 
@@ -26,7 +26,7 @@ public final class EmbeddedKafka {
     }
 
     public static String startAndGetBootstrapServersConnect(int port) {
-        return extractConnect(start(port, EmbeddedZookeeper.DEFAULT_PORT));
+        return extractConnect(start(port, EmbeddedZooKeeper.DEFAULT_PORT));
     }
 
     public static String startAndGetBootstrapServersConnect(int port, int zookeeperPort) {
@@ -38,7 +38,7 @@ public final class EmbeddedKafka {
     }
 
     public static Map<String, ?> start(int port) {
-        return start(port, EmbeddedZookeeper.DEFAULT_PORT);
+        return start(port, EmbeddedZooKeeper.DEFAULT_PORT);
     }
 
     public static synchronized Map<String, ?> start(int port, int zookeeperPort) {
@@ -65,10 +65,10 @@ public final class EmbeddedKafka {
     }
 
     private static KafkaConfig initializeKafka(int port, int zookeeperPort) {
-        URL zookeeperConnect = EmbeddedZookeeper.startAndGetConnectUrl(zookeeperPort);
+        URL zooKeeperConnect = EmbeddedZooKeeper.startAndGetConnectUrl(zookeeperPort);
         URL kafkaConnect = convertToConnectUrl("localhost:" + port);
 
-        KafkaConfig kafkaConfig = new KafkaConfig(createKafkaBrokerConfig(zookeeperConnect, kafkaConnect), true);
+        KafkaConfig kafkaConfig = new KafkaConfig(createKafkaBrokerConfig(zooKeeperConnect, kafkaConnect), true);
         startLocalKafka(kafkaConfig);
         return kafkaConfig;
     }

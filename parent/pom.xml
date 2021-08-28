@@ -20,9 +20,11 @@
         <jackson.version>2.12.2</jackson.version>
         <javassist.version>3.27.0-GA</javassist.version>
         <junit-jupiter.version>5.6.2</junit-jupiter.version>
+        <rabbitmq-amqp-client.version>5.7.3</rabbitmq-amqp-client.version>
         <reactive-streams.version>1.0.3</reactive-streams.version>
         <reactor.version>3.4.1</reactor.version>
         <reactor-kafka.version>1.1.1.RELEASE</reactor-kafka.version>
+        <reactor-rabbitmq.version>1.4.0.RELEASE</reactor-rabbitmq.version>
         <scala.version>2.12.10</scala.version>
         <slf4j.version>1.7.30</slf4j.version>
     </properties>
@@ -30,6 +32,11 @@
     <dependencyManagement>
         <dependencies>
             <!-- Project Dependencies -->
+            <dependency>
+                <groupId>io.atleon</groupId>
+                <artifactId>atleon-amqp-embedded</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>io.atleon</groupId>
                 <artifactId>atleon-core</artifactId>
@@ -56,6 +63,11 @@
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>${guava.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.rabbitmq</groupId>
+                <artifactId>amqp-client</artifactId>
+                <version>${rabbitmq-amqp-client.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.confluent</groupId>
@@ -88,11 +100,6 @@
                 </exclusions>
             </dependency>
             <dependency>
-                <groupId>io.micrometer</groupId>
-                <artifactId>micrometer-core</artifactId>
-                <version>1.0.7</version>
-            </dependency>
-            <dependency>
                 <groupId>io.projectreactor</groupId>
                 <artifactId>reactor-core</artifactId>
                 <version>${reactor.version}</version>
@@ -106,6 +113,11 @@
                 <groupId>io.projectreactor.kafka</groupId>
                 <artifactId>reactor-kafka</artifactId>
                 <version>${reactor-kafka.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.projectreactor.rabbitmq</groupId>
+                <artifactId>reactor-rabbitmq</artifactId>
+                <version>${reactor-rabbitmq.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.avro</groupId>
@@ -143,10 +155,15 @@
                 <version>${slf4j.version}</version>
             </dependency>
 
-            <!--Third Party Transitive Dependencies (Satisfy Upper Bounds)-->
+            <!-- Third Party Transitive Dependencies (Satisfy Upper Bounds) -->
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
                 <version>${jackson.version}</version>
             </dependency>
             <dependency>

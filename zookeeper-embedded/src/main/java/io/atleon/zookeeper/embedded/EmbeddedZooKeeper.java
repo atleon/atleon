@@ -4,13 +4,13 @@ import org.apache.curator.test.TestingServer;
 
 import java.net.URL;
 
-public final class EmbeddedZookeeper {
+public final class EmbeddedZooKeeper {
 
     public static final int DEFAULT_PORT = 2181;
 
-    private static URL zookeeperConnect;
+    private static URL zooKeeperConnect;
 
-    private EmbeddedZookeeper() {
+    private EmbeddedZooKeeper() {
 
     }
 
@@ -19,10 +19,10 @@ public final class EmbeddedZookeeper {
     }
 
     public static synchronized URL startAndGetConnectUrl(int port) {
-        return zookeeperConnect == null ? zookeeperConnect = initializeZookeeper(port) : zookeeperConnect;
+        return zooKeeperConnect == null ? zooKeeperConnect = initializeZooKeeper(port) : zooKeeperConnect;
     }
 
-    private static URL initializeZookeeper(int port) {
+    private static URL initializeZooKeeper(int port) {
         try {
             new TestingServer(port);
             return convertToConnectUrl("localhost:" + port);

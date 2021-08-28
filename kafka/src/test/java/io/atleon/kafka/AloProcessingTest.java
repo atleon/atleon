@@ -16,7 +16,7 @@ public class AloProcessingTest {
 
     private static final String BOOTSTRAP_CONNECT = EmbeddedKafka.startAndGetBootstrapServersConnect(10092);
 
-    private static final KafkaConfigSource KAFKA_CONFIG_SOURCE = TestKafkaConfigFactory.createSource(BOOTSTRAP_CONNECT);
+    private static final KafkaConfigSource KAFKA_CONFIG_SOURCE = TestKafkaConfigSourceFactory.createSource(BOOTSTRAP_CONNECT);
 
     private final String topic = AloProcessingTest.class.getSimpleName() + UUID.randomUUID();
 

@@ -76,10 +76,6 @@ public class AloKafkaSender<K, V> {
         return new AloKafkaSender<>(configSource);
     }
 
-    public Function<Publisher<ProducerRecord<K, V>>, Flux<KafkaSenderResult<ProducerRecord<K, V>>>> sendRecords() {
-        return this::sendRecords;
-    }
-
     public Flux<KafkaSenderResult<ProducerRecord<K, V>>> sendRecords(Publisher<ProducerRecord<K, V>> records) {
         return futureKafkaSender.flatMapMany(sender -> sendRecords(sender, records));
     }
@@ -134,11 +130,6 @@ public class AloKafkaSender<K, V> {
             .as(AloFlux::wrap);
     }
 
-    public Function<Publisher<Alo<ProducerRecord<K, V>>>, AloFlux<KafkaSenderResult<ProducerRecord<K, V>>>>
-    sendAloRecords() {
-        return this::sendAloRecords;
-    }
-
     public AloFlux<KafkaSenderResult<ProducerRecord<K, V>>>
     sendAloRecords(Publisher<Alo<ProducerRecord<K, V>>> aloRecords) {
         return futureKafkaSender
@@ -180,7 +171,7 @@ public class AloKafkaSender<K, V> {
         Publisher<Alo<V>> aloValues,
         Function<? super V, String> valueToTopic,
         Function<? super V, ? extends K> valueToKey) {
-        return Flux.from(aloValues)
+        return AloFlux.toFlux(aloValues)
             .map(aloValue -> createSenderRecordOfAloValue(aloValue, valueToTopic, valueToKey))
             .transform(sender::send)
             .map(KafkaSenderResult::fromSenderResultOfAlo);
@@ -199,7 +190,7 @@ public class AloKafkaSender<K, V> {
 
     private Flux<Alo<KafkaSenderResult<ProducerRecord<K, V>>>>
     sendAloRecords(KafkaSender<K, V> sender, Publisher<Alo<ProducerRecord<K, V>>> aloRecords) {
-        return Flux.from(aloRecords)
+        return AloFlux.toFlux(aloRecords)
             .map(aloRecord -> SenderRecord.create(aloRecord.get(), aloRecord))
             .transform(sender::send)
             .map(KafkaSenderResult::fromSenderResultOfAlo);

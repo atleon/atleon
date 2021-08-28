@@ -1,7 +1,7 @@
 package io.atleon.kafka.avro.embedded;
 
 import io.atleon.kafka.embedded.EmbeddedKafka;
-import io.atleon.zookeeper.embedded.EmbeddedZookeeper;
+import io.atleon.zookeeper.embedded.EmbeddedZooKeeper;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryRestApplication;
 
@@ -29,7 +29,7 @@ public final class EmbeddedSchemaRegistry {
     }
 
     public static URL startAndGetConnectUrl(int port, int kafkaPort) {
-        return startAndGetConnectUrl(port, kafkaPort, EmbeddedZookeeper.DEFAULT_PORT);
+        return startAndGetConnectUrl(port, kafkaPort, EmbeddedZooKeeper.DEFAULT_PORT);
     }
 
     public static synchronized URL startAndGetConnectUrl(int port, int kafkaPort, int zookeeperPort) {

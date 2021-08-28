@@ -7,9 +7,9 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 
-public final class TestKafkaConfigFactory {
+public final class TestKafkaConfigSourceFactory {
 
-    private TestKafkaConfigFactory() {
+    private TestKafkaConfigSourceFactory() {
 
     }
 

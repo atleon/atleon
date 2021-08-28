@@ -125,12 +125,12 @@ public class AloKafkaReceiver<K, V> {
     }
 
     public AloFlux<V> receiveAloValues(Collection<String> topics) {
-        return receiveAlo(topics)
+        return receiveAloRecords(topics)
             .filter(record -> record.value() != null)
             .map(ConsumerRecord::value);
     }
 
-    public AloFlux<ConsumerRecord<K, V>> receiveAlo(Collection<String> topics) {
+    public AloFlux<ConsumerRecord<K, V>> receiveAloRecords(Collection<String> topics) {
         return configSource.create()
             .flatMapMany(config -> receiveRecords(config, topics))
             .as(AloFlux::wrap);

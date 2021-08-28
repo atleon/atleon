@@ -1,0 +1,62 @@
+package io.atleon.rabbitmq;
+
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.MessageProperties;
+
+import java.util.Objects;
+import java.util.function.Function;
+
+public class DefaultRabbitMQMessageCreator<T> extends AbstractRabbitMQMessageCreator<T> {
+
+    private final Function<T, ?> exchangeExtractor;
+
+    private final Function<T, ?> routingKeyExtractor;
+
+    public DefaultRabbitMQMessageCreator(AMQP.BasicProperties initialProperties, Function<T, ?> exchangeExtractor, Function<T, ?> routingKeyExtractor) {
+        super(initialProperties);
+        this.exchangeExtractor = exchangeExtractor;
+        this.routingKeyExtractor = routingKeyExtractor;
+    }
+
+    public static <T> DefaultRabbitMQMessageCreator<T> persistentBasicToDefaultExchange(String queue) {
+        return new DefaultRabbitMQMessageCreator<>(MessageProperties.PERSISTENT_BASIC, t -> "", t -> queue);
+    }
+
+    public static <T> DefaultRabbitMQMessageCreator<T> persistentBasicToDefaultExchange(Function<T, ?> queueExtractor) {
+        return new DefaultRabbitMQMessageCreator<>(MessageProperties.PERSISTENT_BASIC, t -> "", queueExtractor);
+    }
+
+    public static <T> DefaultRabbitMQMessageCreator<T> persistentBasicToExchange(String exchange, String routingKey) {
+        return new DefaultRabbitMQMessageCreator<>(MessageProperties.PERSISTENT_BASIC, t -> exchange, t -> routingKey);
+    }
+
+    public static <T> DefaultRabbitMQMessageCreator<T> persistentBasicToExchange(String exchange, Function<T, ?> routingKeyExtractor) {
+        return new DefaultRabbitMQMessageCreator<>(MessageProperties.PERSISTENT_BASIC, t -> exchange, routingKeyExtractor);
+    }
+
+    public static <T> DefaultRabbitMQMessageCreator<T> toDefaultExchange(AMQP.BasicProperties properties, String queue) {
+        return new DefaultRabbitMQMessageCreator<>(properties, t -> "", t -> queue);
+    }
+
+    public static <T> DefaultRabbitMQMessageCreator<T> toDefaultExchange(AMQP.BasicProperties properties, Function<T, ?> queueExtractor) {
+        return new DefaultRabbitMQMessageCreator<>(properties, t -> "", queueExtractor);
+    }
+
+    public static <T> DefaultRabbitMQMessageCreator<T> toExchange(AMQP.BasicProperties properties, String exchange, String routingKey) {
+        return new DefaultRabbitMQMessageCreator<>(properties, t -> exchange, t -> routingKey);
+    }
+
+    public static <T> DefaultRabbitMQMessageCreator<T> toExchange(AMQP.BasicProperties properties, String exchange, Function<T, ?> routingKeyExtractor) {
+        return new DefaultRabbitMQMessageCreator<>(properties, t -> exchange, routingKeyExtractor);
+    }
+
+    @Override
+    protected String extractExchange(T t) {
+        return Objects.toString(exchangeExtractor.apply(t));
+    }
+
+    @Override
+    protected String extractRoutingKey(T t) {
+        return Objects.toString(routingKeyExtractor.apply(t));
+    }
+}

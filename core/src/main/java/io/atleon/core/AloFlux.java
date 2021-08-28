@@ -31,6 +31,10 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
         return publisher instanceof AloFlux ? AloFlux.class.cast(publisher) : new AloFlux<>(Flux.from(publisher));
     }
 
+    public static <T> Flux<Alo<T>> toFlux(Publisher<Alo<T>> publisher) {
+        return publisher instanceof AloFlux ? AloFlux.class.cast(publisher).unwrap() : Flux.from(publisher);
+    }
+
     public Flux<Alo<T>> unwrap() {
         return wrapped;
     }
@@ -89,7 +93,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     public AloFlux<T> enforceActivity(ActivityEnforcementConfig config) {
-        return new AloFlux<>(wrapped.transform(new ActivityEnforcingTransformer<>(config)));
+        return new AloFlux<>(wrapped.transformDeferred(new ActivityEnforcingTransformer<>(config)));
     }
 
     public AloFlux<T> resubscribeOnError(String name) {
@@ -110,6 +114,10 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
 
     public AloFlux<T> limitPerSecond(RateLimitingConfig config) {
         return new AloFlux<>(wrapped.transform(new RateLimitingTransformer<>(config)));
+    }
+
+    public <V> AloFlux<V> transform(Function<? super AloFlux<T>, ? extends Publisher<Alo<V>>> transformer) {
+        return wrap(transformer.apply(this));
     }
 
     public <P> P as(Function<? super AloFlux<T>, P> transformer) {

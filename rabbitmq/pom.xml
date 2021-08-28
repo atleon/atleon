@@ -10,7 +10,7 @@
         <relativePath>../parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>atleon-kafka</artifactId>
+    <artifactId>atleon-rabbitmq</artifactId>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -24,18 +24,18 @@
             <artifactId>atleon-util</artifactId>
         </dependency>
 
-        <!-- Third Party Compile Dependencies -->
+        <!--Third Party Dependencies-->
+        <dependency>
+            <groupId>com.rabbitmq</groupId>
+            <artifactId>amqp-client</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.projectreactor.kafka</groupId>
-            <artifactId>reactor-kafka</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka-clients</artifactId>
+            <groupId>io.projectreactor.rabbitmq</groupId>
+            <artifactId>reactor-rabbitmq</artifactId>
         </dependency>
         <dependency>
             <groupId>org.reactivestreams</groupId>
@@ -49,7 +49,7 @@
         <!-- Project Test Dependencies -->
         <dependency>
             <groupId>io.atleon</groupId>
-            <artifactId>atleon-kafka-embedded</artifactId>
+            <artifactId>atleon-amqp-embedded</artifactId>
             <scope>test</scope>
         </dependency>
 

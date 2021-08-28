@@ -16,12 +16,12 @@ public class EmbeddedRecordTest {
 
     private static final String BOOTSTRAP_CONNECT = EmbeddedKafka.startAndGetBootstrapServersConnect(10092);
 
-    private static final KafkaConfigSource KAFKA_CONFIG_SOURCE = TestKafkaConfigFactory.createSource(BOOTSTRAP_CONNECT);
+    private static final KafkaConfigSource KAFKA_CONFIG_SOURCE = TestKafkaConfigSourceFactory.createSource(BOOTSTRAP_CONNECT);
 
     private static final String TOPIC = EmbeddedRecordTest.class.getSimpleName();
 
     @Test
-    public void consumedRecordsMatchSendValues() {
+    public void consumedRecordsMatchSent() {
         String value = UUID.randomUUID().toString();
 
         AloKafkaSender.<String>forValues(KAFKA_CONFIG_SOURCE)
