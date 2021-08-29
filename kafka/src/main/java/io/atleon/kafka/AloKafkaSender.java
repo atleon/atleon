@@ -61,8 +61,8 @@ public class AloKafkaSender<K, V> {
 
     private final Mono<KafkaSender<K, V>> futureKafkaSender;
 
-    private AloKafkaSender(KafkaConfigSource configFactory) {
-        this.futureKafkaSender = configFactory.create()
+    private AloKafkaSender(KafkaConfigSource configSource) {
+        this.futureKafkaSender = configSource.create()
             .<SenderOptions<K, V>>map(AloKafkaSender::newSenderOptions)
             .map(KafkaSender::create)
             .cache();

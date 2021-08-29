@@ -23,14 +23,14 @@ public class ConfigSourceTest {
 
     private static final String ADDED_PROPERTY = "ADDED_PROPERTY";
 
-    private DummyConfigSource configFactory;
+    private DummyConfigSource configSource;
 
     @BeforeEach
     public void setup() {
         Map<String, Object> properties = new HashMap<>();
         properties.put("client.id", CLIENT_ID);
         properties.put(PROPERTY, "ORIGINAL_VALUE");
-        configFactory = new DummyConfigSource(CLIENT_ID).withAll(properties);
+        configSource = new DummyConfigSource(CLIENT_ID).withAll(properties);
     }
 
     @AfterEach
@@ -45,7 +45,7 @@ public class ConfigSourceTest {
 
     @Test
     public void configFactoryCreatesCorrectly() {
-        Map<String, Object> result = configFactory.create().block();
+        Map<String, Object> result = configSource.create().block();
 
         assertEquals(2, result.size());
         assertEquals(CLIENT_ID, result.get("client.id"));
@@ -56,7 +56,7 @@ public class ConfigSourceTest {
     public void propertiesCanBeOverridden() {
         System.setProperty(EnvironmentalConfigs.PREFIX + CLIENT_ID + "." + PROPERTY, "SUPER_NEW_VALUE");
 
-        Map<String, Object> result = configFactory.create().block();
+        Map<String, Object> result = configSource.create().block();
 
         assertEquals(2, result.size());
         assertEquals(CLIENT_ID, result.get("client.id"));
@@ -67,7 +67,7 @@ public class ConfigSourceTest {
     public void propertiesCanBeAddedThroughSpecificOverrides() {
         System.setProperty(EnvironmentalConfigs.PREFIX + CLIENT_ID + "." + ADDED_PROPERTY, "ADDED");
 
-        Map<String, Object> result = configFactory.create().block();
+        Map<String, Object> result = configSource.create().block();
 
         assertEquals(3, result.size());
         assertEquals(CLIENT_ID, result.get("client.id"));
@@ -77,7 +77,7 @@ public class ConfigSourceTest {
 
     @Test
     public void propertiesCanBeRandomized() {
-        Map<String, Object> result = configFactory
+        Map<String, Object> result = configSource
             .with("client.id" + ConditionallyRandomizedConfigs.PROPERTY_SUFFIX, true)
             .create().block();
 
@@ -89,7 +89,7 @@ public class ConfigSourceTest {
 
     @Test
     public void propertyProcessorsCanBeConfiguredAsList() {
-        Map<String, Object> result = configFactory
+        Map<String, Object> result = configSource
             .with(ConfigSource.PROCESSORS_PROPERTY, Arrays.asList(TestConfigProcessor.class.getName(), TestConfigProcessor.class.getName()))
             .create().block();
 
@@ -102,7 +102,7 @@ public class ConfigSourceTest {
 
     @Test
     public void propertyProcessorsCanBeConfiguredAsCommaSeparatedList() {
-        Map<String, Object> result = configFactory
+        Map<String, Object> result = configSource
             .with(ConfigSource.PROCESSORS_PROPERTY, String.format("%s,%s", TestConfigProcessor.class.getName(), TestConfigProcessor.class.getName()))
             .create().block();
 

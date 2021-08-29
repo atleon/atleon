@@ -16,6 +16,10 @@
         <!-- Project Compile Dependencies -->
         <dependency>
             <groupId>io.atleon</groupId>
+            <artifactId>atleon-amqp-embedded</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
             <artifactId>atleon-core</artifactId>
         </dependency>
         <dependency>
@@ -26,8 +30,16 @@
             <groupId>io.atleon</groupId>
             <artifactId>atleon-kafka-embedded</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-rabbitmq</artifactId>
+        </dependency>
 
         <!-- Third Party Compile Dependencies -->
+        <dependency>
+            <groupId>com.rabbitmq</groupId>
+            <artifactId>amqp-client</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-core</artifactId>

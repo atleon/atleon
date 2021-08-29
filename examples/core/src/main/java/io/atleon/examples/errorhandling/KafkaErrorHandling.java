@@ -25,10 +25,10 @@ import java.util.function.Function;
 
 /**
  * This example demonstrates how to apply resiliency characteristics to Kafka streaming processes
- * via "resubscription". When either an upstream error or Acknowledgeable downstream error occurs,
- * an error will be emitted in the Flux produced by the Kafka Flux Factory. This causes the
+ * via "resubscription". When either an upstream error or downstream error occurs on an Alo, an
+ * error will be emitted in the Flux produced by the Kafka Receiver. This causes the
  * following sequence of events:
- * 1) Cancellation of the first Flux of values from the Kafka Flux Factory
+ * 1) Cancellation of the first Flux of values from the Kafka Receiver
  * 2) Commitment of acknowledged offsets
  * 3) Closure of the underlying Kafka Consumer
  * 4) Resubscription, resulting in a new Kafka Consumer and new Flux
@@ -87,7 +87,7 @@ public class KafkaErrorHandling {
         // BOTH records and successfully process them
         CountDownLatch latch = new CountDownLatch(1);
         List<String> successfullyProcessed = new CopyOnWriteArrayList<>();
-        AloKafkaSender<Object, String> senderFactory = AloKafkaSender.forValues(faultyKafkaSenderConfig);
+        AloKafkaSender<Object, String> sender = AloKafkaSender.forValues(faultyKafkaSenderConfig);
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
             .receiveAloValues(Collections.singletonList(TOPIC_1))
             .resubscribeOnError(KafkaErrorHandling.class.getSimpleName(), Duration.ofSeconds(2L))
@@ -104,7 +104,7 @@ public class KafkaErrorHandling {
                         System.err.println("Unexpected failure=" + e);
                     }
                 })
-                .transform(senderFactory.sendAloValues(TOPIC_2, Function.identity()))
+                .transform(sender.sendAloValues(TOPIC_2, Function.identity()))
                 .doOnNext(next -> latch.countDown())
                 .doOnNext(senderResult -> {
                     if (!senderResult.exception().isPresent()) {
