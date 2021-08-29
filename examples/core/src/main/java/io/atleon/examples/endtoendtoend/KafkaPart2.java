@@ -16,7 +16,7 @@ import java.util.Collections;
 import java.util.function.Function;
 
 /**
- * Part 2 of this sample set illustrates how to both reactively produce and consume records from a
+ * Part 2 of this example set illustrates how to both reactively produce and consume records from a
  * Kafka topic
  */
 public class KafkaPart2 {

@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.function.Function;
 
 /**
- * This sample shows how message consumption may be de-duped via
+ * This example shows how message consumption may be de-duped via
  * {@link io.atleon.core.AloFlux#deduplicate(DeduplicationConfig, Deduplication)}.
  * Note that this example continues to incorporate {@link io.atleon.core.Alo} acknowledgement
  * propagation such that at-least-once guarantee is maintained in the face of "aggregation", or

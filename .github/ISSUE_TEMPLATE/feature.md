@@ -10,7 +10,7 @@ If your feature request is related to a problem please describe this. Also provi
 
 **Rational**
 
-Why this feature should be in Rhapsody.
+Why this feature should be in Atleon.
 
 **Example Scenario**
 

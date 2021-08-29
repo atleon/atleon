@@ -9,7 +9,7 @@
 # Step 3) Update pom versions, commit, and push
 #         `mvn release:prepare -Dresume=false -DskipTests -Darguments="-DskipTests"`
 # Step 4) In GitHub, PR release branch to main (but do not merge yet; Just saves time later on)
-# Step 5) In GitHub, publish a release for created tag (`rhapsody-x.y.z`) targeting release branch
+# Step 5) In GitHub, publish a release for created tag (`atleon-x.y.z`) targeting release branch
 # Step 6) Await GitHub Action execution. On success, merge PR from step (4) to main
 #
 * @Sage-Pierce

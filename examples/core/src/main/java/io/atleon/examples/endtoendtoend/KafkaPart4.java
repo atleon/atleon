@@ -16,7 +16,7 @@ import java.util.Collections;
 import java.util.function.Function;
 
 /**
- * Part 4 of this sample set extends Part 3 to consume the downstream results of the streaming
+ * Part 4 of this example set extends Part 3 to consume the downstream results of the streaming
  * process we added
  */
 public class KafkaPart4 {

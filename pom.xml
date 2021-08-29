@@ -183,11 +183,11 @@
     </build>
 
     <profiles>
-        <!--This separate profile is necessary for samples due to a bug documented at  -->
+        <!--This separate profile is necessary for examples due to a bug documented at  -->
         <!--https://issues.sonatype.org/browse/NEXUS-19853                             -->
-        <!--We don't want/need the samples module staged/deployed, so when the release -->
+        <!--We don't want/need the examples module staged/deployed, so when the release -->
         <!--profile (or any profiles) are explicitly declared (with `-P`), this profile-->
-        <!--should become inactive, thus ignoring the samples module                   -->
+        <!--should become inactive, thus ignoring the examples module                   -->
         <profile>
             <id>default</id>
             <activation>

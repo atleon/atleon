@@ -16,7 +16,7 @@ import java.util.Collections;
 import java.util.function.Function;
 
 /**
- * Part 3 of this sample set extends the consumption of a Kafka topic to a "stream" process. This
+ * Part 3 of this example set extends the consumption of a Kafka topic to a "stream" process. This
  * also introduces the concept of Acknowledgement propagation, where the Records we've received
  * are not acknowledged (i.e. have their offsets marked ready for commit) until the full downstream
  * transformation has successfully completed.

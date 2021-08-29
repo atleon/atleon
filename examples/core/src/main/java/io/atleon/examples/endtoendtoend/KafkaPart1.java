@@ -10,7 +10,7 @@ import reactor.core.publisher.Flux;
 import java.util.function.Function;
 
 /**
- * Part 1 of this sample set demonstrates how to send our first Records to an (embedded) Kafka
+ * Part 1 of this example set demonstrates how to send our first Records to an (embedded) Kafka
  * cluster.
  */
 public class KafkaPart1 {
