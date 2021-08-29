@@ -1,9 +1,9 @@
 package io.atleon.rabbitmq;
 
 import com.rabbitmq.client.ConnectionFactory;
-import io.atelon.util.Defaults;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
+import io.atleon.util.Defaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -18,16 +18,39 @@ import java.util.function.Consumer;
 
 public class AloRabbitMQReceiver<T> {
 
+    /**
+     * Strategy for handling Nacknowledgement
+     * - EMIT causes error to be emitted to subscribers
+     * - REQUEUE causes nacknowledged message to be nack'd with requeue
+     * - DISCARD causes nacknowledged message to be nack'ed with discard
+     * Default is EMIT
+     */
     public enum NackStrategy {EMIT, REQUEUE, DISCARD}
 
+    /**
+     * Prefix used on all AloRabbitMQReceiver-specific configurations
+     */
     public static final String CONFIG_PREFIX = "rabbitmq-receiver-";
 
+    /**
+     * The maximum allowed number unacknowledged messages (per subscription)
+     */
     public static final String QOS_CONFIG = CONFIG_PREFIX + "qos";
 
+    /**
+     * An implementation of {@link BodyDeserializer} used to deserialized message bodies
+     */
     public static final String BODY_DESERIALIZER_CONFIG = CONFIG_PREFIX + "body-deserializer";
 
+    /**
+     * Strategy used for handling Nacknowledgement. See {@link NackStrategy}
+     */
     public static final String NACK_STRATEGY_CONFIG = CONFIG_PREFIX + "nack-strategy";
 
+    /**
+     * An implementation of {@link AloRabbitMQMessageFactory} used to wrap messages in an
+     * implementation of {@link Alo}. Default is {@link DefaultAloRabbitMQMessageFactory}
+     */
     public static final String ALO_FACTORY_CONFIG = CONFIG_PREFIX + "alo-factory";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloRabbitMQReceiver.class);

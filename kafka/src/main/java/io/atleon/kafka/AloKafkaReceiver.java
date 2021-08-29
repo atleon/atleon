@@ -2,10 +2,10 @@ package io.atleon.kafka;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
-import io.atelon.util.ConfigLoading;
-import io.atelon.util.Defaults;
-import io.atelon.util.Instantiation;
 import io.atleon.core.OrderManagingAcknowledgementOperator;
+import io.atleon.util.ConfigLoading;
+import io.atleon.util.Defaults;
+import io.atleon.util.Instantiation;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
@@ -172,7 +172,7 @@ public class AloKafkaReceiver<K, V> {
 
         return KafkaReceiver.create(receiverOptions).receive()
             .transform(records -> assignedPartitionPositions.isDone() ? records : records.mergeWith(blockRequestOn(assignedPartitionPositions)))
-            .transformDeferred(records -> createAloRecords(records, aloFactory, maxInFlightPerSubscription));
+            .transform(records -> createAloRecords(records, aloFactory, maxInFlightPerSubscription));
     }
 
     private Flux<Alo<ConsumerRecord<K, V>>> createAloRecords(

@@ -1,7 +1,7 @@
 package io.atleon.core;
 
-import io.atelon.util.ConfigLoading;
-import io.atelon.util.Instantiation;
+import io.atleon.util.ConfigLoading;
+import io.atleon.util.Instantiation;
 import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;

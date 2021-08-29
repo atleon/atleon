@@ -1,6 +1,6 @@
 package io.atleon.core;
 
-import io.atelon.util.Defaults;
+import io.atleon.util.Defaults;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
@@ -52,7 +52,12 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
 
     @Override
     public Publisher<T> apply(Publisher<T> publisher) {
-        return config.isEnabled() ? applyDeduplication(publisher) : publisher;
+        // When enabled, apply transformation on occurrence of the first signal. This is needed (in
+        // comparison to a simple transform) to avoid changing the initial downstream subscription
+        // thread which would otherwise be switched due to required subscribeOn on in the transform
+        return config.isEnabled()
+            ? Flux.from(publisher).switchOnFirst((signal, flux) -> flux.transform(this::applyDeduplication))
+            : publisher;
     }
 
     private Flux<T> applyDeduplication(Publisher<T> publisher) {

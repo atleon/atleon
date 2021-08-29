@@ -4,7 +4,6 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.GroupedFlux;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
@@ -131,7 +130,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     public AloFlux<T> enforceActivity(ActivityEnforcementConfig config) {
-        return new AloFlux<>(wrapped.transformDeferred(new ActivityEnforcingTransformer<>(config)));
+        return new AloFlux<>(wrapped.transform(new ActivityEnforcingTransformer<>(config)));
     }
 
     public AloFlux<T> resubscribeOnError(String name) {

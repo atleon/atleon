@@ -15,10 +15,21 @@ import java.util.function.Function;
 
 public class AloRabbitMQSender<T> {
 
+    /**
+     * Prefix used on all AloRabbitMQSender-specific configurations
+     */
     public static final String CONFIG_PREFIX = "rabbitmq-sender-";
 
+    /**
+     * Optional List (comma separated or {@link List}) of implementations of
+     * {@link RabbitMQMessageSendInterceptor} (by class name) to apply to outbound
+     * {@link RabbitMQMessage}s
+     */
     public static final String INTERCEPTORS_CONFIG = CONFIG_PREFIX + "send-interceptors";
 
+    /**
+     * An implementation of {@link BodySerializer} used to serialize message bodies
+     */
     public static final String BODY_SERIALIZER_CONFIG = CONFIG_PREFIX + "body-serializer";
 
     private static final SendOptions SEND_OPTIONS = new SendOptions();

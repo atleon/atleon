@@ -1,7 +1,7 @@
 package io.atleon.kafka;
 
 import io.atleon.core.ConfigSource;
-import io.atelon.util.ConfigLoading;
+import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
 
 import java.util.Map;

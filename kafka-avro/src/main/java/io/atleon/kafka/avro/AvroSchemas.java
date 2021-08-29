@@ -1,6 +1,6 @@
 package io.atleon.kafka.avro;
 
-import io.atelon.util.TypeResolution;
+import io.atleon.util.TypeResolution;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericContainer;

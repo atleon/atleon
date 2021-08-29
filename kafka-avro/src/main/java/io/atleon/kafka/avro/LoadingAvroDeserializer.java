@@ -1,6 +1,6 @@
 package io.atleon.kafka.avro;
 
-import io.atelon.util.ConfigLoading;
+import io.atleon.util.ConfigLoading;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import org.apache.avro.Schema;

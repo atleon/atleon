@@ -1,9 +1,9 @@
 package io.atleon.kafka.avro;
 
-import io.atelon.util.FieldResolution;
-import io.atelon.util.Instantiation;
-import io.atelon.util.TypeResolution;
-import io.atelon.util.ValueResolution;
+import io.atleon.util.FieldResolution;
+import io.atleon.util.Instantiation;
+import io.atleon.util.TypeResolution;
+import io.atleon.util.ValueResolution;
 import org.apache.avro.Schema;
 import org.apache.avro.reflect.ReflectData;
 import org.slf4j.Logger;

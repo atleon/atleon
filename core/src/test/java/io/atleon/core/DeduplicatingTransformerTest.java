@@ -1,6 +1,6 @@
 package io.atleon.core;
 
-import io.atelon.util.Defaults;
+import io.atleon.util.Defaults;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

@@ -1,6 +1,6 @@
 package io.atleon.core;
 
-import io.atelon.util.Defaults;
+import io.atleon.util.Defaults;
 
 import java.time.Duration;
 
@@ -40,10 +40,6 @@ public final class DeduplicationConfig {
         this.deduplicationSourcePrefetch = deduplicationSourcePrefetch;
     }
 
-    public int getDeduplicationSourcePrefetch() {
-        return deduplicationSourcePrefetch;
-    }
-
     public boolean isEnabled() {
         return !deduplicationDuration.isNegative() && !deduplicationDuration.isZero();
     }
@@ -58,5 +54,9 @@ public final class DeduplicationConfig {
 
     public int getDeduplicationConcurrency() {
         return deduplicationConcurrency;
+    }
+
+    public int getDeduplicationSourcePrefetch() {
+        return deduplicationSourcePrefetch;
     }
 }

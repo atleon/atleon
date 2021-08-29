@@ -1,6 +1,6 @@
 package io.atleon.core;
 
-import io.atelon.util.Throwing;
+import io.atleon.util.Throwing;
 
 import java.util.function.BiFunction;
 import java.util.function.Function;

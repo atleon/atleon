@@ -1,4 +1,4 @@
-package io.atelon.util;
+package io.atleon.util;
 
 public final class Defaults {
 

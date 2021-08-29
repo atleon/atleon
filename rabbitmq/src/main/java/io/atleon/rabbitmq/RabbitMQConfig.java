@@ -1,9 +1,9 @@
 package io.atleon.rabbitmq;
 
 import com.rabbitmq.client.ConnectionFactory;
-import io.atelon.util.ConfigLoading;
-import io.atelon.util.Instantiation;
-import io.atelon.util.TypeResolution;
+import io.atleon.util.ConfigLoading;
+import io.atleon.util.Instantiation;
+import io.atleon.util.TypeResolution;
 
 import java.util.Collections;
 import java.util.List;

@@ -1,6 +1,6 @@
 package io.atleon.core;
 
-import io.atelon.util.Throwing;
+import io.atleon.util.Throwing;
 import reactor.core.Disposable;
 
 import java.util.concurrent.atomic.AtomicReference;

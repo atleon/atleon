@@ -1,6 +1,6 @@
 package io.atleon.kafka.avro;
 
-import io.atelon.util.ConfigLoading;
+import io.atleon.util.ConfigLoading;
 import org.apache.avro.Schema;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DecoderFactory;

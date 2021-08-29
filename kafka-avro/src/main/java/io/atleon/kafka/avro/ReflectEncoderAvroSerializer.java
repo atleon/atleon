@@ -1,6 +1,6 @@
 package io.atleon.kafka.avro;
 
-import io.atelon.util.ConfigLoading;
+import io.atleon.util.ConfigLoading;
 import org.apache.avro.Schema;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.reflect.ReflectData;

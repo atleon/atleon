@@ -21,7 +21,9 @@ final class ActivityEnforcingTransformer<T> implements Function<Publisher<T>, Pu
 
     @Override
     public Publisher<T> apply(Publisher<T> publisher) {
-        return config.isEnabled() ? enforceActivity(publisher) : publisher;
+        return config.isEnabled()
+            ? Flux.from(publisher).transformDeferred(this::enforceActivity)
+            : publisher;
     }
 
     private Flux<T> enforceActivity(Publisher<T> publisher) {

@@ -1,6 +1,6 @@
 package io.atleon.core;
 
-import io.atelon.util.ConfigLoading;
+import io.atleon.util.ConfigLoading;
 
 import java.util.HashMap;
 import java.util.Map;
