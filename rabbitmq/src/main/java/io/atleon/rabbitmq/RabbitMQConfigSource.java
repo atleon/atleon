@@ -65,7 +65,6 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
     private static ConnectionFactory createConnectionFactory(Map<String, Object> properties) {
         try {
             ConnectionFactory connectionFactory = new ConnectionFactory();
-            connectionFactory.useNio();
             connectionFactory.setHost(Objects.toString(properties.get(HOST_PROPERTY)));
             connectionFactory.setPort(Integer.parseInt(Objects.toString(properties.get(PORT_PROPERTY))));
             connectionFactory.setVirtualHost(Objects.toString(properties.get(VIRTUAL_HOST_PROPERTY)));

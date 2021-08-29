@@ -27,9 +27,9 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * This sample shows how an upstream RabbitMQ Queue can be processed to a downstream Kafka Topic.
+ * This example shows how an upstream RabbitMQ Queue can be processed to a downstream Kafka Topic.
  */
-public class RabbitmqToKafka {
+public class RabbitMQToKafka {
 
     private static final Map<String, ?> TEST_AMQP_CONFIG = EmbeddedAmqp.start();
 
@@ -54,7 +54,7 @@ public class RabbitmqToKafka {
         //Step 2) Create Kafka Config for Producer that backs Sender
         KafkaConfigSource kafkaSenderConfig = new KafkaConfigSource()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
-            .with(CommonClientConfigs.CLIENT_ID_CONFIG, RabbitmqToKafka.class.getSimpleName())
+            .with(CommonClientConfigs.CLIENT_ID_CONFIG, RabbitMQToKafka.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
@@ -65,8 +65,8 @@ public class RabbitmqToKafka {
         // our new consumer group
         KafkaConfigSource kafkaReceiverConfig = new KafkaConfigSource()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
-            .with(CommonClientConfigs.CLIENT_ID_CONFIG, RabbitmqToKafka.class.getSimpleName())
-            .with(ConsumerConfig.GROUP_ID_CONFIG, RabbitmqToKafka.class.getSimpleName())
+            .with(CommonClientConfigs.CLIENT_ID_CONFIG, RabbitMQToKafka.class.getSimpleName())
+            .with(ConsumerConfig.GROUP_ID_CONFIG, RabbitMQToKafka.class.getSimpleName())
             .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
             .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());

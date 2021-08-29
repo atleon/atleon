@@ -27,9 +27,9 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * This sample shows how an upstream Kafka Topic can be processed to a downstream RabbitMQ Queue.
+ * This example shows how an upstream Kafka Topic can be processed to a downstream RabbitMQ Queue.
  */
-public class KafkaToRabbitmq {
+public class KafkaToRabbitMQ {
 
     private static final String BOOTSTRAP_SERVERS = EmbeddedKafka.startAndGetBootstrapServersConnect();
 
@@ -43,7 +43,7 @@ public class KafkaToRabbitmq {
         //Step 1) Create Kafka Config for Producer that backs Sender
         KafkaConfigSource kafkaSenderConfig = new KafkaConfigSource()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
-            .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaToRabbitmq.class.getSimpleName())
+            .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaToRabbitMQ.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
@@ -54,8 +54,8 @@ public class KafkaToRabbitmq {
         // with our new consumer group
         KafkaConfigSource kafkaReceiverConfig = new KafkaConfigSource()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
-            .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaToRabbitmq.class.getSimpleName())
-            .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaToRabbitmq.class.getSimpleName())
+            .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaToRabbitMQ.class.getSimpleName())
+            .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaToRabbitMQ.class.getSimpleName())
             .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
             .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
