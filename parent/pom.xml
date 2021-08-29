@@ -20,6 +20,7 @@
         <jackson.version>2.12.2</jackson.version>
         <javassist.version>3.27.0-GA</javassist.version>
         <junit-jupiter.version>5.6.2</junit-jupiter.version>
+        <micrometer.version>1.0.7</micrometer.version>
         <rabbitmq-amqp-client.version>5.7.3</rabbitmq-amqp-client.version>
         <reactive-streams.version>1.0.3</reactive-streams.version>
         <reactor.version>3.4.1</reactor.version>
@@ -98,6 +99,11 @@
                         <artifactId>slf4j-log4j12</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>io.micrometer</groupId>
+                <artifactId>micrometer-core</artifactId>
+                <version>${micrometer.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.projectreactor</groupId>

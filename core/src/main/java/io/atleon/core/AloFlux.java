@@ -9,7 +9,9 @@ import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -139,6 +141,25 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
 
     public AloFlux<T> subscribeOn(Scheduler scheduler) {
         return new AloFlux<>(wrapped.subscribeOn(scheduler));
+    }
+
+    public AloFlux<T> metrics(String name, String... tags) {
+        if (tags.length % 2 != 0) {
+            throw new IllegalArgumentException("Tags must be key value tuples");
+        }
+        Flux<Alo<T>> toWrap = wrapped.name(name);
+        for (int i = 0; i < tags.length; i = i + 2) {
+            toWrap = toWrap.tag(tags[i], tags[i + 1]);
+        }
+        return new AloFlux<>(toWrap.metrics());
+    }
+
+    public AloFlux<T> metrics(String name, Map<String, String> tags) {
+        Flux<Alo<T>> toWrap = wrapped.name(name);
+        for (Map.Entry<String, String> entry : tags.entrySet()) {
+            toWrap = toWrap.tag(entry.getKey(), entry.getValue());
+        }
+        return new AloFlux<>(toWrap.metrics());
     }
 
     public AloFlux<T> enforceActivity(ActivityEnforcementConfig config) {

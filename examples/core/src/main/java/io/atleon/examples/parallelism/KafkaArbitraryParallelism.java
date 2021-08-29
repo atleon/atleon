@@ -77,7 +77,8 @@ public class KafkaArbitraryParallelism {
                 .doOnNext(next -> {
                     try {
                         Double sleepMillis = Math.random() * MAX_SLEEP_MILLIS + 1;
-                        System.out.println(String.format("next=%s thread=%s sleepMillis=%d", next, Thread.currentThread().getName(), sleepMillis.longValue()));
+                        System.out.println(String.format("next=%s thread=%s sleepMillis=%d",
+                            next, Thread.currentThread().getName(), sleepMillis.longValue()));
                         Thread.sleep(sleepMillis.longValue());
                     } catch (Exception e) {
                         System.err.println("Failed to sleep");
