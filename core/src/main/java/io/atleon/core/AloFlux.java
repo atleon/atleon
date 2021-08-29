@@ -137,6 +137,10 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
         return new AloFlux<>(wrapped.publishOn(scheduler, prefetch));
     }
 
+    public AloFlux<T> subscribeOn(Scheduler scheduler) {
+        return new AloFlux<>(wrapped.subscribeOn(scheduler));
+    }
+
     public AloFlux<T> enforceActivity(ActivityEnforcementConfig config) {
         return new AloFlux<>(wrapped.transform(new ActivityEnforcingTransformer<>(config)));
     }

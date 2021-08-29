@@ -69,12 +69,12 @@ public class KafkaTopicPartitionParallelism {
             .groupBy(ConsumerRecordExtraction::extractTopicPartition)
             .subscribe(groupFlux -> groupFlux
                 .publishOn(SCHEDULER)
-                .map(ConsumerRecord::value)
-                .map(String::toUpperCase)
+                .map(consumerRecord -> consumerRecord.value().toUpperCase())
                 .doOnNext(next -> {
                     try {
                         Double sleepMillis = Math.random() * MAX_SLEEP_MILLIS + 1;
-                        System.out.println(String.format("next=%s thread=%s sleepMillis=%d", next, Thread.currentThread().getName(), sleepMillis.longValue()));
+                        System.out.println(String.format("next=%s thread=%s sleepMillis=%d",
+                            next, Thread.currentThread().getName(), sleepMillis.longValue()));
                         Thread.sleep(sleepMillis.longValue());
                     } catch (Exception e) {
                         System.err.println("Failed to sleep");
