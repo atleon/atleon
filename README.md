@@ -27,10 +27,25 @@ Atleon makes most of the handling of Alo transparent to developers through [AloF
 
 Before using Atleon, you should be familiar with [Reactive Streams]() and [Project Reactor]().
 
+Atleon dependencies are available in Maven Central under the following coordinates:
+
+```xml
+<dependency>
+    <groupId>io.atleon</groupId>
+    <artifactId>atleon-core</artifactId>
+    <version>${atleon.version}</version>
+</dependency>
+<dependency>
+    <groupId>io.atleon</groupId>
+    <artifactId>atleon-kafka</artifactId>
+    <version>${atleon.version}</version>
+</dependency>
+...
+```
+
 The typical entry points in to Atleon are through Receiver and Sender implementations. The following example shows how to create a reactive Kafka stream:
 
 ```java
-import io.atleon.core.Alo;
 import io.atleon.kafka.AloKafkaReceiver;
 import io.atleon.kafka.AloKafkaSender;
 import io.atleon.kafka.DefaultAloKafkaSenderResultSubscriber;
