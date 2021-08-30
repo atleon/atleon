@@ -47,7 +47,7 @@ import java.util.function.Function;
 public class GettingStarted {
     
     public static void main(String[] args) {
-        //Step 2) Create Kafka Config for Consumer that backs Receiver
+        //Step 1) Create Kafka Config for Consumer that backs Receiver
         KafkaConfigSource kafkaReceiverConfig = new KafkaConfigSource()
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, GettingStarted.class.getSimpleName())
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
@@ -55,7 +55,7 @@ public class GettingStarted {
             .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
             .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
-        //Step 1) Create Kafka Config for Producer that backs Sender
+        //Step 2) Create Kafka Config for Producer that backs Sender
         KafkaConfigSource kafkaSenderConfig = new KafkaConfigSource()
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, GettingStarted.class.getSimpleName())
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
