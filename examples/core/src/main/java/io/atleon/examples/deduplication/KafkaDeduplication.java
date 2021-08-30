@@ -39,7 +39,7 @@ public class KafkaDeduplication {
 
     public static void main(String[] args) throws Exception {
         //Step 1) Create Kafka Config for Producer that backs Sender
-        KafkaConfigSource kafkaSenderConfig = new KafkaConfigSource()
+        KafkaConfigSource kafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaDeduplication.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
@@ -49,7 +49,7 @@ public class KafkaDeduplication {
 
         //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that we block our main
         // Thread on partition assignment such that subsequently produced Records are processed
-        KafkaConfigSource kafkaReceiverConfig = new KafkaConfigSource()
+        KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaDeduplication.class.getSimpleName())
             .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaDeduplication.class.getSimpleName())

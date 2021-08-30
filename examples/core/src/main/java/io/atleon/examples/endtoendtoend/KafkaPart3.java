@@ -31,7 +31,7 @@ public class KafkaPart3 {
 
     public static void main(String[] args) throws Exception {
         //Step 1) Create Kafka Config for Producer that backs Sender
-        KafkaConfigSource kafkaSenderConfig = new KafkaConfigSource()
+        KafkaConfigSource kafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaPart3.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
@@ -42,7 +42,7 @@ public class KafkaPart3 {
         //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that we use an Auto
         // Offset Reset of 'earliest' to ensure we receive Records produced before subscribing with
         // our new consumer group
-        KafkaConfigSource kafkaReceiverConfig = new KafkaConfigSource()
+        KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaPart3.class.getSimpleName())
             .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaPart3.class.getSimpleName())

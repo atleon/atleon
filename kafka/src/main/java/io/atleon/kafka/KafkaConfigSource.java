@@ -10,24 +10,30 @@ import java.util.function.Function;
 
 public class KafkaConfigSource extends ConfigSource<Map<String, Object>, KafkaConfigSource> {
 
-    public KafkaConfigSource() {
-        super(properties -> ConfigLoading.load(properties, CommonClientConfigs.CLIENT_ID_CONFIG, Object::toString));
+    protected KafkaConfigSource() {
+
     }
 
-    public KafkaConfigSource(String name) {
+    protected KafkaConfigSource(String name) {
         super(name);
     }
 
-    private KafkaConfigSource(Function<Map<String, Object>, Optional<String>> propertiesToName) {
+    protected KafkaConfigSource(Function<Map<String, Object>, Optional<String>> propertiesToName) {
         super(propertiesToName);
     }
 
-    public KafkaConfigSource copy() {
-        return copyInto(() -> new KafkaConfigSource(propertiesToName));
+    public static KafkaConfigSource named(String name) {
+        return new KafkaConfigSource(name);
     }
 
-    public KafkaConfigSource copyWithName(String name) {
-        return copyInto(() -> new KafkaConfigSource(name));
+    public static KafkaConfigSource useClientIdAsName() {
+        return new KafkaConfigSource(properties ->
+            ConfigLoading.load(properties, CommonClientConfigs.CLIENT_ID_CONFIG, Object::toString));
+    }
+
+    @Override
+    protected KafkaConfigSource initializeSourceCopy() {
+        return new KafkaConfigSource();
     }
 
     @Override

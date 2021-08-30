@@ -21,7 +21,7 @@ public class KafkaPart1 {
 
     public static void main(String[] args) throws Exception {
         //Step 1) Create Kafka Config for Producer that backs Sender
-        KafkaConfigSource kafkaSenderConfig = new KafkaConfigSource()
+        KafkaConfigSource kafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
             .with(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(ProducerConfig.CLIENT_ID_CONFIG, KafkaPart1.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())

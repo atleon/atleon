@@ -50,7 +50,7 @@ public class KafkaErrorHandling {
 
     public static void main(String[] args) throws Exception {
         //Step 1) Create Kafka Config for Producer that backs Sender
-        KafkaConfigSource kafkaSenderConfig = new KafkaConfigSource()
+        KafkaConfigSource kafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
@@ -60,7 +60,7 @@ public class KafkaErrorHandling {
 
         //Step 2) Create "faulty" Kafka Config where the second value we try to process will throw
         // an Exception at serialization time
-        KafkaConfigSource faultyKafkaSenderConfig = new KafkaConfigSource()
+        KafkaConfigSource faultyKafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
@@ -69,7 +69,7 @@ public class KafkaErrorHandling {
             .with(ProducerConfig.ACKS_CONFIG, "all");
 
         //Step 3) Create Kafka Config for Consumer that backs Receiver
-        KafkaConfigSource kafkaReceiverConfig = new KafkaConfigSource()
+        KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())
             .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())

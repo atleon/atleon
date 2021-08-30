@@ -7,7 +7,6 @@ import reactor.core.publisher.Mono;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,29 +19,39 @@ import java.util.stream.Collectors;
  * @param <T> The type of Config to reactively produce
  * @param <S> The type of this ConfigFactory
  */
-public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends ConfigProvider<S> {
+public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends ConfigProvider<Mono<T>, S> {
 
-    public static final String PROCESSORS_PROPERTY = "atleon.config.processors";
+    public static final String PROCESSORS_PROPERTY = "config.processors";
 
-    protected final Function<Map<String, Object>, Optional<String>> propertiesToName;
+    private Function<Map<String, Object>, Optional<String>> propertiesToName;
 
-    public ConfigSource() {
+    protected ConfigSource() {
         this(properties -> Optional.empty());
     }
 
-    public ConfigSource(String name) {
+    protected ConfigSource(String name) {
         this(properties -> Optional.of(name));
     }
 
-    public ConfigSource(Function<Map<String, Object>, Optional<String>> propertiesToName) {
+    protected ConfigSource(Function<Map<String, Object>, Optional<String>> propertiesToName) {
         this.propertiesToName = propertiesToName;
     }
 
-    public final Mono<T> create() {
-        return applySources(new HashMap<>(properties))
+    @Override
+    public final Mono<T> create(Map<String, Object> properties) {
+        return applySources(properties)
             .doOnNext(this::validateProperties)
             .map(this::postProcessProperties);
     }
+
+    @Override
+    protected final S initializeProviderCopy() {
+        S copy = initializeSourceCopy();
+        copy.setPropertiesToName(propertiesToName);
+        return copy;
+    }
+
+    protected abstract S initializeSourceCopy();
 
     protected abstract void validateProperties(Map<String, Object> properties);
 
@@ -51,16 +60,16 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
     protected Mono<Map<String, Object>> applySources(Map<String, Object> properties) {
         Optional<String> nameFromProperties = propertiesToName.apply(properties);
         Mono<Map<String, Object>> result = Mono.just(properties);
-        for (ConfigProcessor source : loadSources(properties)) {
+        for (ConfigProcessor processor : loadProcessors(properties)) {
             result = result.flatMap(configs ->
                 nameFromProperties
-                    .map(name -> source.process(name, configs))
-                    .orElseGet(() -> source.process(configs)));
+                    .map(name -> processor.process(name, configs))
+                    .orElseGet(() -> processor.process(configs)));
         }
         return result;
     }
 
-    protected List<ConfigProcessor> loadSources(Map<String, Object> properties) {
+    protected List<ConfigProcessor> loadProcessors(Map<String, Object> properties) {
         List<ConfigProcessor> processors = new ArrayList<>(defaultProcessors());
         ConfigLoading.loadCollection(properties, PROCESSORS_PROPERTY, Instantiation::<ConfigProcessor>one, Collectors.toList())
             .ifPresent(processors::addAll);
@@ -71,5 +80,9 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
         return Arrays.asList(
             new EnvironmentalConfigs().asProcessor(),
             new ConditionallyRandomizedConfigs().asProcessor());
+    }
+
+    protected void setPropertiesToName(Function<Map<String, Object>, Optional<String>> propertiesToName) {
+        this.propertiesToName = propertiesToName;
     }
 }

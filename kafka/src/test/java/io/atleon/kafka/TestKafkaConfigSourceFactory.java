@@ -14,7 +14,7 @@ public final class TestKafkaConfigSourceFactory {
     }
 
     public static KafkaConfigSource createSource(String bootstrapServers) {
-        return new KafkaConfigSource()
+        return KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, "TEST_CLIENT")
             .with(ConsumerConfig.GROUP_ID_CONFIG, "TEST_GROUP")

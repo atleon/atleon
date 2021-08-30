@@ -41,7 +41,7 @@ public class RabbitMQToKafka {
 
     public static void main(String[] args) throws Exception {
         //Step 1) Create a RabbitMQ Config that we'll use for Publishing and Subscribing
-        RabbitMQConfigSource rabbitMQConfig = new RabbitMQConfigSource()
+        RabbitMQConfigSource rabbitMQConfig = RabbitMQConfigSource.named(RabbitMQToKafka.class.getSimpleName())
             .with(RabbitMQConfigSource.HOST_PROPERTY, TEST_AMQP_CONFIG.get(EmbeddedAmqp.HOST_PROPERTY))
             .with(RabbitMQConfigSource.PORT_PROPERTY, TEST_AMQP_CONFIG.get(EmbeddedAmqp.PORT_PROPERTY))
             .with(RabbitMQConfigSource.VIRTUAL_HOST_PROPERTY, TEST_AMQP_CONFIG.get(EmbeddedAmqp.VIRTUAL_HOST_PROPERTY))
@@ -52,7 +52,7 @@ public class RabbitMQToKafka {
             .with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, StringBodyDeserializer.class.getName());
 
         //Step 2) Create Kafka Config for Producer that backs Sender
-        KafkaConfigSource kafkaSenderConfig = new KafkaConfigSource()
+        KafkaConfigSource kafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, RabbitMQToKafka.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
@@ -63,7 +63,7 @@ public class RabbitMQToKafka {
         //Step 3) Create Kafka Config for Consumer that backs Receiver. Note that we use an Auto
         // Offset Reset of 'earliest' to ensure we receive Records produced before subscribing with
         // our new consumer group
-        KafkaConfigSource kafkaReceiverConfig = new KafkaConfigSource()
+        KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, RabbitMQToKafka.class.getSimpleName())
             .with(ConsumerConfig.GROUP_ID_CONFIG, RabbitMQToKafka.class.getSimpleName())

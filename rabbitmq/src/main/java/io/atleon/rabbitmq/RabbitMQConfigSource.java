@@ -24,24 +24,25 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
 
     public static final String DISABLED_CONFIG = "disabled";
 
-    public RabbitMQConfigSource() {
+    protected RabbitMQConfigSource() {
 
     }
 
-    public RabbitMQConfigSource(String name) {
+    protected RabbitMQConfigSource(String name) {
         super(name);
     }
 
-    private RabbitMQConfigSource(Function<Map<String, Object>, Optional<String>> propertiesToName) {
+    protected RabbitMQConfigSource(Function<Map<String, Object>, Optional<String>> propertiesToName) {
         super(propertiesToName);
     }
 
-    public RabbitMQConfigSource copy() {
-        return copyInto(() -> new RabbitMQConfigSource(propertiesToName));
+    public static RabbitMQConfigSource named(String name) {
+        return new RabbitMQConfigSource(name);
     }
 
-    public RabbitMQConfigSource copyWithName(String name) {
-        return copyInto(() -> new RabbitMQConfigSource(name));
+    @Override
+    protected RabbitMQConfigSource initializeSourceCopy() {
+        return new RabbitMQConfigSource();
     }
 
     @Override

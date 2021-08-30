@@ -41,7 +41,7 @@ public class KafkaMetrics {
     public static void main(String[] args) throws Exception {
         //Step 1) Create Kafka Config for Producer that backs Sender. Note we are adding a
         // Micrometer Metrics Reporter such that Kafka metrics are sent to Micrometer
-        KafkaConfigSource kafkaSenderConfig = new KafkaConfigSource()
+        KafkaConfigSource kafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaMetrics.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
@@ -52,7 +52,7 @@ public class KafkaMetrics {
 
         //Step 2) Create Kafka Config for Consumer that backs Receiver. Note we are adding a
         // Micrometer Metrics Reporter such that Kafka metrics are sent to Micrometer
-        KafkaConfigSource kafkaReceiverConfig = new KafkaConfigSource()
+        KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaMetrics.class.getSimpleName())
             .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaMetrics.class.getSimpleName())

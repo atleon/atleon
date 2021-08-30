@@ -8,7 +8,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,7 +32,7 @@ public class ConfigSourceTest {
         Map<String, Object> properties = new HashMap<>();
         properties.put("client.id", CLIENT_ID);
         properties.put(PROPERTY, "ORIGINAL_VALUE");
-        configSource = new DummyConfigSource(CLIENT_ID).withAll(properties);
+        configSource = DummyConfigSource.named(CLIENT_ID).withAll(properties);
     }
 
     @AfterEach
@@ -115,8 +117,21 @@ public class ConfigSourceTest {
 
     private static final class DummyConfigSource extends ConfigSource<Map<String, Object>, DummyConfigSource> {
 
-        public DummyConfigSource(String name) {
+        private DummyConfigSource() {
+
+        }
+
+        private DummyConfigSource(String name) {
             super(name);
+        }
+
+        public static DummyConfigSource named(String name) {
+            return new DummyConfigSource(name);
+        }
+
+        @Override
+        protected DummyConfigSource initializeSourceCopy() {
+            return new DummyConfigSource();
         }
 
         @Override

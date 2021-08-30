@@ -63,7 +63,7 @@ public class GettingStarted {
     
     public static void main(String[] args) {
         //Step 1) Create Kafka Config for Consumer that backs Receiver
-        KafkaConfigSource kafkaReceiverConfig = new KafkaConfigSource()
+        KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, GettingStarted.class.getSimpleName())
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
             .with(ConsumerConfig.GROUP_ID_CONFIG, GettingStarted.class.getSimpleName())
@@ -71,7 +71,7 @@ public class GettingStarted {
             .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
         //Step 2) Create Kafka Config for Producer that backs Sender
-        KafkaConfigSource kafkaSenderConfig = new KafkaConfigSource()
+        KafkaConfigSource kafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, GettingStarted.class.getSimpleName())
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
@@ -83,7 +83,8 @@ public class GettingStarted {
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
             .receiveAloValues(Collections.singletonList("topic1"))
             .map(String::toUpperCase)
-            .transform(sender.sendAloValues("topic2", Function.identity()))
+            .transform(AloKafkaSender.<String>forValues(kafkaSenderConfig)
+                .sendAloValues("topic2", Function.identity()))
             .subscribe(new DefaultAloKafkaSenderResultSubscriber<>());
         
         // ... Do more things while the above stream process is running ...

@@ -1,31 +1,45 @@
 package io.atleon.core;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Supplier;
 
 /**
  * Base class of Config-producing resources
  *
  * @param <P> The type of this ConfigProducer
  */
-public abstract class ConfigProvider<P extends ConfigProvider<P>> {
+public abstract class ConfigProvider<T, P extends ConfigProvider<T, P>> {
 
-    final Map<String, Object> properties = new HashMap<>();
+    private Map<String, Object> properties = Collections.emptyMap();
+
+    public final T create() {
+        return create(properties);
+    }
 
     public P with(String key, Object value) {
-        properties.put(key, value);
-        return (P) this;
+        Map<String, Object> copiedProperties = new HashMap<>(this.properties);
+        copiedProperties.put(key, value);
+        P copy = initializeProviderCopy();
+        copy.setProperties(copiedProperties);
+        return copy;
     }
 
     public P withAll(Map<String, ?> properties) {
-        this.properties.putAll(properties);
-        return (P) this;
+        Map<String, Object> copiedProperties = new HashMap<>(this.properties);
+        copiedProperties.putAll(properties);
+        P copy = initializeProviderCopy();
+        copy.setProperties(copiedProperties);
+        return copy;
     }
 
-    protected P copyInto(Supplier<P> copySupplier) {
-        return copySupplier.get().withAll(properties);
+    protected abstract T create(Map<String, Object> properties);
+
+    protected abstract P initializeProviderCopy();
+
+    protected void setProperties(Map<String, Object> properties) {
+        this.properties = properties;
     }
 
     protected static void validateNonNullProperty(Map<String, Object> properties, String key) {
