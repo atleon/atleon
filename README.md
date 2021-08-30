@@ -66,9 +66,9 @@ public class GettingStarted {
 
         //Step 3) Define Kafka streaming pipeline and subscribe
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
-            .receiveAloValues(Collections.singletonList(TOPIC_1))
+            .receiveAloValues(Collections.singletonList("topic1"))
             .map(String::toUpperCase)
-            .transform(sender.sendAloValues(TOPIC_2, Function.identity()))
+            .transform(sender.sendAloValues("topic2", Function.identity()))
             .subscribe(new DefaultAloKafkaSenderResultSubscriber<>());
         
         // ... Do more things while the above stream process is running ...
