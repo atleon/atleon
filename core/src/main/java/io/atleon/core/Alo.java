@@ -10,10 +10,22 @@ import java.util.function.Predicate;
 
 public interface Alo<T> {
 
+    /**
+     * Convenience method for executing an Alo's acknowledger. This is typically useful as a method
+     * reference in higher order functions.
+     *
+     * @param alo The Alo to acknowledge
+     */
     static void acknowledge(Alo<?> alo) {
         alo.getAcknowledger().run();
     }
 
+    /**
+     * Convenience method for executing an Alo's nacknowledger.
+     *
+     * @param alo The Alo to nacknowledge
+     * @param error The fatal error that resulted in termination of this message's processing
+     */
     static void nacknowledge(Alo<?> alo, Throwable error) {
         alo.getNacknowledger().accept(error);
     }

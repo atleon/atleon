@@ -9,7 +9,6 @@ import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BinaryOperator;
@@ -145,7 +144,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
 
     public AloFlux<T> metrics(String name, String... tags) {
         if (tags.length % 2 != 0) {
-            throw new IllegalArgumentException("Tags must be key value tuples");
+            throw new IllegalArgumentException("Tags must be key-value tuples");
         }
         Flux<Alo<T>> toWrap = wrapped.name(name);
         for (int i = 0; i < tags.length; i = i + 2) {
