@@ -48,6 +48,17 @@ public abstract class LoadingAvroSerDeTest extends AbstractSerDeTest {
     }
 
     @Test
+    public void invalidAvroDataWithoutSchemaIDCanBeNulledOut() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put(AvroSerDe.SCHEMA_REGISTRY_URL_CONFIG, "<NOT_USED>");
+        configs.put(LoadingAvroDeserializer.READ_NULL_ON_FAILURE_PROPERTY, true);
+
+        deserializer.configure(configs, false);
+
+        assertNull(deserializer.deserialize(AbstractSerDeTest.TOPIC, new byte[]{0, 1, 2, 3}));
+    }
+
+    @Test
     public void nonAvroDataCanBeDeserializedAsNull() {
         Map<String, Object> configs = new HashMap<>();
         configs.put(AvroSerDe.SCHEMA_REGISTRY_URL_CONFIG, "<NOT_USED>");

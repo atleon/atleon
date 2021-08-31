@@ -6,9 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class ReflectAvroSerDeTest extends LoadingAvroSerDeTest {
+public class ReflectDecoderAvroSerDeTest extends LoadingAvroSerDeTest {
 
-    public ReflectAvroSerDeTest() {
+    public ReflectDecoderAvroSerDeTest() {
         super(TestReflectEncoderAvroSerializer::new, TestReflectDecoderAvroDeserializer::new);
     }
 
