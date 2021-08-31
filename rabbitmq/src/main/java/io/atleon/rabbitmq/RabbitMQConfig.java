@@ -32,11 +32,9 @@ public class RabbitMQConfig {
     }
 
     public <T extends Configurable> List<T> loadListOfConfigured(String property) {
-        List<T> listOfConfigured = ConfigLoading
-            .loadCollection(properties, property, Instantiation::<T>one, Collectors.toList())
-            .orElseGet(Collections::emptyList);
-        listOfConfigured.forEach(interceptor -> interceptor.configure(properties));
-        return listOfConfigured;
+        List<T> configurables = ConfigLoading.loadListOrEmpty(properties, property, Instantiation::one);
+        configurables.forEach(interceptor -> interceptor.configure(properties));
+        return configurables;
     }
 
     public <T extends Configurable> Optional<T> loadConfigured(String property) {

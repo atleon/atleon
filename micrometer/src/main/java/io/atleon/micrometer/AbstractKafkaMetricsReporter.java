@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
 
@@ -46,7 +45,7 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
     public void configure(Map<String, ?> configs) {
         this.meterRegistry = createMeterRegistry(configs);
         this.filteredMetricNamesInclusion = ConfigLoading.load(configs, FILTER_NAMES_INCLUSION_CONFIG, FilterInclusion::valueOf, filteredMetricNamesInclusion);
-        this.filteredMetricNames = ConfigLoading.loadCollection(configs, FILTER_NAMES_CONFIG, Function.identity(), Collectors.toSet()).orElseGet(Collections::emptySet);
+        this.filteredMetricNames = ConfigLoading.loadSetOrEmpty(configs, FILTER_NAMES_CONFIG, Function.identity());
     }
 
     @Override

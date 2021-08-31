@@ -67,8 +67,10 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
     }
 
     protected List<ConfigProcessor> loadProcessors(Map<String, Object> properties) {
-        List<ConfigProcessor> processors = defaultInterceptors().stream().map(ConfigInterceptor::asProcessor).collect(Collectors.toList());
-        processors.addAll(ConfigLoading.loadListOrEmpty(properties, PROCESSORS_PROPERTY, Instantiation::<ConfigProcessor>one));
+        List<ConfigProcessor> processors = defaultInterceptors().stream()
+            .map(ConfigInterceptor::asProcessor)
+            .collect(Collectors.toList());
+        processors.addAll(ConfigLoading.loadListOrEmpty(properties, PROCESSORS_PROPERTY, Instantiation::one));
         return processors;
     }
 

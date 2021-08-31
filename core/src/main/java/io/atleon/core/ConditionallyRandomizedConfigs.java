@@ -13,6 +13,9 @@ import java.util.stream.Collectors;
  *
  * group.id: my-group-id,
  * group.id.randomize: true
+ *
+ * Upon creation of the configs, group.id will have a value of  my-group-id with a random UUID
+ * appended to it, i.e. my-group-id-deadbeef-dead-dead-beef-deadcafebeef
  */
 public final class ConditionallyRandomizedConfigs implements ConfigInterceptor {
 

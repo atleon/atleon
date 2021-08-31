@@ -52,7 +52,8 @@ public abstract class ConfigProvider<T, P extends ConfigProvider<T, P>> {
         Objects.requireNonNull(properties.get(key), key + " is a required Configuration");
     }
 
-    protected static <T extends Enum<T>> void validateEnumProperty(Map<String, Object> properties, String key, Class<T> enumClass) {
+    protected static <T extends Enum<T>> void
+    validateEnumProperty(Map<String, Object> properties, String key, Class<T> enumClass) {
         try {
             Enum.valueOf(enumClass, Objects.toString(properties.get(key)));
         } catch (Exception e) {

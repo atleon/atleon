@@ -5,7 +5,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
-import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -28,9 +27,14 @@ final class AcknowledgingCollection<T> extends AbstractCollection<Alo<T>> {
 
     private final AloFactory<T> factory;
 
-    public AcknowledgingCollection(Collection<T> collection, Runnable acknowledger, Consumer<? super Throwable> nacknowledger, AloFactory<T> factory) {
+    public AcknowledgingCollection(
+        Collection<T> collection,
+        Runnable acknowledger,
+        Consumer<? super Throwable> nacknowledger,
+        AloFactory<T> factory) {
         this.collection = collection;
-        this.unacknowledged = collection.stream().collect(Collectors.toCollection(() -> Collections.newSetFromMap(new IdentityHashMap<>(collection.size()))));
+        this.unacknowledged = collection.stream()
+            .collect(Collectors.toCollection(() -> Collections.newSetFromMap(new IdentityHashMap<>(collection.size()))));
         this.acknowledger = acknowledger;
         this.nacknowledger = nacknowledger;
         this.factory = factory;
@@ -38,7 +42,7 @@ final class AcknowledgingCollection<T> extends AbstractCollection<Alo<T>> {
 
     @Override
     public String toString() {
-        return "AcknowledgingCollection(" + Objects.toString(collection) + ")";
+        return "AcknowledgingCollection(" + collection + ")";
     }
 
     @Override

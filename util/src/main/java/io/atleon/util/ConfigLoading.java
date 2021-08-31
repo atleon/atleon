@@ -35,7 +35,11 @@ public final class ConfigLoading {
         return Optional.ofNullable(configs.get(property)).map(Object::toString).map(parser);
     }
 
-    public static <T, R> R loadCollectionOrThrow(Map<String, ?> configs, String property, Function<? super String, T> parser, Collector<? super T, ?, R> collector) {
+    public static <T, R> R loadCollectionOrThrow(
+        Map<String, ?> configs,
+        String property,
+        Function<? super String, T> parser,
+        Collector<? super T, ?, R> collector) {
         return loadCollection(configs, property, parser, collector).orElseThrow(supplyMissingConfigPropertyException(property));
     }
 
@@ -47,7 +51,11 @@ public final class ConfigLoading {
         return loadCollection(configs, property, parser, Collectors.toSet()).orElse(Collections.emptySet());
     }
 
-    public static <T, R> Optional<R> loadCollection(Map<String, ?> configs, String property, Function<? super String, T> parser, Collector<? super T, ?, R> collector) {
+    public static <T, R> Optional<R> loadCollection(
+        Map<String, ?> configs,
+        String property,
+        Function<? super String, T> parser,
+        Collector<? super T, ?, R> collector) {
         return Optional.ofNullable(configs.get(property))
             .map(ConfigLoading::convertToCollection)
             .map(collection -> collection.stream().map(Objects::toString).map(parser).collect(collector));
@@ -66,7 +74,9 @@ public final class ConfigLoading {
     public static <T> Map<String, T> loadPrefixed(Map<String, ?> configs, String prefix, Function<? super String, T> parser) {
         return configs.entrySet().stream()
             .filter(entry -> entry.getKey().startsWith(prefix))
-            .collect(Collectors.toMap(entry -> entry.getKey().substring(prefix.length()), entry -> parser.apply(entry.getValue().toString())));
+            .collect(Collectors.toMap(
+                entry -> entry.getKey().substring(prefix.length()),
+                entry -> parser.apply(entry.getValue().toString())));
     }
 
     private static Collection<?> convertToCollection(Object config) {
