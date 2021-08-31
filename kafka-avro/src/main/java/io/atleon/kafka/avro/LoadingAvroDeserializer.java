@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
+import java.util.OptionalInt;
 
 /**
  * This Deserializer makes a best effort to take advantage of Avro Compatibility rules such that
@@ -60,7 +61,7 @@ public abstract class LoadingAvroDeserializer<T> extends LoadingAvroSerDe implem
 
     @Override
     public T deserialize(String topic, byte[] data) {
-        return data == null || data.length == 0 ? null : deserializeNonNull(topic, data);
+        return data == null || data.length == 0 ? null : deserializeNonEmpty(topic, data);
     }
 
     @Override
@@ -68,13 +69,13 @@ public abstract class LoadingAvroDeserializer<T> extends LoadingAvroSerDe implem
 
     }
 
-    protected T deserializeNonNull(String topic, byte[] data) {
+    protected T deserializeNonEmpty(String topic, byte[] data) {
         ByteBuffer dataBuffer = ByteBuffer.wrap(data);
         byte firstByte = dataBuffer.get();
-        int writerSchemaId = dataBuffer.getInt();
+        OptionalInt writerSchemaId = dataBuffer.remaining() < 4 ? OptionalInt.empty() : OptionalInt.of(dataBuffer.getInt());
         try {
             validateByte(MAGIC_BYTE, firstByte);
-            return deserializeNonNull(topic, writerSchemaId, dataBuffer);
+            return deserializeNonNull(topic, writerSchemaId.orElseThrow(MissingSchemaIdException::new), dataBuffer);
         } catch (RestClientException e) {
             throw new IllegalStateException("Failed to retrieve Schema for id: " + writerSchemaId, e);
         } catch (Exception e) {
@@ -109,4 +110,11 @@ public abstract class LoadingAvroDeserializer<T> extends LoadingAvroSerDe implem
     }
 
     protected abstract T deserializeNonNullWithSchemas(Schema writerSchema, Schema readerSchema, ByteBuffer dataBuffer) throws IOException;
+
+    private static final class MissingSchemaIdException extends IllegalArgumentException {
+
+        public MissingSchemaIdException() {
+            super("Schema ID is not present in Avro data");
+        }
+    }
 }
