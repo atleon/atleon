@@ -8,6 +8,8 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
+    <description>Reactive streaming library targeting continuous pipelines with at-least-once processing guarantees. Backed by Project Reactor.</description>
+    <url>https://github.com/atleon/atleon</url>
 
     <developers>
         <developer>
