@@ -26,6 +26,10 @@ public class AloMono<T> implements Publisher<Alo<T>> {
         this.wrapped = wrapped;
     }
 
+    public static <T> AloMono<T> wrap(Publisher<Alo<T>> publisher) {
+        return new AloMono<>(Mono.from(publisher));
+    }
+
     public Mono<Alo<T>> unwrap() {
         return wrapped;
     }

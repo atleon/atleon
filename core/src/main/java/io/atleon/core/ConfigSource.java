@@ -4,9 +4,6 @@ import io.atleon.util.ConfigLoading;
 import io.atleon.util.Instantiation;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -21,7 +18,7 @@ import java.util.stream.Collectors;
  */
 public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends ConfigProvider<Mono<T>, S> {
 
-    public static final String PROCESSORS_PROPERTY = "config.processors";
+    public static final String PROCESSORS_PROPERTY = "source.processors";
 
     private Function<Map<String, Object>, Optional<String>> propertiesToName;
 
@@ -39,7 +36,7 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
 
     @Override
     public final Mono<T> create(Map<String, Object> properties) {
-        return applySources(properties)
+        return applyProcessors(properties)
             .doOnNext(this::validateProperties)
             .map(this::postProcessProperties);
     }
@@ -57,7 +54,7 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
 
     protected abstract T postProcessProperties(Map<String, Object> properties);
 
-    protected Mono<Map<String, Object>> applySources(Map<String, Object> properties) {
+    protected Mono<Map<String, Object>> applyProcessors(Map<String, Object> properties) {
         Optional<String> nameFromProperties = propertiesToName.apply(properties);
         Mono<Map<String, Object>> result = Mono.just(properties);
         for (ConfigProcessor processor : loadProcessors(properties)) {
@@ -70,16 +67,9 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
     }
 
     protected List<ConfigProcessor> loadProcessors(Map<String, Object> properties) {
-        List<ConfigProcessor> processors = new ArrayList<>(defaultProcessors());
-        ConfigLoading.loadCollection(properties, PROCESSORS_PROPERTY, Instantiation::<ConfigProcessor>one, Collectors.toList())
-            .ifPresent(processors::addAll);
+        List<ConfigProcessor> processors = defaultInterceptors().stream().map(ConfigInterceptor::asProcessor).collect(Collectors.toList());
+        processors.addAll(ConfigLoading.loadListOrEmpty(properties, PROCESSORS_PROPERTY, Instantiation::<ConfigProcessor>one));
         return processors;
-    }
-
-    protected Collection<ConfigProcessor> defaultProcessors() {
-        return Arrays.asList(
-            new EnvironmentalConfigs().asProcessor(),
-            new ConditionallyRandomizedConfigs().asProcessor());
     }
 
     protected void setPropertiesToName(Function<Map<String, Object>, Optional<String>> propertiesToName) {

@@ -9,6 +9,13 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+/**
+ * A Collection of {@link Alo} produced from a one-to-many mapping of another Alo. Takes care of
+ * acknowledgement propagated from the original source by only executing acknowledgement iff all
+ * resultant items are acknowledged OR one of the emitted items is nacknowledged.
+ *
+ * @param <T> The type of data item contained in Alo items in this Collection
+ */
 final class AcknowledgingCollection<T> extends AbstractCollection<Alo<T>> {
 
     private final Collection<T> collection;

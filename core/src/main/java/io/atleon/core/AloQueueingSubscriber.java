@@ -10,6 +10,13 @@ import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+/**
+ * Operator used in Publishers of Alo elements that enables "queueing" of acknowledgement such that
+ * acknowledgement order is preserved independently of data processing completion.
+ *
+ * @param <T> The type of data item contained in emitted Alo elements
+ * @param <A> The type of Alo emitted
+ */
 final class AloQueueingSubscriber<T, A extends Alo<T>> implements Subscriber<A>, Subscription {
 
     private static final AtomicLongFieldUpdater<AloQueueingSubscriber> FREE_CAPACITY =

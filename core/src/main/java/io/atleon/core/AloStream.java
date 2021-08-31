@@ -5,6 +5,11 @@ import reactor.core.Disposable;
 
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * A managed Alo streaming process that can be started and stopped
+ *
+ * @param <C> The type of Config used to start this reactive streaming process
+ */
 public abstract class AloStream<C extends AloStreamConfig> {
 
     public enum State { STOPPED, STARTING, STARTED }

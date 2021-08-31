@@ -9,6 +9,13 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+/**
+ * Base functionality for Alo implementations {@link Alo#get() get},
+ * {@link Alo#getAcknowledger() getAcknowledger}, {@link Alo#getNacknowledger() getNacknowledger},
+ * and {@link Alo#propagate propagate}
+ *
+ * @param <T> The type of data item contained in this Alo
+ */
 public abstract class AbstractAlo<T> implements Alo<T> {
 
     @Override
@@ -45,8 +52,8 @@ public abstract class AbstractAlo<T> implements Alo<T> {
     @Override
     public Alo<T> reduce(BinaryOperator<T> reducer, Alo<? extends T> other) {
         return propagate(reducer.apply(get(), other.get()),
-            combineAcknowledgers(getAcknowledger(), other.getAcknowledger()),
-            combineNacknowledgers(getNacknowledger(), other.getNacknowledger()));
+            AloOps.combineAcknowledgers(getAcknowledger(), other.getAcknowledger()),
+            AloOps.combineNacknowledgers(getNacknowledger(), other.getNacknowledger()));
     }
 
     @Override
@@ -66,28 +73,4 @@ public abstract class AbstractAlo<T> implements Alo<T> {
     }
 
     protected abstract <R> AloFactory<R> createPropagator();
-
-    /**
-     * Convenience method for combining Acknowledgers. Acknowledgers will be run in the same order
-     * that they are provided
-     */
-    protected static Runnable combineAcknowledgers(Runnable acknowledger1, Runnable acknowledger2) {
-        return () -> {
-            acknowledger1.run();
-            acknowledger2.run();
-        };
-    }
-
-    /**
-     * Convenience method for combining Nacknowledgers. Nacknowledgers will be run in the same
-     * order that they are provided
-     */
-    protected static Consumer<Throwable> combineNacknowledgers(
-        Consumer<? super Throwable> nacknowledger1,
-        Consumer<? super Throwable> nacknowledger2) {
-        return error -> {
-            nacknowledger1.accept(error);
-            nacknowledger2.accept(error);
-        };
-    }
 }

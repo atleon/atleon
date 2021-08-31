@@ -3,9 +3,11 @@ package io.atleon.util;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
@@ -35,6 +37,14 @@ public final class ConfigLoading {
 
     public static <T, R> R loadCollectionOrThrow(Map<String, ?> configs, String property, Function<? super String, T> parser, Collector<? super T, ?, R> collector) {
         return loadCollection(configs, property, parser, collector).orElseThrow(supplyMissingConfigPropertyException(property));
+    }
+
+    public static <T> List<T> loadListOrEmpty(Map<String, ?> configs, String property, Function<? super String, T> parser) {
+        return loadCollection(configs, property, parser, Collectors.toList()).orElse(Collections.emptyList());
+    }
+
+    public static <T> Set<T> loadSetOrEmpty(Map<String, ?> configs, String property, Function<? super String, T> parser) {
+        return loadCollection(configs, property, parser, Collectors.toSet()).orElse(Collections.emptySet());
     }
 
     public static <T, R> Optional<R> loadCollection(Map<String, ?> configs, String property, Function<? super String, T> parser, Collector<? super T, ?, R> collector) {

@@ -14,6 +14,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+/**
+ * A Publisher of {@link Alo} produced from a published mapping of another Alo. Takes care of
+ * acknowledgement propagated from the original source by only executing acknowledgement iff all
+ * resultant items are acknowledged <i>after upstream termination of this Publisher</i> OR one of
+ * the emitted items is nacknowledged.
+ *
+ * @param <T> The type of data item emitted in Alo items of this Publisher
+ */
 final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
     private final Publisher<? extends T> source;

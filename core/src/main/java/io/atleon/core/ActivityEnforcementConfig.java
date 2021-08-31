@@ -2,6 +2,13 @@ package io.atleon.core;
 
 import java.time.Duration;
 
+/**
+ * Used to configure the enforcement of "activity" on a Publisher. Similar to Reactor's
+ * {@link reactor.core.publisher.Flux#timeout(Duration) Flux::timeout}, activity enforcement causes
+ * an error to be emitted when a stream is inactive for longer than a specified duration. In
+ * contrast to timeout, Activity Enforcement allows specifying a grace period (delay) and also
+ * detects timeouts on subscription.
+ */
 public final class ActivityEnforcementConfig {
 
     public static final Duration DEFAULT_DELAY = Duration.ofMinutes(1L);

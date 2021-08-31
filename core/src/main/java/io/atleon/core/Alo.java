@@ -8,6 +8,27 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+/**
+ * Decorates data items with the notion of "acknowledgeability". An Alo's data item is not
+ * considered fully processed until <i>either</i> its acknowledger or nacknowledger (negative
+ * acknowledger) has been executed. Execution of the acknowledger signifies normal processing
+ * completion of the correlated data item, while execution of the nacknowledger indicates abnormal,
+ * unexpected, or otherwise exceptional termination of the processing of the correlated data item.
+ * The Nacknowledger must always be exeucted with the {@link Throwable Throwable} that further
+ * elaborates on the cause of exceptional processing termination.
+ *
+ * <p>Implementations of Alo should guarantee joint threadsafe idempotency of acknowledgement. In
+ * other words, execution of either the acknowledger or nacknowledger must be threadsafe, and once
+ * either is executed, further executions of either should result in no-ops. Implementations are
+ * responsible for implementing how to propagate enough information with which to eventually
+ * execute acknowledgement. Note that implementations may propagate more than just
+ * acknowledgement resources.
+ *
+ * <p>Acknowledgers and Nacknowledgers referenced by Acknowledgeable implementations must be
+ * <strong>safe</strong>. They <i>should not throw Exceptions.</i>
+ *
+ * @param <T> The type of data item contained in this Alo
+ */
 public interface Alo<T> {
 
     /**

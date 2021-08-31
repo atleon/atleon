@@ -7,6 +7,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Interceptor that can be used to randomize configurations contained in Config Providers. For
+ * example, you might want to randomize a consumer group like the following:
+ *
+ * group.id: my-group-id,
+ * group.id.randomize: true
+ */
 public final class ConditionallyRandomizedConfigs implements ConfigInterceptor {
 
     public static final String PROPERTY_SUFFIX = ".randomize";

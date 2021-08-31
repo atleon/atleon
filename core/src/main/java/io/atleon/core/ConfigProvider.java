@@ -1,5 +1,7 @@
 package io.atleon.core;
 
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +39,10 @@ public abstract class ConfigProvider<T, P extends ConfigProvider<T, P>> {
     protected abstract T create(Map<String, Object> properties);
 
     protected abstract P initializeProviderCopy();
+
+    protected Collection<ConfigInterceptor> defaultInterceptors() {
+        return Arrays.asList(new EnvironmentalConfigs(), new ConditionallyRandomizedConfigs());
+    }
 
     protected void setProperties(Map<String, Object> properties) {
         this.properties = properties;

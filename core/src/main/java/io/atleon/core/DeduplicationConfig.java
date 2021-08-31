@@ -4,6 +4,9 @@ import io.atleon.util.Defaults;
 
 import java.time.Duration;
 
+/**
+ * Configures quantitative behavior of deduplication
+ */
 public final class DeduplicationConfig {
 
     private final Duration deduplicationDuration;
@@ -14,14 +17,26 @@ public final class DeduplicationConfig {
 
     private final int deduplicationSourcePrefetch;
 
+    /**
+     * @param deduplicationDuration The Duration in which to deduplicate items
+     */
     public DeduplicationConfig(Duration deduplicationDuration) {
         this(deduplicationDuration, Long.MAX_VALUE, Defaults.CONCURRENCY, Defaults.PREFETCH);
     }
 
+    /**
+     * @param deduplicationDuration The max Duration in which to deduplicate items
+     * @param maxDeduplicationSize The max number of items with any given key to dedpulicate
+     */
     public DeduplicationConfig(Duration deduplicationDuration, long maxDeduplicationSize) {
         this(deduplicationDuration, maxDeduplicationSize, Defaults.CONCURRENCY, Defaults.PREFETCH);
     }
 
+    /**
+     * @param deduplicationDuration The max Duration in which to deduplicate items
+     * @param maxDeduplicationSize The max number of items with any given key to dedpulicate
+     * @param deduplicationConcurrency The max number of concurrent deduplications to allow
+     */
     public DeduplicationConfig(
         Duration deduplicationDuration,
         long maxDeduplicationSize,
@@ -29,6 +44,12 @@ public final class DeduplicationConfig {
         this(deduplicationDuration, maxDeduplicationSize, deduplicationConcurrency, Defaults.PREFETCH);
     }
 
+    /**
+     * @param deduplicationDuration The max Duration in which to deduplicate items
+     * @param maxDeduplicationSize The max number of items with any given key to dedpulicate
+     * @param deduplicationConcurrency The max number of concurrent deduplications to allow
+     * @param deduplicationSourcePrefetch Prefetch on the deduplicated source
+     */
     public DeduplicationConfig(
         Duration deduplicationDuration,
         long maxDeduplicationSize,

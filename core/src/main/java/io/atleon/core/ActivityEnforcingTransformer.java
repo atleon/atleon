@@ -21,6 +21,8 @@ final class ActivityEnforcingTransformer<T> implements Function<Publisher<T>, Pu
 
     @Override
     public Publisher<T> apply(Publisher<T> publisher) {
+        // When enabled, transformation is deferred so each subscription will have its own
+        // 'lastActive' reference
         return config.isEnabled()
             ? Flux.from(publisher).transformDeferred(this::enforceActivity)
             : publisher;

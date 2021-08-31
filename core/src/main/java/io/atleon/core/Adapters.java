@@ -5,6 +5,9 @@ import reactor.core.publisher.BaseSubscriber;
 
 import java.util.function.Consumer;
 
+/**
+ * Common adaptations used to convert between and wrap reactive types.
+ */
 public final class Adapters {
 
     private Adapters() {
