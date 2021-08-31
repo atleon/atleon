@@ -5,7 +5,7 @@
 
 Atleon is a [Reactive Streams](https://www.reactive-streams.org/) library aimed at satisfying table stakes requirements of infinite stream processing use cases. One such typical use case is streaming from one message broker (i.e. [Kafka](https://kafka.apache.org/) or [RabbitMQ](https://www.rabbitmq.com/)), enriching the data, and producing to some other message broker.
 
-As much as possible, Atleon is backed by [Project Reactor](https://projectreactor.io/) and its extensions (like [Reactor Kafka](https://github.com/reactor/reactor-kafka) and [Reactor RabbitMQ](https://github.com/reactor/reactor-rabbitmq). Usage of Project Reactor allows Atleon to maintain the inherent developmental attributes afforded by the Reactive Streams specification:
+As much as possible, Atleon is backed by [Project Reactor](https://projectreactor.io/) and its extensions (like [Reactor Kafka](https://github.com/reactor/reactor-kafka) and [Reactor RabbitMQ](https://github.com/reactor/reactor-rabbitmq)). Usage of Project Reactor allows Atleon to maintain the inherent developmental attributes afforded by the Reactive Streams specification:
 * Non-blocking backpressure
 * Arbitrary parallelism
 * Infrastructural Interoperability (Kafka, RabbitMQ, etc.)
@@ -19,7 +19,7 @@ In typical use cases, it is required that a message is not abstractly marked "fu
 
 For the purposes of concise documentation, unless otherwise explicitly indicated, we will use the term "acknowledgement" to refer to both positive and negative acknowledgement.
 
-Propagating mechanisms for acknowledgement can be cumbersome in reactive pipelines. Explicitly doing so can make such pipelines less readable and takes away from developers' and readers' abilities to focus on what's being done to the actual data flowing through the pipeline. Atleon provides precisely the abstraction to propagate acknowledgement as data items are transformed. This abstraction is called [Alo](core/src/main/java/io/atleon/core/Alo.java). Implementations of `Alo` handle the responsibility of operating on their contained data item and propagating acknowledgement along with transformations of that data item.
+Propagating mechanisms for acknowledgement can be cumbersome in reactive pipelines. Explicitly doing so can make such pipelines less readable and takes away from developers' and readers' abilities to focus on what's being done to the actual data flowing through the pipeline. Atleon provides precisely the abstraction to propagate acknowledgement as data items are transformed. This abstraction is called [Alo](core/src/main/java/io/atleon/core/Alo.java). Implementations of `Alo` handle the responsibility of operating on their contained data item and propagating acknowledgement along with transformations of their data item.
 
 Atleon makes most of the handling of Alo transparent to developers through [AloFlux](core/src/main/java/io/atleon/core/AloFlux.java). Much like Project Reactor's [Flux](https://javadoc.io/doc/io.projectreactor/reactor-core/latest/reactor/core/publisher/Flux.html), `AloFlux` allows developers to define logic purely in terms of data items while wrapping those transformations with appropriate operations on `Alo`.
 
