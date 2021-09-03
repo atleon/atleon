@@ -11,7 +11,7 @@ public class StringBodySerializer implements BodySerializer<String> {
     }
 
     @Override
-    public byte[] serialize(String s) {
-        return s.getBytes(StandardCharsets.UTF_8);
+    public SerializedBody serialize(String s) {
+        return SerializedBody.ofBytes(s.getBytes(StandardCharsets.UTF_8));
     }
 }

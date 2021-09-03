@@ -10,7 +10,7 @@ public class ByteArrayBodyDeserializer implements BodyDeserializer<byte[]> {
     }
 
     @Override
-    public byte[] deserialize(byte[] data) {
-        return data;
+    public byte[] deserialize(SerializedBody body) {
+        return body.bytes();
     }
 }

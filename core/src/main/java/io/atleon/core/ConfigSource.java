@@ -41,20 +41,13 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
             .map(this::postProcessProperties);
     }
 
-    @Override
-    protected final S initializeProviderCopy() {
-        S copy = initializeSourceCopy();
-        copy.setPropertiesToName(propertiesToName);
+    public final S rename(String name) {
+        S copy = copy();
+        copy.setPropertiesToName(properties -> Optional.of(name));
         return copy;
     }
 
-    protected abstract S initializeSourceCopy();
-
-    protected abstract void validateProperties(Map<String, Object> properties);
-
-    protected abstract T postProcessProperties(Map<String, Object> properties);
-
-    protected Mono<Map<String, Object>> applyProcessors(Map<String, Object> properties) {
+    protected final Mono<Map<String, Object>> applyProcessors(Map<String, Object> properties) {
         Optional<String> nameFromProperties = propertiesToName.apply(properties);
         Mono<Map<String, Object>> result = Mono.just(properties);
         for (ConfigProcessor processor : loadProcessors(properties)) {
@@ -74,7 +67,20 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
         return processors;
     }
 
-    protected void setPropertiesToName(Function<Map<String, Object>, Optional<String>> propertiesToName) {
+    protected abstract void validateProperties(Map<String, Object> properties);
+
+    protected abstract T postProcessProperties(Map<String, Object> properties);
+
+    @Override
+    protected final S initializeProviderCopy() {
+        S copy = initializeSourceCopy();
+        copy.setPropertiesToName(propertiesToName);
+        return copy;
+    }
+
+    protected abstract S initializeSourceCopy();
+
+    final void setPropertiesToName(Function<Map<String, Object>, Optional<String>> propertiesToName) {
         this.propertiesToName = propertiesToName;
     }
 }

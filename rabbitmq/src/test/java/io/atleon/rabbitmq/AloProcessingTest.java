@@ -36,7 +36,7 @@ public class AloProcessingTest {
     @Test
     public void acknowledgedDataIsNotRepublished() {
         AloRabbitMQSender.from(RABBIT_MQ_CONFIG_SOURCE)
-            .sendBodies(Mono.just("DATA"), DefaultRabbitMQMessageCreator.persistentBasicToDefaultExchange(queue))
+            .sendBodies(Mono.just("DATA"), DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(queue))
             .then().block();
 
         AloRabbitMQReceiver.from(RABBIT_MQ_CONFIG_SOURCE)
@@ -58,7 +58,7 @@ public class AloProcessingTest {
     @Test
     public void unacknowledgedDataIsRepublished() {
         AloRabbitMQSender.from(RABBIT_MQ_CONFIG_SOURCE)
-            .sendBodies(Mono.just("DATA"), DefaultRabbitMQMessageCreator.persistentBasicToDefaultExchange(queue))
+            .sendBodies(Mono.just("DATA"), DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(queue))
             .then().block();
 
         AloRabbitMQReceiver.from(RABBIT_MQ_CONFIG_SOURCE)
@@ -79,7 +79,7 @@ public class AloProcessingTest {
     @Test
     public void nacknowledgedDataIsRepublished() {
         AloRabbitMQSender.from(RABBIT_MQ_CONFIG_SOURCE)
-            .sendBodies(Flux.just("DATA1", "DATA2", "DATA3"), DefaultRabbitMQMessageCreator.persistentBasicToDefaultExchange(queue))
+            .sendBodies(Flux.just("DATA1", "DATA2", "DATA3"), DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(queue))
             .then().block();
 
         AloRabbitMQReceiver.from(RABBIT_MQ_CONFIG_SOURCE)

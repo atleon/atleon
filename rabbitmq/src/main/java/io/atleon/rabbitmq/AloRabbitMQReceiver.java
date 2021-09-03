@@ -136,11 +136,12 @@ public class AloRabbitMQReceiver<T> {
 
         private Alo<RabbitMQMessage<T>>
         deserialize(AcknowledgableDelivery delivery, Consumer<? super Throwable> errorEmitter) {
+            SerializedBody body = SerializedBody.ofBytes(delivery.getBody());
             RabbitMQMessage<T> rabbitMessage = new RabbitMQMessage<>(
                 delivery.getEnvelope().getExchange(),
                 delivery.getEnvelope().getRoutingKey(),
                 delivery.getProperties(),
-                bodyDeserializer.deserialize(delivery.getBody()));
+                bodyDeserializer.deserialize(body));
 
             Runnable acknowledger = () -> ack(delivery, errorEmitter);
 

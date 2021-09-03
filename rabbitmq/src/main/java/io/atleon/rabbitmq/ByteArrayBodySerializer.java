@@ -10,7 +10,7 @@ public class ByteArrayBodySerializer implements BodySerializer<byte[]> {
     }
 
     @Override
-    public byte[] serialize(byte[] bytes) {
-        return bytes;
+    public SerializedBody serialize(byte[] bytes) {
+        return SerializedBody.ofBytes(bytes);
     }
 }

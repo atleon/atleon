@@ -24,7 +24,7 @@ public abstract class ConfigProvider<T, P extends ConfigProvider<T, P>> {
         Map<String, Object> copiedProperties = new HashMap<>(this.properties);
         copiedProperties.put(key, value);
         P copy = initializeProviderCopy();
-        copy.setProperties(copiedProperties);
+        copy.setProperties(Collections.unmodifiableMap(copiedProperties));
         return copy;
     }
 
@@ -32,20 +32,22 @@ public abstract class ConfigProvider<T, P extends ConfigProvider<T, P>> {
         Map<String, Object> copiedProperties = new HashMap<>(this.properties);
         copiedProperties.putAll(properties);
         P copy = initializeProviderCopy();
-        copy.setProperties(copiedProperties);
+        copy.setProperties(Collections.unmodifiableMap(copiedProperties));
         return copy;
     }
 
     protected abstract T create(Map<String, Object> properties);
 
+    protected final P copy() {
+        P copy = initializeProviderCopy();
+        copy.setProperties(properties);
+        return copy;
+    }
+
     protected abstract P initializeProviderCopy();
 
     protected Collection<ConfigInterceptor> defaultInterceptors() {
         return Arrays.asList(new EnvironmentalConfigs(), new ConditionallyRandomizedConfigs());
-    }
-
-    protected void setProperties(Map<String, Object> properties) {
-        this.properties = properties;
     }
 
     protected static void validateNonNullProperty(Map<String, Object> properties, String key) {
@@ -59,5 +61,9 @@ public abstract class ConfigProvider<T, P extends ConfigProvider<T, P>> {
         } catch (Exception e) {
             throw new IllegalArgumentException(key + " must be configured as an Enum value from " + enumClass, e);
         }
+    }
+
+    final void setProperties(Map<String, Object> properties) {
+        this.properties = properties;
     }
 }

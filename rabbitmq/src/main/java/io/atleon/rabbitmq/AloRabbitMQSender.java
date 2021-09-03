@@ -148,14 +148,15 @@ public class AloRabbitMQSender<T> {
 
         public <C> CorrelableOutboundMessage<C>
         createOutboundMessage(RabbitMQMessage<T> message, C correlationMetadata) {
+            SerializedBody serializedBody = bodySerializer.serialize(message.getBody());
             for (RabbitMQMessageSendInterceptor<T> interceptor : interceptors) {
-                message = interceptor.onSend(message);
+                message = interceptor.onSend(message, serializedBody);
             }
             return new CorrelableOutboundMessage<>(
                 message.getExchange(),
                 message.getRoutingKey(),
                 message.getProperties(),
-                bodySerializer.serialize(message.getBody()),
+                serializedBody.bytes(),
                 correlationMetadata);
         }
 

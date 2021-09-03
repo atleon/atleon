@@ -11,7 +11,7 @@ public class StringBodyDeserializer implements BodyDeserializer<String> {
     }
 
     @Override
-    public String deserialize(byte[] data) {
-        return new String(data, StandardCharsets.UTF_8);
+    public String deserialize(SerializedBody body) {
+        return new String(body.bytes(), StandardCharsets.UTF_8);
     }
 }

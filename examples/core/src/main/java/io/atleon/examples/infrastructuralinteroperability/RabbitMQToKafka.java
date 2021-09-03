@@ -83,7 +83,7 @@ public class RabbitMQToKafka {
 
         //Step 5) Produce some messages to the RabbitMQ Queue we declared
         AloRabbitMQSender.<String>from(rabbitMQConfig)
-            .sendBodies(Flux.just("Test"), DefaultRabbitMQMessageCreator.persistentBasicToDefaultExchange(QUEUE))
+            .sendBodies(Flux.just("Test"), DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(QUEUE))
             .collectList()
             .doOnNext(outboundMessageResults -> System.out.println("outboundMessageResults: " + outboundMessageResults))
             .block();

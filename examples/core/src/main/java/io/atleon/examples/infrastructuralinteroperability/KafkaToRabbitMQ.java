@@ -93,7 +93,7 @@ public class KafkaToRabbitMQ {
             .receiveAloValues(Collections.singletonList(TOPIC))
             .map(String::toUpperCase)
             .transform(AloRabbitMQSender.<String>from(rabbitMQConfig)
-                .sendAloBodies(DefaultRabbitMQMessageCreator.persistentBasicToDefaultExchange(QUEUE)))
+                .sendAloBodies(DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(QUEUE)))
             .consumeAloAndGet(Alo::acknowledge)
             .take(1)
             .collectList()

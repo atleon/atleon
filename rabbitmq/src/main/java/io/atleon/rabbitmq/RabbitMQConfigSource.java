@@ -40,6 +40,34 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
         return new RabbitMQConfigSource(name);
     }
 
+    public RabbitMQConfigSource withHost(String host) {
+        return with(HOST_PROPERTY, host);
+    }
+
+    public RabbitMQConfigSource withPort(String port) {
+        return with(PORT_PROPERTY, port);
+    }
+
+    public RabbitMQConfigSource withPort(int port) {
+        return with(PORT_PROPERTY, port);
+    }
+
+    public RabbitMQConfigSource withVirtualHost(String virtualHost) {
+        return with(VIRTUAL_HOST_PROPERTY, virtualHost);
+    }
+
+    public RabbitMQConfigSource withUsername(String username) {
+        return with(USERNAME_PROPERTY, username);
+    }
+
+    public RabbitMQConfigSource withPassword(String password) {
+        return with(PASSWORD_PROPERTY, password);
+    }
+
+    public RabbitMQConfigSource withSsl(String ssl) {
+        return with(SSL_PROPERTY, ssl);
+    }
+
     @Override
     protected RabbitMQConfigSource initializeSourceCopy() {
         return new RabbitMQConfigSource();

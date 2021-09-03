@@ -38,7 +38,7 @@ class EmbeddedMessageTest {
         String body = UUID.randomUUID().toString();
 
         AloRabbitMQSender.<String>from(RABBIT_MQ_CONFIG_SOURCE)
-            .sendBodies(Mono.just(body), DefaultRabbitMQMessageCreator.persistentBasicToDefaultExchange(queue))
+            .sendBodies(Mono.just(body), DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(queue))
             .then().block();
 
         AloRabbitMQReceiver.<String>from(RABBIT_MQ_CONFIG_SOURCE)
