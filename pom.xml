@@ -62,6 +62,7 @@
         <module>micrometer</module>
         <module>parent</module>
         <module>rabbitmq</module>
+        <module>spring</module>
         <module>util</module>
         <module>zookeeper-embedded</module>
     </modules>

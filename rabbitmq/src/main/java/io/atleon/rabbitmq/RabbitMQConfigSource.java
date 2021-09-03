@@ -40,6 +40,10 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
         return new RabbitMQConfigSource(name);
     }
 
+    public static RabbitMQConfigSource unnamed() {
+        return new RabbitMQConfigSource();
+    }
+
     public RabbitMQConfigSource withHost(String host) {
         return with(HOST_PROPERTY, host);
     }
