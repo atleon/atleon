@@ -62,12 +62,12 @@ public final class DefaultRabbitMQMessageCreator<T> extends AbstractRabbitMQMess
     }
 
     @Override
-    protected String extractExchange(T t) {
-        return Objects.toString(exchangeExtractor.apply(t));
+    protected String extractExchange(T body) {
+        return Objects.toString(exchangeExtractor.apply(body));
     }
 
     @Override
-    protected String extractRoutingKey(T t) {
-        return Objects.toString(routingKeyExtractor.apply(t));
+    protected String extractRoutingKey(T body) {
+        return Objects.toString(routingKeyExtractor.apply(body));
     }
 }

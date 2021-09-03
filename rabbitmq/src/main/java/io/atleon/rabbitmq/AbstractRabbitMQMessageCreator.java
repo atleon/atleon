@@ -13,19 +13,19 @@ public abstract class AbstractRabbitMQMessageCreator<T> implements RabbitMQMessa
     }
 
     @Override
-    public RabbitMQMessage<T> apply(T t) {
+    public RabbitMQMessage<T> apply(T body) {
         return new RabbitMQMessage<>(
-            extractExchange(t),
-            extractRoutingKey(t),
-            createMessagePropertiesBuilder(t).build(),
-            t);
+            extractExchange(body),
+            extractRoutingKey(body),
+            createMessagePropertiesBuilder(body).build(),
+            body);
     }
 
-    protected abstract String extractExchange(T t);
+    protected abstract String extractExchange(T body);
 
-    protected abstract String extractRoutingKey(T t);
+    protected abstract String extractRoutingKey(T body);
 
-    protected AMQP.BasicProperties.Builder createMessagePropertiesBuilder(T t) {
+    protected AMQP.BasicProperties.Builder createMessagePropertiesBuilder(T body) {
         return initialProperties.builder().messageId(UUID.randomUUID().toString());
     }
 }

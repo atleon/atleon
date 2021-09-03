@@ -48,10 +48,6 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
         return with(HOST_PROPERTY, host);
     }
 
-    public RabbitMQConfigSource withPort(String port) {
-        return with(PORT_PROPERTY, port);
-    }
-
     public RabbitMQConfigSource withPort(int port) {
         return with(PORT_PROPERTY, port);
     }
