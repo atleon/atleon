@@ -104,7 +104,7 @@ Atleon is built using Maven. Installing Maven locally is optional as you can use
 
 ## Contributing
 
-Please refer to [CONTRIBUTING](CONTRIBUTING.md) for information on how to contribute to Rhapsody
+Please refer to [CONTRIBUTING](CONTRIBUTING.md) for information on how to contribute to Atleon
 
 ## Legal
 
