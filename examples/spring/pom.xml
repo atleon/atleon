@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>io.atleon</groupId>
+        <artifactId>atleon-examples</artifactId>
+        <version>0.0.3-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>atleon-examples-spring</artifactId>
+    <packaging>jar</packaging>
+
+    <properties>
+        <spring.version>5.3.7</spring.version>
+        <spring-boot.version>2.4.6</spring-boot.version>
+    </properties>
+
+    <dependencies>
+        <!-- Project Compile Dependencies -->
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-kafka-embedded</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-micrometer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-spring</artifactId>
+        </dependency>
+
+        <!-- Third Party Compile Dependencies -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-beans</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <version>${spring.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+            <version>${spring-boot.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+            <version>${spring-boot.version}</version>
+        </dependency>
+    </dependencies>
+</project>
