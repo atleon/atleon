@@ -11,7 +11,6 @@
     <packaging>jar</packaging>
 
     <properties>
-        <spring.version>5.3.7</spring.version>
         <spring-boot.version>2.4.6</spring-boot.version>
     </properties>
 

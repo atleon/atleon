@@ -26,6 +26,7 @@
         <reactor-rabbitmq.version>1.4.0.RELEASE</reactor-rabbitmq.version>
         <scala.version>2.12.10</scala.version>
         <slf4j.version>1.7.30</slf4j.version>
+        <spring.version>5.3.7</spring.version>
     </properties>
 
     <dependencyManagement>
