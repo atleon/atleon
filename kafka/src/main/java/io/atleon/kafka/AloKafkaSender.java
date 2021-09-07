@@ -72,10 +72,6 @@ public class AloKafkaSender<K, V> {
         return new AloKafkaSender<>(configSource);
     }
 
-    public static <V> AloKafkaSender<Object, V> forValues(KafkaConfigSource configSource) {
-        return new AloKafkaSender<>(configSource);
-    }
-
     public Flux<KafkaSenderResult<ProducerRecord<K, V>>> sendRecords(Publisher<ProducerRecord<K, V>> records) {
         return futureKafkaSender.flatMapMany(sender -> sendRecords(sender, records));
     }

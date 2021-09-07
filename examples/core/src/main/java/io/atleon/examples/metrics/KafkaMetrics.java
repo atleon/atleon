@@ -67,7 +67,7 @@ public class KafkaMetrics {
         Metrics.addRegistry(meterRegistry);
 
         //Step 5) Produce values to the topic we'll process
-        AloKafkaSender.<String>forValues(kafkaSenderConfig)
+        AloKafkaSender.<String, String>from(kafkaSenderConfig)
             .sendValues(Flux.just("test"), TOPIC_1, Function.identity())
             .subscribe();
 
@@ -76,7 +76,7 @@ public class KafkaMetrics {
             .receiveAloValues(Collections.singletonList(TOPIC_1))
             .metrics(KafkaMetrics.class.getSimpleName(), "flow", "inbound")
             .map(String::toUpperCase)
-            .transform(AloKafkaSender.<String>forValues(kafkaSenderConfig).sendAloValues(TOPIC_2, Function.identity()))
+            .transform(AloKafkaSender.<String, String>from(kafkaSenderConfig).sendAloValues(TOPIC_2, Function.identity()))
             .metrics(KafkaMetrics.class.getSimpleName(), "flow", "outbound")
             .consumeAloAndGet(Alo::acknowledge)
             .publish()

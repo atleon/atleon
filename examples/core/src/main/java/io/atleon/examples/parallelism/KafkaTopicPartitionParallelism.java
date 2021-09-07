@@ -87,7 +87,7 @@ public class KafkaTopicPartitionParallelism {
             .subscribeOn(Schedulers.boundedElastic())
             .map(i -> UUID.randomUUID())
             .map(UUID::toString)
-            .transform(AloKafkaSender.<String>forValues(kafkaSenderConfig).sendValues(TOPIC, Function.identity()))
+            .transform(AloKafkaSender.<String, String>from(kafkaSenderConfig).sendValues(TOPIC, Function.identity()))
             .subscribe();
 
         //Step 5) Await processing completion of the UUIDs we produced

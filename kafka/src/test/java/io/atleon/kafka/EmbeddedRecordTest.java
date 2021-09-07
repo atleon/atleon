@@ -24,7 +24,7 @@ public class EmbeddedRecordTest {
     public void consumedRecordsMatchSent() {
         String value = UUID.randomUUID().toString();
 
-        AloKafkaSender.<String>forValues(KAFKA_CONFIG_SOURCE)
+        AloKafkaSender.<String, String>from(KAFKA_CONFIG_SOURCE)
             .sendValues(Mono.just(value), TOPIC, Function.identity())
             .then().block();
 

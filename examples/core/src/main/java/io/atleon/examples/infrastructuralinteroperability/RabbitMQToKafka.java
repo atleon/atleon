@@ -92,7 +92,7 @@ public class RabbitMQToKafka {
         AloRabbitMQReceiver.<String>from(rabbitMQConfig)
             .receiveAloBodies(QUEUE)
             .map(String::toUpperCase)
-            .transform(AloKafkaSender.<String>forValues(kafkaSenderConfig).sendAloValues(TOPIC, Function.identity()))
+            .transform(AloKafkaSender.<String, String>from(kafkaSenderConfig).sendAloValues(TOPIC, Function.identity()))
             .consumeAloAndGet(Alo::acknowledge)
             .take(1)
             .collectList()

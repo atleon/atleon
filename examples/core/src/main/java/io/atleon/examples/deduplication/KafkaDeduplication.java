@@ -72,7 +72,8 @@ public class KafkaDeduplication {
             .receiveAloValues(Collections.singletonList(TOPIC_1))
             .deduplicate(deduplicationConfig, Deduplication.identity())
             .map(String::toUpperCase)
-            .transform(AloKafkaSender.<String>forValues(kafkaSenderConfig).sendAloValues(TOPIC_2, Function.identity()))
+            .transform(AloKafkaSender.<String, String>from(kafkaSenderConfig)
+                .sendAloValues(TOPIC_2, Function.identity()))
             .consumeAloAndGet(Alo::acknowledge)
             .map(KafkaSenderResult::correlationMetadata)
             .doOnNext(next -> System.out.println("Processed next=" + next))
@@ -94,7 +95,7 @@ public class KafkaDeduplication {
         List<String> values = Arrays.asList("TWO", "TWO", "ONE", "TWO", "THREE", "TWO", "ONE", "TWO", "TWO");
 
         //Step 6) Send the above values to the Kafka topic we're processing
-        AloKafkaSender.forValues(kafkaSenderConfig)
+        AloKafkaSender.from(kafkaSenderConfig)
             .sendValues(Flux.fromIterable(values), TOPIC_1, Function.identity())
             .subscribe();
 

@@ -82,7 +82,7 @@ public class KafkaToRabbitMQ {
         }
 
         //Step 5) Produce some records to our Kafka topic
-        AloKafkaSender.<String>forValues(kafkaSenderConfig)
+        AloKafkaSender.<String, String>from(kafkaSenderConfig)
             .sendValues(Flux.just("Test"), value -> TOPIC, Function.identity())
             .collectList()
             .doOnNext(senderResults -> System.out.println("senderResults: " + senderResults))

@@ -51,7 +51,7 @@ public class KafkaPart3 {
             .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
         //Step 3) Create a Sender which we'll reuse to produce Records
-        AloKafkaSender<Object, String> sender = AloKafkaSender.forValues(kafkaSenderConfig);
+        AloKafkaSender<String, String> sender = AloKafkaSender.from(kafkaSenderConfig);
 
         //Step 4) Send some Record values to a hardcoded topic, using values as Record keys
         sender.sendValues(Flux.just("Test"), value -> TOPIC_1, Function.identity())

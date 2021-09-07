@@ -23,7 +23,7 @@ public class ExampleKafkaGeneration extends AloStream<ExampleKafkaGenerationConf
             .withValueSerializer(LongSerializer.class)
             .with(ProducerConfig.METRIC_REPORTER_CLASSES_CONFIG, AloKafkaMetricsReporter.class.getName());
 
-        AloKafkaSender<Object, Long> sender = AloKafkaSender.forValues(senderConfig);
+        AloKafkaSender<Long, Long> sender = AloKafkaSender.from(senderConfig);
 
         return Flux.interval(Duration.ofMillis(100))
             .transform(sender.sendValues(config.getTopic(), Function.identity()))

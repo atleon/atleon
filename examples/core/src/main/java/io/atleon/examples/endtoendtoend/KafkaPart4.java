@@ -49,7 +49,7 @@ public class KafkaPart4 {
             .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
         //Step 3) Create a Sender which we'll reuse to produce Records
-        AloKafkaSender<Object, String> sender = AloKafkaSender.forValues(kafkaSenderConfig);
+        AloKafkaSender<String, String> sender = AloKafkaSender.from(kafkaSenderConfig);
 
         //Step 4) Create a Receiver which we'll reuse to subscribe to Records
         AloKafkaReceiver<Object, String> receiver = AloKafkaReceiver.forValues(kafkaReceiverConfig);

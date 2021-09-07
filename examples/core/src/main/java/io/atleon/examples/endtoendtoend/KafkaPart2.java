@@ -47,7 +47,7 @@ public class KafkaPart2 {
             .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
         //Step 3) Send some Record values to a hardcoded topic, using values as Record keys
-        AloKafkaSender.<String>forValues(kafkaReceiverConfig)
+        AloKafkaSender.<String, String>from(kafkaReceiverConfig)
             .sendValues(Flux.just("Test"), TOPIC, Function.identity())
             .collectList()
             .doOnNext(senderResults -> System.out.println("senderResults: " + senderResults))

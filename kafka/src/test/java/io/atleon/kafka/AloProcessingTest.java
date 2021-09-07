@@ -22,7 +22,7 @@ public class AloProcessingTest {
 
     @Test
     public void acknowledgedDataIsNotRepublished() {
-        AloKafkaSender.forValues(KAFKA_CONFIG_SOURCE)
+        AloKafkaSender.from(KAFKA_CONFIG_SOURCE)
             .sendValues(Mono.just("DATA"), topic, Function.identity())
             .then().block();
 
@@ -44,7 +44,7 @@ public class AloProcessingTest {
 
     @Test
     public void unacknowledgedDataIsRepublished() {
-        AloKafkaSender.forValues(KAFKA_CONFIG_SOURCE)
+        AloKafkaSender.from(KAFKA_CONFIG_SOURCE)
             .sendValues(Mono.just("DATA"), topic, Function.identity())
             .then().block();
 
@@ -65,7 +65,7 @@ public class AloProcessingTest {
 
     @Test
     public void nacknowledgedDataIsRepublished() {
-        AloKafkaSender.forValues(KAFKA_CONFIG_SOURCE)
+        AloKafkaSender.from(KAFKA_CONFIG_SOURCE)
             .sendValues(Flux.just("DATA1", "DATA2", "DATA3"), topic, Function.identity())
             .then().block();
 
