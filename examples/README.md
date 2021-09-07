@@ -1,15 +1,15 @@
 # Atleon Examples
-This module contains Atleon streaming examples. Each example class is a runnable streaming sample.
+This module contains Atleon streaming examples. Each example class is a runnable streaming example.
 
 ## End to End to End
 The following Kafka [End to End to End](core/src/main/java/io/atleon/examples/endtoendtoend) sequence shows the incremental steps necessary to reactively produce messages to a Kafka Cluster and apply downstream streaming operations
-- [Kafka Part 1](core/src/main/java/io/atleon/examples/endtoendtoend/KafkaPart1.java): Use a Kafka Sender Factory to produce records to an embedded Kafka Broker
-- [Kafka Part 2](core/src/main/java/io/atleon/examples/endtoendtoend/KafkaPart2.java): Consume sent records using Kafka Flux Factory
+- [Kafka Part 1](core/src/main/java/io/atleon/examples/endtoendtoend/KafkaPart1.java): Use a Kafka Sender to produce records to an embedded Kafka Broker
+- [Kafka Part 2](core/src/main/java/io/atleon/examples/endtoendtoend/KafkaPart2.java): Consume sent records using Kafka Receiver
 - [Kafka Part 3](core/src/main/java/io/atleon/examples/endtoendtoend/KafkaPart3.java): Extend Record consumption to stream process with at-least-once processing
 - [Kafka Part 4](core/src/main/java/io/atleon/examples/endtoendtoend/KafkaPart4.java): Add another downstream consumer of processed results
 
 ## Infrastructural Interoperation
-[RabbitmqToKafka](core/src/main/java/io/atleon/examples/infrastructuralinteroperability/RabbitmqToKafka.java) shows how Atleon allows interoperability between RabbitMQ (as a source/Publisher) and Kafka (as a sink/Subscriber) while maintaining at-least-once processing guarantee. For completeness, [KafkaToRabbitMQ](core/src/main/java/io/atleon/examples/infrastructuralinteroperability/KafkaToRabbitmq.java) shows the inverse, still maintaining at-least-once guarantees.
+[RabbitmqToKafka](core/src/main/java/io/atleon/examples/infrastructuralinteroperability/RabbitMQToKafka.java) shows how Atleon allows interoperability between RabbitMQ (as a source/Publisher) and Kafka (as a sink/Subscriber) while maintaining at-least-once processing guarantee. For completeness, [KafkaToRabbitMQ](core/src/main/java/io/atleon/examples/infrastructuralinteroperability/KafkaToRabbitMQ.java) shows the inverse, still maintaining at-least-once guarantees.
 
 ## Parallelism
 [Kafka Topic Partition Parallelism](core/src/main/java/io/atleon/examples/parallelism/KafkaTopicPartitionParallelism.java) shows how to parallelize processing of Kafka Records and subsequent transformations by grouping of Topic-Partitions and assigning a Thread per group.
@@ -26,4 +26,4 @@ The following Kafka [End to End to End](core/src/main/java/io/atleon/examples/en
 [Kafka Metrics](core/src/main/java/io/atleon/examples/metrics/KafkaMetrics.java) shows how Atleon integrates with Micrometer to provide Metrics from native Kafka Reporting and from available Metric transformation in streaming processes
 
 ## Spring
-[Example Kafka Application](spring/src/main/java/io/atleon/examples/spring/SampleKafkaApplication.java) demonstrates general intended usage of Atleon in Spring (Boot) applications
+[Example Kafka Application](spring/src/main/java/io/atleon/examples/spring/kafka/ExampleKafkaApplication.java) demonstrates general intended usage of Atleon in Spring (Boot) applications
