@@ -12,24 +12,50 @@
     <packaging>jar</packaging>
 
     <properties>
-        <qpid.version>7.1.4</qpid.version>
+        <qpid.version>7.0.6</qpid.version>
     </properties>
 
     <dependencies>
-        <!--Third Party Dependencies-->
+        <!--Third Party Compile Dependencies-->
         <dependency>
             <groupId>org.apache.qpid</groupId>
             <artifactId>qpid-broker</artifactId>
             <version>${qpid.version}</version>
+            <exclusions>
+                <!-- Excluding to bring in managed version as runtime dependency -->
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+                <!-- Required version not available in Central; Works without it -->
+                <exclusion>
+                    <groupId>com.sleepycat</groupId>
+                    <artifactId>je</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.qpid</groupId>
             <artifactId>qpid-broker-core</artifactId>
             <version>${qpid.version}</version>
+            <exclusions>
+                <!-- Excluding to bring in managed version as runtime dependency -->
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Third Party Runtime Dependencies -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
 </project>

@@ -14,6 +14,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class EmbeddedAmqp {
 
@@ -32,6 +34,8 @@ public final class EmbeddedAmqp {
     public static final String SSL_PROPERTY = "ssl";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(EmbeddedAmqp.class);
+
+    private static final Pattern SEMVER_PATTERN = Pattern.compile("^(\\d+)\\.(\\d+)\\..*");
 
     private static Map<String, String> brokerOptions;
 
@@ -88,7 +92,7 @@ public final class EmbeddedAmqp {
         PrintWriter configWriter = new PrintWriter(configFile);
         configWriter.println("{");
         configWriter.println("    \"name\": \"broker\",");
-        configWriter.println("    \"modelVersion\": \"7.1\",");
+        configWriter.println("    \"modelVersion\": \"" + deduceQpidMajorMinorVersion() + "\",");
         configWriter.println("    \"virtualhostnodes\": [{");
         configWriter.println("        \"type\": \"Memory\",");
         configWriter.println("        \"name\": \"default\",");
@@ -129,5 +133,11 @@ public final class EmbeddedAmqp {
         configWriter.flush();
         configWriter.close();
         return configFile;
+    }
+
+    private static String deduceQpidMajorMinorVersion() {
+        String version = SystemConfig.class.getPackage().getImplementationVersion();
+        Matcher matcher = SEMVER_PATTERN.matcher(version);
+        return matcher.find() ? String.format("%s.%s", matcher.group(1), matcher.group(2)) : "7.0";
     }
 }
