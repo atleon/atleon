@@ -128,7 +128,7 @@ public class ConfigSourceTest {
         }
 
         @Override
-        protected DummyConfigSource initializeSourceCopy() {
+        protected DummyConfigSource initializeCopy() {
             return new DummyConfigSource();
         }
 

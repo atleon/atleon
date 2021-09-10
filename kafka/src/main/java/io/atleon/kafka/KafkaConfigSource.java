@@ -72,7 +72,7 @@ public class KafkaConfigSource extends ConfigSource<Map<String, Object>, KafkaCo
     }
 
     @Override
-    protected KafkaConfigSource initializeSourceCopy() {
+    protected KafkaConfigSource initializeCopy() {
         return new KafkaConfigSource();
     }
 
