@@ -20,18 +20,23 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
 
     public static final String PROCESSORS_PROPERTY = "source.processors";
 
-    private Function<Map<String, Object>, Optional<String>> propertiesToName;
-
     protected ConfigSource() {
-        this(properties -> Optional.empty());
+        super();
     }
 
     protected ConfigSource(String name) {
-        this(properties -> Optional.of(name));
+        super(name);
     }
 
     protected ConfigSource(Function<Map<String, Object>, Optional<String>> propertiesToName) {
-        this.propertiesToName = propertiesToName;
+        super(propertiesToName);
+    }
+
+    @Override
+    protected Mono<T> create(String name, Map<String, Object> properties) {
+        return applyProcessors(name, properties)
+            .doOnNext(this::validateProperties)
+            .map(this::postProcessProperties);
     }
 
     @Override
@@ -41,20 +46,18 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
             .map(this::postProcessProperties);
     }
 
-    public final S rename(String name) {
-        S copy = copy();
-        copy.setPropertiesToName(properties -> Optional.of(name));
-        return copy;
+    protected final Mono<Map<String, Object>> applyProcessors(String name, Map<String, Object> properties) {
+        Mono<Map<String, Object>> result = Mono.just(properties);
+        for (ConfigProcessor processor : loadProcessors(properties)) {
+            result = result.flatMap(configs -> processor.process(name, configs));
+        }
+        return result;
     }
 
     protected final Mono<Map<String, Object>> applyProcessors(Map<String, Object> properties) {
-        Optional<String> nameFromProperties = propertiesToName.apply(properties);
         Mono<Map<String, Object>> result = Mono.just(properties);
         for (ConfigProcessor processor : loadProcessors(properties)) {
-            result = result.flatMap(configs ->
-                nameFromProperties
-                    .map(name -> processor.process(name, configs))
-                    .orElseGet(() -> processor.process(configs)));
+            result = result.flatMap(processor::process);
         }
         return result;
     }
@@ -70,17 +73,4 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
     protected abstract void validateProperties(Map<String, Object> properties);
 
     protected abstract T postProcessProperties(Map<String, Object> properties);
-
-    @Override
-    protected final S initializeProviderCopy() {
-        S copy = initializeSourceCopy();
-        copy.setPropertiesToName(propertiesToName);
-        return copy;
-    }
-
-    protected abstract S initializeSourceCopy();
-
-    final void setPropertiesToName(Function<Map<String, Object>, Optional<String>> propertiesToName) {
-        this.propertiesToName = propertiesToName;
-    }
 }

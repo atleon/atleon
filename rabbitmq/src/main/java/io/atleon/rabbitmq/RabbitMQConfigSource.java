@@ -69,7 +69,7 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
     }
 
     @Override
-    protected RabbitMQConfigSource initializeSourceCopy() {
+    protected RabbitMQConfigSource initializeCopy() {
         return new RabbitMQConfigSource();
     }
 
