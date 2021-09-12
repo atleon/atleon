@@ -15,7 +15,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * <a href="https://cwiki.apache.org/confluence/display/qpid/How+to+embed+Qpid+Broker-J">Reference</a>
+ * <a href="http://mail-archives.apache.org/mod_mbox/qpid-users/202002.mbox/%3CCAP3WMuQ3ehJG5oqS3smCQbZZnxQqQvp=HUCsrSyCQvLkHUFobA@mail.gmail.com%3E">Reference 1</a>
+ * <a href="https://cwiki.apache.org/confluence/display/qpid/How+to+embed+Qpid+Broker-J">Reference 2</a>
  */
 public final class EmbeddedAmqp {
 
