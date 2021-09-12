@@ -1,6 +1,7 @@
 package io.atleon.kafka.avro.embedded;
 
 import io.atleon.kafka.embedded.EmbeddedKafka;
+import io.atleon.kafka.embedded.EmbeddedKafkaConfig;
 import io.atleon.zookeeper.embedded.EmbeddedZooKeeper;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryConfig;
 import io.confluent.kafka.schemaregistry.rest.SchemaRegistryRestApplication;
@@ -41,9 +42,9 @@ public final class EmbeddedSchemaRegistry {
     private static URL initializeSchemaRegistry(int port, int kafkaPort, int zookeeperPort) {
         try {
             URL schemaConnect = convertToConnectUrl("localhost:" + port);
-            Map<String, ?> kafkaConfig = EmbeddedKafka.start(kafkaPort, zookeeperPort);
+            EmbeddedKafkaConfig embeddedKafkaConfig = EmbeddedKafka.start(kafkaPort, zookeeperPort);
             Properties registryProperties = new Properties();
-            registryProperties.putAll(createLocalSchemaRegistryConfig(schemaConnect, kafkaConfig));
+            registryProperties.putAll(createLocalSchemaRegistryConfig(schemaConnect, embeddedKafkaConfig));
             new SchemaRegistryRestApplication(new SchemaRegistryConfig(registryProperties)).start();
             return schemaConnect;
         } catch (Exception e) {
@@ -59,12 +60,12 @@ public final class EmbeddedSchemaRegistry {
         }
     }
 
-    private static Map<String, Object> createLocalSchemaRegistryConfig(URL schemaConnect, Map<String, ?> kafkaConfig) {
+    private static Map<String, Object> createLocalSchemaRegistryConfig(URL schemaConnect, EmbeddedKafkaConfig embeddedKafkaConfig) {
         Map<String, Object> registryConfig = new HashMap<>();
         registryConfig.put(SchemaRegistryConfig.LISTENERS_CONFIG, schemaConnect.toString());
-        registryConfig.put(SchemaRegistryConfig.KAFKASTORE_CONNECTION_URL_CONFIG, EmbeddedKafka.extractZookeeperConnect(kafkaConfig));
-        registryConfig.put(SchemaRegistryConfig.KAFKASTORE_SECURITY_PROTOCOL_CONFIG, EmbeddedKafka.extractSecurityProtocol(kafkaConfig));
-        registryConfig.put(SchemaRegistryConfig.KAFKASTORE_BOOTSTRAP_SERVERS_CONFIG, EmbeddedKafka.extractSecureConnect(kafkaConfig));
+        registryConfig.put(SchemaRegistryConfig.KAFKASTORE_CONNECTION_URL_CONFIG, embeddedKafkaConfig.getZooKeeperConnect());
+        registryConfig.put(SchemaRegistryConfig.KAFKASTORE_SECURITY_PROTOCOL_CONFIG, embeddedKafkaConfig.getSecurityProtocol());
+        registryConfig.put(SchemaRegistryConfig.KAFKASTORE_BOOTSTRAP_SERVERS_CONFIG, embeddedKafkaConfig.getSecureConnect());
         registryConfig.put(SchemaRegistryConfig.KAFKASTORE_TOPIC_CONFIG, "_schemas");
         return registryConfig;
     }

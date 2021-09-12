@@ -2,6 +2,7 @@ package io.atleon.rabbitmq;
 
 import com.rabbitmq.client.ConnectionFactory;
 import io.atleon.core.ConfigSource;
+import reactor.core.publisher.Mono;
 
 import java.util.Map;
 import java.util.Objects;
@@ -42,6 +43,14 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
 
     public static RabbitMQConfigSource unnamed() {
         return new RabbitMQConfigSource();
+    }
+
+    public ConnectionFactory createConnectionFactoryNow() {
+        return createConnectionFactory().block();
+    }
+
+    public Mono<ConnectionFactory> createConnectionFactory() {
+        return create().map(RabbitMQConfig::getConnectionFactory);
     }
 
     public RabbitMQConfigSource withHost(String host) {

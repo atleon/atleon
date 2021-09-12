@@ -16,24 +16,7 @@
     </properties>
 
     <dependencies>
-        <!--Third Party Compile Dependencies-->
-        <dependency>
-            <groupId>org.apache.qpid</groupId>
-            <artifactId>qpid-broker</artifactId>
-            <version>${qpid.version}</version>
-            <exclusions>
-                <!-- Excluding to bring in managed version as runtime dependency -->
-                <exclusion>
-                    <groupId>com.google.guava</groupId>
-                    <artifactId>guava</artifactId>
-                </exclusion>
-                <!-- Required version not available in Central; Works without it -->
-                <exclusion>
-                    <groupId>com.sleepycat</groupId>
-                    <artifactId>je</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+        <!-- Third Party Compile Dependencies -->
         <dependency>
             <groupId>org.apache.qpid</groupId>
             <artifactId>qpid-broker-core</artifactId>
@@ -55,6 +38,24 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.qpid</groupId>
+            <artifactId>qpid-broker-plugins-amqp-0-8-protocol</artifactId>
+            <version>${qpid.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.qpid</groupId>
+            <artifactId>qpid-broker-plugins-amqp-1-0-protocol</artifactId>
+            <version>${qpid.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.qpid</groupId>
+            <artifactId>qpid-broker-plugins-memory-store</artifactId>
+            <version>${qpid.version}</version>
             <scope>runtime</scope>
         </dependency>
     </dependencies>

@@ -1,6 +1,6 @@
 package io.atleon.rabbitmq;
 
-import java.util.Map;
+import io.atleon.amqp.embedded.EmbeddedAmqpConfig;
 
 public final class TestRabbitMQSourceFactory {
 
@@ -8,9 +8,9 @@ public final class TestRabbitMQSourceFactory {
 
     }
 
-    public static RabbitMQConfigSource createStringSource(Map<String, ?> configs) {
+    public static RabbitMQConfigSource createStringSource(EmbeddedAmqpConfig config) {
         return RabbitMQConfigSource.named("test-rabbitmq")
-            .withAll(configs)
+            .withAll(config.asMap())
             .with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName())
             .with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, StringBodyDeserializer.class.getName());
     }

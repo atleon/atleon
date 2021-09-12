@@ -9,68 +9,48 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 public final class EmbeddedKafka {
 
     public static final int DEFAULT_PORT = 9092;
 
-    private static KafkaConfig kafkaConfig;
+    private static EmbeddedKafkaConfig config;
 
     private EmbeddedKafka() {
 
     }
 
     public static String startAndGetBootstrapServersConnect() {
-        return extractConnect(start(DEFAULT_PORT));
+        return start(DEFAULT_PORT).getConnect();
     }
 
     public static String startAndGetBootstrapServersConnect(int port) {
-        return extractConnect(start(port, EmbeddedZooKeeper.DEFAULT_PORT));
+        return start(port, EmbeddedZooKeeper.DEFAULT_PORT).getConnect();
     }
 
     public static String startAndGetBootstrapServersConnect(int port, int zookeeperPort) {
-        return extractConnect(start(port, zookeeperPort));
+        return start(port, zookeeperPort).getConnect();
     }
 
-    public static Map<String, ?> start() {
+    public static EmbeddedKafkaConfig start() {
         return start(DEFAULT_PORT);
     }
 
-    public static Map<String, ?> start(int port) {
+    public static EmbeddedKafkaConfig start(int port) {
         return start(port, EmbeddedZooKeeper.DEFAULT_PORT);
     }
 
-    public static synchronized Map<String, ?> start(int port, int zookeeperPort) {
-        KafkaConfig kafkaConfig = EmbeddedKafka.kafkaConfig == null
-            ? EmbeddedKafka.kafkaConfig = initializeKafka(port, zookeeperPort)
-            : EmbeddedKafka.kafkaConfig;
-        return kafkaConfig.values();
+    public static synchronized EmbeddedKafkaConfig start(int port, int zookeeperPort) {
+        return config == null ? config = initializeKafka(port, zookeeperPort) : config;
     }
 
-    public static String extractZookeeperConnect(Map<String, ?> kafkaConfig) {
-        return Objects.toString(kafkaConfig.get(KafkaConfig.ZkConnectProp()));
-    }
-
-    public static String extractSecureConnect(Map<String, ?> kafkaConfig) {
-        return extractSecurityProtocol(kafkaConfig) + "://" + extractConnect(kafkaConfig);
-    }
-
-    public static String extractSecurityProtocol(Map<String, ?> kafkaConfig) {
-        return Objects.toString(kafkaConfig.get(KafkaConfig.InterBrokerSecurityProtocolProp()));
-    }
-
-    public static String extractConnect(Map<String, ?> kafkaConfig) {
-        return kafkaConfig.get(KafkaConfig.HostNameProp()) + ":" + kafkaConfig.get(KafkaConfig.PortProp());
-    }
-
-    private static KafkaConfig initializeKafka(int port, int zookeeperPort) {
+    private static EmbeddedKafkaConfig initializeKafka(int port, int zookeeperPort) {
         URL zooKeeperConnect = EmbeddedZooKeeper.startAndGetConnectUrl(zookeeperPort);
         URL kafkaConnect = convertToConnectUrl("localhost:" + port);
 
         KafkaConfig kafkaConfig = new KafkaConfig(createKafkaBrokerConfig(zooKeeperConnect, kafkaConnect), true);
         startLocalKafka(kafkaConfig);
-        return kafkaConfig;
+        return EmbeddedKafkaConfig.fromKafkaConfig(kafkaConfig);
     }
 
     private static URL convertToConnectUrl(String connect) {

@@ -3,6 +3,7 @@ package io.atleon.rabbitmq;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import io.atleon.amqp.embedded.EmbeddedAmqp;
+import io.atleon.amqp.embedded.EmbeddedAmqpConfig;
 import io.atleon.core.Alo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,22 +12,19 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
-import java.util.Map;
 import java.util.UUID;
 
 public class AloProcessingTest {
 
-    private static final Map<String, ?> AMQP_CONFIG = EmbeddedAmqp.start();
+    private static final EmbeddedAmqpConfig EMBEDDED_AMQP_CONFIG = EmbeddedAmqp.start();
 
-    private static final RabbitMQConfigSource RABBIT_MQ_CONFIG_SOURCE = TestRabbitMQSourceFactory.createStringSource(AMQP_CONFIG);
+    private static final RabbitMQConfigSource RABBIT_MQ_CONFIG_SOURCE = TestRabbitMQSourceFactory.createStringSource(EMBEDDED_AMQP_CONFIG);
 
     private final String queue = AloProcessingTest.class.getSimpleName() + UUID.randomUUID();
 
     @BeforeEach
     public void setup() throws Exception {
-        ConnectionFactory connectionFactory = RABBIT_MQ_CONFIG_SOURCE.create()
-            .map(RabbitMQConfig::getConnectionFactory)
-            .block();
+        ConnectionFactory connectionFactory = RABBIT_MQ_CONFIG_SOURCE.createConnectionFactoryNow();
         try (Connection connection = connectionFactory.newConnection()) {
             connection.createChannel()
                 .queueDeclare(queue, false, false, false, null);
