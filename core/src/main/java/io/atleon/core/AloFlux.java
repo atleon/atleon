@@ -154,7 +154,10 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * Same {@link AloFlux#bufferTimeout(int, Duration, Scheduler, Function)} with default
      * Scheduler of {@link Schedulers#parallel()}
      */
-    public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime, Function<? super List<Alo<T>>, AloFactory<List<T>>> bufferToAloFactory) {
+    public AloFlux<List<T>> bufferTimeout(
+        int maxSize,
+        Duration maxTime,
+        Function<? super List<Alo<T>>, AloFactory<List<T>>> bufferToAloFactory) {
         return bufferTimeout(maxSize, maxTime, Schedulers.parallel(), bufferToAloFactory);
     }
 
@@ -170,7 +173,11 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param bufferToAloFactory - Function that provides an AloFactory to wrap list of items
      * @return
      */
-    public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime, Scheduler scheduler, Function<? super List<Alo<T>>, AloFactory<List<T>>> bufferToAloFactory) {
+    public AloFlux<List<T>> bufferTimeout(
+        int maxSize,
+        Duration maxTime,
+        Scheduler scheduler,
+        Function<? super List<Alo<T>>, AloFactory<List<T>>> bufferToAloFactory) {
         return wrapped.bufferTimeout(maxSize, maxTime, scheduler)
             .map(buffer -> AloFactory.invertList(buffer, bufferToAloFactory.apply(buffer)))
             .as(AloFlux::wrap);
@@ -226,8 +233,23 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param numGroups How many groups to divide the source sequence in to
      * @return A Flux of grouped AloFluxes
      */
-    public Flux<AloGroupedFlux<Integer, T>> groupByStringHash(Function<? super T, String> stringExtractor, int numGroups) {
+    public Flux<AloGroupedFlux<Integer, T>>
+    groupByStringHash(Function<? super T, String> stringExtractor, int numGroups) {
         return groupBy(StringHashGroupExtractor.composed(stringExtractor, numGroups));
+    }
+
+    /**
+     * Divide this sequence into dynamically created Flux (or groups) by hashing String values
+     * extracted from emitted data items. Note that there are guidelines and nuances to
+     * appropriately consuming groups as explained under {@link Flux#groupBy(Function)}
+     *
+     * @param stringExtractor Function that extracts Strings from data items for hashing
+     * @param numGroups How many groups to divide the source sequence in to
+     * @return A Flux of grouped AloFluxes
+     */
+    public <V> Flux<AloGroupedFlux<Integer, V>>
+    groupByStringHash(Function<? super T, String> stringExtractor, int numGroups, Function<? super T, V> valueMapper) {
+        return groupBy(StringHashGroupExtractor.composed(stringExtractor, numGroups), valueMapper);
     }
 
     /**
@@ -235,6 +257,15 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <K> Flux<AloGroupedFlux<K, T>> groupBy(Function<? super T, ? extends K> groupExtractor) {
         return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()))
+            .map(AloGroupedFlux::new);
+    }
+
+    /**
+     * See {@link Flux#groupBy(Function)}
+     */
+    public <K, V> Flux<AloGroupedFlux<K, V>>
+    groupBy(Function<? super T, ? extends K> groupExtractor, Function<? super T, V> valueMapper) {
+        return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()), AloOps.wrapMapper(alo -> alo.map(valueMapper)))
             .map(AloGroupedFlux::new);
     }
 
