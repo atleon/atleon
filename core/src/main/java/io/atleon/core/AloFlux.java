@@ -233,7 +233,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param numGroups How many groups to divide the source sequence in to
      * @return A Flux of grouped AloFluxes
      */
-    public Flux<AloGroupedFlux<Integer, T>>
+    public AloExtendedFlux<AloGroupedFlux<Integer, T>>
     groupByStringHash(Function<? super T, String> stringExtractor, int numGroups) {
         return groupBy(StringHashGroupExtractor.composed(stringExtractor, numGroups));
     }
@@ -247,7 +247,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param numGroups How many groups to divide the source sequence in to
      * @return A Flux of grouped AloFluxes
      */
-    public <V> Flux<AloGroupedFlux<Integer, V>>
+    public <V> AloExtendedFlux<AloGroupedFlux<Integer, V>>
     groupByStringHash(Function<? super T, String> stringExtractor, int numGroups, Function<? super T, V> valueMapper) {
         return groupBy(StringHashGroupExtractor.composed(stringExtractor, numGroups), valueMapper);
     }
@@ -255,18 +255,20 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     /**
      * See {@link Flux#groupBy(Function)}
      */
-    public <K> Flux<AloGroupedFlux<K, T>> groupBy(Function<? super T, ? extends K> groupExtractor) {
+    public <K> AloExtendedFlux<AloGroupedFlux<K, T>> groupBy(Function<? super T, ? extends K> groupExtractor) {
         return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()))
-            .map(AloGroupedFlux::new);
+            .<AloGroupedFlux<K, T>>map(AloGroupedFlux::new)
+            .as(AloExtendedFlux::new);
     }
 
     /**
      * See {@link Flux#groupBy(Function)}
      */
-    public <K, V> Flux<AloGroupedFlux<K, V>>
+    public <K, V> AloExtendedFlux<AloGroupedFlux<K, V>>
     groupBy(Function<? super T, ? extends K> groupExtractor, Function<? super T, V> valueMapper) {
         return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()), AloOps.wrapMapper(alo -> alo.map(valueMapper)))
-            .map(AloGroupedFlux::new);
+            .<AloGroupedFlux<K, V>>map(AloGroupedFlux::new)
+            .as(AloExtendedFlux::new);
     }
 
     /**
