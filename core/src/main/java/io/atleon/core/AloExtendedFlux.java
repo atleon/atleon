@@ -8,8 +8,9 @@ import reactor.core.publisher.FluxOperator;
 import java.util.function.Function;
 
 /**
- * An {@link Alo}-aware extension of {@link Flux}. All <pre>*Alo</pre> methods are delegated to
- * Flux and return {@link AloExtendedFlux}.
+ * An {@link Alo}-aware extension of {@link Flux}. All {@code *Extended} methods are delegated to
+ * Flux and return {@link AloExtendedFlux}. All {@code *Alo} methods also delegate to Flux, but
+ * map to result types that allow them to be wrapped as {@link AloFlux} and are wrapped as such.
  */
 public class AloExtendedFlux<T> extends FluxOperator<T, T> {
 
@@ -20,7 +21,7 @@ public class AloExtendedFlux<T> extends FluxOperator<T, T> {
     /**
      * See {@link Flux#map(Function)}
      */
-    public final <V> AloExtendedFlux<V> mapAlo(Function<? super T, ? extends V> mapper) {
+    public final <V> AloExtendedFlux<V> mapExtended(Function<? super T, ? extends V> mapper) {
         return new AloExtendedFlux<>(source.map(mapper));
     }
 
