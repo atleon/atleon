@@ -54,6 +54,7 @@ import io.atleon.kafka.KafkaConfigSource;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 
@@ -84,8 +85,8 @@ public class GettingStarted {
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
             .receiveAloValues(Collections.singletonList("topic1"))
             .map(String::toUpperCase)
-            .transform(AloKafkaSender.<String>forValues(kafkaSenderConfig)
-                .sendAloValues("topic2", Function.identity()))
+            .map(string -> new ProducerRecord("topic2", string, string))
+            .transform(AloKafkaSender.<String, String>from(kafkaSenderConfig)::sendAloRecords)
             .subscribe(new DefaultAloKafkaSenderResultSubscriber<>());
         
         // ... Do more things while the above stream process is running ...
