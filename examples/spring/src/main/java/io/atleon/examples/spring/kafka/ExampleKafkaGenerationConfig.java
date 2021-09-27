@@ -1,7 +1,11 @@
 package io.atleon.examples.spring.kafka;
 
 import io.atleon.core.AloStreamConfig;
+import io.atleon.kafka.AloKafkaSender;
 import io.atleon.kafka.KafkaConfigSource;
+import io.atleon.micrometer.AloKafkaMetricsReporter;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.LongSerializer;
 
 public class ExampleKafkaGenerationConfig implements AloStreamConfig {
 
@@ -19,8 +23,13 @@ public class ExampleKafkaGenerationConfig implements AloStreamConfig {
         return "kafka-generation";
     }
 
-    public KafkaConfigSource getBaseKafkaConfig() {
-        return baseKafkaConfig;
+    public AloKafkaSender<Long, Long> buildKafkaLongSender() {
+        KafkaConfigSource config = baseKafkaConfig.withClientId(name())
+            .withProducerOrderingAndResiliencyConfigs()
+            .withKeySerializer(LongSerializer.class)
+            .withValueSerializer(LongSerializer.class)
+            .with(ProducerConfig.METRIC_REPORTER_CLASSES_CONFIG, AloKafkaMetricsReporter.class.getName());
+        return AloKafkaSender.from(config);
     }
 
     public String getTopic() {
