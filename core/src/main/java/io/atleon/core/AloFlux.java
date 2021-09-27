@@ -411,6 +411,15 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * Subscribe to this AloFlux by acknowledging all emitted items. Note that this should only be
+     * used as a subscription method when it is not likely for the upstream to emit errors and is
+     * not the case that data items contained in emitted Alo elements carry relevant errors
+     */
+    public Disposable subscribe() {
+        return subscribe(Alo::acknowledge);
+    }
+
+    /**
      * See {@link Flux#subscribe(Consumer)}
      */
     public Disposable subscribe(Consumer<? super Alo<? super T>> consumer) {

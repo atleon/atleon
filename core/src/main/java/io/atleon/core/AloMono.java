@@ -78,6 +78,10 @@ public class AloMono<T> implements Publisher<Alo<T>> {
         return transformer.apply(this);
     }
 
+    public Disposable subscribe() {
+        return subscribe(Alo::acknowledge);
+    }
+
     public Disposable subscribe(Consumer<? super Alo<? super T>> consumer) {
         return wrapped.subscribe(consumer);
     }
