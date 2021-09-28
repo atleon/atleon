@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -67,7 +68,9 @@ final class AloQueueingSubscriber<T, A extends Alo<T>> implements Subscriber<A>,
 
         AcknowledgementQueue.InFlight inFlight = queue.add(a.getAcknowledger(), a.getNacknowledger());
 
-        actual.onNext(a.propagate(a.get(), () -> postComplete(queue.complete(inFlight)), error -> postComplete(queue.completeExceptionally(inFlight, error))));
+        Runnable acknowledger = () -> postComplete(queue.complete(inFlight));
+        Consumer<Throwable> nacknowedger = error -> postComplete(queue.completeExceptionally(inFlight, error));
+        actual.onNext(a.<T>propagator().create(a.get(), acknowledger, nacknowedger));
     }
 
     @Override

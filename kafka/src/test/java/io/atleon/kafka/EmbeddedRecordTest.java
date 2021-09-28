@@ -31,7 +31,10 @@ public class EmbeddedRecordTest {
         AloKafkaReceiver.<String>forValues(KAFKA_CONFIG_SOURCE)
             .receiveAloValues(Collections.singletonList(TOPIC))
             .as(StepVerifier::create)
-            .consumeNextWith(aloString -> aloString.consume(string -> assertEquals(value, string), Alo::acknowledge))
+            .consumeNextWith(aloString -> {
+                assertEquals(value, aloString.get());
+                Alo.acknowledge(aloString);
+            })
             .thenCancel()
             .verify();
     }

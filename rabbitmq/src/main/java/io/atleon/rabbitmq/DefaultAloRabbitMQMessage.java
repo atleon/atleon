@@ -1,12 +1,12 @@
 package io.atleon.rabbitmq;
 
-import io.atleon.core.AbstractAlo;
+import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
 import io.atleon.core.ComposedAlo;
 
 import java.util.function.Consumer;
 
-public class DefaultAloRabbitMQMessage<T> extends AbstractAlo<RabbitMQMessage<T>> {
+public class DefaultAloRabbitMQMessage<T> implements Alo<RabbitMQMessage<T>> {
 
     private final RabbitMQMessage<T> rabbitMQMessage;
 
@@ -24,6 +24,11 @@ public class DefaultAloRabbitMQMessage<T> extends AbstractAlo<RabbitMQMessage<T>
     }
 
     @Override
+    public <R> AloFactory<R> propagator() {
+        return ComposedAlo::new;
+    }
+
+    @Override
     public RabbitMQMessage<T> get() {
         return rabbitMQMessage;
     }
@@ -36,10 +41,5 @@ public class DefaultAloRabbitMQMessage<T> extends AbstractAlo<RabbitMQMessage<T>
     @Override
     public Consumer<? super Throwable> getNacknowledger() {
         return nacknowledger;
-    }
-
-    @Override
-    protected <R> AloFactory<R> createPropagator() {
-        return ComposedAlo::new;
     }
 }

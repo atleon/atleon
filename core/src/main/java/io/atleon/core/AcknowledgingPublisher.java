@@ -34,7 +34,7 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
     private final AtomicBoolean subscribedOnce = new AtomicBoolean(false);
 
-    public AcknowledgingPublisher(
+    private AcknowledgingPublisher(
         Publisher<? extends T> source,
         Runnable acknowledger,
         Consumer<? super Throwable> nacknowledger,
@@ -43,6 +43,10 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
         this.acknowledger = acknowledger;
         this.nacknowledger = nacknowledger;
         this.factory = factory;
+    }
+
+    public static <T> Publisher<Alo<T>> fromAloPublisher(Alo<Publisher<T>> ap) {
+        return new AcknowledgingPublisher<>(ap.get(), ap.getAcknowledger(), ap.getNacknowledger(), ap.propagator());
     }
 
     @Override

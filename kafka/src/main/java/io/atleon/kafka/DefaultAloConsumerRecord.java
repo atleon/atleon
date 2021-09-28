@@ -1,13 +1,13 @@
 package io.atleon.kafka;
 
-import io.atleon.core.AbstractAlo;
+import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
 import io.atleon.core.ComposedAlo;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import java.util.function.Consumer;
 
-public class DefaultAloConsumerRecord<K, V> extends AbstractAlo<ConsumerRecord<K, V>> {
+public class DefaultAloConsumerRecord<K, V> implements Alo<ConsumerRecord<K, V>> {
 
     private final ConsumerRecord<K, V> consumerRecord;
 
@@ -19,6 +19,11 @@ public class DefaultAloConsumerRecord<K, V> extends AbstractAlo<ConsumerRecord<K
         this.consumerRecord = consumerRecord;
         this.acknowledger = acknowledger;
         this.nacknowledger = nacknowledger;
+    }
+
+    @Override
+    public <R> AloFactory<R> propagator() {
+        return ComposedAlo::new;
     }
 
     @Override
@@ -34,10 +39,5 @@ public class DefaultAloConsumerRecord<K, V> extends AbstractAlo<ConsumerRecord<K
     @Override
     public Consumer<? super Throwable> getNacknowledger() {
         return nacknowledger;
-    }
-
-    @Override
-    protected <R> AloFactory<R> createPropagator() {
-        return ComposedAlo::new;
     }
 }

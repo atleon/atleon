@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-public final class TestAlo extends AbstractAlo<String> {
+public final class TestAlo implements Alo<String> {
 
     private final String data;
 
@@ -22,6 +22,11 @@ public final class TestAlo extends AbstractAlo<String> {
     public TestAlo(String data, Runnable acknowledgerHook) {
         this.data = data;
         this.acknowledgerHook = acknowledgerHook;
+    }
+
+    @Override
+    public <R> AloFactory<R> propagator() {
+        return ComposedAlo::new;
     }
 
     @Override
@@ -56,10 +61,5 @@ public final class TestAlo extends AbstractAlo<String> {
 
     public Optional<Throwable> getError() {
         return Optional.ofNullable(nacknowledged.get());
-    }
-
-    @Override
-    protected <R> AloFactory<R> createPropagator() {
-        return ComposedAlo::new;
     }
 }

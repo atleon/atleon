@@ -80,49 +80,49 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * See {@link Flux#filter(Predicate)}
      */
     public AloFlux<T> filter(Predicate<? super T> predicate) {
-        return new AloFlux<>(wrapped.filter(AloOps.wrapFilter(alo -> alo.filter(predicate, Alo::acknowledge))));
+        return new AloFlux<>(wrapped.filter(AloOps.filtering(predicate, Alo::acknowledge)));
     }
 
     /**
      * See {@link Flux#map(Function)}
      */
     public <V> AloFlux<V> map(Function<? super T, ? extends V> mapper) {
-        return new AloFlux<>(wrapped.map(AloOps.wrapMapper(alo -> alo.map(mapper))));
+        return new AloFlux<>(wrapped.map(AloOps.mapping(mapper)));
     }
 
     /**
      * See {@link Flux#concatMap(Function)}
      */
     public <V> AloFlux<V> concatMap(Function<? super T, ? extends Publisher<V>> mapper) {
-        return new AloFlux<>(wrapped.concatMap(AloOps.wrapMapper(alo -> alo.publish(mapper))));
+        return new AloFlux<>(wrapped.concatMap(AloOps.publishing(mapper)));
     }
 
     /**
      * See {@link Flux#concatMap(Function, int)}
      */
     public <V> AloFlux<V> concatMap(Function<? super T, ? extends Publisher<V>> mapper, int prefetch) {
-        return new AloFlux<>(wrapped.concatMap(AloOps.wrapMapper(alo -> alo.publish(mapper)), prefetch));
+        return new AloFlux<>(wrapped.concatMap(AloOps.publishing(mapper), prefetch));
     }
 
     /**
      * See {@link Flux#flatMap(Function)}
      */
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper) {
-        return new AloFlux<>(wrapped.flatMap(AloOps.wrapMapper(alo -> alo.publish(mapper))));
+        return new AloFlux<>(wrapped.flatMap(AloOps.publishing(mapper)));
     }
 
     /**
      * See {@link Flux#flatMap(Function, int)}
      */
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper, int concurrency) {
-        return new AloFlux<>(wrapped.flatMap(AloOps.wrapMapper(alo -> alo.publish(mapper)), concurrency));
+        return new AloFlux<>(wrapped.flatMap(AloOps.publishing(mapper), concurrency));
     }
 
     /**
      * See {@link Flux#flatMap(Function, int, int)}
      */
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper, int concurrency, int prefetch) {
-        return new AloFlux<>(wrapped.flatMap(AloOps.wrapMapper(alo -> alo.publish(mapper)), concurrency, prefetch));
+        return new AloFlux<>(wrapped.flatMap(AloOps.publishing(mapper), concurrency, prefetch));
     }
 
     /**
@@ -133,21 +133,21 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param mapper Function that maps each data item to a Collection of results
      */
     public <R, C extends Collection<R>> AloFlux<R> flatMapCollection(Function<? super T, ? extends C> mapper) {
-        return new AloFlux<>(wrapped.flatMapIterable(AloOps.wrapMapper(alo -> alo.mapToMany(mapper, Alo::acknowledge))));
+        return new AloFlux<>(wrapped.flatMapIterable(AloOps.mappingToMany(mapper, Alo::acknowledge)));
     }
 
     /**
      * See {@link Flux#bufferTimeout(int, Duration)}
      */
     public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime) {
-        return bufferTimeout(maxSize, maxTime, Schedulers.parallel(), buffer -> buffer.get(0)::propagate);
+        return bufferTimeout(maxSize, maxTime, Schedulers.parallel(), buffer -> buffer.get(0).propagator());
     }
 
     /**
      * See {@link Flux#bufferTimeout(int, Duration, Scheduler)}
      */
     public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime, Scheduler scheduler) {
-        return bufferTimeout(maxSize, maxTime, scheduler, buffer -> buffer.get(0)::propagate);
+        return bufferTimeout(maxSize, maxTime, scheduler, buffer -> buffer.get(0).propagator());
     }
 
     /**
@@ -221,7 +221,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * See {@link Flux#reduce(BiFunction)}
      */
     public AloMono<T> reduce(BinaryOperator<T> reducer) {
-        return new AloMono<>(wrapped.reduce(AloOps.wrapAggregator((alo1, alo2) -> alo1.reduce(reducer, alo2))));
+        return new AloMono<>(wrapped.reduce(AloOps.reducing(reducer)));
     }
 
     /**
@@ -266,7 +266,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <K, V> AloExtendedFlux<AloGroupedFlux<K, V>>
     groupBy(Function<? super T, ? extends K> groupExtractor, Function<? super T, V> valueMapper) {
-        return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()), AloOps.wrapMapper(alo -> alo.map(valueMapper)))
+        return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()), AloOps.mapping(valueMapper))
             .<AloGroupedFlux<K, V>>map(AloGroupedFlux::new)
             .as(AloExtendedFlux::new);
     }

@@ -8,7 +8,7 @@ import java.util.function.Consumer;
  *
  * @param <T> The type data item
  */
-public final class ComposedAlo<T> extends AbstractAlo<T> {
+public final class ComposedAlo<T> implements Alo<T> {
 
     private final T t;
 
@@ -24,7 +24,7 @@ public final class ComposedAlo<T> extends AbstractAlo<T> {
 
 
     @Override
-    protected <R> AloFactory<R> createPropagator() {
+    public <R> AloFactory<R> propagator() {
         return ComposedAlo::new;
     }
 

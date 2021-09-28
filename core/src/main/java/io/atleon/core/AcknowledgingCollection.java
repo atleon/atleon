@@ -27,7 +27,7 @@ final class AcknowledgingCollection<T> extends AbstractCollection<Alo<T>> {
 
     private final AloFactory<T> factory;
 
-    public AcknowledgingCollection(
+    private AcknowledgingCollection(
         Collection<T> collection,
         Runnable acknowledger,
         Consumer<? super Throwable> nacknowledger,
@@ -38,6 +38,10 @@ final class AcknowledgingCollection<T> extends AbstractCollection<Alo<T>> {
         this.acknowledger = acknowledger;
         this.nacknowledger = nacknowledger;
         this.factory = factory;
+    }
+
+    public static <T> Collection<Alo<T>> fromNonEmptyAloCollection(Alo<Collection<T>> ac) {
+        return new AcknowledgingCollection<>(ac.get(), ac.getAcknowledger(), ac.getNacknowledger(), ac.propagator());
     }
 
     @Override

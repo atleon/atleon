@@ -42,7 +42,10 @@ class EmbeddedMessageTest {
         AloRabbitMQReceiver.<String>from(RABBIT_MQ_CONFIG_SOURCE)
             .receiveAloBodies(queue)
             .as(StepVerifier::create)
-            .consumeNextWith(aloString -> aloString.consume(string -> assertEquals(body, string), Alo::acknowledge))
+            .consumeNextWith(aloString -> {
+                assertEquals(body, aloString.get());
+                Alo.acknowledge(aloString);
+            })
             .thenCancel()
             .verify();
     }

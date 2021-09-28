@@ -21,16 +21,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class AloTest {
+class AloOpsTest {
 
     @Test
     public void alosCanBeFiltered() {
         TestAlo empty = new TestAlo("");
-        assertTrue(empty.filter(String::isEmpty, Alo::acknowledge));
+        assertTrue(AloOps.filtering(String::isEmpty, Alo::acknowledge).test(empty));
         assertFalse(empty.isAcknowledged());
 
         TestAlo nonEmpty = new TestAlo("DATA");
-        assertFalse(nonEmpty.filter(String::isEmpty, Alo::acknowledge));
+        assertFalse(AloOps.filtering(String::isEmpty, Alo::acknowledge).test(nonEmpty));
         assertTrue(nonEmpty.isAcknowledged());
     }
 
@@ -50,7 +50,7 @@ class AloTest {
     @Test
     public void emptyManyMappingHasConsumerExecuted() {
         TestAlo empty = new TestAlo("");
-        assertTrue(empty.mapToMany(this::extractCharacters, Alo::acknowledge).isEmpty());
+        assertTrue(AloOps.mappingToMany(this::extractCharacters, Alo::acknowledge).apply(empty).isEmpty());
         assertTrue(empty.isAcknowledged());
     }
 
@@ -58,7 +58,7 @@ class AloTest {
     public void acknowledgerIsRunUponManyMappingsBeingAcknowledged() {
         TestAlo alo = new TestAlo("DATA");
 
-        List<Alo<String>> result = new ArrayList<>(alo.mapToMany(this::extractCharacters, Alo::acknowledge));
+        List<Alo<String>> result = new ArrayList<>(AloOps.mappingToMany(this::extractCharacters, Alo::acknowledge).apply(alo));
 
         assertEquals(4, result.size());
         assertFalse(alo.isAcknowledged());
@@ -80,7 +80,7 @@ class AloTest {
     public void nacknowledgerIsRunWhenAnyMappingsNacknowledge() {
         TestAlo alo = new TestAlo("DATA");
 
-        List<Alo<String>> result = new ArrayList<>(alo.mapToMany(this::extractCharacters, Alo::acknowledge));
+        List<Alo<String>> result = new ArrayList<>(AloOps.mappingToMany(this::extractCharacters, Alo::acknowledge).apply(alo));
 
         assertEquals(4, result.size());
         assertFalse(alo.isAcknowledged());
@@ -105,7 +105,7 @@ class AloTest {
     public void nacknowledgerIsNotRunWhenAlreadyAcknowledged() {
         TestAlo alo = new TestAlo("DATA");
 
-        List<Alo<String>> result = new ArrayList<>(alo.mapToMany(this::extractCharacters, Alo::acknowledge));
+        List<Alo<String>> result = new ArrayList<>(AloOps.mappingToMany(this::extractCharacters, Alo::acknowledge).apply(alo));
 
         assertEquals(4, result.size());
         assertFalse(alo.isAcknowledged());
@@ -127,16 +127,6 @@ class AloTest {
     }
 
     @Test
-    public void alosCanBeConsumed() {
-        TestAlo alo = new TestAlo("DATA");
-
-        alo.consume(System.out::println, Alo::acknowledge);
-
-        assertTrue(alo.isAcknowledged());
-        assertFalse(alo.isNacknowledged());
-    }
-
-    @Test
     public void publishedAcknowledgeableAcknowledgesAfterUpstreamCompletionAndAfterDownstreamAcknowledges() {
         TestAlo alo = new TestAlo("DATA");
 
@@ -144,11 +134,20 @@ class AloTest {
             .flatMapMany(stream -> Flux.fromStream(stream.mapToObj(character -> String.valueOf((char) character))));
 
         AtomicReference<Alo> lastAcknowledgeable = new AtomicReference<>();
-        StepVerifier.create(alo.publish(stringToChars), 3)
+        StepVerifier.create(AloOps.publishing(stringToChars).apply(alo), 3)
             .expectSubscription()
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("D", character), Alo::acknowledge))
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("A", character), Alo::acknowledge))
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("T", character), Alo::acknowledge))
+            .consumeNextWith(aloData -> {
+                assertEquals("D", aloData.get());
+                Alo.acknowledge(aloData);
+            })
+            .consumeNextWith(aloData -> {
+                assertEquals("A", aloData.get());
+                Alo.acknowledge(aloData);
+            })
+            .consumeNextWith(aloData -> {
+                assertEquals("T", aloData.get());
+                Alo.acknowledge(aloData);
+            })
             .then(() -> assertFalse(alo.isAcknowledged()))
             .then(() -> assertFalse(alo.isNacknowledged()))
             .thenRequest(1)
@@ -177,10 +176,16 @@ class AloTest {
         Function<String, Flux<String>> stringToChars = data -> Mono.just(data.chars())
             .flatMapMany(stream -> Flux.fromStream(stream.mapToObj(character -> String.valueOf((char) character))));
 
-        StepVerifier.create(alo.publish(stringToChars), 3)
+        StepVerifier.create(AloOps.publishing(stringToChars).apply(alo), 3)
             .expectSubscription()
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("D", character), Alo::acknowledge))
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("A", character), Alo::acknowledge))
+            .consumeNextWith(aloData -> {
+                assertEquals("D", aloData.get());
+                Alo.acknowledge(aloData);
+            })
+            .consumeNextWith(aloData -> {
+                assertEquals("A", aloData.get());
+                Alo.acknowledge(aloData);
+            })
             .consumeNextWith(aloData -> {
                 assertEquals("T", aloData.get());
                 Alo.acknowledge(aloData);
@@ -189,7 +194,10 @@ class AloTest {
             .then(() -> assertFalse(alo.isAcknowledged()))
             .then(() -> assertFalse(alo.isNacknowledged()))
             .thenRequest(1L)
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("A", character), Alo::acknowledge))
+            .consumeNextWith(aloData -> {
+                assertEquals("A", aloData.get());
+                Alo.acknowledge(aloData);
+            })
             .then(() -> assertTrue(alo.isAcknowledged()))
             .then(() -> assertFalse(alo.isNacknowledged()))
             .expectComplete()
@@ -205,10 +213,16 @@ class AloTest {
             .take(3);
 
         AtomicReference<Alo> lastAcknowledgeable = new AtomicReference<>();
-        StepVerifier.create(alo.publish(stringToChars))
+        StepVerifier.create(AloOps.publishing(stringToChars).apply(alo))
             .expectSubscription()
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("D", character), Alo::acknowledge))
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("A", character), Alo::acknowledge))
+            .consumeNextWith(aloData -> {
+                assertEquals("D", aloData.get());
+                Alo.acknowledge(aloData);
+            })
+            .consumeNextWith(aloData -> {
+                assertEquals("A", aloData.get());
+                Alo.acknowledge(aloData);
+            })
             .consumeNextWith(aloData -> {
                 assertEquals("T", aloData.get());
                 lastAcknowledgeable.set(aloData);
@@ -233,10 +247,13 @@ class AloTest {
 
         Function<String, Flux<String>> stringToFlux = data -> sink.asFlux();
 
-        StepVerifier.create(alo.publish(stringToFlux))
+        StepVerifier.create(AloOps.publishing(stringToFlux).apply(alo))
             .expectSubscription()
             .then(() -> sink.tryEmitNext("D"))
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("D", character), Alo::acknowledge))
+            .consumeNextWith(aloData -> {
+                assertEquals("D", aloData.get());
+                Alo.acknowledge(aloData);
+            })
             .then(() -> assertFalse(alo.isAcknowledged()))
             .then(() -> assertFalse(alo.isNacknowledged()))
             .then(() -> sink.tryEmitError(new IllegalArgumentException()))
@@ -253,19 +270,30 @@ class AloTest {
         Function<String, Flux<String>> stringToChars = data -> Mono.just(data.chars())
             .flatMapMany(stream -> Flux.fromStream(stream.mapToObj(character -> String.valueOf((char) character))));
 
-        StepVerifier.create(alo.publish(stringToChars), 2)
+        StepVerifier.create(AloOps.publishing(stringToChars).apply(alo), 2)
             .expectSubscription()
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("D", character), Alo::acknowledge))
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("A", character), Alo::acknowledge))
+            .consumeNextWith(aloData -> {
+                assertEquals("D", aloData.get());
+                Alo.acknowledge(aloData);
+            })
+            .consumeNextWith(aloData -> {
+                assertEquals("A", aloData.get());
+                Alo.acknowledge(aloData);
+            })
             .then(() -> assertFalse(alo.isAcknowledged()))
             .then(() -> assertFalse(alo.isNacknowledged()))
             .thenRequest(1)
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("T", character),
-                toNacknowledge -> Alo.nacknowledge(toNacknowledge, new IllegalArgumentException())))
+            .consumeNextWith(aloData -> {
+                assertEquals("T", aloData.get());
+                Alo.nacknowledge(aloData, new IllegalArgumentException());
+            })
             .then(() -> assertFalse(alo.isAcknowledged()))
             .then(() -> assertTrue(alo.getError().map(IllegalArgumentException.class::isInstance).orElse(false)))
             .thenRequest(1)
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("A", character), Alo::acknowledge))
+            .consumeNextWith(aloData -> {
+                assertEquals("A", aloData.get());
+                Alo.acknowledge(aloData);
+            })
             .then(() -> assertFalse(alo.isAcknowledged()))
             .then(() -> assertTrue(alo.getError().map(IllegalArgumentException.class::isInstance).orElse(false)))
             .expectComplete()
@@ -276,11 +304,14 @@ class AloTest {
     public void publishedAcknowledgeableCanOnlyBeSubscribedToOnce() {
         TestAlo alo = new TestAlo("DATA");
 
-        Publisher<Alo<String>> publisher = alo.publish(Flux::just);
+        Publisher<Alo<String>> publisher = AloOps.<String, String>publishing(Flux::just).apply(alo);
 
         StepVerifier.create(publisher)
             .expectSubscription()
-            .consumeNextWith(aloData -> aloData.consume(character -> assertEquals("DATA", character), Alo::acknowledge))
+            .consumeNextWith(aloData -> {
+                assertEquals("DATA", aloData.get());
+                Alo.acknowledge(aloData);
+            })
             .expectComplete()
             .verify();
 
