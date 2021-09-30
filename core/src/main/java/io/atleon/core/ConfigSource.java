@@ -33,14 +33,14 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
     }
 
     @Override
-    protected Mono<T> create(String name, Map<String, Object> properties) {
+    protected final Mono<T> create(String name, Map<String, Object> properties) {
         return applyProcessors(name, properties)
             .doOnNext(this::validateProperties)
             .map(this::postProcessProperties);
     }
 
     @Override
-    public final Mono<T> create(Map<String, Object> properties) {
+    protected final Mono<T> create(Map<String, Object> properties) {
         return applyProcessors(properties)
             .doOnNext(this::validateProperties)
             .map(this::postProcessProperties);

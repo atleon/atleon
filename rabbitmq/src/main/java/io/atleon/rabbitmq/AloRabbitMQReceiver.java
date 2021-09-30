@@ -144,9 +144,7 @@ public class AloRabbitMQReceiver<T> {
                 bodyDeserializer.deserialize(body));
 
             Runnable acknowledger = () -> ack(delivery, errorEmitter);
-
             Consumer<? super Throwable> nacknowledger = error -> nack(delivery, errorEmitter, error);
-
             return messageFactory.create(rabbitMessage, acknowledger, nacknowledger);
         }
 

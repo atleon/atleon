@@ -10,7 +10,21 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /**
- * Base class of Config-producing resources
+ * Base class of Config-producing resources. Provided Configs are (typically) based solely on the
+ * contents of the {@code properties} Map wrapped by this Provider.
+ *
+ * <p>Config Providers can be named either explicitly or via property introspection. This is useful
+ * when applying {@link ConfigInterceptor}s. By default, Providers should use the default
+ * ConfigInterceptors to transform the properties Map prior to generating the final Config. The
+ * default interceptors allow clients to:
+ * <ul>
+ *     <li>Override named properties via system and/or environment variables:
+ *     <p>Override the value of "key" in a ConfigProvider with the name "aws" to "overridden"
+ *     <p>{@code System.setProperty("atleon.config.aws.key", "overridden")}</li>
+ *     <li>Randomize properties:
+ *     <p>Randomize "value" associated with "key" by appending a random UUID
+ *     <p>{@code configProvider.with("key", "value").with("key.randomize", true)}</li>
+ * </ul>
  *
  * @param <P> The type of this ConfigProducer
  */
