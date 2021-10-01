@@ -30,7 +30,8 @@ public class ReflectEncoderAvroSerializer<T> extends LoadingAvroSerializer<T> {
 
     @Override
     protected void serializeDataToOutput(ByteArrayOutputStream output, Schema schema, T data) throws IOException {
-        new ReflectDatumWriter<>(schema, getReflectData()).write(data, EncoderFactory.get().directBinaryEncoder(output, null));
+        new ReflectDatumWriter<>(schema, getReflectData())
+            .write(data, EncoderFactory.get().directBinaryEncoder(output, null));
     }
 
     private ReflectData getReflectData() {

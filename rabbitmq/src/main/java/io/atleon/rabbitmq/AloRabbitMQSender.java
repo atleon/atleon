@@ -140,8 +140,11 @@ public class AloRabbitMQSender<T> {
         }
 
         public static <T> SendResources<T> fromConfig(RabbitMQConfig config) {
+            SenderOptions senderOptions = new SenderOptions()
+                .connectionFactory(config.getConnectionFactory());
+
             return new SendResources<>(
-                new Sender(new SenderOptions().connectionFactory(config.getConnectionFactory())),
+                new Sender(senderOptions),
                 config.loadListOfConfigured(INTERCEPTORS_CONFIG),
                 config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG));
         }

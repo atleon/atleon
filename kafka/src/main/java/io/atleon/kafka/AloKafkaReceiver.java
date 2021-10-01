@@ -155,20 +155,20 @@ public class AloKafkaReceiver<K, V> {
         String clientId = ConfigLoading.loadOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG, Object::toString);
         consumerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
 
-        ReceiverOptions<K, V> receiverOptions = ReceiverOptions.create(consumerConfig);
-        receiverOptions.subscription(topics);
-        receiverOptions.pollTimeout(ConfigLoading.loadOrThrow(options, POLL_TIMEOUT_CONFIG, Duration::parse));
-        receiverOptions.commitInterval(ConfigLoading.loadOrThrow(options, COMMIT_INTERVAL_CONFIG, Duration::parse));
-        receiverOptions.maxCommitAttempts(ConfigLoading.loadOrThrow(options, MAX_COMMIT_ATTEMPTS_CONFIG, Integer::valueOf));
-        receiverOptions.closeTimeout(ConfigLoading.loadOrThrow(options, CLOSE_TIMEOUT_CONFIG, Duration::parse));
-        receiverOptions.schedulerSupplier(() -> schedulerForClient(clientId));
-
         // Create Future that allows blocking on partition assignment and positioning
         CompletableFuture<Collection<ReceiverPartition>> assignedPartitions =
             ConfigLoading.loadOrThrow(options, BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG, Boolean::valueOf) ?
                 new CompletableFuture<>() : CompletableFuture.completedFuture(Collections.emptyList());
         Future<?> assignedPartitionPositions = assignedPartitions.thenAccept(partitions -> partitions.forEach(ReceiverPartition::position));
-        receiverOptions.addAssignListener(assignedPartitions::complete);
+
+        ReceiverOptions<K, V> receiverOptions = ReceiverOptions.<K, V>create(consumerConfig)
+            .subscription(topics)
+            .pollTimeout(ConfigLoading.loadOrThrow(options, POLL_TIMEOUT_CONFIG, Duration::parse))
+            .commitInterval(ConfigLoading.loadOrThrow(options, COMMIT_INTERVAL_CONFIG, Duration::parse))
+            .maxCommitAttempts(ConfigLoading.loadOrThrow(options, MAX_COMMIT_ATTEMPTS_CONFIG, Integer::valueOf))
+            .closeTimeout(ConfigLoading.loadOrThrow(options, CLOSE_TIMEOUT_CONFIG, Duration::parse))
+            .schedulerSupplier(() -> schedulerForClient(clientId))
+            .addAssignListener(assignedPartitions::complete);
 
         return KafkaReceiver.create(receiverOptions).receive()
             .transform(records -> assignedPartitionPositions.isDone() ? records : records.mergeWith(blockRequestOn(assignedPartitionPositions)))

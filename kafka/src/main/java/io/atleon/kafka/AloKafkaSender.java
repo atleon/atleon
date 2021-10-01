@@ -204,12 +204,10 @@ public class AloKafkaSender<K, V> {
         String clientId = ConfigLoading.loadOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG, Object::toString);
         producerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
 
-        SenderOptions<K, V> senderOptions = SenderOptions.create(producerConfig);
-        senderOptions.maxInFlight(ConfigLoading.loadOrThrow(options, MAX_IN_FLIGHT_PER_SEND_CONFIG, Integer::valueOf));
-        senderOptions.stopOnError(ConfigLoading.loadOrThrow(options, STOP_ON_ERROR_CONFIG, Boolean::valueOf));
-        senderOptions.scheduler(schedulerForClient(clientId));
-
-        return senderOptions;
+        return SenderOptions.<K, V>create(producerConfig)
+            .maxInFlight(ConfigLoading.loadOrThrow(options, MAX_IN_FLIGHT_PER_SEND_CONFIG, Integer::valueOf))
+            .stopOnError(ConfigLoading.loadOrThrow(options, STOP_ON_ERROR_CONFIG, Boolean::valueOf))
+            .scheduler(schedulerForClient(clientId));
     }
 
     private static long nextClientIdCount(String clientId) {

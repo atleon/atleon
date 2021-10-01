@@ -123,11 +123,11 @@ public class AloRabbitMQReceiver<T> {
         }
 
         public Flux<Alo<RabbitMQMessage<T>>> receive(String queue, Consumer<? super Throwable> errorEmitter) {
-            ReceiverOptions receiverOptions = new ReceiverOptions();
-            receiverOptions.connectionFactory(connectionFactory);
+            ReceiverOptions receiverOptions = new ReceiverOptions()
+                .connectionFactory(connectionFactory);
 
-            ConsumeOptions consumeOptions = new ConsumeOptions();
-            consumeOptions.qos(qos);
+            ConsumeOptions consumeOptions = new ConsumeOptions()
+                .qos(qos);
 
             return new Receiver(receiverOptions)
                 .consumeManualAck(queue, consumeOptions)
