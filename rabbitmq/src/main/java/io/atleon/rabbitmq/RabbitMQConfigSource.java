@@ -4,6 +4,7 @@ import com.rabbitmq.client.ConnectionFactory;
 import io.atleon.core.ConfigSource;
 import reactor.core.publisher.Mono;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -11,6 +12,9 @@ import java.util.function.Function;
 
 public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQConfigSource> {
 
+    /**
+     * Hostname that may contain port in it. If it does, then 'port' property is ignored
+     */
     public static final String HOST_PROPERTY = "host";
 
     public static final String PORT_PROPERTY = "port";
@@ -24,6 +28,17 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
     public static final String SSL_PROPERTY = "ssl";
 
     public static final String DISABLED_CONFIG = "disabled";
+
+    // Begin discouraged properties that will still be parsed
+    /**
+     * Comma-separated list of hosts. Only the first host is used when creating a ConnectionFactory
+     */
+    private static final String HOSTS_PROPERTY = "hosts";
+
+    /**
+     * Alias for 'virtual-host'
+     */
+    private static final String VHOST_PROPERTY = "vhost";
 
     protected RabbitMQConfigSource() {
 
@@ -84,8 +99,8 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
 
     @Override
     protected void validateProperties(Map<String, Object> properties) {
-        validateAddressProperties(properties);
-        validateNonNullProperty(properties, VIRTUAL_HOST_PROPERTY);
+        HostAndPortConfig.validateProperties(properties);
+        validateAnyNonNullProperty(properties, Arrays.asList(VIRTUAL_HOST_PROPERTY, VHOST_PROPERTY));
         validateNonNullProperty(properties, USERNAME_PROPERTY);
         validateNonNullProperty(properties, PASSWORD_PROPERTY);
     }
@@ -95,17 +110,13 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
         return new RabbitMQConfig(createConnectionFactory(properties), properties);
     }
 
-    protected void validateAddressProperties(Map<String, Object> properties) {
-        validateNonNullProperty(properties, HOST_PROPERTY);
-        validateNonNullProperty(properties, PORT_PROPERTY);
-    }
-
     private static ConnectionFactory createConnectionFactory(Map<String, Object> properties) {
         try {
+            HostAndPortConfig hostAndPortConfig = HostAndPortConfig.parseFrom(properties);
             ConnectionFactory connectionFactory = new ConnectionFactory();
-            connectionFactory.setHost(Objects.toString(properties.get(HOST_PROPERTY)));
-            connectionFactory.setPort(Integer.parseInt(Objects.toString(properties.get(PORT_PROPERTY))));
-            connectionFactory.setVirtualHost(Objects.toString(properties.get(VIRTUAL_HOST_PROPERTY)));
+            connectionFactory.setHost(hostAndPortConfig.getHost());
+            connectionFactory.setPort(hostAndPortConfig.getPort());
+            connectionFactory.setVirtualHost(extractVirtualHost(properties));
             connectionFactory.setUsername(Objects.toString(properties.get(USERNAME_PROPERTY)));
             connectionFactory.setPassword(Objects.toString(properties.get(PASSWORD_PROPERTY)));
             if (!Objects.toString(properties.get(SSL_PROPERTY), DISABLED_CONFIG).equals(DISABLED_CONFIG)) {
@@ -114,6 +125,60 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
             return connectionFactory;
         } catch (Exception e) {
             throw new IllegalArgumentException("Could not create ConnectionFactory: " + e);
+        }
+    }
+
+    private static String extractVirtualHost(Map<String, Object> properties) {
+        Object virtualHost = properties.get(VIRTUAL_HOST_PROPERTY);
+        return Objects.toString(virtualHost == null ? properties.get(VHOST_PROPERTY) : virtualHost);
+    }
+
+    private static final class HostAndPortConfig {
+
+        private final String host;
+
+        private final int port;
+
+        private HostAndPortConfig(String host, int port) {
+            this.host = host;
+            this.port = port;
+        }
+
+        public static HostAndPortConfig parseFrom(Map<String, Object> properties) {
+            String[] splitHost = extractHost(properties).split(":");
+            if (splitHost.length < 2) {
+                int port = Optional.ofNullable(properties.get(PORT_PROPERTY))
+                    .map(Object::toString)
+                    .map(Integer::parseInt)
+                    .orElse(ConnectionFactory.USE_DEFAULT_PORT);
+                return new HostAndPortConfig(splitHost[0], port);
+            } else {
+                return new HostAndPortConfig(splitHost[0], Integer.parseInt(splitHost[1]));
+            }
+        }
+
+        public static void validateProperties(Map<String, Object> properties) {
+            extractHost(properties);
+        }
+
+        public String getHost() {
+            return host;
+        }
+
+        public int getPort() {
+            return port;
+        }
+
+        private static String extractHost(Map<String, Object> properties) {
+            String host = Objects.toString(properties.get(HOST_PROPERTY), null);
+            if (host != null) {
+                return host;
+            }
+            String hosts = Objects.toString(properties.get(HOSTS_PROPERTY), null);
+            if (hosts != null) {
+                return hosts.split(",")[0];
+            }
+            throw new IllegalArgumentException("Host configuration missing from RabbitMQ properties=" + properties);
         }
     }
 }

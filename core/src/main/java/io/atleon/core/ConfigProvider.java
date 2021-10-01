@@ -95,6 +95,15 @@ public abstract class ConfigProvider<T, P extends ConfigProvider<T, P>> {
         Objects.requireNonNull(properties.get(key), key + " is a required Configuration");
     }
 
+    protected static void validateAnyNonNullProperty(Map<String, Object> properties, Collection<String> keys) {
+        for (String key : keys) {
+            if (properties.get(key) != null) {
+                return;
+            }
+        }
+        throw new IllegalArgumentException("At least one of " + keys + " must be configured");
+    }
+
     protected static <T extends Enum<T>> void
     validateEnumProperty(Map<String, Object> properties, String key, Class<T> enumClass) {
         try {
