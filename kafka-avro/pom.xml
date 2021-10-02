@@ -40,6 +40,13 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <!-- Project Test Dependencies -->
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-kafka-avro-embedded</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Third Party Test Dependencies -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
