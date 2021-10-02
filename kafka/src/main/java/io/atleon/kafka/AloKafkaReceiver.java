@@ -55,6 +55,20 @@ public class AloKafkaReceiver<K, V> {
     public static final String BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG = CONFIG_PREFIX + "block.request.on.partition.positions";
 
     /**
+     * Controls the number of outstanding unacknowledged Records emitted per subscription. This is
+     * helpful in controlling the number of data elements allowed in memory, particularly when
+     * stream processes use any sort of buffering, windowing, or reduction operation(s).
+     */
+    public static final String MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG = CONFIG_PREFIX + "max.in.flight.per.subscription";
+
+    /**
+     * It may be desirable to have client IDs be incremented per subscription. This can remedy
+     * conflicts with external resource registration (i.e. JMX) if the same client ID is expected
+     * to have concurrent subscriptions
+     */
+    public static final String AUTO_INCREMENT_CLIENT_ID_CONFIG = CONFIG_PREFIX + "auto.increment.client.id";
+
+    /**
      * Controls timeouts of polls to Kafka. This config can be increased if a Kafka cluster is
      * slow to respond. Specified as ISO-8601 Duration, e.g. PT10S
      */
@@ -73,34 +87,29 @@ public class AloKafkaReceiver<K, V> {
     public static final String MAX_COMMIT_ATTEMPTS_CONFIG = CONFIG_PREFIX + "max.commit.attempts";
 
     /**
-     * The fully qualified class name of an implementation of {@link AloConsumerRecordFactory} used
-     * to create implementations of {@link Alo} to be emitted to Subscribers
-     */
-    public static final String ALO_FACTORY_CONFIG = CONFIG_PREFIX + "alo.factory";
-
-    /**
-     * Controls the number of outstanding unacknowledged Records emitted per subscription. This is
-     * helpful in controlling the number of data elements allowed in memory, particularly when
-     * stream processes use any sort of buffering, windowing, or reduction operation(s).
-     */
-    public static final String MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG = CONFIG_PREFIX + "max.in.flight.per.subscription";
-
-    /**
      * Closing the underlying Kafka Consumer is a fallible process. In order to not infinitely
      * deadlock a Consumer during this process (which can lead to non-consumption of assigned
      * partitions), we use a default equal to what's used in KafkaConsumer::close
      */
     public static final String CLOSE_TIMEOUT_CONFIG = CONFIG_PREFIX + "close.timeout";
 
+    /**
+     * The fully qualified class name of an implementation of {@link AloConsumerRecordFactory} used
+     * to create implementations of {@link Alo} to be emitted to Subscribers
+     */
+    public static final String ALO_FACTORY_CONFIG = CONFIG_PREFIX + "alo.factory";
+
     private static final boolean DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS = false;
+
+    private static final long DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION = 4096;
+
+    private static final boolean DEFAULT_AUTO_INCREMENT_CLIENT_ID = false;
 
     private static final Duration DEFAULT_POLL_TIMEOUT = Duration.ofMillis(100L);
 
     private static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5L);
 
     private static final int DEFAULT_MAX_COMMIT_ATTEMPTS = 100;
-
-    private static final long DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION = 4096;
 
     private static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(30L);
 
@@ -138,28 +147,31 @@ public class AloKafkaReceiver<K, V> {
 
     private Flux<Alo<ConsumerRecord<K, V>>> receiveRecords(Map<String, Object> config, Collection<String> topics) {
         Map<String, Object> options = new HashMap<>();
-        options.put(BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG, config.getOrDefault(BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG, DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS));
-        options.put(POLL_TIMEOUT_CONFIG, config.getOrDefault(POLL_TIMEOUT_CONFIG, DEFAULT_POLL_TIMEOUT));
-        options.put(COMMIT_INTERVAL_CONFIG, config.getOrDefault(COMMIT_INTERVAL_CONFIG, DEFAULT_COMMIT_INTERVAL));
-        options.put(MAX_COMMIT_ATTEMPTS_CONFIG, config.getOrDefault(MAX_COMMIT_ATTEMPTS_CONFIG, DEFAULT_MAX_COMMIT_ATTEMPTS));
-        options.put(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG, config.getOrDefault(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG, DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION));
-        options.put(CLOSE_TIMEOUT_CONFIG, config.getOrDefault(CLOSE_TIMEOUT_CONFIG, DEFAULT_CLOSE_TIMEOUT));
+        loadInto(options, config, BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG, DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS);
+        loadInto(options, config, MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG, DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION);
+        loadInto(options, config, AUTO_INCREMENT_CLIENT_ID_CONFIG, DEFAULT_AUTO_INCREMENT_CLIENT_ID);
+        loadInto(options, config, POLL_TIMEOUT_CONFIG, DEFAULT_POLL_TIMEOUT);
+        loadInto(options, config, COMMIT_INTERVAL_CONFIG, DEFAULT_COMMIT_INTERVAL);
+        loadInto(options, config, MAX_COMMIT_ATTEMPTS_CONFIG, DEFAULT_MAX_COMMIT_ATTEMPTS);
+        loadInto(options, config, CLOSE_TIMEOUT_CONFIG, DEFAULT_CLOSE_TIMEOUT);
 
         AloConsumerRecordFactory<K, V> aloFactory = createAloFactory(config);
         long maxInFlightPerSubscription = ConfigLoading.loadOrThrow(options, MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG, Long::valueOf);
 
         // 1) Create Consumer config from remaining configs that are NOT options (help avoid WARNs)
-        // 2) Note Client ID and make unique to avoid conflicting registration with resources (i.e. JMX)
+        // 2) Note Client ID and, if enabled, increment client ID in consumer config
         Map<String, Object> consumerConfig = new HashMap<>(config);
         options.keySet().forEach(consumerConfig::remove);
         String clientId = ConfigLoading.loadOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG, Object::toString);
-        consumerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
+        if (ConfigLoading.loadOrThrow(options, AUTO_INCREMENT_CLIENT_ID_CONFIG, Boolean::valueOf)) {
+            consumerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
+        }
 
         // Create Future that allows blocking on partition assignment and positioning
         CompletableFuture<Collection<ReceiverPartition>> assignedPartitions =
             ConfigLoading.loadOrThrow(options, BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG, Boolean::valueOf) ?
                 new CompletableFuture<>() : CompletableFuture.completedFuture(Collections.emptyList());
-        Future<?> assignedPartitionPositions = assignedPartitions.thenAccept(partitions -> partitions.forEach(ReceiverPartition::position));
+        Future<?> positions = assignedPartitions.thenAccept(partitions -> partitions.forEach(ReceiverPartition::position));
 
         ReceiverOptions<K, V> receiverOptions = ReceiverOptions.<K, V>create(consumerConfig)
             .subscription(topics)
@@ -171,7 +183,7 @@ public class AloKafkaReceiver<K, V> {
             .addAssignListener(assignedPartitions::complete);
 
         return KafkaReceiver.create(receiverOptions).receive()
-            .transform(records -> assignedPartitionPositions.isDone() ? records : records.mergeWith(blockRequestOn(assignedPartitionPositions)))
+            .transform(records -> positions.isDone() ? records : records.mergeWith(blockRequestOn(positions)))
             .transform(records -> createAloRecords(records, aloFactory, maxInFlightPerSubscription));
     }
 
@@ -205,6 +217,10 @@ public class AloKafkaReceiver<K, V> {
                 .orElseGet(DefaultAloConsumerRecordFactory::new);
         aloConsumerRecordFactory.configure(config);
         return aloConsumerRecordFactory;
+    }
+
+    private static void loadInto(Map<String, Object> destination, Map<String, Object> source, String key, Object def) {
+        destination.put(key, source.getOrDefault(key, def));
     }
 
     private static <T> Mono<T> blockRequestOn(Future<?> future) {

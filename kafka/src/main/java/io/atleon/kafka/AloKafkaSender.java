@@ -28,6 +28,13 @@ public class AloKafkaSender<K, V> {
     public static final String CONFIG_PREFIX = "kafka.sender.";
 
     /**
+     * It may be desirable to have client IDs be incremented per Sender. This can remedy
+     * conflicts with external resource registration (i.e. JMX) if the same client ID is expected
+     * to be used concurrently by more than one Sender
+     */
+    public static final String AUTO_INCREMENT_CLIENT_ID_CONFIG = CONFIG_PREFIX + "auto.increment.client.id";
+
+    /**
      * This is the maximum number of "in-flight" Records per sent Publisher. Note that this is
      * different from ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, which controls the
      * total number of in-flight Requests for all sent Publishers on a Sender/Producer. It is
@@ -50,6 +57,8 @@ public class AloKafkaSender<K, V> {
      * if this is enabled.
      */
     public static final String STOP_ON_ERROR_CONFIG = "stop.on.error";
+
+    private static final boolean DEFAULT_AUTO_INCREMENT_CLIENT_ID = false;
 
     private static final int DEFAULT_MAX_IN_FLIGHT_PER_SEND = 256;
 
@@ -194,15 +203,18 @@ public class AloKafkaSender<K, V> {
 
     private static <K, V> SenderOptions<K, V> newSenderOptions(Map<String, Object> config) {
         Map<String, Object> options = new HashMap<>();
-        options.put(MAX_IN_FLIGHT_PER_SEND_CONFIG, config.getOrDefault(MAX_IN_FLIGHT_PER_SEND_CONFIG, DEFAULT_MAX_IN_FLIGHT_PER_SEND));
-        options.put(STOP_ON_ERROR_CONFIG, config.getOrDefault(STOP_ON_ERROR_CONFIG, DEFAULT_STOP_ON_ERROR));
+        loadInto(options, config, AUTO_INCREMENT_CLIENT_ID_CONFIG, DEFAULT_AUTO_INCREMENT_CLIENT_ID);
+        loadInto(options, config, MAX_IN_FLIGHT_PER_SEND_CONFIG, DEFAULT_MAX_IN_FLIGHT_PER_SEND);
+        loadInto(options, config, STOP_ON_ERROR_CONFIG, DEFAULT_STOP_ON_ERROR);
 
         // 1) Create Producer config from remaining configs that are NOT options (help avoid WARNs)
-        // 2) Note Client ID and make unique to avoid conflicting registration with resources (i.e. JMX)
+        // 2) Note Client ID and, if enabled, increment client ID in consumer config
         Map<String, Object> producerConfig = new HashMap<>(config);
         options.keySet().forEach(producerConfig::remove);
         String clientId = ConfigLoading.loadOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG, Object::toString);
-        producerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
+        if (ConfigLoading.loadOrThrow(options, AUTO_INCREMENT_CLIENT_ID_CONFIG, Boolean::valueOf)) {
+            producerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
+        }
 
         return SenderOptions.<K, V>create(producerConfig)
             .maxInFlight(ConfigLoading.loadOrThrow(options, MAX_IN_FLIGHT_PER_SEND_CONFIG, Integer::valueOf))
@@ -220,5 +232,9 @@ public class AloKafkaSender<K, V> {
 
     private static Scheduler newSchedulerForClient(String clientId) {
         return Schedulers.newSingle(AloKafkaSender.class.getSimpleName() + "-" + clientId);
+    }
+
+    private static void loadInto(Map<String, Object> destination, Map<String, Object> source, String key, Object def) {
+        destination.put(key, source.getOrDefault(key, def));
     }
 }
