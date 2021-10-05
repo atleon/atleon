@@ -16,6 +16,12 @@ import reactor.rabbitmq.ReceiverOptions;
 
 import java.util.function.Consumer;
 
+/**
+ * A reactive RabbitMQ receiver with at-least-once semantics for consuming messages from a queue in
+ * a RabbitMQ cluster
+ *
+ * @param <T> inbound message deserialized body type
+ */
 public class AloRabbitMQReceiver<T> {
 
     /**

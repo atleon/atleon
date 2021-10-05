@@ -13,6 +13,12 @@ import reactor.rabbitmq.SenderOptions;
 import java.util.List;
 import java.util.function.Function;
 
+/**
+ * A reactive RabbitMQ sender with at-least-once semantics for producing messages to exchanges in
+ * a RabbitMQ cluster
+ *
+ * @param <T> outbound message body type (to be serialized)
+ */
 public class AloRabbitMQSender<T> {
 
     /**

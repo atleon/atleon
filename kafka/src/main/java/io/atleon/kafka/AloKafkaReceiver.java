@@ -34,8 +34,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * A reactive Kafka receiver with at-least-once semantics for consuming records from topics of a
  * Kafka cluster.
  *
- * @param <K> incoming record key type
- * @param <V> incoming record value type
+ * @param <K> inbound record key type
+ * @param <V> inbound record value type
  */
 public class AloKafkaReceiver<K, V> {
 

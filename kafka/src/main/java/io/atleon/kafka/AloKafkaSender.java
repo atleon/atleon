@@ -20,6 +20,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
+/**
+ * A reactive Kafka sender with at-least-once semantics for producing records to topics of a Kafka
+ * cluster.
+ *
+ * @param <K> outbound record key type
+ * @param <V> outbound record value type
+ */
 public class AloKafkaSender<K, V> {
 
     /**
