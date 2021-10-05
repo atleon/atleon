@@ -56,7 +56,7 @@ public class AloKafkaSender<K, V> {
      * messages is greater than 1, other in-flight SenderResults may not be delivered downstream
      * if this is enabled.
      */
-    public static final String STOP_ON_ERROR_CONFIG = "stop.on.error";
+    public static final String STOP_ON_ERROR_CONFIG = CONFIG_PREFIX + "stop.on.error";
 
     private static final boolean DEFAULT_AUTO_INCREMENT_CLIENT_ID = false;
 
