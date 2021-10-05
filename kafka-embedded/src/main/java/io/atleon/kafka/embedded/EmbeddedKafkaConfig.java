@@ -17,10 +17,6 @@ public class EmbeddedKafkaConfig {
         return new EmbeddedKafkaConfig(kafkaConfig.values());
     }
 
-    public String getZooKeeperConnect() {
-        return Objects.toString(kafkaConfigValues.get(KafkaConfig.ZkConnectProp()));
-    }
-
     public String getSecureConnect() {
         return getSecurityProtocol() + "://" + getConnect();
     }
