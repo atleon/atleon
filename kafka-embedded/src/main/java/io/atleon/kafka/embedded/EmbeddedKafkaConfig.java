@@ -30,6 +30,6 @@ public class EmbeddedKafkaConfig {
     }
 
     public String getConnect() {
-        return kafkaConfigValues.get(KafkaConfig.HostNameProp()) + ":" + kafkaConfigValues.get(KafkaConfig.PortProp());
+        return Objects.toString(kafkaConfigValues.get(KafkaConfig.ListenersProp()));
     }
 }

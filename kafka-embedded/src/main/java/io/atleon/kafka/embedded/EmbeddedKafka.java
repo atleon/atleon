@@ -46,26 +46,15 @@ public final class EmbeddedKafka {
 
     private static EmbeddedKafkaConfig initializeKafka(int port, int zookeeperPort) {
         URL zooKeeperConnect = EmbeddedZooKeeper.startAndGetConnectUrl(zookeeperPort);
-        URL kafkaConnect = convertToConnectUrl("localhost:" + port);
-
-        KafkaConfig kafkaConfig = new KafkaConfig(createKafkaBrokerConfig(zooKeeperConnect, kafkaConnect), true);
+        KafkaConfig kafkaConfig = new KafkaConfig(createKafkaBrokerConfig(zooKeeperConnect, port), true);
         startLocalKafka(kafkaConfig);
         return EmbeddedKafkaConfig.fromKafkaConfig(kafkaConfig);
     }
 
-    private static URL convertToConnectUrl(String connect) {
-        try {
-            return new URL("http://" + connect);
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Could not create URL for Connect: " + connect, e);
-        }
-    }
-
-    private static Map<String, Object> createKafkaBrokerConfig(URL zookeeperConnect, URL kafkaConnect) {
+    private static Map<String, Object> createKafkaBrokerConfig(URL zookeeperConnect, int port) {
         Map<String, Object> kafkaBrokerConfig = new HashMap<>();
         kafkaBrokerConfig.put(KafkaConfig.ZkConnectProp(), extractConnect(zookeeperConnect));
-        kafkaBrokerConfig.put(KafkaConfig.HostNameProp(), kafkaConnect.getHost());
-        kafkaBrokerConfig.put(KafkaConfig.PortProp(), kafkaConnect.getPort());
+        kafkaBrokerConfig.put(KafkaConfig.ListenersProp(), "PLAINTEXT://localhost:" + port);
         kafkaBrokerConfig.put(KafkaConfig.NumPartitionsProp(), 10);
         kafkaBrokerConfig.put(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
         kafkaBrokerConfig.put(KafkaConfig.LogDirProp(), createLogDirectory().toString());
