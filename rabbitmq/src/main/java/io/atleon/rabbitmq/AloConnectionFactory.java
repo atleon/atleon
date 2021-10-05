@@ -54,7 +54,6 @@ public class AloConnectionFactory extends ConnectionFactory {
 
         AloConnectionFactory connectionFactory = new AloConnectionFactory(addresses);
         ConnectionFactoryConfigurator.load(connectionFactory, configuratorProperties, "");
-        setupSslIfNecessary(connectionFactory, configuratorProperties);
         return connectionFactory;
     }
 
@@ -122,17 +121,12 @@ public class AloConnectionFactory extends ConnectionFactory {
             configuration.put(ConnectionFactoryConfigurator.VIRTUAL_HOST, configuration.remove(VHOST));
         }
 
-        return configuration;
-    }
-
-    private static void setupSslIfNecessary(ConnectionFactory connectionFactory, Map<String, String> properties) {
-        try {
-            String ssl = properties.getOrDefault(SSL, DISABLED);
-            if (!ssl.equals(DISABLED)) {
-                connectionFactory.useSslProtocol(ssl);
-            }
-        } catch (Exception e) {
-            throw new IllegalStateException("Could setup SSL on ConnectionFactory", e);
+        String ssl = configuration.getOrDefault(SSL, DISABLED);
+        if (!configuration.containsKey(ConnectionFactoryConfigurator.SSL_ENABLED) && !ssl.equals(DISABLED)) {
+            configuration.put(ConnectionFactoryConfigurator.SSL_ENABLED, "true");
+            configuration.put(ConnectionFactoryConfigurator.SSL_ALGORITHM, ssl);
         }
+
+        return configuration;
     }
 }

@@ -21,8 +21,7 @@
         <!-- Third Party Compile Dependencies -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka_2.12</artifactId>
-            <!--NOTE: Version should change to ${confluent.version}-ccs on upgrade to confluent >= 5.3.0-->
+            <artifactId>kafka_2.13</artifactId>
             <version>${apache-kafka.version}</version>
             <exclusions>
                 <exclusion>
@@ -35,6 +34,16 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+        </dependency>
+
+        <!-- Third Party Runtime Dependencies -->
         <!-- log4j:log4j is excluded from above due to ban-hammer -->
         <!-- Include this dependency such that logging works      -->
         <dependency>

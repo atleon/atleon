@@ -1,8 +1,10 @@
 package io.atleon.kafka.avro;
 
 import io.atleon.util.ConfigLoading;
+import io.confluent.kafka.schemaregistry.avro.AvroSchema;
+import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
-import io.confluent.kafka.serializers.AbstractKafkaAvroSerDe;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDe;
 import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
 import org.apache.avro.Schema;
 import org.apache.kafka.common.errors.SerializationException;
@@ -48,7 +50,7 @@ public abstract class LoadingAvroSerializer<T> extends LoadingAvroSerDe implemen
 
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
-        this.configureClientProperties(new KafkaAvroSerializerConfig(configs));
+        this.configureClientProperties(new KafkaAvroSerializerConfig(configs), new AvroSchemaProvider());
         this.writerSchemaCaching = ConfigLoading.load(configs, WRITER_SCHEMA_CACHING_PROPERTY, Boolean::valueOf, writerSchemaCaching);
         this.writerSchemaGeneration = ConfigLoading.load(configs, WRITER_SCHEMA_GENERATION_PROPERTY, Boolean::valueOf, writerSchemaGeneration);
         this.isKey = isKey;
@@ -80,9 +82,12 @@ public abstract class LoadingAvroSerializer<T> extends LoadingAvroSerDe implemen
     }
 
     public byte[] serializeNonNull(String topic, T data) throws RestClientException, IOException {
-        Schema schema = writerSchemaCaching ? getWriterSchemaCache(topic).load(data.getClass(), dataClass -> loadWriterSchema(data)) : loadWriterSchema(data);
-        String subject = getSubjectName(topic, isKey, data, schema);
-        int schemaId = register(subject, schema);
+        Schema schema = writerSchemaCaching
+            ? getWriterSchemaCache(topic).load(data.getClass(), dataClass -> loadWriterSchema(data))
+            : loadWriterSchema(data);
+        AvroSchema avroSchema = new AvroSchema(schema);
+        String subject = getSubjectName(topic, isKey, data, avroSchema);
+        int schemaId = register(subject, avroSchema);
         return serializeNonNullWithSchema(schemaId, schema, data);
     }
 
@@ -93,8 +98,8 @@ public abstract class LoadingAvroSerializer<T> extends LoadingAvroSerDe implemen
 
     protected final byte[] serializeNonNullWithSchema(int schemaId, Schema schema, T data) throws IOException {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        output.write(AbstractKafkaAvroSerDe.MAGIC_BYTE);
-        output.write(ByteBuffer.allocate(AbstractKafkaAvroSerDe.idSize).putInt(schemaId).array());
+        output.write(AbstractKafkaSchemaSerDe.MAGIC_BYTE);
+        output.write(ByteBuffer.allocate(AbstractKafkaSchemaSerDe.idSize).putInt(schemaId).array());
         serializeDataToOutput(output, schema, data);
         return output.toByteArray();
     }

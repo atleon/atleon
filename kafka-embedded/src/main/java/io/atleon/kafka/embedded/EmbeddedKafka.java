@@ -2,7 +2,10 @@ package io.atleon.kafka.embedded;
 
 import io.atleon.zookeeper.embedded.EmbeddedZooKeeper;
 import kafka.server.KafkaConfig;
-import kafka.server.KafkaServerStartable;
+import kafka.server.KafkaServer;
+import org.apache.kafka.common.utils.Time;
+import scala.Option;
+import scala.collection.immutable.Seq$;
 
 import java.net.URL;
 import java.nio.file.Files;
@@ -75,7 +78,7 @@ public final class EmbeddedKafka {
 
     private static void startLocalKafka(KafkaConfig kafkaConfig) {
         try {
-            new KafkaServerStartable(kafkaConfig).startup();
+            new KafkaServer(kafkaConfig, Time.SYSTEM, Option.empty(), Seq$.MODULE$.empty()).startup();
         } catch (Exception e) {
             throw new IllegalStateException("Could not start local Kafka Server", e);
         }

@@ -1,6 +1,8 @@
 package io.atleon.kafka.avro;
 
 import io.atleon.util.ConfigLoading;
+import io.confluent.kafka.schemaregistry.avro.AvroSchema;
+import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import org.apache.avro.Schema;
@@ -53,7 +55,7 @@ public abstract class LoadingAvroDeserializer<T> extends LoadingAvroSerDe implem
 
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
-        this.configureClientProperties(new KafkaAvroDeserializerConfig(configs));
+        this.configureClientProperties(new KafkaAvroDeserializerConfig(configs), new AvroSchemaProvider());
         this.readNullOnFailure = ConfigLoading.load(configs, READ_NULL_ON_FAILURE_PROPERTY, Boolean::valueOf, readNullOnFailure);
         this.readerSchemaLoading = ConfigLoading.load(configs, READER_SCHEMA_LOADING_PROPERTY, Boolean::valueOf, readerSchemaLoading);
         this.readerReferenceSchemaGeneration = ConfigLoading.load(configs, READER_REFERENCE_SCHEMA_GENERATION_PROPERTY, Boolean::valueOf, readerReferenceSchemaGeneration);
@@ -88,7 +90,7 @@ public abstract class LoadingAvroDeserializer<T> extends LoadingAvroSerDe implem
     }
 
     protected T deserializeNonNull(String topic, int writerSchemaId, ByteBuffer dataBuffer) throws IOException, RestClientException {
-        Schema writerSchema = getById(writerSchemaId);
+        Schema writerSchema = AvroSchema.class.cast(getSchemaById(writerSchemaId)).rawSchema();
         Schema readerSchema = READER_SCHEMA_CACHE_BY_WRITER_ID.load(writerSchemaId, key -> getReaderSchema(topic, writerSchema));
         return deserializeNonNullWithSchemas(writerSchema, readerSchema, dataBuffer);
     }

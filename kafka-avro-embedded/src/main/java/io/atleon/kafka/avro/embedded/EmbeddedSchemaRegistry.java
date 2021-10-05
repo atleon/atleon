@@ -63,7 +63,6 @@ public final class EmbeddedSchemaRegistry {
     private static Map<String, Object> createLocalSchemaRegistryConfig(URL schemaConnect, EmbeddedKafkaConfig embeddedKafkaConfig) {
         Map<String, Object> registryConfig = new HashMap<>();
         registryConfig.put(SchemaRegistryConfig.LISTENERS_CONFIG, schemaConnect.toString());
-        registryConfig.put(SchemaRegistryConfig.KAFKASTORE_CONNECTION_URL_CONFIG, embeddedKafkaConfig.getZooKeeperConnect());
         registryConfig.put(SchemaRegistryConfig.KAFKASTORE_SECURITY_PROTOCOL_CONFIG, embeddedKafkaConfig.getSecurityProtocol());
         registryConfig.put(SchemaRegistryConfig.KAFKASTORE_BOOTSTRAP_SERVERS_CONFIG, embeddedKafkaConfig.getSecureConnect());
         registryConfig.put(SchemaRegistryConfig.KAFKASTORE_TOPIC_CONFIG, "_schemas");

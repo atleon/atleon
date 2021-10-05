@@ -1,9 +1,8 @@
 package io.atleon.kafka.avro;
 
-import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
+import io.confluent.kafka.schemaregistry.ParsedSchema;
+import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import org.apache.avro.Schema;
-
-import java.io.IOException;
 
 public final class TestReflectEncoderAvroSerializer<T> extends ReflectEncoderAvroSerializer<T> {
 
@@ -14,12 +13,13 @@ public final class TestReflectEncoderAvroSerializer<T> extends ReflectEncoderAvr
     }
 
     @Override
-    public int register(String subject, Schema schema) throws IOException, RestClientException {
-        return registry.register(subject, schema);
+    public int register(String subject, ParsedSchema schema) {
+        return registry.register(subject, AvroSchema.class.cast(schema).rawSchema());
     }
 
     @Override
-    public Schema getById(int id) throws IOException, RestClientException {
-        return registry.getByID(id);
+    public ParsedSchema getSchemaById(int id) {
+        Schema schema = registry.getByID(id);
+        return schema == null ? null : new AvroSchema(schema);
     }
 }
