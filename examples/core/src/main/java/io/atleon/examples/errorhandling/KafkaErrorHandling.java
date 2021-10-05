@@ -124,10 +124,7 @@ public class KafkaErrorHandling {
         //Step 6) Await the successful completion of the data we emitted. There should be exactly
         // three successfully processed elements, since we end up successfully processing "test_2"
         // twice
-        while (true) {
-            if (successfullyProcessed.size() >= 3) {
-                break;
-            }
+        while (successfullyProcessed.size() < 3) {
             Thread.sleep(100L);
         }
 

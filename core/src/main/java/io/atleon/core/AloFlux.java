@@ -171,7 +171,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param maxTime – the timeout enforcing the release of a partial buffer
      * @param scheduler – a time-capable Scheduler instance to run on
      * @param bufferToAloFactory - Function that provides an AloFactory to wrap list of items
-     * @return
+     * @return An AloFlux that buffers upstream elements in bounded size and time
      */
     public AloFlux<List<T>> bufferTimeout(
         int maxSize,
