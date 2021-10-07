@@ -41,11 +41,11 @@ public class RabbitMQToKafka {
     public static void main(String[] args) throws Exception {
         //Step 1) Create a RabbitMQ Config that we'll use for Publishing and Subscribing
         RabbitMQConfigSource rabbitMQConfig = RabbitMQConfigSource.named(RabbitMQToKafka.class.getSimpleName())
-            .with(RabbitMQConfigSource.HOST_PROPERTY, EMBEDDED_AMQP_CONFIG.getHost())
-            .with(RabbitMQConfigSource.PORT_PROPERTY, EMBEDDED_AMQP_CONFIG.getPort())
-            .with(RabbitMQConfigSource.VIRTUAL_HOST_PROPERTY, EMBEDDED_AMQP_CONFIG.getVirtualHost())
-            .with(RabbitMQConfigSource.USERNAME_PROPERTY, EMBEDDED_AMQP_CONFIG.getUsername())
-            .with(RabbitMQConfigSource.PASSWORD_PROPERTY, EMBEDDED_AMQP_CONFIG.getPassword())
+            .withHost(EMBEDDED_AMQP_CONFIG.getHost())
+            .withPort(EMBEDDED_AMQP_CONFIG.getPort())
+            .withVirtualHost(EMBEDDED_AMQP_CONFIG.getVirtualHost())
+            .withUsername(EMBEDDED_AMQP_CONFIG.getUsername())
+            .withPassword(EMBEDDED_AMQP_CONFIG.getPassword())
             .with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName())
             .with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, StringBodyDeserializer.class.getName());
 
