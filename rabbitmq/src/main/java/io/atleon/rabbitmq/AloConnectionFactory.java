@@ -86,6 +86,26 @@ public class AloConnectionFactory extends ConnectionFactory {
         return newConnection(executor, addresses, connectionName);
     }
 
+    @Override
+    public String getHost() {
+        return addresses.get(0).getHost();
+    }
+
+    @Override
+    public void setHost(String host) {
+        throw new UnsupportedOperationException("Cannot set host on multi-address ConnectionFactory");
+    }
+
+    @Override
+    public int getPort() {
+        return addresses.get(0).getPort();
+    }
+
+    @Override
+    public void setPort(int port) {
+        throw new UnsupportedOperationException("Cannot set port on multi-address ConnectionFactory");
+    }
+
     private static List<Address> extractAddresses(Map<String, ?> properties) {
         String hosts = extractHosts(properties);
         int fallbackPort = Integer.parseInt(Objects.toString(properties.get(PORT_PROPERTY), "-1"));
