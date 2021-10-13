@@ -27,7 +27,7 @@ public final class EmbeddedAmqpConfig {
         Map<String, Object> map = new HashMap<>();
         map.put("host", host);
         map.put("port", port);
-        map.put("virtual-host", virtualHost);
+        map.put("virtual.host", virtualHost);
         map.put("username", username);
         map.put("password", password);
         return map;

@@ -36,7 +36,7 @@ public class AloRabbitMQReceiver<T> {
     /**
      * Prefix used on all AloRabbitMQReceiver-specific configurations
      */
-    public static final String CONFIG_PREFIX = "rabbitmq-receiver-";
+    public static final String CONFIG_PREFIX = "rabbitmq.receiver.";
 
     /**
      * The maximum allowed number unacknowledged messages (per subscription)
@@ -46,18 +46,18 @@ public class AloRabbitMQReceiver<T> {
     /**
      * An implementation of {@link BodyDeserializer} used to deserialized message bodies
      */
-    public static final String BODY_DESERIALIZER_CONFIG = CONFIG_PREFIX + "body-deserializer";
+    public static final String BODY_DESERIALIZER_CONFIG = CONFIG_PREFIX + "body.deserializer";
 
     /**
      * Strategy used for handling Nacknowledgement. See {@link NackStrategy}
      */
-    public static final String NACK_STRATEGY_CONFIG = CONFIG_PREFIX + "nack-strategy";
+    public static final String NACK_STRATEGY_CONFIG = CONFIG_PREFIX + "nack.strategy";
 
     /**
      * An implementation of {@link AloRabbitMQMessageFactory} used to wrap messages in an
      * implementation of {@link Alo}. Default is {@link DefaultAloRabbitMQMessageFactory}
      */
-    public static final String ALO_FACTORY_CONFIG = CONFIG_PREFIX + "alo-factory";
+    public static final String ALO_FACTORY_CONFIG = CONFIG_PREFIX + "alo.factory";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloRabbitMQReceiver.class);
 

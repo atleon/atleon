@@ -1,6 +1,7 @@
 package io.atleon.rabbitmq;
 
 import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.ConnectionFactoryConfigurator;
 import io.atleon.core.ConfigSource;
 import reactor.core.publisher.Mono;
 
@@ -39,27 +40,27 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
     }
 
     public RabbitMQConfigSource withHost(String host) {
-        return with(AloConnectionFactory.HOST_PROPERTY, host);
+        return with(ConnectionFactoryConfigurator.HOST, host);
     }
 
     public RabbitMQConfigSource withPort(int port) {
-        return with(AloConnectionFactory.PORT_PROPERTY, port);
+        return with(ConnectionFactoryConfigurator.PORT, port);
     }
 
     public RabbitMQConfigSource withVirtualHost(String virtualHost) {
-        return with(AloConnectionFactory.VIRTUAL_HOST_PROPERTY, virtualHost);
+        return with(ConnectionFactoryConfigurator.VIRTUAL_HOST, virtualHost);
     }
 
     public RabbitMQConfigSource withUsername(String username) {
-        return with(AloConnectionFactory.USERNAME_PROPERTY, username);
+        return with(ConnectionFactoryConfigurator.USERNAME, username);
     }
 
     public RabbitMQConfigSource withPassword(String password) {
-        return with(AloConnectionFactory.PASSWORD_PROPERTY, password);
+        return with(ConnectionFactoryConfigurator.PASSWORD, password);
     }
 
     public RabbitMQConfigSource withSsl(String ssl) {
-        return with(AloConnectionFactory.SSL_PROPERTY, ssl);
+        return with(AloConnectionFactory.SSL, ssl);
     }
 
     @Override
@@ -70,15 +71,15 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
     @Override
     protected void validateProperties(Map<String, Object> properties) {
         validateAnyNonNullProperty(properties,
-            AloConnectionFactory.HOST_PROPERTY,
-            AloConnectionFactory.HOSTS_PROPERTY
+            ConnectionFactoryConfigurator.HOST,
+            AloConnectionFactory.HOSTS
         );
         validateAnyNonNullProperty(properties,
-            AloConnectionFactory.VIRTUAL_HOST_PROPERTY,
-            AloConnectionFactory.VHOST_PROPERTY
+            ConnectionFactoryConfigurator.VIRTUAL_HOST,
+            AloConnectionFactory.VHOST
         );
-        validateNonNullProperty(properties, AloConnectionFactory.USERNAME_PROPERTY);
-        validateNonNullProperty(properties, AloConnectionFactory.PASSWORD_PROPERTY);
+        validateNonNullProperty(properties, ConnectionFactoryConfigurator.USERNAME);
+        validateNonNullProperty(properties, ConnectionFactoryConfigurator.PASSWORD);
     }
 
     @Override
