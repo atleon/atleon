@@ -89,6 +89,10 @@
                 <version>${confluent.version}</version>
                 <exclusions>
                     <exclusion>
+                        <groupId>com.google.guava</groupId>
+                        <artifactId>guava</artifactId>
+                    </exclusion>
+                    <exclusion>
                         <groupId>log4j</groupId>
                         <artifactId>log4j</artifactId>
                     </exclusion>
@@ -125,6 +129,12 @@
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-schema-serializer</artifactId>
                 <version>${confluent.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.google.guava</groupId>
+                        <artifactId>guava</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>io.micrometer</groupId>
