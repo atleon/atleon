@@ -20,8 +20,8 @@ import java.util.function.Function;
  * execute acknowledgement. Note that implementations may propagate more than just
  * acknowledgement resources.
  *
- * <p>Acknowledgers and Nacknowledgers referenced by Acknowledgeable implementations must be
- * <strong>safe</strong>. They <i>should not throw Exceptions.</i>
+ * <p>Acknowledgers and Nacknowledgers referenced by Alo implementations must be
+ * <strong>safe</strong>. They <i>must not throw Exceptions.</i>
  *
  * @param <T> The type of data item contained in this Alo
  */
