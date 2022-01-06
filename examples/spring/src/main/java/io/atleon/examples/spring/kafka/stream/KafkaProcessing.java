@@ -1,4 +1,4 @@
-package io.atleon.examples.spring.kafka;
+package io.atleon.examples.spring.kafka.stream;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloStream;
@@ -7,10 +7,10 @@ import reactor.core.Disposable;
 
 import java.util.Collections;
 
-public class ExampleKafkaProcessing extends AloStream<ExampleKafkaProcessingConfig> {
+public class KafkaProcessing extends AloStream<KafkaProcessingConfig> {
 
     @Override
-    protected Disposable startDisposable(ExampleKafkaProcessingConfig config) {
+    protected Disposable startDisposable(KafkaProcessingConfig config) {
         AloKafkaReceiver<Long, Long> receiver = config.buildKafkaLongReceiver();
 
         return receiver.receiveAloValues(Collections.singletonList(config.getTopic()))

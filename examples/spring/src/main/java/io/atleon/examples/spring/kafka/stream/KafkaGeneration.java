@@ -1,4 +1,4 @@
-package io.atleon.examples.spring.kafka;
+package io.atleon.examples.spring.kafka.stream;
 
 import io.atleon.core.AloStream;
 import io.atleon.kafka.AloKafkaSender;
@@ -8,10 +8,10 @@ import reactor.core.publisher.Flux;
 import java.time.Duration;
 import java.util.function.Function;
 
-public class ExampleKafkaGeneration extends AloStream<ExampleKafkaGenerationConfig> {
+public class KafkaGeneration extends AloStream<KafkaGenerationConfig> {
 
     @Override
-    protected Disposable startDisposable(ExampleKafkaGenerationConfig config) {
+    protected Disposable startDisposable(KafkaGenerationConfig config) {
         AloKafkaSender<Long, Long> sender = config.buildKafkaLongSender();
 
         return Flux.interval(Duration.ofMillis(100))

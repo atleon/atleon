@@ -1,4 +1,4 @@
-package io.atleon.examples.spring.kafka;
+package io.atleon.examples.spring.kafka.stream;
 
 import io.atleon.core.AloStreamConfig;
 import io.atleon.kafka.AloKafkaSender;
@@ -6,15 +6,22 @@ import io.atleon.kafka.KafkaConfigSource;
 import io.atleon.micrometer.AloKafkaMetricsReporter;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.LongSerializer;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
-public class ExampleKafkaGenerationConfig implements AloStreamConfig {
+@Component
+public class KafkaGenerationConfig implements AloStreamConfig {
 
     private final KafkaConfigSource baseKafkaConfig;
 
     private final String topic;
 
-    public ExampleKafkaGenerationConfig(KafkaConfigSource baseKafkaConfig, String topic) {
-        this.baseKafkaConfig = baseKafkaConfig;
+    public KafkaGenerationConfig(
+        @Qualifier("local") KafkaConfigSource localKafkaConfig,
+        @Value("${example.kafka.topic}") String topic
+    ) {
+        this.baseKafkaConfig = localKafkaConfig;
         this.topic = topic;
     }
 

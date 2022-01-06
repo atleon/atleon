@@ -1,4 +1,4 @@
-package io.atleon.examples.spring.kafka;
+package io.atleon.examples.spring.kafka.stream;
 
 import io.atleon.core.AloStreamConfig;
 import io.atleon.kafka.AloKafkaReceiver;
@@ -7,21 +7,25 @@ import io.atleon.micrometer.AloKafkaMetricsReporter;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.LongDeserializer;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import java.util.function.Consumer;
 
-public class ExampleKafkaProcessingConfig implements AloStreamConfig {
+@Component
+public class KafkaProcessingConfig implements AloStreamConfig {
 
     private final KafkaConfigSource baseKafkaConfig;
 
     private final String topic;
 
-    private final Consumer<String> consumer;
-
-    public ExampleKafkaProcessingConfig(KafkaConfigSource baseKafkaConfig, String topic, Consumer<String> consumer) {
-        this.baseKafkaConfig = baseKafkaConfig;
+    public KafkaProcessingConfig(
+        @Qualifier("local") KafkaConfigSource localKafkaConfig,
+        @Value("${example.kafka.topic}") String topic
+    ) {
+        this.baseKafkaConfig = localKafkaConfig;
         this.topic = topic;
-        this.consumer = consumer;
     }
 
     @Override
@@ -31,7 +35,7 @@ public class ExampleKafkaProcessingConfig implements AloStreamConfig {
 
     public AloKafkaReceiver<Long, Long> buildKafkaLongReceiver() {
         KafkaConfigSource config = baseKafkaConfig.withClientId(name())
-            .withConsumerGroupId(ExampleKafkaProcessing.class.getSimpleName())
+            .withConsumerGroupId(KafkaProcessing.class.getSimpleName())
             .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             .withKeyDeserializer(LongDeserializer.class)
             .withValueDeserializer(LongDeserializer.class)
@@ -44,6 +48,6 @@ public class ExampleKafkaProcessingConfig implements AloStreamConfig {
     }
 
     public Consumer<String> getConsumer() {
-        return consumer;
+        return System.out::println;
     }
 }
