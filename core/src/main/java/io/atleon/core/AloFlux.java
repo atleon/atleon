@@ -84,6 +84,13 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * Alias for .map(clazz::cast)
+     */
+    public <V> AloFlux<V> cast(Class<V> clazz) {
+        return map(clazz::cast);
+    }
+
+    /**
      * See {@link Flux#map(Function)}
      */
     public <V> AloFlux<V> map(Function<? super T, ? extends V> mapper) {
