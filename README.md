@@ -14,6 +14,10 @@ As much as possible, Atleon is backed by [Project Reactor](https://projectreacto
 
 On top of the above attributes, the value that Atleon brings to the table is the guarantee of "At Least Once" processing. In the face of thread switching that typically happens in reactive pipelines, guaranteeing that any given received message is fully processed before acknowledging that message back to the source (i.e. committing a Kafka Record's offset, or ack'ing a RabbitMQ Delivery) is a tricky challenge. However, Atleon makes handling this concern as easy and as transparent as possible.
 
+## TL;DR
+
+If Atleon does only _one_ thing, it is to make it possible to implement infinite data processing pipelines using Reactive Streams (and implementations like Project Reactor) without having to explicitly manage message acknowledgement, while guaranteeing that every message is fully processed at least once. 
+
 ## At Least Once Processing Guarantee
 
 In typical use cases, it is required that a message is not abstractly marked "fully processed" at the source from which it came until it is known that the message has been fully processed by whatever pipeline we have defined for it. In Atleon, the concept of marking a message as "fully processed" is called "acknowledgement". Similarly, we typically want some functionality in place for when a message is unable to be "fully processed" due to some fatal error. In Atleon, the termination of a message's processing due to a fatal error is called "nacknowledgement" (negative acknowledgement).
