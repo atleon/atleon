@@ -5,7 +5,6 @@ import kafka.server.KafkaConfig;
 import kafka.server.KafkaServer;
 import org.apache.kafka.common.utils.Time;
 import scala.Option;
-import scala.collection.immutable.Seq$;
 
 import java.net.URL;
 import java.nio.file.Files;
@@ -78,7 +77,7 @@ public final class EmbeddedKafka {
 
     private static void startLocalKafka(KafkaConfig kafkaConfig) {
         try {
-            new KafkaServer(kafkaConfig, Time.SYSTEM, Option.empty(), Seq$.MODULE$.empty()).startup();
+            new KafkaServer(kafkaConfig, Time.SYSTEM, Option.empty(), false).startup();
         } catch (Exception e) {
             throw new IllegalStateException("Could not start local Kafka Server", e);
         }
