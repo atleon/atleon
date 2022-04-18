@@ -61,6 +61,7 @@
         <module>kafka-embedded</module>
         <module>micrometer</module>
         <module>parent</module>
+        <module>polling</module>
         <module>rabbitmq</module>
         <module>spring</module>
         <module>util</module>
