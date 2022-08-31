@@ -66,5 +66,13 @@
             <artifactId>spring-boot-autoconfigure</artifactId>
             <version>${spring-boot.version}</version>
         </dependency>
+
+        <!-- Third Party Runtime Dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <version>${spring-boot.version}</version>
+            <scope>runtime</scope>
+        </dependency>
     </dependencies>
 </project>
