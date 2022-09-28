@@ -133,10 +133,18 @@ public class AloKafkaReceiver<K, V> {
         return new AloKafkaReceiver<>(configSource);
     }
 
+    public AloFlux<V> receiveAloValues(String topic) {
+        return receiveAloValues(Collections.singletonList(topic));
+    }
+
     public AloFlux<V> receiveAloValues(Collection<String> topics) {
         return receiveAloRecords(topics)
             .filter(record -> record.value() != null)
             .map(ConsumerRecord::value);
+    }
+
+    public AloFlux<ConsumerRecord<K, V>> receiveAloRecords(String topic) {
+        return receiveAloRecords(Collections.singletonList(topic));
     }
 
     public AloFlux<ConsumerRecord<K, V>> receiveAloRecords(Collection<String> topics) {
