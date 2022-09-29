@@ -2,5 +2,7 @@ package io.atleon.core;
 
 public interface AloStreamConfig {
 
-    String name();
+    default String name() {
+        return AloStreamNaming.fromConfigInKebabCaseWithoutConventionalSuffix(getClass());
+    }
 }
