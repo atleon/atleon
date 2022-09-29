@@ -232,6 +232,36 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * Divide this sequence into dynamically created Flux (or groups) by hashing Number values
+     * extracted from emitted data items. Note that there are guidelines and nuances to
+     * appropriately consuming groups as explained under {@link Flux#groupBy(Function)}
+     *
+     * @param numberExtractor Function that extracts Numbers from data items for hashing
+     * @param numGroups How many groups to divide the source sequence in to
+     * @return A Flux of grouped AloFluxes
+     */
+    public AloExtendedFlux<AloGroupedFlux<Integer, T>>
+    groupByNumberHash(Function<? super T, ? extends Number> numberExtractor, int numGroups) {
+        return groupBy(NumberHashGroupExtractor.composed(numberExtractor, numGroups));
+    }
+
+    /**
+     * Divide this sequence into dynamically created Flux (or groups) by hashing Number values
+     * extracted from emitted data items. Note that there are guidelines and nuances to
+     * appropriately consuming groups as explained under {@link Flux#groupBy(Function)}
+     *
+     * @param numberExtractor Function that extracts Numbers from data items for hashing
+     * @param numGroups How many groups to divide the source sequence in to
+     * @return A Flux of grouped AloFluxes
+     */
+    public <V> AloExtendedFlux<AloGroupedFlux<Integer, V>> groupByNumberHash(
+        Function<? super T, ? extends Number> numberExtractor,
+        int numGroups,
+        Function<? super T, V> valueMapper) {
+        return groupBy(NumberHashGroupExtractor.composed(numberExtractor, numGroups), valueMapper);
+    }
+
+    /**
      * Divide this sequence into dynamically created Flux (or groups) by hashing String values
      * extracted from emitted data items. Note that there are guidelines and nuances to
      * appropriately consuming groups as explained under {@link Flux#groupBy(Function)}
