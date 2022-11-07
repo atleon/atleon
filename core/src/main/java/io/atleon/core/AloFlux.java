@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
@@ -95,6 +96,42 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <V> AloFlux<V> map(Function<? super T, ? extends V> mapper) {
         return new AloFlux<>(wrapped.map(AloOps.mapping(mapper)));
+    }
+
+    /**
+     * Transform the items emitted by this {@link AloFlux} by applying a synchronous function to
+     * each item, which may produce {@code null} values. In that case, no value is emitted. This
+     * method delegates to {@link AloFlux#mapPresent(Function)} by wrapping result values as
+     * {@link Optional} and only emitting present values. This effectively results in two
+     * {@link Alo#map(Function)} invocations for non-null values.
+     *
+     * @param mapper - the synchronous transforming {@link Function}
+     * @param <V> - the transformed type
+     * @return - a transformed {@link AloFlux}
+     */
+    public <V> AloFlux<V> mapNotNull(Function<? super T, ? extends V> mapper) {
+        return mapPresent(mapper.andThen(Optional::ofNullable));
+    }
+
+    /**
+     * Transform the items emitted by this {@link AloFlux} by applying a synchronous function to
+     * each item that results in Optional values. When the result values are empty, no value is
+     * emitted. This effectively results in two  {@link Alo#map(Function)} invocations for present
+     * values.
+     *
+     * @param mapper - the synchronous transforming {@link Function}
+     * @param <V> - the transformed type
+     * @return - a transformed {@link AloFlux}
+     */
+    public <V> AloFlux<V> mapPresent(Function<? super T, Optional<? extends V>> mapper) {
+        return new AloFlux<>(wrapped.handle((alo, sink) -> {
+            Alo<Optional<? extends V>> result = alo.map(mapper);
+            if (result.get().isPresent()) {
+                sink.next(result.map(Optional::get));
+            } else {
+                Alo.acknowledge(alo);
+            }
+        }));
     }
 
     /**
