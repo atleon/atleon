@@ -1,7 +1,8 @@
 # Atleon
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![javadoc](https://javadoc.io/badge2/io.atleon/atleon-core/javadoc.svg)](https://javadoc.io/doc/io.atleon/atleon-core)
-[![main build workflow](https://github.com/atleon/atleon/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/atleon/atleon/actions/workflows/build.yml)
+[![Main Build Workflow](https://github.com/atleon/atleon/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/atleon/atleon/actions/workflows/build.yml)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.atleon/atleon-core/badge.svg?style=plastic)](https://mvnrepository.com/artifact/io.atleon)
+[![Javadoc](https://javadoc.io/badge2/io.atleon/atleon-core/javadoc.svg)](https://javadoc.io/doc/io.atleon/atleon-core)
 
 
 Atleon is a [Reactive Streams](https://www.reactive-streams.org/) library aimed at satisfying table stakes requirements of infinite stream processing use cases. One such typical use case is streaming from one message broker (i.e. [Kafka](https://kafka.apache.org/) or [RabbitMQ](https://www.rabbitmq.com/)), enriching the data, and producing to some other message broker.
