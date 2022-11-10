@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.6.0]
+atleon '0.6.0' is a beta release containing updates outlined below
+
+### Additions
+* [#35] - Added RabbitMQ Route Initialization utilities
+* [#36] - Added examples for intended usage of RabbitMQ in Spring applications
+
+### Changes
+* [#34] - Fixed type erasure of FloFlux subscribe methods that take Consumers
+* [#37] - AloExtendedFlux no longer extends FluxOperator
+
 # [0.5.0]
 
 atleon '0.5.0' is a beta release containing updates outlined below
