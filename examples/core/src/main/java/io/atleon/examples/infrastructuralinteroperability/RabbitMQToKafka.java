@@ -1,7 +1,5 @@
 package io.atleon.examples.infrastructuralinteroperability;
 
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
 import io.atleon.amqp.embedded.EmbeddedAmqp;
 import io.atleon.amqp.embedded.EmbeddedAmqpConfig;
 import io.atleon.core.Alo;
@@ -12,7 +10,9 @@ import io.atleon.kafka.embedded.EmbeddedKafka;
 import io.atleon.rabbitmq.AloRabbitMQReceiver;
 import io.atleon.rabbitmq.AloRabbitMQSender;
 import io.atleon.rabbitmq.DefaultRabbitMQMessageCreator;
+import io.atleon.rabbitmq.QueueDeclaration;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
+import io.atleon.rabbitmq.RoutingInitializer;
 import io.atleon.rabbitmq.StringBodyDeserializer;
 import io.atleon.rabbitmq.StringBodySerializer;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -71,11 +71,9 @@ public class RabbitMQToKafka {
 
         //Step 4) Producing to RabbitMQ requires that we declare a Queue to serve as the destination
         // and source of messages that we want to send/receive
-        ConnectionFactory connectionFactory = rabbitMQConfig.createConnectionFactoryNow();
-        try (Connection connection = connectionFactory.newConnection()) {
-            connection.createChannel()
-                .queueDeclare(QUEUE, false, false, false, null);
-        }
+        RoutingInitializer.using(rabbitMQConfig.createConnectionFactoryNow())
+            .addQueueDeclaration(QueueDeclaration.named(QUEUE))
+            .run();
 
         //Step 5) Produce some messages to the RabbitMQ Queue we declared
         AloRabbitMQSender.<String>from(rabbitMQConfig)

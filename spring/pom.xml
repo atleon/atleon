@@ -18,6 +18,13 @@
             <artifactId>atleon-core</artifactId>
         </dependency>
 
+        <!-- Project Provided Dependencies -->
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-rabbitmq</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Third Party Compile Dependencies -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -25,6 +32,11 @@
         </dependency>
 
         <!-- Third Party Provided Dependencies -->
+        <dependency>
+            <groupId>com.rabbitmq</groupId>
+            <artifactId>amqp-client</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-annotations</artifactId>
