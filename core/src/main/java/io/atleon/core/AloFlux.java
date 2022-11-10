@@ -496,14 +496,14 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     /**
      * See {@link Flux#subscribe(Consumer)}
      */
-    public Disposable subscribe(Consumer<? super Alo<? super T>> consumer) {
+    public Disposable subscribe(Consumer<? super Alo<T>> consumer) {
         return wrapped.subscribe(consumer);
     }
 
     /**
      * See {@link Flux#subscribe(Consumer, Consumer)}
      */
-    public Disposable subscribe(Consumer<? super Alo<? super T>> consumer, Consumer<? super Throwable> errorConsumer) {
+    public Disposable subscribe(Consumer<? super Alo<T>> consumer, Consumer<? super Throwable> errorConsumer) {
         return wrapped.subscribe(consumer, errorConsumer);
     }
 
