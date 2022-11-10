@@ -25,11 +25,6 @@ public class KafkaGenerationConfig implements AloStreamConfig {
         this.topic = topic;
     }
 
-    @Override
-    public String name() {
-        return "kafka-generation";
-    }
-
     public AloKafkaSender<Long, Long> buildKafkaLongSender() {
         KafkaConfigSource config = baseKafkaConfig.withClientId(name())
             .withProducerOrderingAndResiliencyConfigs()

@@ -32,6 +32,11 @@ public final class DefaultRabbitMQMessageCreator<T> extends AbstractRabbitMQMess
     }
 
     public static <T> DefaultRabbitMQMessageCreator<T>
+    minimalBasic(String exchange) {
+        return new DefaultRabbitMQMessageCreator<>(MessageProperties.MINIMAL_BASIC, t -> exchange, t -> "");
+    }
+
+    public static <T> DefaultRabbitMQMessageCreator<T>
     minimalBasic(String exchange, String routingKey) {
         return new DefaultRabbitMQMessageCreator<>(MessageProperties.MINIMAL_BASIC, t -> exchange, t -> routingKey);
     }
