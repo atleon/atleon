@@ -28,11 +28,6 @@ public class KafkaProcessingConfig implements AloStreamConfig {
         this.topic = topic;
     }
 
-    @Override
-    public String name() {
-        return "kafka-processing";
-    }
-
     public AloKafkaReceiver<Long, Long> buildKafkaLongReceiver() {
         KafkaConfigSource config = baseKafkaConfig.withClientId(name())
             .withConsumerGroupId(KafkaProcessing.class.getSimpleName())

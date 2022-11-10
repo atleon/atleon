@@ -26,4 +26,5 @@ The following Kafka [End to End to End](core/src/main/java/io/atleon/examples/en
 [Kafka Metrics](core/src/main/java/io/atleon/examples/metrics/KafkaMetrics.java) shows how Atleon integrates with Micrometer to provide Metrics from native Kafka Reporting and from available Metric transformation in streaming processes
 
 ## Spring
-[Example Kafka Application](spring/src/main/java/io/atleon/examples/spring/kafka/application/ExampleKafkaApplication.java) demonstrates general intended usage of Atleon in Spring (Boot) applications
+[Example Kafka Application](spring/src/main/java/io/atleon/examples/spring/kafka/ExampleKafkaApplication.java) demonstrates general intended usage of Atleon in Spring (Boot) applications
+[Example RabbitMQ Application](spring/src/main/java/io/atleon/examples/spring/rabbitmq/ExampleRabbitMQApplication.java) demonstrates general intended usage of Atleon in Spring (Boot) applications

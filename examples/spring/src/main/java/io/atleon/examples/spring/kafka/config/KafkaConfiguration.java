@@ -1,4 +1,4 @@
-package io.atleon.examples.spring.kafka.application;
+package io.atleon.examples.spring.kafka.config;
 
 import io.atleon.kafka.KafkaConfigSource;
 import io.atleon.kafka.embedded.EmbeddedKafka;

@@ -1,9 +1,9 @@
-package io.atleon.examples.spring.kafka.application;
+package io.atleon.examples.spring.kafka;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication(scanBasePackages = "io.atleon.examples.spring.kafka")
+@SpringBootApplication
 public class ExampleKafkaApplication {
 
     public static void main(String[] args) {
