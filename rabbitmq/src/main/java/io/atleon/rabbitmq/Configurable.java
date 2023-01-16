@@ -1,8 +1,6 @@
 package io.atleon.rabbitmq;
 
-import java.util.Map;
+@Deprecated
+public interface Configurable extends io.atleon.util.Configurable {
 
-public interface Configurable {
-
-    void configure(Map<String, ?> properties);
 }
