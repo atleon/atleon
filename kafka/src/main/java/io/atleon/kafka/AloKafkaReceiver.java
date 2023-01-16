@@ -5,7 +5,6 @@ import io.atleon.core.AloFlux;
 import io.atleon.core.OrderManagingAcknowledgementOperator;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Defaults;
-import io.atleon.util.Instantiation;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
@@ -220,11 +219,8 @@ public class AloKafkaReceiver<K, V> {
     }
 
     private static <K, V> AloConsumerRecordFactory<K, V> createAloFactory(Map<String, Object> config) {
-        AloConsumerRecordFactory<K, V> aloConsumerRecordFactory =
-            ConfigLoading.load(config, ALO_FACTORY_CONFIG, Instantiation::<AloConsumerRecordFactory<K, V>>one)
-                .orElseGet(DefaultAloConsumerRecordFactory::new);
-        aloConsumerRecordFactory.configure(config);
-        return aloConsumerRecordFactory;
+        return ConfigLoading.<AloConsumerRecordFactory<K, V>>loadConfigured(config, ALO_FACTORY_CONFIG)
+            .orElseGet(DefaultAloConsumerRecordFactory::new);
     }
 
     private static void loadInto(Map<String, Object> destination, Map<String, Object> source, String key, Object def) {

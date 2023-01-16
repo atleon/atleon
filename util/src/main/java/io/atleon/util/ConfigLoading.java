@@ -33,9 +33,8 @@ public final class ConfigLoading {
     }
 
     public static <T extends Configurable> List<T> loadListOfConfigured(Map<String, ?> configs, String property) {
-        List<T> configurables = loadListOrEmpty(configs, property, Instantiation::one);
-        configurables.forEach(interceptor -> interceptor.configure(configs));
-        return configurables;
+        List<Class<? extends T>> clazzes = loadListOrEmpty(configs, property, TypeResolution::classForQualifiedName);
+        return Instantiation.manyConfigured(clazzes, configs);
     }
 
     public static <T> T load(Map<String, ?> configs, String property, Function<? super String, T> parser, T defaultValue) {

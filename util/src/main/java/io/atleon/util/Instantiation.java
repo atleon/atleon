@@ -14,6 +14,16 @@ public final class Instantiation {
 
     }
 
+    public static <T extends Configurable> List<T> manyConfigured(List<Class<? extends T>> clazzes, Map<String, ?> configs) {
+        return clazzes.stream().map(clazz -> oneConfigured(clazz, configs)).collect(Collectors.toList());
+    }
+
+    public static <T extends Configurable> T oneConfigured(Class<? extends T> clazz, Map<String, ?> configs) {
+        T configurable = one(clazz);
+        configurable.configure(configs);
+        return configurable;
+    }
+
     public static <T> T one(String qualifiedName, Object... parameters) {
         return one(TypeResolution.classForQualifiedName(qualifiedName), parameters);
     }
