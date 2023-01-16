@@ -1,0 +1,1 @@
+The classes contained in this package only exist to enable usage of LocalStack Testcontainer. That Container has Class loading dependencies on the classes redefined here from Amazon's Java SDK v1, but does not actually use them.
