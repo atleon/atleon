@@ -2,8 +2,7 @@ package io.atleon.rabbitmq;
 
 import com.rabbitmq.client.ConnectionFactory;
 import io.atleon.util.ConfigLoading;
-import io.atleon.util.Instantiation;
-import io.atleon.util.TypeResolution;
+import io.atleon.util.Configurable;
 
 import java.util.List;
 import java.util.Map;
@@ -30,23 +29,14 @@ public class RabbitMQConfig {
     }
 
     public <T extends Configurable> List<T> loadListOfConfigured(String property) {
-        List<T> configurables = ConfigLoading.loadListOrEmpty(properties, property, Instantiation::one);
-        configurables.forEach(interceptor -> interceptor.configure(properties));
-        return configurables;
+        return ConfigLoading.loadListOfConfigured(properties, property);
     }
 
     public <T extends Configurable> Optional<T> loadConfigured(String property) {
-        return ConfigLoading.<Class<? extends T>>load(properties, property, TypeResolution::classForQualifiedName)
-            .map(this::createConfigured);
+        return ConfigLoading.loadConfigured(properties, property);
     }
 
     public <T extends Configurable> T loadConfiguredOrThrow(String property) {
-        return createConfigured(ConfigLoading.loadOrThrow(properties, property, TypeResolution::classForQualifiedName));
-    }
-
-    private <T extends Configurable> T createConfigured(Class<? extends T> configurableClass) {
-        T configurable = Instantiation.one(configurableClass);
-        configurable.configure(properties);
-        return configurable;
+        return ConfigLoading.loadConfiguredOrThrow(properties, property);
     }
 }

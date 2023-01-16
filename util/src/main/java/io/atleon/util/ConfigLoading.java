@@ -23,6 +23,21 @@ public final class ConfigLoading {
 
     }
 
+    public static <T extends Configurable> Optional<T> loadConfigured(Map<String, ?> configs, String property) {
+        return ConfigLoading.<Class<? extends T>>load(configs, property, TypeResolution::classForQualifiedName)
+            .map(clazz -> createConfigured(configs, clazz));
+    }
+
+    public static <T extends Configurable> T loadConfiguredOrThrow(Map<String, ?> configs, String property) {
+        return createConfigured(configs, loadOrThrow(configs, property, TypeResolution::classForQualifiedName));
+    }
+
+    public static <T extends Configurable> List<T> loadListOfConfigured(Map<String, ?> configs, String property) {
+        List<T> configurables = loadListOrEmpty(configs, property, Instantiation::one);
+        configurables.forEach(interceptor -> interceptor.configure(configs));
+        return configurables;
+    }
+
     public static <T> T load(Map<String, ?> configs, String property, Function<? super String, T> parser, T defaultValue) {
         return load(configs, property, parser).orElse(defaultValue);
     }
@@ -77,6 +92,12 @@ public final class ConfigLoading {
             .collect(Collectors.toMap(
                 entry -> entry.getKey().substring(prefix.length()),
                 entry -> parser.apply(entry.getValue().toString())));
+    }
+
+    private static <T extends Configurable> T createConfigured(Map<String, ?> configs, Class<? extends T> clazz) {
+        T configurable = Instantiation.one(clazz);
+        configurable.configure(configs);
+        return configurable;
     }
 
     private static Collection<?> convertToCollection(Object config) {
