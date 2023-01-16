@@ -11,7 +11,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * A reactive Provider that creates configurations for reactive resources
+ * A reactive Provider that creates configurations for reactive resources. In addition to
+ * supporting {@link ConfigInterceptor}s, extensions of this class support {@link ConfigProcessor}s,
+ * which allow reactive (non-blocking) enrichment of properties before generating the resulting
+ * Config objects.
  *
  * @param <T> The type of Config to reactively produce
  * @param <S> The type of this ConfigFactory

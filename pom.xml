@@ -53,6 +53,9 @@
 
     <modules>
         <module>amqp-embedded</module>
+        <module>aws-sqs</module>
+        <module>aws-testcontainers</module>
+        <module>aws-util</module>
         <module>bom</module>
         <module>core</module>
         <module>kafka</module>
