@@ -88,10 +88,6 @@ public class AloKafkaSender<K, V> {
         return new AloKafkaSender<>(configSource);
     }
 
-    public Flux<KafkaSenderResult<ProducerRecord<K, V>>> sendRecords(Publisher<ProducerRecord<K, V>> records) {
-        return futureKafkaSender.flatMapMany(sender -> sendRecords(sender, records));
-    }
-
     public Function<Publisher<V>, Flux<KafkaSenderResult<V>>>
     sendValues(String topic, Function<? super V, ? extends K> valueToKey) {
         return values -> sendValues(values, topic, valueToKey);
@@ -115,6 +111,10 @@ public class AloKafkaSender<K, V> {
         Function<? super V, ? extends K> valueToKey) {
         return futureKafkaSender
             .flatMapMany(sender -> sendValues(sender, values, valueToTopic, valueToKey));
+    }
+
+    public Flux<KafkaSenderResult<ProducerRecord<K, V>>> sendRecords(Publisher<ProducerRecord<K, V>> records) {
+        return futureKafkaSender.flatMapMany(sender -> sendRecords(sender, records));
     }
 
     public Function<Publisher<Alo<V>>, AloFlux<KafkaSenderResult<V>>>

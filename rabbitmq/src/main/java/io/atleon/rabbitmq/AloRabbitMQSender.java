@@ -55,71 +55,41 @@ public class AloRabbitMQSender<T> {
         return new AloRabbitMQSender<>(configSource);
     }
 
-    public Function<Publisher<T>, Flux<RabbitMQSenderResult<T>>>
-    sendBodies(RabbitMQMessageCreator<T> messageCreator) {
+    public Function<Publisher<T>, Flux<RabbitMQSenderResult<T>>> sendBodies(RabbitMQMessageCreator<T> messageCreator) {
         return bodies -> sendBodies(bodies, messageCreator);
     }
 
-    public Flux<RabbitMQSenderResult<T>>
-    sendBodies(Publisher<T> bodies, RabbitMQMessageCreator<T> messageCreator) {
+    public Flux<RabbitMQSenderResult<T>> sendBodies(Publisher<T> bodies, RabbitMQMessageCreator<T> messageCreator) {
         return futureResources
-            .flatMapMany(resources -> sendBodies(resources, bodies, messageCreator));
+            .flatMapMany(resources -> resources.send(bodies, messageCreator));
     }
 
     public Flux<RabbitMQSenderResult<RabbitMQMessage<T>>> sendMessages(Publisher<RabbitMQMessage<T>> messages) {
         return futureResources
-            .flatMapMany(resources -> sendMessages(resources, messages));
+            .flatMapMany(resources -> resources.send(messages, Function.identity()));
     }
 
-    public Function<Publisher<Alo<T>>, AloFlux<RabbitMQSenderResult<T>>>
-    sendAloBodies(RabbitMQMessageCreator<T> messageCreator) {
+    public Function<Publisher<Alo<T>>, AloFlux<RabbitMQSenderResult<T>>> sendAloBodies(
+        RabbitMQMessageCreator<T> messageCreator
+    ) {
         return aloBodies -> sendAloBodies(aloBodies, messageCreator);
     }
 
-    public AloFlux<RabbitMQSenderResult<T>>
-    sendAloBodies(Publisher<Alo<T>> aloBodies, RabbitMQMessageCreator<T> messageCreator) {
+    public AloFlux<RabbitMQSenderResult<T>> sendAloBodies(
+        Publisher<Alo<T>> aloBodies,
+        RabbitMQMessageCreator<T> messageCreator
+    ) {
         return futureResources
-            .flatMapMany(resources -> sendAloBodies(resources, aloBodies, messageCreator))
+            .flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator))
             .as(AloFlux::wrap);
     }
 
-    public AloFlux<RabbitMQSenderResult<RabbitMQMessage<T>>>
-    sendAloMessages(Publisher<Alo<RabbitMQMessage<T>>> aloMessages) {
+    public AloFlux<RabbitMQSenderResult<RabbitMQMessage<T>>> sendAloMessages(
+        Publisher<Alo<RabbitMQMessage<T>>> aloMessages
+    ) {
         return futureResources
-            .flatMapMany(resources -> sendAloMessages(resources, aloMessages))
+            .flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity()))
             .as(AloFlux::wrap);
-    }
-
-    private Flux<RabbitMQSenderResult<T>>
-    sendBodies(SendResources<T> resources, Publisher<T> bodies, RabbitMQMessageCreator<T> messageCreator) {
-        return Flux.from(bodies)
-            .map(body -> resources.createOutboundMessage(messageCreator.apply(body), body))
-            .transform(obMessages -> resources.getSender().sendWithTypedPublishConfirms(obMessages, SEND_OPTIONS))
-            .map(RabbitMQSenderResult::fromMessageResult);
-    }
-
-    private Flux<RabbitMQSenderResult<RabbitMQMessage<T>>>
-    sendMessages(SendResources<T> resources, Publisher<RabbitMQMessage<T>> messages) {
-        return Flux.from(messages)
-            .map(message -> resources.createOutboundMessage(message, message))
-            .transform(obMessages -> resources.getSender().sendWithTypedPublishConfirms(obMessages, SEND_OPTIONS))
-            .map(RabbitMQSenderResult::fromMessageResult);
-    }
-
-    private Flux<Alo<RabbitMQSenderResult<T>>>
-    sendAloBodies(SendResources<T> resources, Publisher<Alo<T>> aloBodies, RabbitMQMessageCreator<T> messageCreator) {
-        return AloFlux.toFlux(aloBodies)
-            .map(aloBody -> resources.createOutboundMessage(messageCreator.apply(aloBody.get()), aloBody))
-            .transform(obMessages -> resources.getSender().sendWithTypedPublishConfirms(obMessages, ALO_SEND_OPTIONS))
-            .map(RabbitMQSenderResult::fromMessageResultOfAlo);
-    }
-
-    private Flux<Alo<RabbitMQSenderResult<RabbitMQMessage<T>>>>
-    sendAloMessages(SendResources<T> resources, Publisher<Alo<RabbitMQMessage<T>>> aloMessages) {
-        return AloFlux.toFlux(aloMessages)
-            .map(aloMessage -> resources.createOutboundMessage(aloMessage.get(), aloMessage))
-            .transform(obMessages -> resources.getSender().sendWithTypedPublishConfirms(obMessages, ALO_SEND_OPTIONS))
-            .map(RabbitMQSenderResult::fromMessageResultOfAlo);
     }
 
     //TODO This is an ugly result of SendContext not being parameterized on `sendWithTypedPublishConfirms`
@@ -152,11 +122,35 @@ public class AloRabbitMQSender<T> {
             return new SendResources<>(
                 new Sender(senderOptions),
                 config.loadListOfConfigured(INTERCEPTORS_CONFIG),
-                config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG));
+                config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG)
+            );
         }
 
-        public <C> CorrelableOutboundMessage<C>
-        createOutboundMessage(RabbitMQMessage<T> message, C correlationMetadata) {
+        public <R> Flux<RabbitMQSenderResult<R>> send(
+            Publisher<R> items,
+            Function<R, RabbitMQMessage<T>> messageCreator
+        ) {
+            return Flux.from(items)
+                .map(item -> toCorrelableOutboundMessage(item, messageCreator))
+                .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, SEND_OPTIONS))
+                .map(RabbitMQSenderResult::fromMessageResult);
+        }
+
+        public <R> Flux<Alo<RabbitMQSenderResult<R>>> sendAlos(
+            Publisher<Alo<R>> aloItems,
+            Function<R, RabbitMQMessage<T>> messageCreator
+        ) {
+            return AloFlux.toFlux(aloItems)
+                .map(aloItem -> toCorrelableOutboundMessage(aloItem, messageCreator.compose(Alo::get)))
+                .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, ALO_SEND_OPTIONS))
+                .map(RabbitMQSenderResult::fromMessageResultOfAlo);
+        }
+
+        private <R> CorrelableOutboundMessage<R> toCorrelableOutboundMessage(
+            R data,
+            Function<R, RabbitMQMessage<T>> dataToRabbitMQMessage
+        ) {
+            RabbitMQMessage<T> message = dataToRabbitMQMessage.apply(data);
             SerializedBody serializedBody = bodySerializer.serialize(message.getBody());
             for (RabbitMQMessageSendInterceptor<T> interceptor : interceptors) {
                 message = interceptor.onSend(message, serializedBody);
@@ -166,11 +160,8 @@ public class AloRabbitMQSender<T> {
                 message.getRoutingKey(),
                 message.getProperties(),
                 serializedBody.bytes(),
-                correlationMetadata);
-        }
-
-        public Sender getSender() {
-            return sender;
+                data
+            );
         }
     }
 }
