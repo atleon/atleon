@@ -25,11 +25,11 @@ public final class ConfigLoading {
 
     public static <T extends Configurable> Optional<T> loadConfigured(Map<String, ?> configs, String property) {
         return ConfigLoading.<Class<? extends T>>load(configs, property, TypeResolution::classForQualifiedName)
-            .map(clazz -> createConfigured(configs, clazz));
+            .map(clazz -> Instantiation.oneConfigured(clazz, configs));
     }
 
     public static <T extends Configurable> T loadConfiguredOrThrow(Map<String, ?> configs, String property) {
-        return createConfigured(configs, loadOrThrow(configs, property, TypeResolution::classForQualifiedName));
+        return Instantiation.oneConfigured(loadOrThrow(configs, property, TypeResolution::classForQualifiedName), configs);
     }
 
     public static <T extends Configurable> List<T> loadListOfConfigured(Map<String, ?> configs, String property) {
@@ -47,14 +47,6 @@ public final class ConfigLoading {
 
     public static <T> Optional<T> load(Map<String, ?> configs, String property, Function<? super String, T> parser) {
         return Optional.ofNullable(configs.get(property)).map(Object::toString).map(parser);
-    }
-
-    public static <T, R> R loadCollectionOrThrow(
-        Map<String, ?> configs,
-        String property,
-        Function<? super String, T> parser,
-        Collector<? super T, ?, R> collector) {
-        return loadCollection(configs, property, parser, collector).orElseThrow(supplyMissingConfigPropertyException(property));
     }
 
     public static <T> List<T> loadListOrEmpty(Map<String, ?> configs, String property, Function<? super String, T> parser) {
@@ -91,12 +83,6 @@ public final class ConfigLoading {
             .collect(Collectors.toMap(
                 entry -> entry.getKey().substring(prefix.length()),
                 entry -> parser.apply(entry.getValue().toString())));
-    }
-
-    private static <T extends Configurable> T createConfigured(Map<String, ?> configs, Class<? extends T> clazz) {
-        T configurable = Instantiation.one(clazz);
-        configurable.configure(configs);
-        return configurable;
     }
 
     private static Collection<?> convertToCollection(Object config) {
