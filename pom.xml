@@ -53,6 +53,7 @@
 
     <modules>
         <module>amqp-embedded</module>
+        <module>aws-sns</module>
         <module>aws-sqs</module>
         <module>aws-testcontainers</module>
         <module>aws-util</module>
