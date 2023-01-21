@@ -261,6 +261,11 @@
             </dependency>
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
+                <artifactId>sns</artifactId>
+                <version>${amazon-sdk.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
                 <artifactId>sqs</artifactId>
                 <version>${amazon-sdk.version}</version>
             </dependency>
