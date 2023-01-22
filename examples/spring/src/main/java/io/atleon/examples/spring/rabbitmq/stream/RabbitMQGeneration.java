@@ -17,6 +17,7 @@ public class RabbitMQGeneration extends AloStream<RabbitMQGenerationConfig> {
 
         return Flux.interval(Duration.ofMillis(100))
             .transform(sender.sendBodies(DefaultRabbitMQMessageCreator.minimalBasic(config.getExchange())))
+            .doFinally(sender::close)
             .subscribe();
     }
 }

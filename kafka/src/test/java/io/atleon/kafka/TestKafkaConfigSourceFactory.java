@@ -17,6 +17,8 @@ public final class TestKafkaConfigSourceFactory {
         return KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, "TEST_CLIENT")
+            .with(AloKafkaReceiver.AUTO_INCREMENT_CLIENT_ID_CONFIG, true)
+            .with(AloKafkaSender.AUTO_INCREMENT_CLIENT_ID_CONFIG, true)
             .with(ConsumerConfig.GROUP_ID_CONFIG, "TEST_GROUP")
             .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())

@@ -12,7 +12,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Convenience methods for loading configurations from arbitrary String-value mappings
@@ -68,21 +67,22 @@ public final class ConfigLoading {
     }
 
     public static Map<String, Object> loadPrefixedEnvironmentalProperties(String prefix) {
-        return Stream.of(System.getenv().entrySet(), System.getProperties().entrySet())
-            .flatMap(Collection::stream)
-            .filter(entry -> Objects.toString(entry.getKey()).startsWith(prefix))
+        return loadPrefixed(Arrays.asList(System.getenv(), System.getProperties()), prefix);
+    }
+
+    public static Map<String, Object> loadPrefixed(Map<String, ?> configs, String prefix) {
+        return loadPrefixed(Collections.singletonList(configs), prefix);
+    }
+
+    private static Map<String, Object> loadPrefixed(List<Map<?, ?>> configsList, String prefix) {
+        return configsList.stream()
+            .flatMap(configs -> configs.entrySet().stream())
+            .filter(entry -> entry.getKey().toString().startsWith(prefix))
             .collect(Collectors.toMap(
                 entry -> entry.getKey().toString().substring(prefix.length()),
                 Map.Entry::getValue,
-                (firstValue, secondValue) -> secondValue));
-    }
-
-    public static <T> Map<String, T> loadPrefixed(Map<String, ?> configs, String prefix, Function<? super String, T> parser) {
-        return configs.entrySet().stream()
-            .filter(entry -> entry.getKey().startsWith(prefix))
-            .collect(Collectors.toMap(
-                entry -> entry.getKey().substring(prefix.length()),
-                entry -> parser.apply(entry.getValue().toString())));
+                (firstValue, secondValue) -> secondValue
+            ));
     }
 
     private static Collection<?> convertToCollection(Object config) {

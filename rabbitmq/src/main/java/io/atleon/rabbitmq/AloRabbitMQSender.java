@@ -3,23 +3,31 @@ package io.atleon.rabbitmq;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.rabbitmq.CorrelableOutboundMessage;
 import reactor.rabbitmq.SendOptions;
 import reactor.rabbitmq.Sender;
 import reactor.rabbitmq.SenderOptions;
 
+import java.io.Closeable;
 import java.util.List;
 import java.util.function.Function;
 
 /**
  * A reactive RabbitMQ sender with at-least-once semantics for producing messages to exchanges in
  * a RabbitMQ cluster
+ * <P>
+ * At most one instance of a {@link Sender} is kept and can be closed upon invoking
+ * {@link AloRabbitMQSender#close()}. However, if after closing, more sent Publishers are
+ * subscribed to, a new Sender instance will be created and cached.
  *
  * @param <T> outbound message body type (to be serialized)
  */
-public class AloRabbitMQSender<T> {
+public class AloRabbitMQSender<T> implements Closeable {
 
     /**
      * Prefix used on all AloRabbitMQSender-specific configurations
@@ -38,6 +46,8 @@ public class AloRabbitMQSender<T> {
      */
     public static final String BODY_SERIALIZER_CONFIG = CONFIG_PREFIX + "body.serializer";
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AloRabbitMQSender.class);
+
     private static final SendOptions SEND_OPTIONS = new SendOptions();
 
     private static final SendOptions ALO_SEND_OPTIONS = new SendOptions()
@@ -45,10 +55,12 @@ public class AloRabbitMQSender<T> {
 
     private final Mono<SendResources<T>> futureResources;
 
+    private final Sinks.Many<Long> closeSink = Sinks.many().multicast().directBestEffort();
+
     private AloRabbitMQSender(RabbitMQConfigSource configSource) {
         this.futureResources = configSource.create()
             .map(SendResources::<T>fromConfig)
-            .cache();
+            .cacheInvalidateWhen(resources -> closeSink.asFlux().next().then(), SendResources::close);
     }
 
     public static <T> AloRabbitMQSender<T> from(RabbitMQConfigSource configSource) {
@@ -90,6 +102,16 @@ public class AloRabbitMQSender<T> {
         return futureResources
             .flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity()))
             .as(AloFlux::wrap);
+    }
+
+    public void close(Object reason) {
+        LOGGER.info("Closing AloRabbitMQSender due to reason={}", reason);
+        close();
+    }
+
+    @Override
+    public void close() {
+        closeSink.tryEmitNext(System.currentTimeMillis());
     }
 
     //TODO This is an ugly result of SendContext not being parameterized on `sendWithTypedPublishConfirms`
@@ -144,6 +166,10 @@ public class AloRabbitMQSender<T> {
                 .map(aloItem -> toCorrelableOutboundMessage(aloItem, messageCreator.compose(Alo::get)))
                 .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, ALO_SEND_OPTIONS))
                 .map(RabbitMQSenderResult::fromMessageResultOfAlo);
+        }
+
+        public void close() {
+            sender.close();
         }
 
         private <R> CorrelableOutboundMessage<R> toCorrelableOutboundMessage(

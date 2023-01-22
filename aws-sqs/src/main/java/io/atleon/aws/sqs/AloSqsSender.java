@@ -3,8 +3,11 @@ package io.atleon.aws.sqs;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.SignalType;
 import reactor.core.publisher.Sinks;
 
 import java.io.Closeable;
@@ -12,6 +15,10 @@ import java.util.function.Function;
 
 /**
  * A reactive sender of {@link Alo} data to SQS queues, with forwarding methods for non-Alo items.
+ * <P>
+ * At most one instance of a {@link SqsSender} is kept and can be closed upon invoking
+ * {@link AloSqsSender#close()}. However, if after closing, more sent Publishers are subscribed to,
+ * a new Sender instance will be created and cached.
  *
  * @param <T> The deserialized type of SQS Message bodies
  */
@@ -48,6 +55,8 @@ public class AloSqsSender<T> implements Closeable {
      * batching is enabled, this equates to the maximum number batches concurrently being sent.
      */
     public static final String MAX_REQUESTS_IN_FLIGHT_CONFIG = CONFIG_PREFIX + "max.requests.in.flight";
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AloSqsSender.class);
 
     private final Mono<Resources<T>> futureResources;
 
@@ -105,6 +114,11 @@ public class AloSqsSender<T> implements Closeable {
         return futureResources
             .flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity(), queueUrl))
             .as(AloFlux::wrap);
+    }
+
+    public void close(Object reason) {
+        LOGGER.info("Closing AloSqsSender due to reason={}", reason);
+        close();
     }
 
     @Override
