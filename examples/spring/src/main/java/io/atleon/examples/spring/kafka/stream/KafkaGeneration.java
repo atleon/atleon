@@ -16,6 +16,7 @@ public class KafkaGeneration extends AloStream<KafkaGenerationConfig> {
 
         return Flux.interval(Duration.ofMillis(100))
             .transform(sender.sendValues(config.getTopic(), Function.identity()))
+            .doFinally(sender::close)
             .subscribe();
     }
 }

@@ -3,6 +3,8 @@ package io.atleon.aws.sns;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -12,6 +14,10 @@ import java.util.function.Function;
 
 /**
  * A reactive sender of {@link Alo} data to SNS topics, with forwarding methods for non-Alo items.
+ * <P>
+ * At most one instance of an {@link SnsSender} is kept and can be closed upon invoking
+ * {@link AloSnsSender#close()}. However, if after closing, more sent Publishers are subscribed to,
+ * a new Client instance will be created and cached.
  *
  * @param <T> The deserialized type of SNS Message bodies
  */
@@ -49,6 +55,8 @@ public class AloSnsSender<T> implements Closeable {
      */
     public static final String MAX_REQUESTS_IN_FLIGHT_CONFIG = CONFIG_PREFIX + "max.requests.in.flight";
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AloSnsSender.class);
+
     private final Mono<Resources<T>> futureResources;
 
     private final Sinks.Many<Long> closeSink = Sinks.many().multicast().directBestEffort();
@@ -61,6 +69,13 @@ public class AloSnsSender<T> implements Closeable {
 
     public static <T> AloSnsSender<T> from(SnsConfigSource configSource) {
         return new AloSnsSender<>(configSource);
+    }
+
+    public Function<Publisher<T>, Flux<SnsSenderResult<T>>> sendBodies(
+        SnsMessageCreator<T> messageCreator,
+        String topicArn
+    ) {
+        return bodies -> sendBodies(bodies, messageCreator, topicArn);
     }
 
     public Flux<SnsSenderResult<T>> sendBodies(Publisher<T> bodies, SnsMessageCreator<T> messageCreator, String topicArn) {
@@ -105,6 +120,11 @@ public class AloSnsSender<T> implements Closeable {
         return futureResources
             .flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity(), topicArn))
             .as(AloFlux::wrap);
+    }
+
+    public void close(Object reason) {
+        LOGGER.info("Closing AloSnsSender due to reason={}", reason);
+        close();
     }
 
     @Override

@@ -4,6 +4,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.SignalType;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
@@ -64,6 +65,13 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * See {@link Flux#doOnCancel(Runnable)}
+     */
+    public AloFlux<T> doOnCancel(Runnable onCancel) {
+        return new AloFlux<>(wrapped.doOnCancel(onCancel));
+    }
+
+    /**
      * See {@link Flux#doOnNext(Consumer)}
      */
     public AloFlux<T> doOnNext(Consumer<? super T> onNext) {
@@ -75,6 +83,13 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public AloFlux<T> doOnError(Consumer<? super Throwable> onError) {
         return new AloFlux<>(wrapped.doOnError(onError));
+    }
+
+    /**
+     * See {@link Flux#doFinally(Consumer)}
+     */
+    public AloFlux<T> doFinally(Consumer<SignalType> onFinally) {
+        return new AloFlux<>(wrapped.doFinally(onFinally));
     }
 
     /**

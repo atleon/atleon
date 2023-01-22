@@ -6,14 +6,18 @@ import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
 
+import java.io.Closeable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,11 +27,15 @@ import java.util.function.Function;
 /**
  * A reactive Kafka sender with at-least-once semantics for producing records to topics of a Kafka
  * cluster.
+ * <P>
+ * At most one instance of a {@link KafkaSender} is kept and can be closed upon invoking
+ * {@link AloKafkaSender#close()}. However, if after closing, more sent Publishers are subscribed
+ * to, a new Sender instance will be created and cached.
  *
  * @param <K> outbound record key type
  * @param <V> outbound record value type
  */
-public class AloKafkaSender<K, V> {
+public class AloKafkaSender<K, V> implements Closeable {
 
     /**
      * Prefix used on all AloKafkaSender-specific configurations
@@ -65,6 +73,8 @@ public class AloKafkaSender<K, V> {
      */
     public static final String STOP_ON_ERROR_CONFIG = CONFIG_PREFIX + "stop.on.error";
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AloKafkaSender.class);
+
     private static final boolean DEFAULT_AUTO_INCREMENT_CLIENT_ID = false;
 
     private static final int DEFAULT_MAX_IN_FLIGHT_PER_SEND = 256;
@@ -77,11 +87,13 @@ public class AloKafkaSender<K, V> {
 
     private final Mono<KafkaSender<K, V>> futureKafkaSender;
 
+    private final Sinks.Many<Long> closeSink = Sinks.many().multicast().directBestEffort();
+
     private AloKafkaSender(KafkaConfigSource configSource) {
         this.futureKafkaSender = configSource.create()
             .<SenderOptions<K, V>>map(AloKafkaSender::newSenderOptions)
             .map(KafkaSender::create)
-            .cache();
+            .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), KafkaSender::close);
     }
 
     public static <K, V> AloKafkaSender<K, V> from(KafkaConfigSource configSource) {
@@ -147,6 +159,16 @@ public class AloKafkaSender<K, V> {
         return futureKafkaSender
             .flatMapMany(sender -> sendAloRecords(sender, aloRecords))
             .as(AloFlux::wrap);
+    }
+
+    public void close(Object reason) {
+        LOGGER.info("Closing AloKafkaSender due to reason={}", reason);
+        close();
+    }
+
+    @Override
+    public void close() {
+        closeSink.tryEmitNext(System.currentTimeMillis());
     }
 
     private Flux<KafkaSenderResult<V>> sendValues(
