@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry;
 import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityBatchRequest;
@@ -30,7 +31,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.IntPredicate;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -98,9 +98,14 @@ public final class SqsReceiver {
 
         private final Set<String> inFlightReceiptHandles = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
+        private final Sinks.Many<String> receiptHandlesToDelete = Sinks.many().unicast().onBackpressureError();
+
         public Poller(SqsAsyncClient client, String queueUrl) {
             this.client = client;
             this.queueUrl = queueUrl;
+            this.receiptHandlesToDelete.asFlux()
+                .transform(receiptHandles -> batch(receiptHandles, options.deleteBatchSize(), options.deleteInterval()))
+                .subscribe(this::deleteMessages, this::doError);
         }
 
         public void start(FluxSink<SqsReceiverMessage> sink) {
@@ -119,9 +124,11 @@ public final class SqsReceiver {
 
         private Mono<?> doDispose() {
             return executionPhaser.arriveAndAwaitAdvanceReactively()
+                .then(Mono.fromRunnable(receiptHandlesToDelete::tryEmitComplete))
                 .then(Mono.defer(() -> createChangeMessageVisibilities(inFlightReceiptHandles, Duration.ZERO, __ -> true)))
-                .timeout(Duration.ofSeconds(options.closeTimeoutSeconds()))
-                .doOnTerminate(client::close)
+                .then(executionPhaser.arriveAndAwaitAdvanceReactively())
+                .timeout(options.closeTimeout())
+                .doFinally(__ -> client.close())
                 .doOnError(error -> LOGGER.error("Encountered error while disposing SQS Poller", error))
                 .onErrorResume(error -> Mono.empty());
         }
@@ -166,18 +173,20 @@ public final class SqsReceiver {
             String receiptHandle = message.receiptHandle();
             Runnable deleter = () -> {
                 if (executionPhaser.register() == 0 && !done.get() && inFlightReceiptHandles.remove(receiptHandle)) {
-                    deleteMessages(Collections.singletonList(receiptHandle));
+                    receiptHandlesToDelete.emitNext(receiptHandle, (__, er) -> er == Sinks.EmitResult.FAIL_NON_SERIALIZED);
                     maybeScheduleMessageReception();
                 }
                 executionPhaser.arriveAndDeregister();
             };
 
             SqsMessageVisibilityChanger visibilityChanger = (timeout, stillInFlight) -> {
-                Predicate<String> inFlightValidator =
-                    stillInFlight ? inFlightReceiptHandles::contains : inFlightReceiptHandles::remove;
-                if (executionPhaser.register() == 0 && !done.get() && inFlightValidator.test(receiptHandle)) {
-                    changeMessageVisibility(receiptHandle, timeout, phase -> phase == 0);
-                    maybeScheduleMessageReception();
+                if (executionPhaser.register() == 0 && !done.get()) {
+                    if (stillInFlight && inFlightReceiptHandles.contains(receiptHandle)) {
+                        maybeChangeMessageVisibility(receiptHandle, timeout);
+                    } else if (!stillInFlight && inFlightReceiptHandles.remove(receiptHandle)) {
+                        maybeChangeMessageVisibility(receiptHandle, timeout);
+                        maybeScheduleMessageReception();
+                    }
                 }
                 executionPhaser.arriveAndDeregister();
             };
@@ -191,8 +200,11 @@ public final class SqsReceiver {
             List<DeleteMessageBatchRequestEntry> entries = receiptHandles.stream()
                 .map(it -> DeleteMessageBatchRequestEntry.builder().id(newReceiptHandleId()).receiptHandle(it).build())
                 .collect(Collectors.toList());
-            DeleteMessageBatchRequest request = DeleteMessageBatchRequest.builder().entries(entries).build();
-            maybeExecute(SqsAsyncClient::deleteMessageBatch, request, phase -> phase == 0)
+            DeleteMessageBatchRequest request = DeleteMessageBatchRequest.builder()
+                .queueUrl(queueUrl)
+                .entries(entries)
+                .build();
+            maybeExecute(SqsAsyncClient::deleteMessageBatch, request, __ -> true)
                 .subscribe(this::handleMessagesDeleted, this::doError);
         }
 
@@ -202,8 +214,8 @@ public final class SqsReceiver {
             }
         }
 
-        private void changeMessageVisibility(String receiptHandle, Duration timeout, IntPredicate phaseMustMatch) {
-            createChangeMessageVisibilities(Collections.singletonList(receiptHandle), timeout, phaseMustMatch)
+        private void maybeChangeMessageVisibility(String receiptHandle, Duration timeout) {
+            createChangeMessageVisibilities(Collections.singletonList(receiptHandle), timeout, phase -> phase == 0)
                 .subscribe(this::handleMessageVisibilitiesChanged, this::doError);
         }
 
@@ -250,7 +262,7 @@ public final class SqsReceiver {
                 phaseMustMatch.test(executionPhaser.register())
                     ? method.apply(client, request)
                     : CompletableFuture.completedFuture(null)
-            ).doAfterTerminate(executionPhaser::arriveAndDeregister);
+            ).doFinally(__ -> executionPhaser.arriveAndDeregister());
         }
 
         private void doNext(SqsReceiverMessage sqsReceiverMessage) {
@@ -267,6 +279,10 @@ public final class SqsReceiver {
                     sinkRef.get().error(error);
                 }
             });
+        }
+
+        private <T> Flux<List<T>> batch(Flux<T> flux, int maxSize, Duration maxDuration) {
+            return maxSize <= 1 ? flux.map(Collections::singletonList) : flux.bufferTimeout(maxSize, maxDuration);
         }
 
         private String newReceiptHandleId() {
