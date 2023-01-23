@@ -150,10 +150,21 @@ public final class SqsReceiverOptions {
         return maxInFlightPerSubscription;
     }
 
+    /**
+     * When deleting messages from SQS, this configures the batching size. A batch size <= 1
+     * effectively disables batching such that each Message is deleted in its own Request. A batch
+     * size > 1 enables batching, and requires that {@link #deleteInterval()} also be set to a
+     * positive Duration.
+     */
     public int deleteBatchSize() {
         return deleteBatchSize;
     }
 
+    /**
+     * When delete batching is enabled, this configures the maximum amount of time that will be
+     * waited for a batch to be filled before executing the batch. Must be positive when batch
+     * deleting is enabled.
+     */
     public Duration deleteInterval() {
         return deleteInterval;
     }
@@ -274,12 +285,22 @@ public final class SqsReceiverOptions {
             return this;
         }
 
+        /**
+         * When deleting messages from SQS, this configures the batching size. A batch size <= 1
+         * effectively disables batching such that each Message is deleted in its own Request. A
+         * batch size > 1 enables batching, and requires that {@link #deleteInterval()} also be set
+         * to a positive Duration.
+         */
         public Builder deleteBatchSize(int deleteBatchSize) {
             this.deleteBatchSize = deleteBatchSize;
             return this;
         }
 
-
+        /**
+         * When delete batching is enabled, this configures the maximum amount of time that will be
+         * waited for a batch to be filled before executing the batch. Must be positive when batch
+         * deleting is enabled.
+         */
         public Builder deleteInterval(Duration deleteInterval) {
             this.deleteInterval = deleteInterval;
             return this;

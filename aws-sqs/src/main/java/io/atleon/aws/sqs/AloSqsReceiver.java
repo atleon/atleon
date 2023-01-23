@@ -93,6 +93,20 @@ public class AloSqsReceiver<T> {
     public static final String MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG = CONFIG_PREFIX + "max.in.flight.per.subscription";
 
     /**
+     * The max number of Messages to delete in each SQS batch delete request. Batching is
+     * effectively disabled when this value <= 1.  When batching is enabled (batch size > 1),
+     * {@link #DELETE_INTERVAL} must also be configured such that there is an upper bound on how
+     * long a batch will remain open when waiting for it to be filled.
+     */
+    public static final String DELETE_BATCH_SIZE_CONFIG = CONFIG_PREFIX + "delete.batch.size";
+
+    /**
+     * When delete batching is enabled, this configures the maximum amount of time a batch will
+     * remain open while waiting for it to be filled. Specified as an ISO-8601 Duration, e.g. PT1S
+     */
+    public static final String DELETE_INTERVAL = CONFIG_PREFIX + "delete.interval";
+
+    /**
      * Upon termination of a subscription to SQS Messages, either due to errors or cancellation,
      * this is the amount of time to wait before closing the underlying SQS Client and propagating
      * the termination signal downstream. Specified as ISO-8601 Duration, e.g. PT10S
@@ -141,6 +155,8 @@ public class AloSqsReceiver<T> {
             .waitTimeSecondsPerReception(config.loadInt(WAIT_TIME_SECONDS_PER_RECEPTION_CONFIG, SqsReceiverOptions.DEFAULT_WAIT_TIME_SECONDS_PER_RECEPTION))
             .visibilityTimeoutSeconds(config.loadInt(VISIBILITY_TIMEOUT_SECONDS, SqsReceiverOptions.DEFAULT_VISIBILITY_TIMEOUT_SECONDS))
             .maxInFlightPerSubscription(config.loadInt(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG, SqsReceiverOptions.DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION))
+            .deleteBatchSize(config.loadInt(DELETE_BATCH_SIZE_CONFIG, SqsReceiverOptions.DEFAULT_DELETE_BATCH_SIZE))
+            .deleteInterval(config.loadDuration(DELETE_INTERVAL, SqsReceiverOptions.DEFAULT_DELETE_INTERVAL))
             .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG, SqsReceiverOptions.DEFAULT_CLOSE_TIMEOUT))
             .build();
     }
