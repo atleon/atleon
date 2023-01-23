@@ -2,6 +2,7 @@ package io.atleon.aws.sqs;
 
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -19,7 +20,11 @@ public final class SqsReceiverOptions {
 
     public static final int DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION = 4096;
 
-    public static final int DEFAULT_CLOSE_TIMEOUT_SECONDS = 10;
+    public static final int DEFAULT_DELETE_BATCH_SIZE = 10;
+
+    public static final Duration DEFAULT_DELETE_INTERVAL = Duration.ofSeconds(1);
+
+    public static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(10);
 
     private final Supplier<SqsAsyncClient> clientSupplier;
 
@@ -35,7 +40,11 @@ public final class SqsReceiverOptions {
 
     private final int maxInFlightPerSubscription;
 
-    private final int closeTimeoutSeconds;
+    private final int deleteBatchSize;
+
+    private final Duration deleteInterval;
+
+    private final Duration closeTimeout;
 
     private SqsReceiverOptions(
         Supplier<SqsAsyncClient> clientSupplier,
@@ -45,7 +54,9 @@ public final class SqsReceiverOptions {
         int waitTimeSecondsPerReception,
         int visibilityTimeoutSeconds,
         int maxInFlightPerSubscription,
-        int closeTimeoutSeconds
+        int deleteBatchSize,
+        Duration deleteInterval,
+        Duration closeTimeout
     ) {
         this.clientSupplier = clientSupplier;
         this.maxMessagesPerReception = maxMessagesPerReception;
@@ -54,7 +65,9 @@ public final class SqsReceiverOptions {
         this.waitTimeSecondsPerReception = waitTimeSecondsPerReception;
         this.visibilityTimeoutSeconds = visibilityTimeoutSeconds;
         this.maxInFlightPerSubscription = maxInFlightPerSubscription;
-        this.closeTimeoutSeconds = closeTimeoutSeconds;
+        this.deleteBatchSize = deleteBatchSize;
+        this.deleteInterval = deleteInterval;
+        this.closeTimeout = closeTimeout;
     }
 
     /**
@@ -137,13 +150,21 @@ public final class SqsReceiverOptions {
         return maxInFlightPerSubscription;
     }
 
+    public int deleteBatchSize() {
+        return deleteBatchSize;
+    }
+
+    public Duration deleteInterval() {
+        return deleteInterval;
+    }
+
     /**
-     * When a subscription to SQS Messages is terminated, this is the amount of seconds that will
-     * be waited for in-flight Requests to be completed and in-flight Messages to be made visible
+     * When a subscription to SQS Messages is terminated, this is the amount of time that will be
+     * waited for in-flight Requests to be completed and in-flight Messages to be made visible
      * again.
      */
-    public int closeTimeoutSeconds() {
-        return closeTimeoutSeconds;
+    public Duration closeTimeout() {
+        return closeTimeout;
     }
 
     /**
@@ -165,7 +186,11 @@ public final class SqsReceiverOptions {
 
         private int maxInFlightPerSubscription = DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION;
 
-        private int closeTimeoutSeconds = DEFAULT_CLOSE_TIMEOUT_SECONDS;
+        private int deleteBatchSize = DEFAULT_DELETE_BATCH_SIZE;
+
+        private Duration deleteInterval = DEFAULT_DELETE_INTERVAL;
+
+        private Duration closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
         private Builder(Supplier<SqsAsyncClient> clientSupplier) {
             this.clientSupplier = clientSupplier;
@@ -183,7 +208,9 @@ public final class SqsReceiverOptions {
                 waitTimeSecondsPerReception,
                 visibilityTimeoutSeconds,
                 maxInFlightPerSubscription,
-                closeTimeoutSeconds
+                deleteBatchSize,
+                deleteInterval,
+                closeTimeout
             );
         }
 
@@ -247,13 +274,24 @@ public final class SqsReceiverOptions {
             return this;
         }
 
+        public Builder deleteBatchSize(int deleteBatchSize) {
+            this.deleteBatchSize = deleteBatchSize;
+            return this;
+        }
+
+
+        public Builder deleteInterval(Duration deleteInterval) {
+            this.deleteInterval = deleteInterval;
+            return this;
+        }
+
         /**
-         * When a subscription to SQS Messages is terminated, this is the amount of seconds that
-         * will be waited for in-flight Requests to be completed and in-flight Messages to be made
+         * When a subscription to SQS Messages is terminated, this is the amount of time that will
+         * be waited for in-flight Requests to be completed and in-flight Messages to be made
          * visible again.
          */
-        public Builder closeTimeoutSeconds(int closeTimeoutSeconds) {
-            this.closeTimeoutSeconds = closeTimeoutSeconds;
+        public Builder closeTimeout(Duration closeTimeout) {
+            this.closeTimeout = closeTimeout;
             return this;
         }
     }

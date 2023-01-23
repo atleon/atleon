@@ -95,9 +95,9 @@ public class AloSqsReceiver<T> {
     /**
      * Upon termination of a subscription to SQS Messages, either due to errors or cancellation,
      * this is the amount of time to wait before closing the underlying SQS Client and propagating
-     * the termination signal downstream.
+     * the termination signal downstream. Specified as ISO-8601 Duration, e.g. PT10S
      */
-    public static final String CLOSE_TIMEOUT_SECONDS_CONFIG = CONFIG_PREFIX + "close.timeout.seconds";
+    public static final String CLOSE_TIMEOUT_CONFIG = CONFIG_PREFIX + "close.timeout";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloSqsReceiver.class);
 
@@ -141,7 +141,7 @@ public class AloSqsReceiver<T> {
             .waitTimeSecondsPerReception(config.loadInt(WAIT_TIME_SECONDS_PER_RECEPTION_CONFIG, SqsReceiverOptions.DEFAULT_WAIT_TIME_SECONDS_PER_RECEPTION))
             .visibilityTimeoutSeconds(config.loadInt(VISIBILITY_TIMEOUT_SECONDS, SqsReceiverOptions.DEFAULT_VISIBILITY_TIMEOUT_SECONDS))
             .maxInFlightPerSubscription(config.loadInt(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG, SqsReceiverOptions.DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION))
-            .closeTimeoutSeconds(config.loadInt(CLOSE_TIMEOUT_SECONDS_CONFIG, SqsReceiverOptions.DEFAULT_CLOSE_TIMEOUT_SECONDS))
+            .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG, SqsReceiverOptions.DEFAULT_CLOSE_TIMEOUT))
             .build();
     }
 
