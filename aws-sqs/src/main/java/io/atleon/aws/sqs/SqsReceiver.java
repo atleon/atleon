@@ -258,11 +258,9 @@ public final class SqsReceiver {
             T request,
             IntPredicate phaseMustMatch
         ) {
-            return Mono.fromFuture(() ->
-                phaseMustMatch.test(executionPhaser.register())
-                    ? method.apply(client, request)
-                    : CompletableFuture.completedFuture(null)
-            ).doFinally(__ -> executionPhaser.arriveAndDeregister());
+            return Mono.fromSupplier(() -> phaseMustMatch.test(executionPhaser.register()))
+                .flatMap(phaseMatched -> phaseMatched ? Mono.fromFuture(method.apply(client, request)) : Mono.empty())
+                .doFinally(__ -> executionPhaser.arriveAndDeregister());
         }
 
         private void doNext(SqsReceiverMessage sqsReceiverMessage) {
