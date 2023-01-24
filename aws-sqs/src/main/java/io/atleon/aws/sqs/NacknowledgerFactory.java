@@ -69,7 +69,7 @@ public interface NacknowledgerFactory<T> extends Configurable {
         ) {
             String messageId = message.messageId(); // Avoid keeping the whole message in memory
             return error -> {
-                logger.warn("Nacknowledging SQS Message with id={} by resetting its visibility to ZERO", messageId, error);
+                logger.warn("Nacknowledging Message id={} by resetting visibility to {} seconds", messageId, seconds, error);
                 visibilityChanger.execute(Duration.ofSeconds(seconds), false);
             };
         }
