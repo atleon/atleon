@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.7.0]
+atleon '0.7.0' is a beta release containing updates outlined below
+
+### Additions
+* [#43] - Implemented integration with SQS. Messages can be sent to and received from SQS queues with at-least-once guarantee
+* [#44] - Implemented integration with SNS. Messages can be sent to SNS topics with at-least-once guarantee
+* [#48] - All AloSender implementations are now `Closeable`
+* [#50] - Added Spring examples for SNS sending and SQS receiving
+
+### Changes
+* [#45] - `Configurable` interface moved from `rabbitmq` to `util` for reuse among all modules
+
 # [0.6.0]
 atleon '0.6.0' is a beta release containing updates outlined below
 
