@@ -5,6 +5,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.retry.Retry;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequest;
@@ -13,6 +14,7 @@ import software.amazon.awssdk.services.sqs.model.SendMessageBatchResponse;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchResultEntry;
 
 import java.io.Closeable;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +31,8 @@ import java.util.stream.Stream;
  * new Client instance will be created and cached.
  */
 public final class SqsSender implements Closeable {
+
+    private static final Retry DEFAULT_RETRY = Retry.backoff(3, Duration.ofMillis(10));
 
     private final SqsSenderOptions options;
 
@@ -91,6 +95,7 @@ public final class SqsSender implements Closeable {
             .filter(message -> message.correlationMetadata() != null)
             .collect(Collectors.toMap(SqsSenderMessage::requestId, SqsSenderMessage::correlationMetadata));
         return Mono.fromFuture(() -> client.sendMessageBatch(request))
+            .retryWhen(DEFAULT_RETRY)
             .flatMapIterable(response -> createResults(response, correlationMetadataByRequestId));
     }
 

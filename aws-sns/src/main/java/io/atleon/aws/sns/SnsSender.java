@@ -5,6 +5,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.retry.Retry;
 import software.amazon.awssdk.services.sns.SnsAsyncClient;
 import software.amazon.awssdk.services.sns.model.BatchResultErrorEntry;
 import software.amazon.awssdk.services.sns.model.PublishBatchRequest;
@@ -15,6 +16,7 @@ import software.amazon.awssdk.services.sns.model.PublishRequest;
 import software.amazon.awssdk.services.sns.model.PublishResponse;
 
 import java.io.Closeable;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +33,8 @@ import java.util.stream.Stream;
  * new Client instance will be created and cached.
  */
 public final class SnsSender implements Closeable {
+
+    private static final Retry DEFAULT_RETRY = Retry.backoff(3, Duration.ofMillis(10));
 
     private final SnsSenderOptions options;
 
@@ -69,6 +73,7 @@ public final class SnsSender implements Closeable {
         String requestId = message.requestId();
         C correlationMetadata = message.correlationMetadata();
         return Mono.fromFuture(() -> client.publish(request))
+            .retryWhen(DEFAULT_RETRY)
             .map(response -> createSuccessResult(requestId, response, correlationMetadata))
             .onErrorResume(error -> Mono.just(createFailureResult(requestId, error, correlationMetadata)));
     }
@@ -102,6 +107,7 @@ public final class SnsSender implements Closeable {
             .filter(message -> message.correlationMetadata() != null)
             .collect(Collectors.toMap(SnsSenderMessage::requestId, SnsSenderMessage::correlationMetadata));
         return Mono.fromFuture(() -> client.publishBatch(request))
+            .retryWhen(DEFAULT_RETRY)
             .flatMapIterable(response -> createResults(response, correlationMetadataByRequestId));
     }
 

@@ -7,6 +7,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.util.retry.Retry;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry;
 import software.amazon.awssdk.services.sqs.model.ChangeMessageVisibilityBatchRequest;
@@ -41,6 +42,8 @@ import java.util.stream.Collectors;
 public final class SqsReceiver {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SqsReceiver.class);
+
+    private static final Retry DEFAULT_RETRY = Retry.backoff(3, Duration.ofMillis(10));
 
     private static final ReceiveMessageResponse EMPTY_RECEIVE_MESSAGE_RESPONSE = ReceiveMessageResponse.builder().build();
 
@@ -259,7 +262,9 @@ public final class SqsReceiver {
             IntPredicate phaseMustMatch
         ) {
             return Mono.fromSupplier(() -> phaseMustMatch.test(executionPhaser.register()))
+                .cache()
                 .flatMap(phaseMatched -> phaseMatched ? Mono.fromFuture(method.apply(client, request)) : Mono.empty())
+                .retryWhen(DEFAULT_RETRY)
                 .doFinally(__ -> executionPhaser.arriveAndDeregister());
         }
 
