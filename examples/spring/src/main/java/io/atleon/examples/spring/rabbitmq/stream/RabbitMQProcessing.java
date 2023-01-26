@@ -9,9 +9,8 @@ public class RabbitMQProcessing extends AloStream<RabbitMQProcessingConfig> {
 
     @Override
     protected Disposable startDisposable(RabbitMQProcessingConfig config) {
-        AloRabbitMQReceiver<Long> receiver = config.buildRabbitMQLongReceiver();
-
-        return receiver.receiveAloBodies(config.getQueue())
+        return config.buildRabbitMQLongReceiver()
+            .receiveAloBodies(config.getQueue())
             .filter(this::isPrime)
             .map(primeNumber -> "Found a prime number: " + primeNumber)
             .doOnNext(config.getConsumer())

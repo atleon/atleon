@@ -1,17 +1,17 @@
 package io.atleon.examples.spring.awssnssqs.stream;
 
-import io.atleon.aws.sqs.AloSqsReceiver;
 import io.atleon.core.Alo;
 import io.atleon.core.AloStream;
 import reactor.core.Disposable;
+import reactor.core.scheduler.Schedulers;
 
 public class SqsProcessing extends AloStream<SqsProcessingConfig> {
 
     @Override
     protected Disposable startDisposable(SqsProcessingConfig config) {
-        AloSqsReceiver<Long> receiver = config.buildReceiver();
-
-        return receiver.receiveAloBodies(config.getQueueUrl())
+        return config.buildReceiver()
+            .receiveAloBodies(config.getQueueUrl())
+            .publishOn(Schedulers.parallel())
             .filter(this::isPrime)
             .map(primeNumber -> "Found a prime number: " + primeNumber)
             .doOnNext(config.getConsumer())
