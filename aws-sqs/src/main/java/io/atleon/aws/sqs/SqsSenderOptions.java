@@ -14,6 +14,8 @@ public final class SqsSenderOptions {
 
     public static final Duration DEFAULT_BATCH_DURATION = Duration.ZERO;
 
+    public static final int DEFAULT_BATCH_PREFETCH = 32;
+
     public static final int DEFAULT_MAX_REQUESTS_IN_FLIGHT = 1;
 
     private final Supplier<SqsAsyncClient> clientSupplier;
@@ -22,17 +24,21 @@ public final class SqsSenderOptions {
 
     private final Duration batchDuration;
 
+    private final int batchPrefetch;
+
     private final int maxRequestsInFlight;
 
     private SqsSenderOptions(
         Supplier<SqsAsyncClient> clientSupplier,
         int batchSize,
         Duration batchDuration,
+        int batchPrefetch,
         int maxRequestsInFlight
     ) {
         this.clientSupplier = clientSupplier;
         this.batchSize = batchSize;
         this.batchDuration = batchDuration;
+        this.batchPrefetch = batchPrefetch;
         this.maxRequestsInFlight = maxRequestsInFlight;
     }
 
@@ -84,6 +90,15 @@ public final class SqsSenderOptions {
     }
 
     /**
+     * The number of batches to prefetch for sending. Should not typically need to be explicitly
+     * configured unless batching is enabled AND the max number of in-flight requests is greater
+     * than 1. Note that resulting upstream prefetch will be product of batchSize * batchPrefetch.
+     */
+    public int batchPrefetch() {
+        return batchPrefetch;
+    }
+
+    /**
      * The maximum amount of concurrent SQS Send Requests that are allowed to be in flight per sent
      * Publisher. If batching is disabled, this is the maximum number of Messages in flight. If
      * batching is enabled, this is the maximum number of batched requests in flight.
@@ -103,6 +118,8 @@ public final class SqsSenderOptions {
 
         private Duration batchDuration = DEFAULT_BATCH_DURATION;
 
+        private int batchPrefetch = DEFAULT_BATCH_PREFETCH;
+
         private int maxRequestsInFlight = DEFAULT_MAX_REQUESTS_IN_FLIGHT;
 
         private Builder(Supplier<SqsAsyncClient> clientSupplier) {
@@ -113,7 +130,7 @@ public final class SqsSenderOptions {
          * Build a new instance of {@link SqsSenderOptions} from the currently set properties.
          */
         public SqsSenderOptions build() {
-            return new SqsSenderOptions(clientSupplier, batchSize, batchDuration, maxRequestsInFlight);
+            return new SqsSenderOptions(clientSupplier, batchSize, batchDuration, batchPrefetch, maxRequestsInFlight);
         }
 
         /**
@@ -134,6 +151,17 @@ public final class SqsSenderOptions {
          */
         public Builder batchDuration(Duration batchDuration) {
             this.batchDuration = batchDuration;
+            return this;
+        }
+
+        /**
+         * The number of batches to prefetch for sending. Should not typically need to be
+         * explicitly configured unless batching is enabled AND the max number of in-flight
+         * requests is greater than 1. Note that resulting upstream prefetch will be product of
+         * batchSize * batchPrefetch.
+         */
+        public Builder batchPrefetch(int batchPrefetch) {
+            this.batchPrefetch = batchPrefetch;
             return this;
         }
 

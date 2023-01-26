@@ -76,18 +76,19 @@ public final class SnsSender implements Closeable {
     private <C> Flux<SnsSenderResult<C>> send(SnsAsyncClient client, Flux<SnsSenderMessage<C>> messages, String topicArn) {
         if (options.batchSize() <= 1 && options.maxRequestsInFlight() <= 1) {
             return messages.map(Collections::singletonList)
-                .concatMap(batch -> send(client, batch, topicArn));
+                .concatMap(batch -> send(client, batch, topicArn), options.batchPrefetch());
         } else if (options.batchSize() > 1 && (options.batchDuration().isZero() || options.batchDuration().isNegative())) {
             throw new IllegalArgumentException("Batching is enabled, but batch duration is not positive");
         } else if (options.batchSize() > 1 && options.maxRequestsInFlight() <= 1) {
             return messages.bufferTimeout(options.batchSize(), options.batchDuration())
-                .concatMap(batch -> send(client, batch, topicArn), Integer.MAX_VALUE);
+                .concatMap(batch -> send(client, batch, topicArn), options.batchPrefetch());
         } else if (options.batchSize() <= 1) {
             return messages.map(Collections::singletonList)
+                .publishOn(Schedulers.immediate(), options.batchPrefetch())
                 .flatMap(batch -> send(client, batch, topicArn), options.maxRequestsInFlight());
         } else {
             return messages.bufferTimeout(options.batchSize(), options.batchDuration())
-                .publishOn(Schedulers.immediate(), Integer.MAX_VALUE)
+                .publishOn(Schedulers.immediate(), options.batchPrefetch())
                 .flatMap(batch -> send(client, batch, topicArn), options.maxRequestsInFlight());
         }
     }

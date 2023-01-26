@@ -49,6 +49,12 @@ public class AloSnsSender<T> implements Closeable {
     public static final String BATCH_DURATION_CONFIG = CONFIG_PREFIX + "batch.duration";
 
     /**
+     * The number of batches to prefetch for sending. Note that the resulting upstream prefetch
+     * will be the product of batch size and batch prefetch.
+     */
+    public static final String BATCH_PREFETCH_CONFIG = CONFIG_PREFIX + "batch.prefetch";
+
+    /**
      * Configures the maximum number of SNS Requests in flight per sent Publisher. When batching is
      * disabled, this equates to the maximum number of Messages concurrently being sent. When
      * batching is enabled, this equates to the maximum number batches concurrently being sent.
@@ -147,6 +153,7 @@ public class AloSnsSender<T> implements Closeable {
             SnsSenderOptions options = SnsSenderOptions.newBuilder(config::buildClient)
                 .batchSize(config.loadInt(BATCH_SIZE_CONFIG, SnsSenderOptions.DEFAULT_BATCH_SIZE))
                 .batchDuration(config.loadDuration(BATCH_DURATION_CONFIG, SnsSenderOptions.DEFAULT_BATCH_DURATION))
+                .batchPrefetch(config.loadInt(BATCH_PREFETCH_CONFIG, SnsSenderOptions.DEFAULT_BATCH_PREFETCH))
                 .maxRequestsInFlight(config.loadInt(MAX_REQUESTS_IN_FLIGHT_CONFIG, SnsSenderOptions.DEFAULT_MAX_REQUESTS_IN_FLIGHT))
                 .build();
             return new Resources<>(SnsSender.create(options), config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG));

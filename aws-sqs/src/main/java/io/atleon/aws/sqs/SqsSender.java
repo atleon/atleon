@@ -65,18 +65,19 @@ public final class SqsSender implements Closeable {
     private <C> Flux<SqsSenderResult<C>> send(SqsAsyncClient client, Flux<SqsSenderMessage<C>> messages, String queueUrl) {
         if (options.batchSize() <= 1 && options.maxRequestsInFlight() <= 1) {
             return messages.map(Collections::singletonList)
-                .concatMap(batch -> send(client, batch, queueUrl));
+                .concatMap(batch -> send(client, batch, queueUrl), options.batchPrefetch());
         } else if (options.batchSize() > 1 && (options.batchDuration().isZero() || options.batchDuration().isNegative())) {
             throw new IllegalArgumentException("Batching is enabled, but batch duration is not positive");
         } else if (options.batchSize() > 1 && options.maxRequestsInFlight() <= 1) {
             return messages.bufferTimeout(options.batchSize(), options.batchDuration())
-                .concatMap(batch -> send(client, batch, queueUrl), Integer.MAX_VALUE);
+                .concatMap(batch -> send(client, batch, queueUrl), options.batchPrefetch());
         } else if (options.batchSize() <= 1) {
             return messages.map(Collections::singletonList)
+                .publishOn(Schedulers.immediate(), options.batchPrefetch())
                 .flatMap(batch -> send(client, batch, queueUrl), options.maxRequestsInFlight());
         } else {
             return messages.bufferTimeout(options.batchSize(), options.batchDuration())
-                .publishOn(Schedulers.immediate(), Integer.MAX_VALUE)
+                .publishOn(Schedulers.immediate(), options.batchPrefetch())
                 .flatMap(batch -> send(client, batch, queueUrl), options.maxRequestsInFlight());
         }
     }
