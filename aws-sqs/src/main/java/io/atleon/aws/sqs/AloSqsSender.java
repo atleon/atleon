@@ -37,8 +37,9 @@ public class AloSqsSender<T> implements Closeable {
     /**
      * The max number of Messages to send in each SQS batch send request. Defaults to 1, meaning
      * batching is disabled and each Message is sent in its own request. When batching is enabled
-     * (batch size > 1), {@link #BATCH_DURATION_CONFIG} must also be configured such that there
-     * is an upper bound on how long a batch will remain open when waiting for it to be filled.
+     * (batch size {@literal >} 1), {@link #BATCH_DURATION_CONFIG} must also be configured such
+     * that there is an upper bound on how long a batch will remain open when waiting for it to be
+     * filled.
      */
     public static final String BATCH_SIZE_CONFIG = CONFIG_PREFIX + "batch.size";
 
