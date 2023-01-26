@@ -72,10 +72,10 @@ public final class SqsSenderOptions {
     }
 
     /**
-     * When sending multiple messages to SQS, this configures the batching size. A batch size <= 1
-     * effectively disables batching such that each Message is sent in its own Request. A batch
-     * size > 1 enables batching, and requires that {@link #batchDuration()} also be set to a
-     * positive Duration.
+     * When sending multiple messages to SQS, this configures the batching size. A batch size
+     * {@literal <=} 1 effectively disables batching such that each Message is sent in its own
+     * Request. A batch size {@literal >} 1 enables batching, and requires that
+     * {@link #batchDuration()} also be set to a positive Duration.
      */
     public int batchSize() {
         return batchSize;
@@ -135,9 +135,9 @@ public final class SqsSenderOptions {
 
         /**
          * When sending multiple messages to SQS, this configures the batching size. A batch size
-         * <= 1 effectively disables batching such that each Message is sent in its own Request. A
-         * batch size > 1 enables batching, and requires that {@link #batchDuration(Duration)} also
-         * be set to a positive Duration.
+         * {@literal <=} 1 effectively disables batching such that each Message is sent in its own
+         * Request. A batch size {@literal >} 1 enables batching, and requires that
+         * {@link #batchDuration(Duration)} also be set to a positive Duration.
          */
         public Builder batchSize(int batchSize) {
             this.batchSize = batchSize;

@@ -10,7 +10,7 @@ import reactor.core.publisher.Sinks;
 import java.util.function.Consumer;
 
 /**
- * A reactive receiver of {@link @Alo} items holding SQS Messages or Message bodies.
+ * A reactive receiver of {@link Alo} items holding SQS Messages or Message bodies.
  *
  * @param <T> The deserialized type of SQS Message bodies
  */
@@ -94,9 +94,9 @@ public class AloSqsReceiver<T> {
 
     /**
      * The max number of Messages to delete in each SQS batch delete request. Batching is
-     * effectively disabled when this value <= 1.  When batching is enabled (batch size > 1),
-     * {@link #DELETE_INTERVAL} must also be configured such that there is an upper bound on how
-     * long a batch will remain open when waiting for it to be filled.
+     * effectively disabled when this value {@literal <=} 1.  When batching is enabled (batch size
+     * {@literal >} 1 {@link #DELETE_INTERVAL} must also be configured such that there is an upper
+     * bound on how long a batch will remain open when waiting for it to be filled.
      */
     public static final String DELETE_BATCH_SIZE_CONFIG = CONFIG_PREFIX + "delete.batch.size";
 
