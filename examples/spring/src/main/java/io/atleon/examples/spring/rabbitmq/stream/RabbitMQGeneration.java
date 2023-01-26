@@ -3,7 +3,6 @@ package io.atleon.examples.spring.rabbitmq.stream;
 import io.atleon.core.AloStream;
 import io.atleon.rabbitmq.AloRabbitMQSender;
 import io.atleon.rabbitmq.DefaultRabbitMQMessageCreator;
-import io.atleon.rabbitmq.RabbitMQMessageCreator;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 

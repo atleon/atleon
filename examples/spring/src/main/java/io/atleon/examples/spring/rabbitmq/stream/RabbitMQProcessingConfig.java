@@ -1,15 +1,9 @@
 package io.atleon.examples.spring.rabbitmq.stream;
 
 import io.atleon.core.AloStreamConfig;
-import io.atleon.kafka.AloKafkaReceiver;
-import io.atleon.kafka.KafkaConfigSource;
-import io.atleon.micrometer.AloKafkaMetricsReporter;
 import io.atleon.rabbitmq.AloRabbitMQReceiver;
 import io.atleon.rabbitmq.LongBodyDeserializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
-import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.common.serialization.LongDeserializer;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

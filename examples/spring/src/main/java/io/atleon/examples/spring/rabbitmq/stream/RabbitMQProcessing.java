@@ -2,7 +2,6 @@ package io.atleon.examples.spring.rabbitmq.stream;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloStream;
-import io.atleon.rabbitmq.AloRabbitMQReceiver;
 import reactor.core.Disposable;
 
 public class RabbitMQProcessing extends AloStream<RabbitMQProcessingConfig> {
