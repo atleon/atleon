@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.7.1]
+atleon `0.7.1` is a beta release containing updates outlined below
+
+### Changes
+* [#43] - SqsReceiver uses long polling by default
+
+### Fixes
+* [#43] - SqsReceiver.Poller sets onCancel before onRequest
+
 # [0.7.0]
 atleon '0.7.0' is a beta release containing updates outlined below
 
