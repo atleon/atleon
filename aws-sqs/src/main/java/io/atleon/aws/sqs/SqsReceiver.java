@@ -113,8 +113,8 @@ public final class SqsReceiver {
 
         public void start(FluxSink<SqsReceiverMessage> sink) {
             if (sinkRef.compareAndSet(null, sink)) {
-                sink.onRequest(requested -> maybeScheduleMessageReception());
                 sink.onCancel(() -> dispose().subscribe());
+                sink.onRequest(requested -> maybeScheduleMessageReception());
             } else {
                 throw new IllegalStateException("SQS Poller cannot be started more than once");
             }

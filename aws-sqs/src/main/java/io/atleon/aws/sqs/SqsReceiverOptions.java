@@ -14,7 +14,7 @@ public final class SqsReceiverOptions {
 
     public static final int DEFAULT_MAX_MESSAGES_PER_RECEPTION = 10;
 
-    public static final int DEFAULT_WAIT_TIME_SECONDS_PER_RECEPTION = 0;
+    public static final int DEFAULT_WAIT_TIME_SECONDS_PER_RECEPTION = 5;
 
     public static final int DEFAULT_VISIBILITY_TIMEOUT_SECONDS = 30;
 

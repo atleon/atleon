@@ -90,9 +90,8 @@ public final class SnsSenderOptions {
     }
 
     /**
-     * The number of batches to prefetch for publishing. Should not typically need to be explicitly
-     * configured unless batching is enabled AND the max number of in-flight requests is greater
-     * than 1. Note that resulting upstream prefetch will be product of batchSize * batchPrefetch.
+     * The number of batches to prefetch for publishing. Note that resulting upstream prefetch will
+     * be product of batchSize * batchPrefetch.
      */
     public int batchPrefetch() {
         return batchPrefetch;
@@ -155,10 +154,8 @@ public final class SnsSenderOptions {
         }
 
         /**
-         * The number of batches to prefetch for publishing. Should not typically need to be
-         * explicitly configured unless batching is enabled AND the max number of in-flight
-         * requests is greater than 1. Note that resulting upstream prefetch will be product of
-         * batchSize * batchPrefetch.
+         * The number of batches to prefetch for publishing. Note that resulting upstream prefetch
+         * will be product of batchSize * batchPrefetch.
          */
         public Builder batchPrefetch(int batchPrefetch) {
             this.batchPrefetch = batchPrefetch;
