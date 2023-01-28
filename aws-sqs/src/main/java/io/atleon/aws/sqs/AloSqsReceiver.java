@@ -104,7 +104,7 @@ public class AloSqsReceiver<T> {
      * When delete batching is enabled, this configures the maximum amount of time a batch will
      * remain open while waiting for it to be filled. Specified as an ISO-8601 Duration, e.g. PT1S
      */
-    public static final String DELETE_BATCH_INTERVAL_CONFIG = CONFIG_PREFIX + "delete.interval";
+    public static final String DELETE_BATCH_INTERVAL_CONFIG = CONFIG_PREFIX + "delete.batch.interval";
 
     /**
      * Upon termination of a subscription to SQS Messages, either due to errors or cancellation,
