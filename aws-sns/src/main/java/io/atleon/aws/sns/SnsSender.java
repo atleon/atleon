@@ -1,10 +1,10 @@
 package io.atleon.aws.sns;
 
+import io.atleon.core.Batcher;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
-import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 import software.amazon.awssdk.services.sns.SnsAsyncClient;
 import software.amazon.awssdk.services.sns.model.BatchResultErrorEntry;
@@ -17,7 +17,6 @@ import software.amazon.awssdk.services.sns.model.PublishResponse;
 
 import java.io.Closeable;
 import java.time.Duration;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,16 +35,19 @@ public final class SnsSender implements Closeable {
 
     private static final Retry DEFAULT_RETRY = Retry.backoff(3, Duration.ofMillis(10));
 
-    private final SnsSenderOptions options;
-
     private final Mono<SnsAsyncClient> futureClient;
+
+    private final Batcher batcher;
+
+    private final int maxRequestsInFlight;
 
     private final Sinks.Many<Long> closeSink = Sinks.many().multicast().directBestEffort();
 
     private SnsSender(SnsSenderOptions options) {
-        this.options = options;
         this.futureClient = Mono.fromSupplier(options::createClient)
             .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SnsAsyncClient::close);
+        this.batcher = Batcher.create(options.batchSize(), options.batchDuration(), options.batchPrefetch());
+        this.maxRequestsInFlight = options.maxRequestsInFlight();
     }
 
     /**
@@ -60,7 +62,9 @@ public final class SnsSender implements Closeable {
     }
 
     public <C> Flux<SnsSenderResult<C>> send(Publisher<SnsSenderMessage<C>> messages, String topicArn) {
-        return futureClient.flatMapMany(client -> send(client, Flux.from(messages), topicArn));
+        return futureClient.flatMapMany(client ->
+            batcher.applyMapping(messages, batch -> send(client, batch, topicArn), maxRequestsInFlight)
+        );
     }
 
     @Override
@@ -76,26 +80,6 @@ public final class SnsSender implements Closeable {
             .retryWhen(DEFAULT_RETRY)
             .map(response -> createSuccessResult(requestId, response, correlationMetadata))
             .onErrorResume(error -> Mono.just(createFailureResult(requestId, error, correlationMetadata)));
-    }
-
-    private <C> Flux<SnsSenderResult<C>> send(SnsAsyncClient client, Flux<SnsSenderMessage<C>> messages, String topicArn) {
-        if (options.batchSize() <= 1 && options.maxRequestsInFlight() <= 1) {
-            return messages.map(Collections::singletonList)
-                .concatMap(batch -> send(client, batch, topicArn), options.batchPrefetch());
-        } else if (options.batchSize() > 1 && (options.batchDuration().isZero() || options.batchDuration().isNegative())) {
-            throw new IllegalArgumentException("Batching is enabled, but batch duration is not positive");
-        } else if (options.batchSize() > 1 && options.maxRequestsInFlight() <= 1) {
-            return messages.bufferTimeout(options.batchSize(), options.batchDuration())
-                .concatMap(batch -> send(client, batch, topicArn), options.batchPrefetch());
-        } else if (options.batchSize() <= 1) {
-            return messages.map(Collections::singletonList)
-                .publishOn(Schedulers.immediate(), options.batchPrefetch())
-                .flatMap(batch -> send(client, batch, topicArn), options.maxRequestsInFlight());
-        } else {
-            return messages.bufferTimeout(options.batchSize(), options.batchDuration())
-                .publishOn(Schedulers.immediate(), options.batchPrefetch())
-                .flatMap(batch -> send(client, batch, topicArn), options.maxRequestsInFlight());
-        }
     }
 
     private <C> Flux<SnsSenderResult<C>> send(SnsAsyncClient client, List<SnsSenderMessage<C>> messages, String topicArn) {

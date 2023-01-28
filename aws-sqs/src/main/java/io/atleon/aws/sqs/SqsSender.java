@@ -1,10 +1,10 @@
 package io.atleon.aws.sqs;
 
+import io.atleon.core.Batcher;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
-import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry;
@@ -34,16 +34,19 @@ public final class SqsSender implements Closeable {
 
     private static final Retry DEFAULT_RETRY = Retry.backoff(3, Duration.ofMillis(10));
 
-    private final SqsSenderOptions options;
-
     private final Mono<SqsAsyncClient> futureClient;
+
+    private final Batcher batcher;
+
+    private final int maxRequestsInFlight;
 
     private final Sinks.Many<Long> closeSink = Sinks.many().multicast().directBestEffort();
 
     private SqsSender(SqsSenderOptions options) {
-        this.options = options;
         this.futureClient = Mono.fromSupplier(options::createClient)
             .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SqsAsyncClient::close);
+        this.batcher = Batcher.create(options.batchSize(), options.batchDuration(), options.batchPrefetch());
+        this.maxRequestsInFlight = options.maxRequestsInFlight();
     }
 
     /**
@@ -58,32 +61,14 @@ public final class SqsSender implements Closeable {
     }
 
     public <C> Flux<SqsSenderResult<C>> send(Publisher<SqsSenderMessage<C>> messages, String queueUrl) {
-        return futureClient.flatMapMany(client -> send(client, Flux.from(messages), queueUrl));
+        return futureClient.flatMapMany(client ->
+            batcher.applyMapping(messages, batch -> send(client, batch, queueUrl), maxRequestsInFlight)
+        );
     }
 
     @Override
     public void close() {
         closeSink.tryEmitNext(System.currentTimeMillis());
-    }
-
-    private <C> Flux<SqsSenderResult<C>> send(SqsAsyncClient client, Flux<SqsSenderMessage<C>> messages, String queueUrl) {
-        if (options.batchSize() <= 1 && options.maxRequestsInFlight() <= 1) {
-            return messages.map(Collections::singletonList)
-                .concatMap(batch -> send(client, batch, queueUrl), options.batchPrefetch());
-        } else if (options.batchSize() > 1 && (options.batchDuration().isZero() || options.batchDuration().isNegative())) {
-            throw new IllegalArgumentException("Batching is enabled, but batch duration is not positive");
-        } else if (options.batchSize() > 1 && options.maxRequestsInFlight() <= 1) {
-            return messages.bufferTimeout(options.batchSize(), options.batchDuration())
-                .concatMap(batch -> send(client, batch, queueUrl), options.batchPrefetch());
-        } else if (options.batchSize() <= 1) {
-            return messages.map(Collections::singletonList)
-                .publishOn(Schedulers.immediate(), options.batchPrefetch())
-                .flatMap(batch -> send(client, batch, queueUrl), options.maxRequestsInFlight());
-        } else {
-            return messages.bufferTimeout(options.batchSize(), options.batchDuration())
-                .publishOn(Schedulers.immediate(), options.batchPrefetch())
-                .flatMap(batch -> send(client, batch, queueUrl), options.maxRequestsInFlight());
-        }
     }
 
     private <C> Flux<SqsSenderResult<C>> send(SqsAsyncClient client, List<SqsSenderMessage<C>> messages, String queueUrl) {
