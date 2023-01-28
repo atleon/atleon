@@ -82,7 +82,7 @@ public class AloSqsReceiver<T> {
      * Messages are not acknowledged for long enough, their visibility timeout may lapse and may
      * be received again.
      */
-    public static final String VISIBILITY_TIMEOUT_SECONDS = CONFIG_PREFIX + "visibility.timeout";
+    public static final String VISIBILITY_TIMEOUT_SECONDS_CONFIG = CONFIG_PREFIX + "visibility.timeout";
 
     /**
      * For each subscription to SQS Messages, this is the maximum number of non-acknowledged (and
@@ -95,8 +95,8 @@ public class AloSqsReceiver<T> {
     /**
      * The max number of Messages to delete in each SQS batch delete request. Batching is
      * effectively disabled when this value {@literal <=} 1.  When batching is enabled (batch size
-     * {@literal >} 1 {@link #DELETE_INTERVAL} must also be configured such that there is an upper
-     * bound on how long a batch will remain open when waiting for it to be filled.
+     * {@literal >} 1 {@link #DELETE_BATCH_INTERVAL_CONFIG} must also be configured such that there
+     * is an upper bound on how long a batch will remain open when waiting for it to be filled.
      */
     public static final String DELETE_BATCH_SIZE_CONFIG = CONFIG_PREFIX + "delete.batch.size";
 
@@ -104,7 +104,7 @@ public class AloSqsReceiver<T> {
      * When delete batching is enabled, this configures the maximum amount of time a batch will
      * remain open while waiting for it to be filled. Specified as an ISO-8601 Duration, e.g. PT1S
      */
-    public static final String DELETE_INTERVAL = CONFIG_PREFIX + "delete.interval";
+    public static final String DELETE_BATCH_INTERVAL_CONFIG = CONFIG_PREFIX + "delete.interval";
 
     /**
      * Upon termination of a subscription to SQS Messages, either due to errors or cancellation,
@@ -153,10 +153,10 @@ public class AloSqsReceiver<T> {
             .messageAttributesToRequest(config.loadSetOfStringOrEmpty(MESSAGE_ATTRIBUTES_TO_REQUEST_CONFIG))
             .messageSystemAttributesToRequest(config.loadSetOfStringOrEmpty(MESSAGE_SYSTEM_ATTRIBUTES_TO_REQUEST_CONFIG))
             .waitTimeSecondsPerReception(config.loadInt(WAIT_TIME_SECONDS_PER_RECEPTION_CONFIG, SqsReceiverOptions.DEFAULT_WAIT_TIME_SECONDS_PER_RECEPTION))
-            .visibilityTimeoutSeconds(config.loadInt(VISIBILITY_TIMEOUT_SECONDS, SqsReceiverOptions.DEFAULT_VISIBILITY_TIMEOUT_SECONDS))
+            .visibilityTimeoutSeconds(config.loadInt(VISIBILITY_TIMEOUT_SECONDS_CONFIG, SqsReceiverOptions.DEFAULT_VISIBILITY_TIMEOUT_SECONDS))
             .maxInFlightPerSubscription(config.loadInt(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG, SqsReceiverOptions.DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION))
             .deleteBatchSize(config.loadInt(DELETE_BATCH_SIZE_CONFIG, SqsReceiverOptions.DEFAULT_DELETE_BATCH_SIZE))
-            .deleteInterval(config.loadDuration(DELETE_INTERVAL, SqsReceiverOptions.DEFAULT_DELETE_INTERVAL))
+            .deleteInterval(config.loadDuration(DELETE_BATCH_INTERVAL_CONFIG, SqsReceiverOptions.DEFAULT_DELETE_INTERVAL))
             .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG, SqsReceiverOptions.DEFAULT_CLOSE_TIMEOUT))
             .build();
     }
