@@ -125,6 +125,10 @@ public class AloKafkaSender<K, V> implements Closeable {
             .flatMapMany(sender -> sendValues(sender, values, valueToTopic, valueToKey));
     }
 
+    public Mono<KafkaSenderResult<ProducerRecord<K, V>>> sendRecord(ProducerRecord<K, V> record) {
+        return sendRecords(Flux.just(record)).next();
+    }
+
     public Flux<KafkaSenderResult<ProducerRecord<K, V>>> sendRecords(Publisher<ProducerRecord<K, V>> records) {
         return futureKafkaSender.flatMapMany(sender -> sendRecords(sender, records));
     }

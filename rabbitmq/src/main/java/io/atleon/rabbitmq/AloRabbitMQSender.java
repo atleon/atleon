@@ -72,13 +72,15 @@ public class AloRabbitMQSender<T> implements Closeable {
     }
 
     public Flux<RabbitMQSenderResult<T>> sendBodies(Publisher<T> bodies, RabbitMQMessageCreator<T> messageCreator) {
-        return futureResources
-            .flatMapMany(resources -> resources.send(bodies, messageCreator));
+        return futureResources.flatMapMany(resources -> resources.send(bodies, messageCreator));
+    }
+
+    public Mono<RabbitMQSenderResult<RabbitMQMessage<T>>> sendMessage(RabbitMQMessage<T> message) {
+        return sendMessages(Flux.just(message)).next();
     }
 
     public Flux<RabbitMQSenderResult<RabbitMQMessage<T>>> sendMessages(Publisher<RabbitMQMessage<T>> messages) {
-        return futureResources
-            .flatMapMany(resources -> resources.send(messages, Function.identity()));
+        return futureResources.flatMapMany(resources -> resources.send(messages, Function.identity()));
     }
 
     public Function<Publisher<Alo<T>>, AloFlux<RabbitMQSenderResult<T>>> sendAloBodies(
@@ -91,9 +93,7 @@ public class AloRabbitMQSender<T> implements Closeable {
         Publisher<Alo<T>> aloBodies,
         RabbitMQMessageCreator<T> messageCreator
     ) {
-        return futureResources
-            .flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator))
-            .as(AloFlux::wrap);
+        return futureResources.flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator)).as(AloFlux::wrap);
     }
 
     public AloFlux<RabbitMQSenderResult<RabbitMQMessage<T>>> sendAloMessages(
