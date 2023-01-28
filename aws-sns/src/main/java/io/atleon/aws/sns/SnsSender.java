@@ -27,7 +27,7 @@ import java.util.stream.Stream;
  * A low-level sender of {@link SnsMessage}s. Sent Messages contain the raw String body payload and
  * may reference correlated metadata that is propagated downstream with the Result of sending any
  * given Message.
- * <P>
+ * <p>
  * At most one instance of an {@link SnsAsyncClient} is kept and can be closed upon invoking
  * {@link SnsSender#close()}. However, if after closing, more sent Publishers are subscribed to, a
  * new Client instance will be created and cached.
