@@ -1,5 +1,6 @@
 package io.atleon.aws.sqs;
 
+import io.atleon.core.DrainableQueue;
 import io.atleon.core.ReactivePhaser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,9 +63,9 @@ public final class SqsReceiver {
 
     /**
      * Receive {@link SqsMessage}s where each Message's deletion and visibility must be explicitly
-     * handled. If a received Message is not deleted or have its visibility managed before the
+     * handled. If a received Message is not deleted or has its visibility managed before the
      * visibility timeout lapses, the Message may be received again, and operations on the original
-     * message (using its original receipt handle) may result in errors indicating the Message
+     * Message (using its original receipt handle) may result in errors indicating the Message
      * could not be found.
      *
      * @param queueUrl The URL of the Queue to receive messages from
@@ -103,11 +104,15 @@ public final class SqsReceiver {
 
         private final Sinks.Many<String> receiptHandlesToDelete = Sinks.unsafe().many().unicast().onBackpressureError();
 
+        private final DrainableQueue<String> receiptHandlesToDeleteQueue = DrainableQueue.onEmitNext(receiptHandlesToDelete);
+
         public Poller(SqsAsyncClient client, String queueUrl) {
             this.client = client;
             this.queueUrl = queueUrl;
             this.receiptHandlesToDelete.asFlux()
+                .doOnComplete(executionPhaser::register) // Avoid race condition with batch Scheduler and disposing
                 .transform(receiptHandles -> batch(receiptHandles, options.deleteBatchSize(), options.deleteInterval()))
+                .doAfterTerminate(executionPhaser::arriveAndDeregister)
                 .subscribe(this::deleteMessages, this::doError);
         }
 
@@ -176,7 +181,7 @@ public final class SqsReceiver {
             String receiptHandle = message.receiptHandle();
             Runnable deleter = () -> {
                 if (executionPhaser.register() == 0 && !done.get() && inFlightReceiptHandles.remove(receiptHandle)) {
-                    scheduleMessageDeletion(receiptHandle);
+                    receiptHandlesToDeleteQueue.addAndDrain(receiptHandle);
                     maybeScheduleMessageReception();
                 }
                 executionPhaser.arriveAndDeregister();
@@ -196,12 +201,6 @@ public final class SqsReceiver {
 
             inFlightReceiptHandles.add(receiptHandle);
             doNext(SqsReceiverMessage.create(message, deleter, visibilityChanger));
-        }
-
-        private void scheduleMessageDeletion(String receiptHandle) {
-            synchronized (receiptHandlesToDelete) {
-                receiptHandlesToDelete.emitNext(receiptHandle, Sinks.EmitFailureHandler.FAIL_FAST);
-            }
         }
 
         private void deleteMessages(Collection<String> receiptHandles) {
