@@ -70,14 +70,8 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
 
     @Override
     protected void validateProperties(Map<String, Object> properties) {
-        validateAnyNonNullProperty(properties,
-            ConnectionFactoryConfigurator.HOST,
-            AloConnectionFactory.HOSTS
-        );
-        validateAnyNonNullProperty(properties,
-            ConnectionFactoryConfigurator.VIRTUAL_HOST,
-            AloConnectionFactory.VHOST
-        );
+        validateAnyNonNullProperty(properties, ConnectionFactoryConfigurator.HOST, AloConnectionFactory.HOSTS);
+        validateAnyNonNullProperty(properties, ConnectionFactoryConfigurator.VIRTUAL_HOST, AloConnectionFactory.VHOST);
         validateNonNullProperty(properties, ConnectionFactoryConfigurator.USERNAME);
         validateNonNullProperty(properties, ConnectionFactoryConfigurator.PASSWORD);
     }

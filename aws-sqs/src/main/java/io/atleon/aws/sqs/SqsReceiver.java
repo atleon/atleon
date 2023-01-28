@@ -101,7 +101,7 @@ public final class SqsReceiver {
 
         private final Set<String> inFlightReceiptHandles = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-        private final Sinks.Many<String> receiptHandlesToDelete = Sinks.many().unicast().onBackpressureError();
+        private final Sinks.Many<String> receiptHandlesToDelete = Sinks.unsafe().many().unicast().onBackpressureError();
 
         public Poller(SqsAsyncClient client, String queueUrl) {
             this.client = client;
@@ -176,7 +176,7 @@ public final class SqsReceiver {
             String receiptHandle = message.receiptHandle();
             Runnable deleter = () -> {
                 if (executionPhaser.register() == 0 && !done.get() && inFlightReceiptHandles.remove(receiptHandle)) {
-                    receiptHandlesToDelete.emitNext(receiptHandle, (__, er) -> er == Sinks.EmitResult.FAIL_NON_SERIALIZED);
+                    scheduleMessageDeletion(receiptHandle);
                     maybeScheduleMessageReception();
                 }
                 executionPhaser.arriveAndDeregister();
@@ -196,6 +196,12 @@ public final class SqsReceiver {
 
             inFlightReceiptHandles.add(receiptHandle);
             doNext(SqsReceiverMessage.create(message, deleter, visibilityChanger));
+        }
+
+        private void scheduleMessageDeletion(String receiptHandle) {
+            synchronized (receiptHandlesToDelete) {
+                receiptHandlesToDelete.emitNext(receiptHandle, Sinks.EmitFailureHandler.FAIL_FAST);
+            }
         }
 
         private void deleteMessages(Collection<String> receiptHandles) {
