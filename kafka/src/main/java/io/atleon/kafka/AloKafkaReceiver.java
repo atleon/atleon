@@ -32,6 +32,23 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * A reactive Kafka receiver with at-least-once semantics for consuming records from topics of a
  * Kafka cluster.
+ * <p>
+ * Each subscription to returned {@link AloFlux}s is backed by a Kafka
+ * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/consumer/Consumer.html">Consumer</a>.
+ * When a subscription is terminated for any reason, the Consumer is closed.
+ * <p>
+ * Offsets are committed periodically based on the Records that have been acknowledged
+ * downstream.
+ * <p>
+ * Emitted records may be acknowledged in any order. In order to maintain at-least-once
+ * semantics, no offset for an acknowledged record is committed unless all emitted records with
+ * lesser offsets are acknowledged first. This ordering is maintained per partition. For
+ * example, given a topic T with two partitions 0 and 1, we have records A, B, C respectively
+ * on T-0 and D, E, F respectively on T-1. The records are emitted in order T-0-A, T-1-D,
+ * T-0-B, T-1-E, T-0-C, T-1-F. At commit time, records T-0-B, T-0-C, T-1-D, and T-1-E have been
+ * acknowledged. Therefore, no further offset would be committed for T-0, since T-0-A has not
+ * yet been acknowledged, and the offset for T-1-E would be committed since, T-1-D and T-1-E
+ * have been acknowledged.
  *
  * @param <K> inbound record key type
  * @param <V> inbound record value type
@@ -124,28 +141,80 @@ public class AloKafkaReceiver<K, V> {
         this.configSource = configSource;
     }
 
+    /**
+     * Creates a new AloKafkaReceiver from the provided {@link KafkaConfigSource}
+     *
+     * @param configSource The reactive source of Kafka Receiver properties
+     * @param <K> The types of keys contained in received records
+     * @param <V> The types of values contained in received records
+     * @return A new AloKafkaReceiver
+     */
     public static <K, V> AloKafkaReceiver<K, V> from(KafkaConfigSource configSource) {
         return new AloKafkaReceiver<>(configSource);
     }
 
+    /**
+     * Creates a new AloKafkaReceiver from the provided {@link KafkaConfigSource} where only the
+     * types of values contained in received Records is relevant. This is mainly useful if record
+     * key values are not relevant or meaningfully used.
+     *
+     * @param configSource The reactive source of Kafka Receiver properties
+     * @param <V> The types of values contained in received records
+     * @return A new AloKafkaReceiver
+     */
     public static <V> AloKafkaReceiver<Object, V> forValues(KafkaConfigSource configSource) {
         return new AloKafkaReceiver<>(configSource);
     }
 
+    /**
+     * Creates a Publisher of {@link Alo} items referencing values extracted from Kafka
+     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/consumer/ConsumerRecord.html">Consumer Records</a>
+     * wrapped as an {@link AloFlux}.
+     * <p>
+     * Note that the Reactive Streams specification does not allow emission of null items.
+     * Therefore, received records that have null values are filtered and immediately acknowledged.
+     *
+     * @param topic The topic to subscribe to
+     * @return A Publisher of Alo items referencing values extracted from Kafka ConsumerRecords
+     */
     public AloFlux<V> receiveAloValues(String topic) {
         return receiveAloValues(Collections.singletonList(topic));
     }
 
+    /**
+     * Creates a Publisher of {@link Alo} items referencing values extracted from Kafka
+     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/consumer/ConsumerRecord.html">Consumer Records</a>
+     * wrapped as an {@link AloFlux}.
+     *
+     * @param topics The collection of topics to subscribe to
+     * @return A Publisher of Alo items referencing values extracted from Kafka ConsumerRecords
+     */
     public AloFlux<V> receiveAloValues(Collection<String> topics) {
         return receiveAloRecords(topics)
             .filter(record -> record.value() != null)
             .map(ConsumerRecord::value);
     }
 
+    /**
+     * Creates a Publisher of {@link Alo} items referencing Kafka
+     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/consumer/ConsumerRecord.html">Consumer Records</a>
+     * wrapped as an {@link AloFlux}.
+     *
+     * @param topic The topic to subscribe to
+     * @return A Publisher of Alo items referencing Kafka ConsumerRecords
+     */
     public AloFlux<ConsumerRecord<K, V>> receiveAloRecords(String topic) {
         return receiveAloRecords(Collections.singletonList(topic));
     }
 
+    /**
+     * Creates a Publisher of {@link Alo} items referencing Kafka
+     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/consumer/ConsumerRecord.html">Consumer Records</a>
+     * wrapped as an {@link AloFlux}.
+     *
+     * @param topics The collection of topics to subscribe to
+     * @return A Publisher of Alo items referencing Kafka ConsumerRecords
+     */
     public AloFlux<ConsumerRecord<K, V>> receiveAloRecords(Collection<String> topics) {
         return configSource.create()
             .flatMapMany(config -> receiveRecords(config, topics))

@@ -63,32 +63,97 @@ public class AloRabbitMQSender<T> implements Closeable {
             .cacheInvalidateWhen(resources -> closeSink.asFlux().next().then(), SendResources::close);
     }
 
+    /**
+     * Creates a new AloRabbitMQSender from the provided {@link RabbitMQConfigSource}
+     *
+     * @param configSource The reactive source of {@link RabbitMQConfig}
+     * @param <T>          The type of messages bodies sent by this sender
+     * @return A new AloRabbitMQSender
+     */
     public static <T> AloRabbitMQSender<T> from(RabbitMQConfigSource configSource) {
         return new AloRabbitMQSender<>(configSource);
     }
 
+    /**
+     * Creates a {@link Function} that can be used to transform a Publisher of RabbitMQ message
+     * bodies to a Publisher of the results of sending each message body. See
+     * {@link #sendBodies(Publisher, RabbitMQMessageCreator)} for further information.
+     *
+     * @param messageCreator A factory that creates {@link RabbitMQMessage}s from message bodies
+     * @return A {@link Function} useful for Publisher transformations
+     */
     public Function<Publisher<T>, Flux<RabbitMQSenderResult<T>>> sendBodies(RabbitMQMessageCreator<T> messageCreator) {
         return bodies -> sendBodies(bodies, messageCreator);
     }
 
+    /**
+     * Sends a sequence of message bodies to be populated in {@link RabbitMQMessage}s. The
+     * destination exchange and routing key (if necessary) must be populated by the provided
+     * {@link RabbitMQMessageCreator}.
+     * <p>
+     * The output of each sent message body is a {@link RabbitMQSenderResult} containing the sent
+     * value.
+     *
+     * @param bodies         A Publisher of RabbitMQ message bodies
+     * @param messageCreator A factory that creates {@link RabbitMQMessage}s from message bodies
+     * @return a Publisher of the results of each sent message
+     */
     public Flux<RabbitMQSenderResult<T>> sendBodies(Publisher<T> bodies, RabbitMQMessageCreator<T> messageCreator) {
         return futureResources.flatMapMany(resources -> resources.send(bodies, messageCreator));
     }
 
+    /**
+     * Send a single {@link RabbitMQMessage}
+     *
+     * @param message A message to send
+     * @return A Publisher of the result of sending the message
+     */
     public Mono<RabbitMQSenderResult<RabbitMQMessage<T>>> sendMessage(RabbitMQMessage<T> message) {
         return sendMessages(Flux.just(message)).next();
     }
 
+    /**
+     * Sends a sequence of {@link RabbitMQMessage}s
+     * <p>
+     * The output of each sent message is a {@link RabbitMQSenderResult} containing the sent
+     * message.
+     *
+     * @param messages A Publisher of messages to send
+     * @return A Publisher of items referencing the result of each sent message
+     */
     public Flux<RabbitMQSenderResult<RabbitMQMessage<T>>> sendMessages(Publisher<RabbitMQMessage<T>> messages) {
         return futureResources.flatMapMany(resources -> resources.send(messages, Function.identity()));
     }
 
+    /**
+     * Creates a {@link Function} that can be used to transform a Publisher of {@link Alo} items
+     * referencing RabbitMQ message bodies to a Publisher of Alo items referencing the result of
+     * sending each message body. See {@link #sendAloBodies(Publisher, RabbitMQMessageCreator)} for
+     * further information.
+     *
+     * @param messageCreator A factory that creates {@link RabbitMQMessage}s from message bodies
+     * @return A {@link Function} useful for Publisher transformations
+     */
     public Function<Publisher<Alo<T>>, AloFlux<RabbitMQSenderResult<T>>> sendAloBodies(
         RabbitMQMessageCreator<T> messageCreator
     ) {
         return aloBodies -> sendAloBodies(aloBodies, messageCreator);
     }
 
+    /**
+     * Sends a sequence of {@link Alo} items referencing message bodies to be populated in
+     * {@link RabbitMQMessage}s. The destination exchange and routing key (if necessary) must be
+     * populated by the provided {@link RabbitMQMessageCreator}
+     * <p>
+     * The output of each sent message body is a {@link RabbitMQSenderResult} containing the sent
+     * value. Each emitted item is an {@link Alo} item referencing a {@link RabbitMQSenderResult}
+     * and must be acknowledged or nacknowledged such that its processing can be marked complete at
+     * the origin of the message.
+     *
+     * @param aloBodies      A Publisher of Alo items referencing RabbitMQ message bodies
+     * @param messageCreator A factory that creates {@link RabbitMQMessage}s from message bodies
+     * @return a Publisher of Alo items referencing the result of each sent message
+     */
     public AloFlux<RabbitMQSenderResult<T>> sendAloBodies(
         Publisher<Alo<T>> aloBodies,
         RabbitMQMessageCreator<T> messageCreator
@@ -96,6 +161,17 @@ public class AloRabbitMQSender<T> implements Closeable {
         return futureResources.flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator)).as(AloFlux::wrap);
     }
 
+    /**
+     * Sends a sequence of {@link Alo} items referencing {@link RabbitMQMessage}s
+     * <p>
+     * The output of each sent message is a {@link RabbitMQSenderResult} containing the sent
+     * message. Each emitted item is an {@link Alo} item referencing a {@link RabbitMQSenderResult}
+     * and must be acknowledged or nacknowledged such that its processing can be marked complete at
+     * the origin of the message.
+     *
+     * @param aloMessages A Publisher of Alo items referencing messages to send
+     * @return A Publisher of Alo items referencing the result of each sent message
+     */
     public AloFlux<RabbitMQSenderResult<RabbitMQMessage<T>>> sendAloMessages(
         Publisher<Alo<RabbitMQMessage<T>>> aloMessages
     ) {
@@ -104,6 +180,11 @@ public class AloRabbitMQSender<T> implements Closeable {
             .as(AloFlux::wrap);
     }
 
+    /**
+     * Closes this sender and logs the provided reason.
+     *
+     * @param reason The reason this sender is being closed
+     */
     public void close(Object reason) {
         LOGGER.info("Closing AloRabbitMQSender due to reason={}", reason);
         close();

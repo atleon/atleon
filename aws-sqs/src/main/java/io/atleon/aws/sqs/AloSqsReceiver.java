@@ -11,6 +11,10 @@ import java.util.function.Consumer;
 
 /**
  * A reactive receiver of {@link Alo} items holding SQS Messages or Message bodies.
+ * <p>
+ * Each subscription to returned {@link AloFlux}s is backed by an
+ * <a href="https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/sqs/SqsAsyncClient.html">SqsAsyncClient</a>.
+ * When a subscription is terminated for any reason, the client is closed.
  *
  * @param <T> The deserialized type of SQS Message bodies
  */
@@ -121,15 +125,36 @@ public class AloSqsReceiver<T> {
         this.configSource = configSource;
     }
 
+    /**
+     * Creates a new AloSqsReceiver from the provided {@link SqsConfigSource}
+     *
+     * @param configSource The reactive source of {@link SqsConfig}
+     * @param <T> The types of deserialized message bodies contained in received messages
+     * @return A new AloSqsReceiver
+     */
     public static <T> AloSqsReceiver<T> from(SqsConfigSource configSource) {
         return new AloSqsReceiver<>(configSource);
     }
 
+    /**
+     * Creates a Publisher of {@link Alo} items referencing deserialized SQS message bodies
+     * wrapped as an {@link AloFlux}.
+     *
+     * @param queueUrl The URL of an SQS queue to subscribe to
+     * @return A Publisher of Alo items referencing deserialized SQS message bodies
+     */
     public AloFlux<T> receiveAloBodies(String queueUrl) {
         return receiveAloMessages(queueUrl)
             .map(SqsMessage::body);
     }
 
+    /**
+     * Creates a Publisher of {@link Alo} items referencing {@link ReceivedSqsMessage}s wrapped as
+     * an {@link AloFlux}.
+     *
+     * @param queueUrl The URL of an SQS queue to subscribe to
+     * @return A Publisher of Alo items referencing {@link ReceivedSqsMessage}s
+     */
     public AloFlux<ReceivedSqsMessage<T>> receiveAloMessages(String queueUrl) {
         return configSource.create()
             .flatMapMany(config -> receiveMessages(config, queueUrl))

@@ -27,7 +27,11 @@ import java.util.function.Function;
 /**
  * A reactive Kafka sender with at-least-once semantics for producing records to topics of a Kafka
  * cluster.
- * <P>
+ * <p>
+ * Each sent record produces a {@link KafkaSenderResult}. These results may not be emitted in the
+ * same order that their corresponding records are sent. For further information, see
+ * <a href="https://javadoc.io/static/io.projectreactor.kafka/reactor-kafka/1.3.7/reactor/kafka/sender/KafkaSender.html#send-org.reactivestreams.Publisher-">Reactor Kafka's send method</a>
+ * <p>
  * At most one instance of a {@link KafkaSender} is kept and can be closed upon invoking
  * {@link AloKafkaSender#close()}. However, if after closing, more sent Publishers are subscribed
  * to, a new Sender instance will be created and cached.
@@ -96,75 +100,221 @@ public class AloKafkaSender<K, V> implements Closeable {
             .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), KafkaSender::close);
     }
 
+    /**
+     * Creates a new AloKafkaReceiver from the provided {@link KafkaConfigSource}
+     *
+     * @param configSource The reactive source of Kafka Sender properties
+     * @param <K>          The types of keys contained in sent records
+     * @param <V>          The types of values contained in sent records
+     * @return A new AloKafkaSender
+     */
     public static <K, V> AloKafkaSender<K, V> from(KafkaConfigSource configSource) {
         return new AloKafkaSender<>(configSource);
     }
 
-    public Function<Publisher<V>, Flux<KafkaSenderResult<V>>>
-    sendValues(String topic, Function<? super V, ? extends K> valueToKey) {
+    /**
+     * Creates a {@link Function} that can be used to transform a Publisher of record values to a
+     * Publisher of the results of sending each record value. See
+     * {@link #sendValues(Publisher, String, Function)} for further information.
+     *
+     * @param topic      The topic to which produced records will be sent
+     * @param valueToKey {@link Function} that determines record key based on record value
+     * @return a {@link Function} useful for Publisher transformations
+     */
+    public Function<Publisher<V>, Flux<KafkaSenderResult<V>>> sendValues(
+        String topic,
+        Function<? super V, ? extends K> valueToKey
+    ) {
         return values -> sendValues(values, topic, valueToKey);
     }
 
-    public Flux<KafkaSenderResult<V>>
-    sendValues(Publisher<V> values, String topic, Function<? super V, ? extends K> valueToKey) {
-        return futureKafkaSender
-            .flatMapMany(sender -> sendValues(sender, values, value -> topic, valueToKey));
+    /**
+     * Sends a sequence of values to be populated in Kafka
+     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Records</a>
+     * to the provided Kafka topic. The key of each record is extracted from each sent value using
+     * the provided function.
+     * <p>
+     * The output of each sent value is a {@link KafkaSenderResult} containing the sent value.
+     *
+     * @param values     A Publisher of Kafka record values
+     * @param topic      The topic to which produced records will be sent
+     * @param valueToKey {@link Function} that determines record key based on record value
+     * @return a Publisher of the results of each sent record value
+     */
+    public Flux<KafkaSenderResult<V>> sendValues(
+        Publisher<V> values,
+        String topic,
+        Function<? super V, ? extends K> valueToKey
+    ) {
+        return futureKafkaSender.flatMapMany(sender -> sendValues(sender, values, value -> topic, valueToKey));
     }
 
+    /**
+     * Creates a {@link Function} that can be used to transform a Publisher of record values to a
+     * Publisher of the results of sending each record value. See
+     * {@link #sendValues(Publisher, Function, Function)} for further information.
+     *
+     * @param valueToTopic {@link Function} that determines destination topic based on record value
+     * @param valueToKey   {@link Function} that determines record key based on record value
+     * @return a {@link Function} useful for Publisher transformations
+     */
     public Function<Publisher<V>, Flux<KafkaSenderResult<V>>> sendValues(
         Function<? super V, String> valueToTopic,
-        Function<? super V, ? extends K> valueToKey) {
+        Function<? super V, ? extends K> valueToKey
+    ) {
         return values -> sendValues(values, valueToTopic, valueToKey);
     }
 
+    /**
+     * Sends a sequence of values to be populated in Kafka
+     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Records</a>.
+     * The destination topic and key of each record is extracted from each sent value using the
+     * provided functions.
+     * <p>
+     * The output of each sent value is a {@link KafkaSenderResult} containing the sent value.
+     *
+     * @param values       A Publisher of Kafka record values
+     * @param valueToTopic {@link Function} that determines destination topic based on record value
+     * @param valueToKey   {@link Function} that determines record key based on record value
+     * @return a Publisher of the results of each sent record value
+     */
     public Flux<KafkaSenderResult<V>> sendValues(
         Publisher<V> values,
         Function<? super V, String> valueToTopic,
-        Function<? super V, ? extends K> valueToKey) {
-        return futureKafkaSender
-            .flatMapMany(sender -> sendValues(sender, values, valueToTopic, valueToKey));
+        Function<? super V, ? extends K> valueToKey
+    ) {
+        return futureKafkaSender.flatMapMany(sender -> sendValues(sender, values, valueToTopic, valueToKey));
     }
 
+    /**
+     * Send a single
+     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Record</a>.
+     *
+     * @param record A record to send
+     * @return A Publisher of the result of sending the record
+     */
     public Mono<KafkaSenderResult<ProducerRecord<K, V>>> sendRecord(ProducerRecord<K, V> record) {
         return sendRecords(Flux.just(record)).next();
     }
 
+    /**
+     * Sends a sequence of
+     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Records</a>.
+     * <p>
+     * The output of each sent record is a {@link KafkaSenderResult} containing the sent record.
+     *
+     * @param records A Publisher of records to send
+     * @return A Publisher of items referencing the result of each sent record
+     */
     public Flux<KafkaSenderResult<ProducerRecord<K, V>>> sendRecords(Publisher<ProducerRecord<K, V>> records) {
         return futureKafkaSender.flatMapMany(sender -> sendRecords(sender, records));
     }
 
-    public Function<Publisher<Alo<V>>, AloFlux<KafkaSenderResult<V>>>
-    sendAloValues(String topic, Function<? super V, ? extends K> valueToKey) {
+    /**
+     * Creates a {@link Function} that can be used to transform a Publisher of {@link Alo} items
+     * referencing record values to a Publisher of Alo items referencing the result of sending each
+     * record value. See {@link #sendAloValues(Publisher, String, Function)} for further
+     * information.
+     *
+     * @param topic      The topic to which produced records will be sent
+     * @param valueToKey {@link Function} that determines record key based on record value
+     * @return A {@link Function} useful for Publisher transformations
+     */
+    public Function<Publisher<Alo<V>>, AloFlux<KafkaSenderResult<V>>> sendAloValues(
+        String topic,
+        Function<? super V, ? extends K> valueToKey
+    ) {
         return aloValues -> sendAloValues(aloValues, topic, valueToKey);
     }
 
-    public AloFlux<KafkaSenderResult<V>>
-    sendAloValues(Publisher<Alo<V>> aloValues, String topic, Function<? super V, ? extends K> valueToKey) {
+    /**
+     * Sends a sequence of {@link Alo} items referencing values to be populated in Kafka
+     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Records</a>
+     * to the provided Kafka topic. The key of each record is extracted from each sent value using
+     * the provided function.
+     * <p>
+     * The output of each sent value is a {@link KafkaSenderResult} containing the sent value.
+     * Each emitted item is an {@link Alo} item referencing a {@link KafkaSenderResult} and must be
+     * acknowledged or nacknowledged such that its processing can be marked complete at the origin
+     * of the record.
+     *
+     * @param aloValues  A Publisher of Alo items referencing Kafka record values
+     * @param topic      The topic to which produced records will be sent
+     * @param valueToKey {@link Function} that determines record key based on record value
+     * @return a Publisher of Alo items referencing the result of each sent record value
+     */
+    public AloFlux<KafkaSenderResult<V>> sendAloValues(
+        Publisher<Alo<V>> aloValues,
+        String topic,
+        Function<? super V, ? extends K> valueToKey
+    ) {
         return sendAloValues(aloValues, value -> topic, valueToKey);
     }
 
+    /**
+     * Creates a {@link Function} that can be used to transform a Publisher of {@link Alo} items
+     * referencing record values to a Publisher of Alo items referencing the result of sending each
+     * record value. See {@link #sendAloValues(Publisher, Function, Function)} for further
+     * information.
+     *
+     * @param valueToTopic {@link Function} that determines destination topic based on record value
+     * @param valueToKey   {@link Function} that determines record key based on record value
+     * @return a {@link Function} useful for Publisher transformations
+     */
     public Function<Publisher<Alo<V>>, AloFlux<KafkaSenderResult<V>>> sendAloValues(
         Function<? super V, String> valueToTopic,
-        Function<? super V, ? extends K> valueToKey) {
+        Function<? super V, ? extends K> valueToKey
+    ) {
         return aloValues -> sendAloValues(aloValues, valueToTopic, valueToKey);
     }
 
+    /**
+     * Sends a sequence of {@link Alo} items referencing values to be populated in Kafka
+     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Records</a>.
+     * The destination topic and key of each record is extracted from each sent value using the
+     * provided functions.
+     * <p>
+     * The output of each sent value is a {@link KafkaSenderResult} containing the sent value.
+     * Each emitted item is an {@link Alo} item referencing a {@link KafkaSenderResult} and must be
+     * acknowledged or nacknowledged such that its processing can be marked complete at the origin
+     * of the record.
+     *
+     * @param aloValues    A Publisher of Alo items referencing Kafka record values
+     * @param valueToTopic {@link Function} that determines destination topic based on record value
+     * @param valueToKey   {@link Function} that determines record key based on record value
+     * @return a Publisher of Alo items referencing the result of each sent record value
+     */
     public AloFlux<KafkaSenderResult<V>> sendAloValues(
         Publisher<Alo<V>> aloValues,
         Function<? super V, String> valueToTopic,
-        Function<? super V, ? extends K> valueToKey) {
+        Function<? super V, ? extends K> valueToKey
+    ) {
         return futureKafkaSender
             .flatMapMany(sender -> sendAloValues(sender, aloValues, valueToTopic, valueToKey))
             .as(AloFlux::wrap);
     }
 
-    public AloFlux<KafkaSenderResult<ProducerRecord<K, V>>>
-    sendAloRecords(Publisher<Alo<ProducerRecord<K, V>>> aloRecords) {
-        return futureKafkaSender
-            .flatMapMany(sender -> sendAloRecords(sender, aloRecords))
-            .as(AloFlux::wrap);
+    /**
+     * Sends a sequence of {@link Alo} items referencing Kafka
+     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Records</a>.
+     * <p>
+     * The output of each sent record is a {@link KafkaSenderResult} containing the sent record.
+     * Each emitted item is an {@link Alo} item referencing a {@link KafkaSenderResult} and must be
+     * acknowledged or nacknowledged such that its processing can be marked complete at the origin
+     * of the record.
+     *
+     * @param aloRecords A Publisher of Alo items referencing records to send
+     * @return A Publisher of Alo items referencing the result of each sent record
+     */
+    public AloFlux<KafkaSenderResult<ProducerRecord<K, V>>> sendAloRecords(Publisher<Alo<ProducerRecord<K, V>>> aloRecords) {
+        return futureKafkaSender.flatMapMany(sender -> sendAloRecords(sender, aloRecords)).as(AloFlux::wrap);
     }
 
+    /**
+     * Closes this sender and logs the provided reason.
+     *
+     * @param reason The reason this sender is being closed
+     */
     public void close(Object reason) {
         LOGGER.info("Closing AloKafkaSender due to reason={}", reason);
         close();
@@ -179,7 +329,8 @@ public class AloKafkaSender<K, V> implements Closeable {
         KafkaSender<K, V> sender,
         Publisher<V> values,
         Function<? super V, String> valueToTopic,
-        Function<? super V, ? extends K> valueToKey) {
+        Function<? super V, ? extends K> valueToKey
+    ) {
         return Flux.from(values)
             .map(aloValue -> createSenderRecordOfValue(aloValue, valueToTopic, valueToKey))
             .transform(sender::send)
@@ -189,15 +340,18 @@ public class AloKafkaSender<K, V> implements Closeable {
     private SenderRecord<K, V, V> createSenderRecordOfValue(
         V value,
         Function<? super V, String> valueToTopic,
-        Function<? super V, ? extends K> valueToKey) {
+        Function<? super V, ? extends K> valueToKey
+    ) {
         String topic = valueToTopic.apply(value);
         K key = valueToKey.apply(value);
         ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, null, key, value);
         return SenderRecord.create(producerRecord, value);
     }
 
-    private Flux<KafkaSenderResult<ProducerRecord<K, V>>>
-    sendRecords(KafkaSender<K, V> sender, Publisher<ProducerRecord<K, V>> records) {
+    private Flux<KafkaSenderResult<ProducerRecord<K, V>>> sendRecords(
+        KafkaSender<K, V> sender,
+        Publisher<ProducerRecord<K, V>> records
+    ) {
         return Flux.from(records)
             .map(record -> SenderRecord.create(record, record))
             .transform(sender::send)
@@ -208,7 +362,8 @@ public class AloKafkaSender<K, V> implements Closeable {
         KafkaSender<K, V> sender,
         Publisher<Alo<V>> aloValues,
         Function<? super V, String> valueToTopic,
-        Function<? super V, ? extends K> valueToKey) {
+        Function<? super V, ? extends K> valueToKey
+    ) {
         return AloFlux.toFlux(aloValues)
             .map(aloValue -> createSenderRecordOfAloValue(aloValue, valueToTopic, valueToKey))
             .transform(sender::send)
@@ -218,7 +373,8 @@ public class AloKafkaSender<K, V> implements Closeable {
     private SenderRecord<K, V, Alo<V>> createSenderRecordOfAloValue(
         Alo<V> aloValue,
         Function<? super V, String> valueToTopic,
-        Function<? super V, ? extends K> valueToKey) {
+        Function<? super V, ? extends K> valueToKey
+    ) {
         V value = aloValue.get();
         String topic = valueToTopic.apply(value);
         K key = valueToKey.apply(value);
@@ -226,8 +382,10 @@ public class AloKafkaSender<K, V> implements Closeable {
         return SenderRecord.create(producerRecord, aloValue);
     }
 
-    private Flux<Alo<KafkaSenderResult<ProducerRecord<K, V>>>>
-    sendAloRecords(KafkaSender<K, V> sender, Publisher<Alo<ProducerRecord<K, V>>> aloRecords) {
+    private Flux<Alo<KafkaSenderResult<ProducerRecord<K, V>>>> sendAloRecords(
+        KafkaSender<K, V> sender,
+        Publisher<Alo<ProducerRecord<K, V>>> aloRecords
+    ) {
         return AloFlux.toFlux(aloRecords)
             .map(aloRecord -> SenderRecord.create(aloRecord.get(), aloRecord))
             .transform(sender::send)

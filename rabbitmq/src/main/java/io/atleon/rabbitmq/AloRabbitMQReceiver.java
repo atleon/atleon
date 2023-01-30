@@ -18,9 +18,9 @@ import java.util.function.Consumer;
 
 /**
  * A reactive RabbitMQ receiver with at-least-once semantics for consuming messages from a queue in
- * a RabbitMQ cluster
+ * a RabbitMQ cluster.
  *
- * @param <T> inbound message deserialized body type
+ * @param <T> Inbound message deserialized body type
  */
 public class AloRabbitMQReceiver<T> {
 
@@ -69,16 +69,37 @@ public class AloRabbitMQReceiver<T> {
             .cache();
     }
 
+    /**
+     * Creates a new AloRabbitMQReceiver from the provided {@link RabbitMQConfigSource}
+     *
+     * @param configSource The reactive source of {@link RabbitMQConfig}
+     * @param <T> The types of deserialized message bodies contained in received messages
+     * @return A new AloRabbitMQReceiver
+     */
     public static <T> AloRabbitMQReceiver<T> from(RabbitMQConfigSource configSource) {
         return new AloRabbitMQReceiver<>(configSource);
     }
 
+    /**
+     * Creates a Publisher of {@link Alo} items referencing deserialized RabbitMQ message bodies
+     * wrapped as an {@link AloFlux}.
+     *
+     * @param queue The queue to subscribe to
+     * @return A Publisher of Alo items referencing deserialized RabbitMQ message bodies
+     */
     public AloFlux<T> receiveAloBodies(String queue) {
         return receiveAloMessages(queue)
             .filter(message -> message.getBody() != null)
             .map(RabbitMQMessage::getBody);
     }
 
+    /**
+     * Creates a Publisher of {@link Alo} items referencing {@link RabbitMQMessage}s wrapped as an
+     * {@link AloFlux}.
+     *
+     * @param queue The queue to subscribe to
+     * @return A Publisher of Alo items referencing RabbitMQMessages
+     */
     public AloFlux<RabbitMQMessage<T>> receiveAloMessages(String queue) {
         return futureResources
             .flatMapMany(resources -> receiveMessages(resources, queue))

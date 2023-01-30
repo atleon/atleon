@@ -56,10 +56,31 @@ public final class SqsSender implements Closeable {
         return new SqsSender(options);
     }
 
+    /**
+     * Sends a single {@link SqsSenderMessage} to the provided queue URL
+     *
+     * @param message  A message to send
+     * @param queueUrl The URL of the queue to which the message will be sent
+     * @param <C> The type of correlated metadata associated with the sent message
+     * @return A Publisher of the result of sending the message
+     */
     public <C> Mono<SqsSenderResult<C>> send(SqsSenderMessage<C> message, String queueUrl) {
         return futureClient.flatMapMany(client -> send(client, Collections.singletonList(message), queueUrl)).next();
     }
 
+    /**
+     * Sends a sequence of {@link SqsSenderMessage}s to the provided SQS queue URL
+     * <p>
+     * When maxRequestsInFlight is {@literal <=} 1, results will be published in the same order
+     * that their corresponding messages are sent. If maxRequestsInFlight is {@literal >} 1, it is
+     * possible that results may be emitted out of order as concurrent requests may complete with
+     * differing latencies.
+     *
+     * @param messages A Publisher of SqsSenderMessages to send
+     * @param queueUrl The URL of the queue to which the messages will be sent
+     * @param <C> The type of correlated metadata associated with the sent messages
+     * @return A Publisher of the results of sending each message
+     */
     public <C> Flux<SqsSenderResult<C>> send(Publisher<SqsSenderMessage<C>> messages, String queueUrl) {
         return futureClient.flatMapMany(client ->
             batcher.applyMapping(messages, batch -> send(client, batch, queueUrl), maxRequestsInFlight)
