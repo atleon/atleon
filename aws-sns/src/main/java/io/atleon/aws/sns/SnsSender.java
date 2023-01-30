@@ -57,10 +57,31 @@ public final class SnsSender implements Closeable {
         return new SnsSender(options);
     }
 
+    /**
+     * Sends a single {@link SnsSenderMessage} to the provided {@link SnsAddress}
+     *
+     * @param message A message to send
+     * @param address The address to which the published message will be sent
+     * @param <C> The type of correlated metadata associated with the sent message
+     * @return A Publisher of the result of sending the message
+     */
     public <C> Mono<SnsSenderResult<C>> send(SnsSenderMessage<C> message, SnsAddress address) {
         return futureClient.flatMap(client -> send(client, message, address));
     }
 
+    /**
+     * Sends a sequence of {@link SnsSenderMessage}s to the provided SNS topic ARN
+     * <p>
+     * When maxRequestsInFlight is {@literal <=} 1, results will be published in the same order
+     * that their corresponding messages are sent. If maxRequestsInFlight is {@literal >} 1, it is
+     * possible that results may be emitted out of order as concurrent requests may complete with
+     * differing latencies.
+     *
+     * @param messages A Publisher of SnsSenderMessages to send
+     * @param topicArn The ARN of the topic to which the published messages will be sent
+     * @param <C> The type of correlated metadata associated with the sent messages
+     * @return A Publisher of the results of sending each message
+     */
     public <C> Flux<SnsSenderResult<C>> send(Publisher<SnsSenderMessage<C>> messages, String topicArn) {
         return futureClient.flatMapMany(client ->
             batcher.applyMapping(messages, batch -> send(client, batch, topicArn), maxRequestsInFlight)

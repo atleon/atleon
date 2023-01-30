@@ -122,6 +122,11 @@ public class AloSqsSender<T> implements Closeable {
             .as(AloFlux::wrap);
     }
 
+    /**
+     * Closes this sender and logs the provided reason.
+     *
+     * @param reason The reason this sender is being closed
+     */
     public void close(Object reason) {
         LOGGER.info("Closing AloSqsSender due to reason={}", reason);
         close();

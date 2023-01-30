@@ -2,6 +2,12 @@ package io.atleon.rabbitmq;
 
 import com.rabbitmq.client.AMQP;
 
+/**
+ * Container for information that may either be received from a RabbitMQ queue or sent to a
+ * RabbitMQ exchange.
+ *
+ * @param <T> The type of (deserialized) body referenced by this message
+ */
 public class RabbitMQMessage<T> {
 
     private final String exchange;
