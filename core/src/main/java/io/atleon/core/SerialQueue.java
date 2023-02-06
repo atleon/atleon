@@ -8,16 +8,17 @@ import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.function.Consumer;
 
 /**
- * A thread-safe non-blocking Queue which may have items added to it and be drained by at most one
- * thread. This is useful when a certain action on a given resource must be serialized, but
- * invocations on that resource may come concurrently from multiple threads.
+ * A thread-safe Queue of tasks which must be executed serially. This provides non-blocking
+ * thread-safe fan-in while ensuring at most one thread drains the queued tasks. This is useful
+ * when a certain action on a given resource must be serialized, but requests to that resource may
+ * come concurrently from multiple threads.
  *
  * @param <T> The type of elements held by this Queue
  */
-public final class DrainableQueue<T> {
+public final class SerialQueue<T> {
 
-    private static final AtomicIntegerFieldUpdater<DrainableQueue> DRAINS_IN_PROGRESS =
-        AtomicIntegerFieldUpdater.newUpdater(DrainableQueue.class, "drainsInProgress");
+    private static final AtomicIntegerFieldUpdater<SerialQueue> DRAINS_IN_PROGRESS =
+        AtomicIntegerFieldUpdater.newUpdater(SerialQueue.class, "drainsInProgress");
 
     private volatile int drainsInProgress;
 
@@ -25,12 +26,12 @@ public final class DrainableQueue<T> {
 
     private final Consumer<? super T> drain;
 
-    private DrainableQueue(Consumer<? super T> drain) {
+    private SerialQueue(Consumer<? super T> drain) {
         this.drain = drain;
     }
 
     /**
-     * Creates a {@link DrainableQueue} that wraps the emissions of next items on a
+     * Creates a {@link SerialQueue} that wraps the emissions of next items on a
      * {@link Sinks.Many}. Next emissions will fail fast if any of the sink's emissions are invoked
      * externally and not serialized with the created Queue.
      *
@@ -38,8 +39,8 @@ public final class DrainableQueue<T> {
      * @param <T> The type of items emitted in to the sink
      * @return A new DrainableQueue
      */
-    public static <T> DrainableQueue<T> onEmitNext(Sinks.Many<T> sink) {
-        return new DrainableQueue<>(t -> sink.emitNext(t, Sinks.EmitFailureHandler.FAIL_FAST));
+    public static <T> SerialQueue<T> onEmitNext(Sinks.Many<T> sink) {
+        return new SerialQueue<>(t -> sink.emitNext(t, Sinks.EmitFailureHandler.FAIL_FAST));
     }
 
     /**

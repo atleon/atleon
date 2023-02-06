@@ -13,14 +13,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class DrainableQueueTest {
+class SerialQueueTest {
 
     private final ExecutorService executorService = Executors.newCachedThreadPool();
 
     @Test
     public void addingAndDrainingDoesNotBlockConcurrentThreads() throws Exception {
         Sinks.Many<Long> sink = Sinks.many().unicast().onBackpressureError();
-        DrainableQueue<Long> queue = DrainableQueue.onEmitNext(sink);
+        SerialQueue<Long> queue = SerialQueue.onEmitNext(sink);
 
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch permitToProceed = new CountDownLatch(1);

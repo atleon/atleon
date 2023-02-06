@@ -1,7 +1,7 @@
 package io.atleon.aws.sqs;
 
-import io.atleon.core.DrainableQueue;
 import io.atleon.core.ReactivePhaser;
+import io.atleon.core.SerialQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -104,7 +104,7 @@ public final class SqsReceiver {
 
         private final Sinks.Many<String> receiptHandlesToDelete = Sinks.unsafe().many().unicast().onBackpressureError();
 
-        private final DrainableQueue<String> receiptHandlesToDeleteQueue = DrainableQueue.onEmitNext(receiptHandlesToDelete);
+        private final SerialQueue<String> receiptHandlesToDeleteQueue = SerialQueue.onEmitNext(receiptHandlesToDelete);
 
         public Poller(SqsAsyncClient client, String queueUrl) {
             this.client = client;
