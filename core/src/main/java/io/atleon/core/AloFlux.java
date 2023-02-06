@@ -13,8 +13,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.BiFunction;
-import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -121,7 +119,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * {@link Alo#map(Function)} invocations for non-null values.
      *
      * @param mapper - the synchronous transforming {@link Function}
-     * @param <V> - the transformed type
+     * @param <V>    - the transformed type
      * @return - a transformed {@link AloFlux}
      */
     public <V> AloFlux<V> mapNotNull(Function<? super T, ? extends V> mapper) {
@@ -135,7 +133,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * values.
      *
      * @param mapper - the synchronous transforming {@link Function}
-     * @param <V> - the transformed type
+     * @param <V>    - the transformed type
      * @return - a transformed {@link AloFlux}
      */
     public <V> AloFlux<V> mapPresent(Function<? super T, Optional<? extends V>> mapper) {
@@ -226,9 +224,9 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * nuance to this method is the provided Function which produces an {@link AloFactory} which is
      * used to create an implementation of Alo that wraps the buffered data items.
      *
-     * @param maxSize – the max collected size
-     * @param maxTime – the timeout enforcing the release of a partial buffer
-     * @param scheduler – a time-capable Scheduler instance to run on
+     * @param maxSize            – the max collected size
+     * @param maxTime            – the timeout enforcing the release of a partial buffer
+     * @param scheduler          – a time-capable Scheduler instance to run on
      * @param bufferToAloFactory - Function that provides an AloFactory to wrap list of items
      * @return An AloFlux that buffers upstream elements in bounded size and time
      */
@@ -254,7 +252,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * number of duplicate items are received or the deduplication Duration has elapsed since
      * receiving the first of any given item with a particular dedpulication key
      *
-     * @param config Configuration of quantitative behaviors of Deduplication
+     * @param config        Configuration of quantitative behaviors of Deduplication
      * @param deduplication Implementation of how to identify and deduplicate duplicate data items
      * @return AloFlux of deduplicated items
      */
@@ -267,20 +265,13 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * number of duplicate items are received or the deduplication Duration has elapsed since
      * receiving the first of any given item with a particular dedpulication key
      *
-     * @param config Configuration of quantitative behaviors of Deduplication
+     * @param config        Configuration of quantitative behaviors of Deduplication
      * @param deduplication Implementation of how to identify and deduplicate duplicate data items
-     * @param scheduler a time-capable Scheduler to run on
+     * @param scheduler     a time-capable Scheduler to run on
      * @return AloFlux of deduplicated items
      */
     public AloFlux<T> deduplicate(DeduplicationConfig config, Deduplication<T> deduplication, Scheduler scheduler) {
         return new AloFlux<>(wrapped.transform(DeduplicatingTransformer.alo(config, deduplication, scheduler)));
-    }
-
-    /**
-     * See {@link Flux#reduce(BiFunction)}
-     */
-    public AloMono<T> reduce(BinaryOperator<T> reducer) {
-        return new AloMono<>(wrapped.reduce(AloOps.reducing(reducer)));
     }
 
     /**
@@ -289,7 +280,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * appropriately consuming groups as explained under {@link Flux#groupBy(Function)}
      *
      * @param numberExtractor Function that extracts Numbers from data items for hashing
-     * @param numGroups How many groups to divide the source sequence in to
+     * @param numGroups       How many groups to divide the source sequence in to
      * @return A Flux of grouped AloFluxes
      */
     public AloExtendedFlux<AloGroupedFlux<Integer, T>>
@@ -303,7 +294,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * appropriately consuming groups as explained under {@link Flux#groupBy(Function)}
      *
      * @param numberExtractor Function that extracts Numbers from data items for hashing
-     * @param numGroups How many groups to divide the source sequence in to
+     * @param numGroups       How many groups to divide the source sequence in to
      * @return A Flux of grouped AloFluxes
      */
     public <V> AloExtendedFlux<AloGroupedFlux<Integer, V>> groupByNumberHash(
@@ -319,7 +310,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * appropriately consuming groups as explained under {@link Flux#groupBy(Function)}
      *
      * @param stringExtractor Function that extracts Strings from data items for hashing
-     * @param numGroups How many groups to divide the source sequence in to
+     * @param numGroups       How many groups to divide the source sequence in to
      * @return A Flux of grouped AloFluxes
      */
     public AloExtendedFlux<AloGroupedFlux<Integer, T>>
@@ -333,7 +324,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * appropriately consuming groups as explained under {@link Flux#groupBy(Function)}
      *
      * @param stringExtractor Function that extracts Strings from data items for hashing
-     * @param numGroups How many groups to divide the source sequence in to
+     * @param numGroups       How many groups to divide the source sequence in to
      * @return A Flux of grouped AloFluxes
      */
     public <V> AloExtendedFlux<AloGroupedFlux<Integer, V>>
