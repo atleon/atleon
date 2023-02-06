@@ -505,7 +505,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * not the case that data items contained in emitted Alo elements carry relevant errors
      */
     public Disposable subscribe() {
-        return subscribe(Alo::acknowledge);
+        return subscribeWith(new WarningAloSubscriber<>());
     }
 
     /**
