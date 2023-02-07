@@ -11,8 +11,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
@@ -86,8 +84,6 @@ public class AloKafkaSender<K, V> implements Closeable {
     private static final boolean DEFAULT_STOP_ON_ERROR = false;
 
     private static final Map<String, AtomicLong> COUNTS_BY_CLIENT_ID = new ConcurrentHashMap<>();
-
-    private static final Map<String, Scheduler> SCHEDULERS_BY_CLIENT_ID = new ConcurrentHashMap<>();
 
     private final Mono<KafkaSender<K, V>> futureKafkaSender;
 
@@ -409,20 +405,11 @@ public class AloKafkaSender<K, V> implements Closeable {
 
         return SenderOptions.<K, V>create(producerConfig)
             .maxInFlight(ConfigLoading.loadOrThrow(options, MAX_IN_FLIGHT_PER_SEND_CONFIG, Integer::valueOf))
-            .stopOnError(ConfigLoading.loadOrThrow(options, STOP_ON_ERROR_CONFIG, Boolean::valueOf))
-            .scheduler(schedulerForClient(clientId));
+            .stopOnError(ConfigLoading.loadOrThrow(options, STOP_ON_ERROR_CONFIG, Boolean::valueOf));
     }
 
     private static long nextClientIdCount(String clientId) {
         return COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, key -> new AtomicLong()).incrementAndGet();
-    }
-
-    private static Scheduler schedulerForClient(String clientId) {
-        return SCHEDULERS_BY_CLIENT_ID.computeIfAbsent(clientId, AloKafkaSender::newSchedulerForClient);
-    }
-
-    private static Scheduler newSchedulerForClient(String clientId) {
-        return Schedulers.newSingle(AloKafkaSender.class.getSimpleName() + "-" + clientId);
     }
 
     private static void loadInto(Map<String, Object> destination, Map<String, Object> source, String key, Object def) {
