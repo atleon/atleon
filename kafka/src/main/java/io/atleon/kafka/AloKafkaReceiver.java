@@ -4,7 +4,6 @@ import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
 import io.atleon.core.OrderManagingAcknowledgementOperator;
 import io.atleon.util.ConfigLoading;
-import io.atleon.util.Defaults;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
@@ -12,8 +11,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.receiver.ReceiverPartition;
@@ -133,8 +130,6 @@ public class AloKafkaReceiver<K, V> {
 
     private static final Map<String, AtomicLong> COUNTS_BY_CLIENT_ID = new ConcurrentHashMap<>();
 
-    private static final Map<String, Scheduler> SCHEDULERS_BY_CLIENT_ID = new ConcurrentHashMap<>();
-
     private final KafkaConfigSource configSource;
 
     private AloKafkaReceiver(KafkaConfigSource configSource) {
@@ -145,8 +140,8 @@ public class AloKafkaReceiver<K, V> {
      * Creates a new AloKafkaReceiver from the provided {@link KafkaConfigSource}
      *
      * @param configSource The reactive source of Kafka Receiver properties
-     * @param <K> The types of keys contained in received records
-     * @param <V> The types of values contained in received records
+     * @param <K>          The types of keys contained in received records
+     * @param <V>          The types of values contained in received records
      * @return A new AloKafkaReceiver
      */
     public static <K, V> AloKafkaReceiver<K, V> from(KafkaConfigSource configSource) {
@@ -159,7 +154,7 @@ public class AloKafkaReceiver<K, V> {
      * key values are not relevant or meaningfully used.
      *
      * @param configSource The reactive source of Kafka Receiver properties
-     * @param <V> The types of values contained in received records
+     * @param <V>          The types of values contained in received records
      * @return A new AloKafkaReceiver
      */
     public static <V> AloKafkaReceiver<Object, V> forValues(KafkaConfigSource configSource) {
@@ -255,7 +250,6 @@ public class AloKafkaReceiver<K, V> {
             .commitInterval(ConfigLoading.loadOrThrow(options, COMMIT_INTERVAL_CONFIG, Duration::parse))
             .maxCommitAttempts(ConfigLoading.loadOrThrow(options, MAX_COMMIT_ATTEMPTS_CONFIG, Integer::valueOf))
             .closeTimeout(ConfigLoading.loadOrThrow(options, CLOSE_TIMEOUT_CONFIG, Duration::parse))
-            .schedulerSupplier(() -> schedulerForClient(clientId))
             .addAssignListener(assignedPartitions::complete);
 
         return KafkaReceiver.create(receiverOptions).receive()
@@ -276,15 +270,6 @@ public class AloKafkaReceiver<K, V> {
 
     private static long nextClientIdCount(String clientId) {
         return COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, key -> new AtomicLong()).incrementAndGet();
-    }
-
-    private static Scheduler schedulerForClient(String clientId) {
-        return SCHEDULERS_BY_CLIENT_ID.computeIfAbsent(clientId, AloKafkaReceiver::newSchedulerForClient);
-    }
-
-    private static Scheduler newSchedulerForClient(String clientId) {
-        String schedulerName = AloKafkaReceiver.class.getSimpleName() + "-" + clientId;
-        return Schedulers.newBoundedElastic(Defaults.THREAD_CAP, Integer.MAX_VALUE, schedulerName);
     }
 
     private static <K, V> AloConsumerRecordFactory<K, V> createAloFactory(Map<String, Object> config) {
