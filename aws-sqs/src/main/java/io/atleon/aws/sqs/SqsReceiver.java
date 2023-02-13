@@ -2,10 +2,11 @@ package io.atleon.aws.sqs;
 
 import io.atleon.core.ReactivePhaser;
 import io.atleon.core.SerialQueue;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxSink;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.util.retry.Retry;
@@ -30,9 +31,10 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 import java.util.function.IntPredicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -72,11 +74,7 @@ public final class SqsReceiver {
      * @return Flux of inbound Messages whose visibility and deletion must be manually handled
      */
     public Flux<SqsReceiverMessage> receiveManual(String queueUrl) {
-        return Flux.usingWhen(
-            Mono.fromSupplier(() -> new Poller(options.createClient(), queueUrl)),
-            poller -> Flux.create(poller::start, FluxSink.OverflowStrategy.ERROR),
-            Poller::dispose
-        );
+        return Flux.from(subscriber -> subscriber.onSubscribe(new Poller(options::createClient, queueUrl, subscriber)));
     }
 
     public static final class BatchRequestFailedException extends RuntimeException {
@@ -86,15 +84,17 @@ public final class SqsReceiver {
         }
     }
 
-    private final class Poller {
+    private final class Poller implements Subscription {
 
         private final SqsAsyncClient client;
 
         private final String queueUrl;
 
-        private final AtomicReference<FluxSink<SqsReceiverMessage>> sinkRef = new AtomicReference<>(null);
+        private final Subscriber<? super SqsReceiverMessage> subscriber;
 
         private final ReactivePhaser executionPhaser = new ReactivePhaser(1);
+
+        private final AtomicLong requestOutstanding = new AtomicLong(0);
 
         private final AtomicBoolean receptionPending = new AtomicBoolean(false);
 
@@ -106,9 +106,10 @@ public final class SqsReceiver {
 
         private final SerialQueue<String> receiptHandlesToDeleteQueue = SerialQueue.onEmitNext(receiptHandlesToDelete);
 
-        public Poller(SqsAsyncClient client, String queueUrl) {
-            this.client = client;
+        public Poller(Supplier<SqsAsyncClient> client, String queueUrl, Subscriber<? super SqsReceiverMessage> subscriber) {
+            this.client = client.get();
             this.queueUrl = queueUrl;
+            this.subscriber = subscriber;
             this.receiptHandlesToDelete.asFlux()
                 .doOnComplete(executionPhaser::register) // Avoid race condition with batch Scheduler and disposing
                 .transform(receiptHandles -> batch(receiptHandles, options.deleteBatchSize(), options.deleteInterval()))
@@ -116,16 +117,18 @@ public final class SqsReceiver {
                 .subscribe(this::deleteMessages, this::doError);
         }
 
-        public void start(FluxSink<SqsReceiverMessage> sink) {
-            if (sinkRef.compareAndSet(null, sink)) {
-                sink.onCancel(() -> dispose().subscribe());
-                sink.onRequest(requested -> maybeScheduleMessageReception());
-            } else {
-                throw new IllegalStateException("SQS Poller cannot be started more than once");
-            }
+        @Override
+        public void request(long n) {
+            requestOutstanding.addAndGet(n);
+            maybeScheduleMessageReception();
         }
 
-        public Mono<Boolean> dispose() {
+        @Override
+        public void cancel() {
+            dispose().subscribe();
+        }
+
+        private Mono<Boolean> dispose() {
             return Mono.fromSupplier(() -> done.compareAndSet(false, true))
                 .flatMap(shouldDispose -> shouldDispose ? doDispose().thenReturn(true) : Mono.just(false));
         }
@@ -160,9 +163,8 @@ public final class SqsReceiver {
         }
 
         private int calculateMaxNumberOfMessagesToRequest() {
-            int requestOutstanding = (int) Math.min(Integer.MAX_VALUE, sinkRef.get().requestedFromDownstream());
             int remainingInFlightCapacity = options.maxInFlightPerSubscription() - inFlightReceiptHandles.size();
-            int maxNumberOfMessagesToEmit = Math.min(requestOutstanding, remainingInFlightCapacity);
+            int maxNumberOfMessagesToEmit = (int) Math.min(requestOutstanding.get(), remainingInFlightCapacity);
             return Math.min(options.maxMessagesPerReception(), maxNumberOfMessagesToEmit);
         }
 
@@ -275,16 +277,20 @@ public final class SqsReceiver {
 
         private void doNext(SqsReceiverMessage sqsReceiverMessage) {
             try {
-                sinkRef.get().next(sqsReceiverMessage);
+                subscriber.onNext(sqsReceiverMessage);
             } catch (Throwable error) {
                 doError(error);
+            }
+
+            if (requestOutstanding.get() != Long.MAX_VALUE) {
+                requestOutstanding.decrementAndGet();
             }
         }
 
         private void doError(Throwable error) {
             dispose().subscribe(wasDisposed -> {
                 if (wasDisposed) {
-                    sinkRef.get().error(error);
+                    subscriber.onError(error);
                 }
             });
         }
