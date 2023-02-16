@@ -11,7 +11,6 @@ public class SqsProcessing extends AloStream<SqsProcessingConfig> {
     protected Disposable startDisposable(SqsProcessingConfig config) {
         return config.buildReceiver()
             .receiveAloBodies(config.getQueueUrl())
-            .publishOn(Schedulers.parallel())
             .filter(this::isPrime)
             .map(primeNumber -> "Found a prime number: " + primeNumber)
             .doOnNext(config.getConsumer())

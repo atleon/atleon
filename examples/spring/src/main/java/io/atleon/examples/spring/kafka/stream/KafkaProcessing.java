@@ -13,6 +13,7 @@ public class KafkaProcessing extends AloStream<KafkaProcessingConfig> {
             .filter(this::isPrime)
             .map(primeNumber -> "Found a prime number: " + primeNumber)
             .doOnNext(config.getConsumer())
+            .resubscribeOnError(config.name())
             .subscribe(Alo::acknowledge);
     }
 
