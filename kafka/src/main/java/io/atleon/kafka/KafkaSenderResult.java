@@ -1,12 +1,12 @@
 package io.atleon.kafka;
 
 import io.atleon.core.Alo;
+import io.atleon.core.SenderResult;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import reactor.kafka.sender.SenderResult;
 
 import java.util.Optional;
 
-public class KafkaSenderResult<T> {
+public class KafkaSenderResult<T> implements SenderResult {
 
     private final RecordMetadata recordMetadata;
 
@@ -20,13 +20,18 @@ public class KafkaSenderResult<T> {
         this.correlationMetadata = correlationMetadata;
     }
 
-    static <T> KafkaSenderResult<T> fromSenderResult(SenderResult<T> senderResult) {
+    static <T> KafkaSenderResult<T> fromSenderResult(reactor.kafka.sender.SenderResult<T> senderResult) {
         return new KafkaSenderResult<>(senderResult.recordMetadata(), senderResult.exception(), senderResult.correlationMetadata());
     }
 
-    static <T> Alo<KafkaSenderResult<T>> fromSenderResultOfAlo(SenderResult<Alo<T>> senderResult) {
+    static <T> Alo<KafkaSenderResult<T>> fromSenderResultOfAlo(reactor.kafka.sender.SenderResult<Alo<T>> senderResult) {
         return senderResult.correlationMetadata().map(correlationMetadata ->
             new KafkaSenderResult<>(senderResult.recordMetadata(), senderResult.exception(), correlationMetadata));
+    }
+
+    @Override
+    public Optional<Throwable> failureCause() {
+        return Optional.ofNullable(exception);
     }
 
     @Override
@@ -42,6 +47,10 @@ public class KafkaSenderResult<T> {
         return Optional.ofNullable(recordMetadata);
     }
 
+    /**
+     * Deprecated - use {@link KafkaSenderResult#failureCause()}
+     */
+    @Deprecated
     public Optional<Exception> exception() {
         return Optional.ofNullable(exception);
     }

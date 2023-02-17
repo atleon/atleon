@@ -209,9 +209,8 @@ public class AloSnsSender<T> implements Closeable {
 
         private <R> Alo<SnsSenderResult<R>> toAloOfMessageResult(SnsSenderResult<Alo<R>> messageResultOfAlo) {
             Alo<R> alo = messageResultOfAlo.correlationMetadata();
-            SnsSenderResult<R> messageResult = messageResultOfAlo.replaceCorrelationMetadata(alo.get());
             return alo.<SnsSenderResult<R>>propagator()
-                .create(messageResult, alo.getAcknowledger(), alo.getNacknowledger());
+                .create(messageResultOfAlo.mapCorrelationMetadata(Alo::get), alo.getAcknowledger(), alo.getNacknowledger());
         }
     }
 }

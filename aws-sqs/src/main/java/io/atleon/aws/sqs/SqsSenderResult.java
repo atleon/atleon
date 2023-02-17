@@ -1,7 +1,10 @@
 package io.atleon.aws.sqs;
 
+import io.atleon.core.SenderResult;
+
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 
 /**
  * The result of sending an {@link SqsSenderMessage}. Will either contain {@link SuccessMetadata}
@@ -10,7 +13,7 @@ import java.util.Optional;
  *
  * @param <C> The type of correlated metadata that is propagated from the originating request
  */
-public final class SqsSenderResult<C> {
+public final class SqsSenderResult<C> implements SenderResult {
 
     private final String requestId;
 
@@ -46,24 +49,21 @@ public final class SqsSenderResult<C> {
         return new SqsSenderResult<>(requestId, null, Objects.requireNonNull(error), correlationMetadata);
     }
 
-    public <R> SqsSenderResult<R> replaceCorrelationMetadata(R newCorrelationMetadata) {
-        return new SqsSenderResult<>(requestId, successMetadata, error, newCorrelationMetadata);
+    @Override
+    public Optional<Throwable> failureCause() {
+        return Optional.ofNullable(error);
+    }
+
+    public <R> SqsSenderResult<R> mapCorrelationMetadata(Function<? super C, ? extends R> mapper) {
+        return new SqsSenderResult<>(requestId, successMetadata, error, mapper.apply(correlationMetadata));
     }
 
     public String requestId() {
         return requestId;
     }
 
-    public boolean isFailure() {
-        return error != null;
-    }
-
-    public SuccessMetadata successMetadata() {
-        return Objects.requireNonNull(successMetadata, "Should not query successMetadata unless successful");
-    }
-
-    public Throwable error() {
-        return Objects.requireNonNull(error, "Should not query error unless failed");
+    public Optional<SuccessMetadata> successMetadata() {
+        return Optional.ofNullable(successMetadata);
     }
 
     public C correlationMetadata() {
