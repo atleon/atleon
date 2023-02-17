@@ -52,9 +52,9 @@ Atleon dependencies are available in Maven Central under the following coordinat
 The typical entry points in to Atleon are through Receiver and Sender implementations. The following example shows how to create a reactive Kafka stream:
 
 ```java
+import io.atleon.core.DefaultAloSenderResultSubscriber;
 import io.atleon.kafka.AloKafkaReceiver;
 import io.atleon.kafka.AloKafkaSender;
-import io.atleon.kafka.DefaultAloKafkaSenderResultSubscriber;
 import io.atleon.kafka.KafkaConfigSource;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -92,7 +92,7 @@ public class GettingStarted {
             .map(String::toUpperCase)
             .map(string -> new ProducerRecord("topic2", string, string))
             .transform(AloKafkaSender.<String, String>from(kafkaSenderConfig)::sendAloRecords)
-            .subscribe(new DefaultAloKafkaSenderResultSubscriber<>());
+            .subscribe(new DefaultAloSenderResultSubscriber<>());
         
         // ... Do more things while the above stream process is running ...
     }

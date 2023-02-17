@@ -2,10 +2,13 @@ package io.atleon.rabbitmq;
 
 import com.rabbitmq.client.AMQP;
 import io.atleon.core.Alo;
+import io.atleon.core.SenderResult;
 import reactor.rabbitmq.CorrelableOutboundMessage;
 import reactor.rabbitmq.OutboundMessageResult;
 
-public class RabbitMQSenderResult<T> {
+import java.util.Optional;
+
+public class RabbitMQSenderResult<T> implements SenderResult {
 
     private final String exchange;
 
@@ -49,6 +52,11 @@ public class RabbitMQSenderResult<T> {
                 messageResult.getOutboundMessage().getProperties(),
                 correlationMetadata,
                 messageResult.isAck()));
+    }
+
+    @Override
+    public Optional<Throwable> failureCause() {
+        return ack ? Optional.empty() : Optional.of(new UnackedRabbitMQMessageException());
     }
 
     @Override

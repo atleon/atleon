@@ -1,8 +1,8 @@
 package io.atleon.examples.errorhandling;
 
+import io.atleon.core.DefaultAloSenderResultSubscriber;
 import io.atleon.kafka.AloKafkaReceiver;
 import io.atleon.kafka.AloKafkaSender;
-import io.atleon.kafka.DefaultAloKafkaSenderResultSubscriber;
 import io.atleon.kafka.KafkaConfigSource;
 import io.atleon.kafka.embedded.EmbeddedKafka;
 import io.atleon.util.Defaults;
@@ -107,11 +107,11 @@ public class KafkaErrorHandling {
                 .transform(sender.sendAloValues(TOPIC_2, Function.identity()))
                 .doOnNext(next -> latch.countDown())
                 .doOnNext(senderResult -> {
-                    if (!senderResult.exception().isPresent()) {
+                    if (!senderResult.failureCause().isPresent()) {
                         successfullyProcessed.add(senderResult.correlationMetadata());
                     }
                 })
-                .subscribe(new DefaultAloKafkaSenderResultSubscriber<>()));
+                .subscribe(new DefaultAloSenderResultSubscriber<>()));
 
         //Step 5) Produce the records to be consumed above. Note that we are using the same record
         // key for each data item, which will cause these items to show up in the order we emit
