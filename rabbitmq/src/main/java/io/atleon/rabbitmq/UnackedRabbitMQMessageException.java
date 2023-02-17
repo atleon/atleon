@@ -5,4 +5,7 @@ package io.atleon.rabbitmq;
  */
 public class UnackedRabbitMQMessageException extends RuntimeException {
 
+    UnackedRabbitMQMessageException() {
+
+    }
 }

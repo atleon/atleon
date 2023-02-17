@@ -4,8 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.BaseSubscriber;
 
-import java.util.Optional;
-
 public class DefaultAloSenderResultSubscriber<T extends SenderResult> extends BaseSubscriber<Alo<T>> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultAloSenderResultSubscriber.class);
@@ -13,12 +11,16 @@ public class DefaultAloSenderResultSubscriber<T extends SenderResult> extends Ba
     @Override
     protected void hookOnNext(Alo<T> value) {
         T senderResult = value.get();
-        Optional<Throwable> failure = senderResult.failureCause();
-        if (failure.isPresent()) {
-            LOGGER.warn("SenderResult type={} has failure={}", senderResult.getClass().getSimpleName(), failure.get());
-            Alo.nacknowledge(value, failure.get());
+        if (senderResult.isFailure()) {
+            Throwable cause = senderResult.failureCause().orElseGet(FailedSenderResultException::new);
+            LOGGER.warn("SenderResult of type={} has failureCause={}", senderResult.getClass().getSimpleName(), cause);
+            Alo.nacknowledge(value, cause);
         } else {
             Alo.acknowledge(value);
         }
+    }
+
+    private static final class FailedSenderResultException extends RuntimeException {
+
     }
 }
