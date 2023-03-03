@@ -158,7 +158,7 @@ public class AloSqsSender<T> implements Closeable {
             return new Resources<>(SqsSender.create(options), config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG));
         }
 
-        public  Mono<SqsSenderResult<SqsMessage<T>>> send(SqsMessage<T> message, String queueUrl) {
+        public Mono<SqsSenderResult<SqsMessage<T>>> send(SqsMessage<T> message, String queueUrl) {
             return sender.send(toSenderMessage(message, Function.identity()), queueUrl);
         }
 
@@ -173,12 +173,12 @@ public class AloSqsSender<T> implements Closeable {
         }
 
         public <R> Flux<Alo<SqsSenderResult<R>>> sendAlos(
-            Publisher<Alo<R>> aloItems,
+            Publisher<Alo<R>> alos,
             Function<R, SqsMessage<T>> messageCreator,
             String queueUrl
         ) {
-            return AloFlux.toFlux(aloItems)
-                .map(aloItem -> toSenderMessage(aloItem, messageCreator.compose(Alo::get)))
+            return AloFlux.toFlux(alos)
+                .map(alo -> toSenderMessage(alo, messageCreator.compose(Alo::get)))
                 .transform(senderMessages -> sender.send(senderMessages, queueUrl))
                 .map(this::toAloOfMessageResult);
         }

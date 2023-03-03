@@ -180,12 +180,12 @@ public class AloSnsSender<T> implements Closeable {
         }
 
         public <R> Flux<Alo<SnsSenderResult<R>>> sendAlos(
-            Publisher<Alo<R>> aloItems,
+            Publisher<Alo<R>> alos,
             Function<R, SnsMessage<T>> messageCreator,
             String topicArn
         ) {
-            return AloFlux.toFlux(aloItems)
-                .map(aloItem -> toSenderMessage(aloItem, messageCreator.compose(Alo::get)))
+            return AloFlux.toFlux(alos)
+                .map(alo -> toSenderMessage(alo, messageCreator.compose(Alo::get)))
                 .transform(senderMessages -> sender.send(senderMessages, topicArn))
                 .map(this::toAloOfMessageResult);
         }

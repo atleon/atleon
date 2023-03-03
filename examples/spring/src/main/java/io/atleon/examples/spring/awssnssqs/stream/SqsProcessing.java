@@ -3,7 +3,6 @@ package io.atleon.examples.spring.awssnssqs.stream;
 import io.atleon.core.Alo;
 import io.atleon.core.AloStream;
 import reactor.core.Disposable;
-import reactor.core.scheduler.Schedulers;
 
 public class SqsProcessing extends AloStream<SqsProcessingConfig> {
 

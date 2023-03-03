@@ -36,7 +36,7 @@ public class AloRabbitMQSender<T> implements Closeable {
 
     /**
      * Optional List (comma separated or {@link List}) of implementations of
-     * {@link RabbitMQMessageSendInterceptor} (by class name) to apply to outbound
+     * {@link RabbitMQSendInterceptor} (by class name) to apply to outbound
      * {@link RabbitMQMessage}s
      */
     public static final String INTERCEPTORS_CONFIG = CONFIG_PREFIX + "send.interceptors";
@@ -205,14 +205,15 @@ public class AloRabbitMQSender<T> implements Closeable {
 
         private final Sender sender;
 
-        private final List<RabbitMQMessageSendInterceptor<T>> interceptors;
+        private final List<RabbitMQSendInterceptor<T>> interceptors;
 
         private final BodySerializer<T> bodySerializer;
 
         public SendResources(
             Sender sender,
-            List<RabbitMQMessageSendInterceptor<T>> interceptors,
-            BodySerializer<T> bodySerializer) {
+            List<RabbitMQSendInterceptor<T>> interceptors,
+            BodySerializer<T> bodySerializer
+        ) {
             this.sender = sender;
             this.bodySerializer = bodySerializer;
             this.interceptors = interceptors;
@@ -240,11 +241,11 @@ public class AloRabbitMQSender<T> implements Closeable {
         }
 
         public <R> Flux<Alo<RabbitMQSenderResult<R>>> sendAlos(
-            Publisher<Alo<R>> aloItems,
+            Publisher<Alo<R>> alos,
             Function<R, RabbitMQMessage<T>> messageCreator
         ) {
-            return AloFlux.toFlux(aloItems)
-                .map(aloItem -> toCorrelableOutboundMessage(aloItem, messageCreator.compose(Alo::get)))
+            return AloFlux.toFlux(alos)
+                .map(alo -> toCorrelableOutboundMessage(alo, messageCreator.compose(Alo::get)))
                 .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, ALO_SEND_OPTIONS))
                 .map(RabbitMQSenderResult::fromMessageResultOfAlo);
         }
@@ -258,15 +259,14 @@ public class AloRabbitMQSender<T> implements Closeable {
             Function<R, RabbitMQMessage<T>> dataToRabbitMQMessage
         ) {
             RabbitMQMessage<T> message = dataToRabbitMQMessage.apply(data);
-            SerializedBody serializedBody = bodySerializer.serialize(message.getBody());
-            for (RabbitMQMessageSendInterceptor<T> interceptor : interceptors) {
-                message = interceptor.onSend(message, serializedBody);
+            for (RabbitMQSendInterceptor<T> interceptor : interceptors) {
+                message = interceptor.onSend(message);
             }
             return new CorrelableOutboundMessage<>(
                 message.getExchange(),
                 message.getRoutingKey(),
                 message.getProperties(),
-                serializedBody.bytes(),
+                bodySerializer.serialize(message.getBody()).bytes(),
                 data
             );
         }

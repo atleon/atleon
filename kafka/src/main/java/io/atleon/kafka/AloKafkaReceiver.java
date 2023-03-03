@@ -31,8 +31,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * Kafka cluster.
  * <p>
  * Each subscription to returned {@link AloFlux}s is backed by a Kafka
- * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/consumer/Consumer.html">Consumer</a>.
- * When a subscription is terminated for any reason, the Consumer is closed.
+ * {@link org.apache.kafka.clients.consumer.Consumer Consumer}. When a subscription is terminated
+ * for any reason, the Consumer is closed.
  * <p>
  * Offsets are committed periodically based on the Records that have been acknowledged
  * downstream.
@@ -163,8 +163,7 @@ public class AloKafkaReceiver<K, V> {
 
     /**
      * Creates a Publisher of {@link Alo} items referencing values extracted from Kafka
-     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/consumer/ConsumerRecord.html">Consumer Records</a>
-     * wrapped as an {@link AloFlux}.
+     * {@link ConsumerRecord}s wrapped as an {@link AloFlux}.
      * <p>
      * Note that the Reactive Streams specification does not allow emission of null items.
      * Therefore, received records that have null values are filtered and immediately acknowledged.
@@ -178,8 +177,7 @@ public class AloKafkaReceiver<K, V> {
 
     /**
      * Creates a Publisher of {@link Alo} items referencing values extracted from Kafka
-     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/consumer/ConsumerRecord.html">Consumer Records</a>
-     * wrapped as an {@link AloFlux}.
+     * {@link ConsumerRecord}s wrapped as an {@link AloFlux}.
      *
      * @param topics The collection of topics to subscribe to
      * @return A Publisher of Alo items referencing values extracted from Kafka ConsumerRecords
@@ -191,9 +189,8 @@ public class AloKafkaReceiver<K, V> {
     }
 
     /**
-     * Creates a Publisher of {@link Alo} items referencing Kafka
-     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/consumer/ConsumerRecord.html">Consumer Records</a>
-     * wrapped as an {@link AloFlux}.
+     * Creates a Publisher of {@link Alo} items referencing values extracted from Kafka
+     * {@link ConsumerRecord}s wrapped as an {@link AloFlux}.
      *
      * @param topic The topic to subscribe to
      * @return A Publisher of Alo items referencing Kafka ConsumerRecords
@@ -203,9 +200,8 @@ public class AloKafkaReceiver<K, V> {
     }
 
     /**
-     * Creates a Publisher of {@link Alo} items referencing Kafka
-     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/consumer/ConsumerRecord.html">Consumer Records</a>
-     * wrapped as an {@link AloFlux}.
+     * Creates a Publisher of {@link Alo} items referencing values extracted from Kafka
+     * {@link ConsumerRecord}s wrapped as an {@link AloFlux}.
      *
      * @param topics The collection of topics to subscribe to
      * @return A Publisher of Alo items referencing Kafka ConsumerRecords

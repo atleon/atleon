@@ -27,8 +27,7 @@ import java.util.function.Function;
  * cluster.
  * <p>
  * Each sent record produces a {@link KafkaSenderResult}. These results may not be emitted in the
- * same order that their corresponding records are sent. For further information, see
- * <a href="https://javadoc.io/static/io.projectreactor.kafka/reactor-kafka/1.3.7/reactor/kafka/sender/KafkaSender.html#send-org.reactivestreams.Publisher-">Reactor Kafka's send method</a>
+ * same order that their corresponding records are sent.
  * <p>
  * At most one instance of a {@link KafkaSender} is kept and can be closed upon invoking
  * {@link AloKafkaSender#close()}. However, if after closing, more sent Publishers are subscribed
@@ -36,6 +35,7 @@ import java.util.function.Function;
  *
  * @param <K> outbound record key type
  * @param <V> outbound record value type
+ * @see KafkaSender#send(Publisher)
  */
 public class AloKafkaSender<K, V> implements Closeable {
 
@@ -85,15 +85,14 @@ public class AloKafkaSender<K, V> implements Closeable {
 
     private static final Map<String, AtomicLong> COUNTS_BY_CLIENT_ID = new ConcurrentHashMap<>();
 
-    private final Mono<KafkaSender<K, V>> futureKafkaSender;
+    private final Mono<Resources<K, V>> futureResources;
 
     private final Sinks.Many<Long> closeSink = Sinks.many().multicast().directBestEffort();
 
     private AloKafkaSender(KafkaConfigSource configSource) {
-        this.futureKafkaSender = configSource.create()
-            .<SenderOptions<K, V>>map(AloKafkaSender::newSenderOptions)
-            .map(KafkaSender::create)
-            .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), KafkaSender::close);
+        this.futureResources = configSource.create()
+            .map(Resources::<K, V>fromConfig)
+            .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), Resources::close);
     }
 
     /**
@@ -125,10 +124,9 @@ public class AloKafkaSender<K, V> implements Closeable {
     }
 
     /**
-     * Sends a sequence of values to be populated in Kafka
-     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Records</a>
-     * to the provided Kafka topic. The key of each record is extracted from each sent value using
-     * the provided function.
+     * Sends a sequence of values to be populated in Kafka {@link ProducerRecord}s to the provided
+     * Kafka topic. The key of each record is extracted from each sent value using the provided
+     * function.
      * <p>
      * The output of each sent value is a {@link KafkaSenderResult} containing the sent value.
      *
@@ -142,7 +140,7 @@ public class AloKafkaSender<K, V> implements Closeable {
         String topic,
         Function<? super V, ? extends K> valueToKey
     ) {
-        return futureKafkaSender.flatMapMany(sender -> sendValues(sender, values, value -> topic, valueToKey));
+        return sendValues(values, value -> topic, valueToKey);
     }
 
     /**
@@ -162,10 +160,8 @@ public class AloKafkaSender<K, V> implements Closeable {
     }
 
     /**
-     * Sends a sequence of values to be populated in Kafka
-     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Records</a>.
-     * The destination topic and key of each record is extracted from each sent value using the
-     * provided functions.
+     * Sends a sequence of values to be populated in Kafka {@link ProducerRecord}s. The destination
+     * topic and key of each record is extracted from each sent value using the provided functions.
      * <p>
      * The output of each sent value is a {@link KafkaSenderResult} containing the sent value.
      *
@@ -179,12 +175,12 @@ public class AloKafkaSender<K, V> implements Closeable {
         Function<? super V, String> valueToTopic,
         Function<? super V, ? extends K> valueToKey
     ) {
-        return futureKafkaSender.flatMapMany(sender -> sendValues(sender, values, valueToTopic, valueToKey));
+        Function<V, ProducerRecord<K, V>> recordCreator = newValueBasedRecordCreator(valueToTopic, valueToKey);
+        return futureResources.flatMapMany(resources -> resources.send(values, recordCreator));
     }
 
     /**
-     * Send a single
-     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Record</a>.
+     * Send a single {@link ProducerRecord}.
      *
      * @param record A record to send
      * @return A Publisher of the result of sending the record
@@ -194,8 +190,7 @@ public class AloKafkaSender<K, V> implements Closeable {
     }
 
     /**
-     * Sends a sequence of
-     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Records</a>.
+     * Sends a sequence of {@link ProducerRecord}s
      * <p>
      * The output of each sent record is a {@link KafkaSenderResult} containing the sent record.
      *
@@ -203,7 +198,7 @@ public class AloKafkaSender<K, V> implements Closeable {
      * @return A Publisher of items referencing the result of each sent record
      */
     public Flux<KafkaSenderResult<ProducerRecord<K, V>>> sendRecords(Publisher<ProducerRecord<K, V>> records) {
-        return futureKafkaSender.flatMapMany(sender -> sendRecords(sender, records));
+        return futureResources.flatMapMany(resources -> resources.send(records, Function.identity()));
     }
 
     /**
@@ -225,9 +220,8 @@ public class AloKafkaSender<K, V> implements Closeable {
 
     /**
      * Sends a sequence of {@link Alo} items referencing values to be populated in Kafka
-     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Records</a>
-     * to the provided Kafka topic. The key of each record is extracted from each sent value using
-     * the provided function.
+     * {@link ProducerRecord}s to the provided Kafka topic. The key of each record is extracted
+     * from each sent value using the provided function.
      * <p>
      * The output of each sent value is a {@link KafkaSenderResult} containing the sent value.
      * Each emitted item is an {@link Alo} item referencing a {@link KafkaSenderResult} and must be
@@ -266,9 +260,8 @@ public class AloKafkaSender<K, V> implements Closeable {
 
     /**
      * Sends a sequence of {@link Alo} items referencing values to be populated in Kafka
-     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Records</a>.
-     * The destination topic and key of each record is extracted from each sent value using the
-     * provided functions.
+     * {@link ProducerRecord}s. The destination topic and key of each record is extracted from each
+     * sent value using the provided functions.
      * <p>
      * The output of each sent value is a {@link KafkaSenderResult} containing the sent value.
      * Each emitted item is an {@link Alo} item referencing a {@link KafkaSenderResult} and must be
@@ -285,14 +278,12 @@ public class AloKafkaSender<K, V> implements Closeable {
         Function<? super V, String> valueToTopic,
         Function<? super V, ? extends K> valueToKey
     ) {
-        return futureKafkaSender
-            .flatMapMany(sender -> sendAloValues(sender, aloValues, valueToTopic, valueToKey))
-            .as(AloFlux::wrap);
+        Function<V, ProducerRecord<K, V>> recordCreator = newValueBasedRecordCreator(valueToTopic, valueToKey);
+        return futureResources.flatMapMany(resources -> resources.sendAlos(aloValues, recordCreator)).as(AloFlux::wrap);
     }
 
     /**
-     * Sends a sequence of {@link Alo} items referencing Kafka
-     * <a href="https://kafka.apache.org/24/javadoc/org/apache/kafka/clients/producer/ProducerRecord.html">Producer Records</a>.
+     * Sends a sequence of {@link Alo} items referencing Kafka {@link ProducerRecord}s.
      * <p>
      * The output of each sent record is a {@link KafkaSenderResult} containing the sent record.
      * Each emitted item is an {@link Alo} item referencing a {@link KafkaSenderResult} and must be
@@ -303,7 +294,9 @@ public class AloKafkaSender<K, V> implements Closeable {
      * @return A Publisher of Alo items referencing the result of each sent record
      */
     public AloFlux<KafkaSenderResult<ProducerRecord<K, V>>> sendAloRecords(Publisher<Alo<ProducerRecord<K, V>>> aloRecords) {
-        return futureKafkaSender.flatMapMany(sender -> sendAloRecords(sender, aloRecords)).as(AloFlux::wrap);
+        return futureResources
+            .flatMapMany(resources -> resources.sendAlos(aloRecords, Function.identity()))
+            .as(AloFlux::wrap);
     }
 
     /**
@@ -321,98 +314,75 @@ public class AloKafkaSender<K, V> implements Closeable {
         closeSink.tryEmitNext(System.currentTimeMillis());
     }
 
-    private Flux<KafkaSenderResult<V>> sendValues(
-        KafkaSender<K, V> sender,
-        Publisher<V> values,
+    private Function<V, ProducerRecord<K, V>> newValueBasedRecordCreator(
         Function<? super V, String> valueToTopic,
         Function<? super V, ? extends K> valueToKey
     ) {
-        return Flux.from(values)
-            .map(aloValue -> createSenderRecordOfValue(aloValue, valueToTopic, valueToKey))
-            .transform(sender::send)
-            .map(KafkaSenderResult::fromSenderResult);
+        return value -> new ProducerRecord<>(valueToTopic.apply(value), null, valueToKey.apply(value), value);
     }
 
-    private SenderRecord<K, V, V> createSenderRecordOfValue(
-        V value,
-        Function<? super V, String> valueToTopic,
-        Function<? super V, ? extends K> valueToKey
-    ) {
-        String topic = valueToTopic.apply(value);
-        K key = valueToKey.apply(value);
-        ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, null, key, value);
-        return SenderRecord.create(producerRecord, value);
-    }
+    private static final class Resources<K, V> {
 
-    private Flux<KafkaSenderResult<ProducerRecord<K, V>>> sendRecords(
-        KafkaSender<K, V> sender,
-        Publisher<ProducerRecord<K, V>> records
-    ) {
-        return Flux.from(records)
-            .map(record -> SenderRecord.create(record, record))
-            .transform(sender::send)
-            .map(KafkaSenderResult::fromSenderResult);
-    }
+        private final KafkaSender<K, V> sender;
 
-    private Flux<Alo<KafkaSenderResult<V>>> sendAloValues(
-        KafkaSender<K, V> sender,
-        Publisher<Alo<V>> aloValues,
-        Function<? super V, String> valueToTopic,
-        Function<? super V, ? extends K> valueToKey
-    ) {
-        return AloFlux.toFlux(aloValues)
-            .map(aloValue -> createSenderRecordOfAloValue(aloValue, valueToTopic, valueToKey))
-            .transform(sender::send)
-            .map(KafkaSenderResult::fromSenderResultOfAlo);
-    }
-
-    private SenderRecord<K, V, Alo<V>> createSenderRecordOfAloValue(
-        Alo<V> aloValue,
-        Function<? super V, String> valueToTopic,
-        Function<? super V, ? extends K> valueToKey
-    ) {
-        V value = aloValue.get();
-        String topic = valueToTopic.apply(value);
-        K key = valueToKey.apply(value);
-        ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, null, key, value);
-        return SenderRecord.create(producerRecord, aloValue);
-    }
-
-    private Flux<Alo<KafkaSenderResult<ProducerRecord<K, V>>>> sendAloRecords(
-        KafkaSender<K, V> sender,
-        Publisher<Alo<ProducerRecord<K, V>>> aloRecords
-    ) {
-        return AloFlux.toFlux(aloRecords)
-            .map(aloRecord -> SenderRecord.create(aloRecord.get(), aloRecord))
-            .transform(sender::send)
-            .map(KafkaSenderResult::fromSenderResultOfAlo);
-    }
-
-    private static <K, V> SenderOptions<K, V> newSenderOptions(Map<String, Object> config) {
-        Map<String, Object> options = new HashMap<>();
-        loadInto(options, config, AUTO_INCREMENT_CLIENT_ID_CONFIG, DEFAULT_AUTO_INCREMENT_CLIENT_ID);
-        loadInto(options, config, MAX_IN_FLIGHT_PER_SEND_CONFIG, DEFAULT_MAX_IN_FLIGHT_PER_SEND);
-        loadInto(options, config, STOP_ON_ERROR_CONFIG, DEFAULT_STOP_ON_ERROR);
-
-        // 1) Create Producer config from remaining configs that are NOT options (help avoid WARNs)
-        // 2) Note Client ID and, if enabled, increment client ID in consumer config
-        Map<String, Object> producerConfig = new HashMap<>(config);
-        options.keySet().forEach(producerConfig::remove);
-        String clientId = ConfigLoading.loadOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG, Object::toString);
-        if (ConfigLoading.loadOrThrow(options, AUTO_INCREMENT_CLIENT_ID_CONFIG, Boolean::valueOf)) {
-            producerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
+        private Resources(KafkaSender<K, V> sender) {
+            this.sender = sender;
         }
 
-        return SenderOptions.<K, V>create(producerConfig)
-            .maxInFlight(ConfigLoading.loadOrThrow(options, MAX_IN_FLIGHT_PER_SEND_CONFIG, Integer::valueOf))
-            .stopOnError(ConfigLoading.loadOrThrow(options, STOP_ON_ERROR_CONFIG, Boolean::valueOf));
-    }
+        public static <K, V> Resources<K, V> fromConfig(Map<String, Object> config) {
+            return new Resources<>(KafkaSender.create(newSenderOptions(config)));
+        }
 
-    private static long nextClientIdCount(String clientId) {
-        return COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, key -> new AtomicLong()).incrementAndGet();
-    }
+        public <T> Flux<KafkaSenderResult<T>> send(
+            Publisher<T> publisher,
+            Function<T, ProducerRecord<K, V>> recordCreator
+        ) {
+            return Flux.from(publisher)
+                .map(item -> SenderRecord.create(recordCreator.apply(item), item))
+                .transform(sender::send)
+                .map(KafkaSenderResult::fromSenderResult);
+        }
 
-    private static void loadInto(Map<String, Object> destination, Map<String, Object> source, String key, Object def) {
-        destination.put(key, source.getOrDefault(key, def));
+        public <T> Flux<Alo<KafkaSenderResult<T>>> sendAlos(
+            Publisher<Alo<T>> alos,
+            Function<T, ProducerRecord<K, V>> recordCreator
+        ) {
+            return AloFlux.toFlux(alos)
+                .map(alo -> SenderRecord.create(recordCreator.apply(alo.get()), alo))
+                .transform(sender::send)
+                .map(KafkaSenderResult::fromSenderResultOfAlo);
+        }
+
+        public void close() {
+            sender.close();
+        }
+
+        private static <K, V> SenderOptions<K, V> newSenderOptions(Map<String, Object> config) {
+            Map<String, Object> options = new HashMap<>();
+            loadInto(options, config, AUTO_INCREMENT_CLIENT_ID_CONFIG, DEFAULT_AUTO_INCREMENT_CLIENT_ID);
+            loadInto(options, config, MAX_IN_FLIGHT_PER_SEND_CONFIG, DEFAULT_MAX_IN_FLIGHT_PER_SEND);
+            loadInto(options, config, STOP_ON_ERROR_CONFIG, DEFAULT_STOP_ON_ERROR);
+
+            // 1) Create Producer config from remaining configs that are NOT options (help avoid WARNs)
+            // 2) Note Client ID and, if enabled, increment client ID in consumer config
+            Map<String, Object> producerConfig = new HashMap<>(config);
+            options.keySet().forEach(producerConfig::remove);
+            String clientId = ConfigLoading.loadOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG, Object::toString);
+            if (ConfigLoading.loadOrThrow(options, AUTO_INCREMENT_CLIENT_ID_CONFIG, Boolean::valueOf)) {
+                producerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
+            }
+
+            return SenderOptions.<K, V>create(producerConfig)
+                .maxInFlight(ConfigLoading.loadOrThrow(options, MAX_IN_FLIGHT_PER_SEND_CONFIG, Integer::valueOf))
+                .stopOnError(ConfigLoading.loadOrThrow(options, STOP_ON_ERROR_CONFIG, Boolean::valueOf));
+        }
+
+        private static long nextClientIdCount(String clientId) {
+            return COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, key -> new AtomicLong()).incrementAndGet();
+        }
+
+        private static void loadInto(Map<String, Object> destination, Map<String, Object> source, String key, Object def) {
+            destination.put(key, source.getOrDefault(key, def));
+        }
     }
 }
