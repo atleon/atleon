@@ -330,7 +330,6 @@
                                 <link>https://kafka.apache.org/${apache-kafka-doc.version}/javadoc</link>
                                 <link>https://projectreactor.io/docs/core/${reactor.version}/api</link>
                                 <link>https://projectreactor.io/docs/kafka/${reactor-kafka.version}/api</link>
-                                <link>https://reactive-streams.org/reactive-streams-${reactive-streams.version}-javadoc</link>
                             </links>
                         </configuration>
                         <executions>
