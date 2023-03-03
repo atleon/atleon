@@ -17,6 +17,7 @@ import reactor.kafka.sender.SenderRecord;
 
 import java.io.Closeable;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -74,6 +75,12 @@ public class AloKafkaSender<K, V> implements Closeable {
      * if this is enabled.
      */
     public static final String STOP_ON_ERROR_CONFIG = CONFIG_PREFIX + "stop.on.error";
+
+    /**
+     * Optional List (comma separated or {@link List}) of implementations of
+     * {@link KafkaSendInterceptor} (by class name) to apply to outbound {@link ProducerRecord}s.
+     */
+    public static final String INTERCEPTORS_CONFIG = CONFIG_PREFIX + "send.interceptors";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloKafkaSender.class);
 
@@ -325,12 +332,18 @@ public class AloKafkaSender<K, V> implements Closeable {
 
         private final KafkaSender<K, V> sender;
 
-        private Resources(KafkaSender<K, V> sender) {
+        private final List<KafkaSendInterceptor<K, V>> interceptors;
+
+        private Resources(KafkaSender<K, V> sender, List<KafkaSendInterceptor<K, V>> interceptors) {
             this.sender = sender;
+            this.interceptors = interceptors;
         }
 
         public static <K, V> Resources<K, V> fromConfig(Map<String, Object> config) {
-            return new Resources<>(KafkaSender.create(newSenderOptions(config)));
+            return new Resources<>(
+                KafkaSender.create(newSenderOptions(config)),
+                ConfigLoading.loadListOfConfigured(config, INTERCEPTORS_CONFIG)
+            );
         }
 
         public <T> Flux<KafkaSenderResult<T>> send(
@@ -338,7 +351,7 @@ public class AloKafkaSender<K, V> implements Closeable {
             Function<T, ProducerRecord<K, V>> recordCreator
         ) {
             return Flux.from(publisher)
-                .map(item -> SenderRecord.create(recordCreator.apply(item), item))
+                .map(item -> toSenderRecord(recordCreator.apply(item), item))
                 .transform(sender::send)
                 .map(KafkaSenderResult::fromSenderResult);
         }
@@ -348,13 +361,20 @@ public class AloKafkaSender<K, V> implements Closeable {
             Function<T, ProducerRecord<K, V>> recordCreator
         ) {
             return AloFlux.toFlux(alos)
-                .map(alo -> alo.supplyInContext(() -> SenderRecord.create(recordCreator.apply(alo.get()), alo)))
+                .map(alo -> alo.supplyInContext(() -> toSenderRecord(recordCreator.apply(alo.get()), alo)))
                 .transform(sender::send)
                 .map(KafkaSenderResult::fromSenderResultOfAlo);
         }
 
         public void close() {
             sender.close();
+        }
+
+        private <T> SenderRecord<K, V, T> toSenderRecord(ProducerRecord<K, V> producerRecord, T correlationMetadata) {
+            for (KafkaSendInterceptor<K, V> interceptor : interceptors) {
+                producerRecord = interceptor.onSend(producerRecord);
+            }
+            return SenderRecord.create(producerRecord, correlationMetadata);
         }
 
         private static <K, V> SenderOptions<K, V> newSenderOptions(Map<String, Object> config) {
