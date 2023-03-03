@@ -17,15 +17,15 @@ import java.util.function.Function;
  * other words, execution of either the acknowledger or nacknowledger must be threadsafe, and once
  * either is executed, further executions of either should result in no-ops. Implementations are
  * responsible for implementing how to propagate enough information with which to eventually
- * execute acknowledgement. Note that implementations may propagate more than just
- * acknowledgement resources.
+ * execute acknowledgement. Note that Alo extends {@link Contextual}, and implementations may
+ * therefore propagate contextual information in addition to acknowledgement resources.
  *
  * <p>Acknowledgers and Nacknowledgers referenced by Alo implementations must be
  * <strong>safe</strong>. They <i>must not throw Exceptions.</i>
  *
  * @param <T> The type of data item contained in this Alo
  */
-public interface Alo<T> {
+public interface Alo<T> extends Contextual {
 
     /**
      * Convenience method for executing an Alo's acknowledger. This is typically useful as a method

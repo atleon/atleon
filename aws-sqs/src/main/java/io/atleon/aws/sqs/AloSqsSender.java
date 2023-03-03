@@ -178,7 +178,7 @@ public class AloSqsSender<T> implements Closeable {
             String queueUrl
         ) {
             return AloFlux.toFlux(alos)
-                .map(alo -> toSenderMessage(alo, messageCreator.compose(Alo::get)))
+                .map(alo -> alo.supplyInContext(() -> toSenderMessage(alo, messageCreator.compose(Alo::get))))
                 .transform(senderMessages -> sender.send(senderMessages, queueUrl))
                 .map(this::toAloOfMessageResult);
         }

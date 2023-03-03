@@ -185,7 +185,7 @@ public class AloSnsSender<T> implements Closeable {
             String topicArn
         ) {
             return AloFlux.toFlux(alos)
-                .map(alo -> toSenderMessage(alo, messageCreator.compose(Alo::get)))
+                .map(alo -> alo.supplyInContext(() -> toSenderMessage(alo, messageCreator.compose(Alo::get))))
                 .transform(senderMessages -> sender.send(senderMessages, topicArn))
                 .map(this::toAloOfMessageResult);
         }
