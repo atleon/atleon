@@ -1,5 +1,6 @@
 package io.atleon.core;
 
+import io.atleon.util.Defaults;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
@@ -15,7 +16,7 @@ class RateLimitingTransformerTest {
 
     private static final double PERMITS_PER_SECOND = Duration.ofMillis(1000L).dividedBy(PERMIT_DURATION.toMillis()).toMillis();
 
-    private final RateLimitingConfig config = new RateLimitingConfig(PERMITS_PER_SECOND);
+    private final RateLimitingConfig config = new RateLimitingConfig(PERMITS_PER_SECOND, Defaults.PREFETCH);
 
     @Test
     public void publishersCanBeRateLimited() {
@@ -23,7 +24,7 @@ class RateLimitingTransformerTest {
 
         sink.asFlux()
             .publishOn(Schedulers.single())
-            .transform(new RateLimitingTransformer<>(config))
+            .transform(new RateLimitingTransformer<>(config, Schedulers.boundedElastic()))
             .as(StepVerifier::create)
             .then(() -> {
                 sink.tryEmitNext("ONE");

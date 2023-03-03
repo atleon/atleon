@@ -1,5 +1,6 @@
 package io.atleon.core;
 
+import io.atleon.util.Defaults;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.Disposable;
@@ -456,7 +457,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see AloFlux#limitPerSecond(RateLimitingConfig)
      */
     public AloFlux<T> limitPerSecond(double limitPerSecond) {
-        return limitPerSecond(new RateLimitingConfig(limitPerSecond));
+        return limitPerSecond(new RateLimitingConfig(limitPerSecond, Defaults.PREFETCH));
     }
 
     /**
@@ -464,7 +465,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * where processing requires interaction with resource-contrained I/O dependencies
      */
     public AloFlux<T> limitPerSecond(RateLimitingConfig config) {
-        return new AloFlux<>(wrapped.transform(new RateLimitingTransformer<>(config)));
+        return new AloFlux<>(wrapped.transform(new RateLimitingTransformer<>(config, Schedulers.boundedElastic())));
     }
 
     /**

@@ -7,8 +7,11 @@ public final class RateLimitingConfig {
 
     private final double permitsPerSecond;
 
-    public RateLimitingConfig(double permitsPerSecond) {
+    private final int prefetch;
+
+    public RateLimitingConfig(double permitsPerSecond, int prefetch) {
         this.permitsPerSecond = permitsPerSecond;
+        this.prefetch = prefetch;
     }
 
     public boolean isEnabled() {
@@ -17,5 +20,9 @@ public final class RateLimitingConfig {
 
     public double getPermitsPerSecond() {
         return permitsPerSecond;
+    }
+
+    public int getPrefetch() {
+        return prefetch;
     }
 }
