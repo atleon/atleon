@@ -66,7 +66,7 @@ public class KafkaTopicPartitionParallelism {
         AloKafkaReceiver.<String, String>from(kafkaReceiverConfig)
             .receiveAloRecords(Collections.singletonList(TOPIC))
             .groupBy(ConsumerRecordExtraction::extractTopicPartition)
-            .subscribe(groupFlux -> groupFlux
+            .flatMapAlo(groupedFlux -> groupedFlux
                 .publishOn(SCHEDULER)
                 .map(consumerRecord -> consumerRecord.value().toUpperCase())
                 .doOnNext(next -> {
@@ -79,8 +79,9 @@ public class KafkaTopicPartitionParallelism {
                         System.err.println("Failed to sleep");
                     }
                 })
-                .consumeAloAndGet(Alo::acknowledge)
-                .subscribe(string -> latch.countDown()));
+            )
+            .consumeAloAndGet(Alo::acknowledge)
+            .subscribe(string -> latch.countDown());
 
         //Step 4) Produce random UUIDs to the topic we're processing above
         Flux.range(0, NUM_SAMPLES)
