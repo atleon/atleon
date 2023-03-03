@@ -92,7 +92,7 @@ public class KafkaErrorHandling {
             .receiveAloValues(Collections.singletonList(TOPIC_1))
             .resubscribeOnError(KafkaErrorHandling.class.getSimpleName(), Duration.ofSeconds(2L))
             .groupBy(Function.identity())
-            .subscribe(groupFlux -> groupFlux
+            .map(groupedFlux -> groupedFlux
                 .publishOn(SCHEDULER)
                 .map(String::toUpperCase)
                 .doOnNext(next -> {
@@ -104,14 +104,15 @@ public class KafkaErrorHandling {
                         System.err.println("Unexpected failure=" + e);
                     }
                 })
-                .transform(sender.sendAloValues(TOPIC_2, Function.identity()))
-                .doOnNext(next -> latch.countDown())
-                .doOnNext(senderResult -> {
-                    if (!senderResult.failureCause().isPresent()) {
-                        successfullyProcessed.add(senderResult.correlationMetadata());
-                    }
-                })
-                .subscribe(new DefaultAloSenderResultSubscriber<>()));
+            )
+            .flatMapAlo(sender.sendAloValues(TOPIC_2, Function.identity()))
+            .doOnNext(next -> latch.countDown())
+            .doOnNext(senderResult -> {
+                if (!senderResult.failureCause().isPresent()) {
+                    successfullyProcessed.add(senderResult.correlationMetadata());
+                }
+            })
+            .subscribe(new DefaultAloSenderResultSubscriber<>());
 
         //Step 5) Produce the records to be consumed above. Note that we are using the same record
         // key for each data item, which will cause these items to show up in the order we emit

@@ -71,7 +71,7 @@ public class KafkaArbitraryParallelism {
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
             .receiveAloValues(Collections.singletonList(TOPIC))
             .groupByStringHash(Function.identity(), NUM_GROUPS)
-            .subscribe(groupFlux -> groupFlux
+            .flatMapAlo(groupedFluex -> groupedFluex
                 .publishOn(SCHEDULER)
                 .map(String::toUpperCase)
                 .doOnNext(next -> {
@@ -84,8 +84,9 @@ public class KafkaArbitraryParallelism {
                         System.err.println("Failed to sleep");
                     }
                 })
-                .consumeAloAndGet(Alo::acknowledge)
-                .subscribe(string -> latch.countDown()));
+            )
+            .consumeAloAndGet(Alo::acknowledge)
+            .subscribe(string -> latch.countDown());
 
         //Step 4) Produce random UUIDs to the topic we're processing above
         Flux.range(0, NUM_SAMPLES)
