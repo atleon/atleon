@@ -245,7 +245,7 @@ public class AloRabbitMQSender<T> implements Closeable {
             Function<R, RabbitMQMessage<T>> messageCreator
         ) {
             return AloFlux.toFlux(alos)
-                .map(alo -> toCorrelableOutboundMessage(alo, messageCreator.compose(Alo::get)))
+                .map(alo -> alo.supplyInContext(() -> toCorrelableOutboundMessage(alo, messageCreator.compose(Alo::get))))
                 .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, ALO_SEND_OPTIONS))
                 .map(RabbitMQSenderResult::fromMessageResultOfAlo);
         }

@@ -348,7 +348,7 @@ public class AloKafkaSender<K, V> implements Closeable {
             Function<T, ProducerRecord<K, V>> recordCreator
         ) {
             return AloFlux.toFlux(alos)
-                .map(alo -> SenderRecord.create(recordCreator.apply(alo.get()), alo))
+                .map(alo -> alo.supplyInContext(() -> SenderRecord.create(recordCreator.apply(alo.get()), alo)))
                 .transform(sender::send)
                 .map(KafkaSenderResult::fromSenderResultOfAlo);
         }
