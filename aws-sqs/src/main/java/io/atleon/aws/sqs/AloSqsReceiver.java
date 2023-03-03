@@ -13,8 +13,8 @@ import java.util.function.Consumer;
  * A reactive receiver of {@link Alo} items holding SQS Messages or Message bodies.
  * <p>
  * Each subscription to returned {@link AloFlux}s is backed by an
- * <a href="https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/sqs/SqsAsyncClient.html">SqsAsyncClient</a>.
- * When a subscription is terminated for any reason, the client is closed.
+ * {@link software.amazon.awssdk.services.sqs.SqsAsyncClient SqsAsyncClient}. When a subscription
+ * is terminated for any reason, the client is closed.
  *
  * @param <T> The deserialized type of SQS Message bodies
  */
