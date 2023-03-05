@@ -14,7 +14,6 @@ import reactor.rabbitmq.Sender;
 import reactor.rabbitmq.SenderOptions;
 
 import java.io.Closeable;
-import java.util.List;
 import java.util.function.Function;
 
 /**
@@ -33,13 +32,6 @@ public class AloRabbitMQSender<T> implements Closeable {
      * Prefix used on all AloRabbitMQSender-specific configurations
      */
     public static final String CONFIG_PREFIX = "rabbitmq.sender.";
-
-    /**
-     * Optional List (comma separated or {@link List}) of implementations of
-     * {@link RabbitMQSendInterceptor} (by class name) to apply to outbound
-     * {@link RabbitMQMessage}s
-     */
-    public static final String INTERCEPTORS_CONFIG = CONFIG_PREFIX + "send.interceptors";
 
     /**
      * An implementation of {@link BodySerializer} used to serialize message bodies
@@ -205,18 +197,11 @@ public class AloRabbitMQSender<T> implements Closeable {
 
         private final Sender sender;
 
-        private final List<RabbitMQSendInterceptor<T>> interceptors;
-
         private final BodySerializer<T> bodySerializer;
 
-        public SendResources(
-            Sender sender,
-            List<RabbitMQSendInterceptor<T>> interceptors,
-            BodySerializer<T> bodySerializer
-        ) {
+        public SendResources(Sender sender, BodySerializer<T> bodySerializer) {
             this.sender = sender;
             this.bodySerializer = bodySerializer;
-            this.interceptors = interceptors;
         }
 
         public static <T> SendResources<T> fromConfig(RabbitMQConfig config) {
@@ -225,7 +210,6 @@ public class AloRabbitMQSender<T> implements Closeable {
 
             return new SendResources<>(
                 new Sender(senderOptions),
-                config.loadListOfConfigured(INTERCEPTORS_CONFIG),
                 config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG)
             );
         }
@@ -259,9 +243,6 @@ public class AloRabbitMQSender<T> implements Closeable {
             Function<R, RabbitMQMessage<T>> dataToRabbitMQMessage
         ) {
             RabbitMQMessage<T> message = dataToRabbitMQMessage.apply(data);
-            for (RabbitMQSendInterceptor<T> interceptor : interceptors) {
-                message = interceptor.onSend(message);
-            }
             return new CorrelableOutboundMessage<>(
                 message.getExchange(),
                 message.getRoutingKey(),
