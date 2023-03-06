@@ -1,7 +1,9 @@
 package io.atleon.kafka;
 
 import io.atleon.core.Alo;
+import io.atleon.core.AloFactory;
 import io.atleon.core.AloFlux;
+import io.atleon.core.ComposedAlo;
 import io.atleon.core.OrderManagingAcknowledgementOperator;
 import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -106,12 +108,6 @@ public class AloKafkaReceiver<K, V> {
      */
     public static final String CLOSE_TIMEOUT_CONFIG = CONFIG_PREFIX + "close.timeout";
 
-    /**
-     * The fully qualified class name of an implementation of {@link AloConsumerRecordFactory} used
-     * to create implementations of {@link Alo} to be emitted to Subscribers
-     */
-    public static final String ALO_FACTORY_CONFIG = CONFIG_PREFIX + "alo.factory";
-
     private static final boolean DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS = false;
 
     private static final long DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION = 4096;
@@ -184,8 +180,7 @@ public class AloKafkaReceiver<K, V> {
      */
     public AloFlux<V> receiveAloValues(Collection<String> topics) {
         return receiveAloRecords(topics)
-            .filter(record -> record.value() != null)
-            .map(ConsumerRecord::value);
+            .mapNotNull(ConsumerRecord::value);
     }
 
     /**
@@ -222,7 +217,7 @@ public class AloKafkaReceiver<K, V> {
         loadInto(options, config, MAX_COMMIT_ATTEMPTS_CONFIG, DEFAULT_MAX_COMMIT_ATTEMPTS);
         loadInto(options, config, CLOSE_TIMEOUT_CONFIG, DEFAULT_CLOSE_TIMEOUT);
 
-        AloConsumerRecordFactory<K, V> aloFactory = createAloFactory(config);
+        AloFactory<ConsumerRecord<K, V>> aloFactory = ComposedAlo.factory();
         long maxInFlightPerSubscription = ConfigLoading.loadOrThrow(options, MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG, Long::valueOf);
 
         // 1) Create Consumer config from remaining configs that are NOT options (help avoid WARNs)
@@ -255,8 +250,9 @@ public class AloKafkaReceiver<K, V> {
 
     private Flux<Alo<ConsumerRecord<K, V>>> createAloRecords(
         Flux<ReceiverRecord<K, V>> records,
-        AloConsumerRecordFactory<K, V> aloFactory,
-        long maxInFlightPerSubscription) {
+        AloFactory<ConsumerRecord<K, V>> aloFactory,
+        long maxInFlightPerSubscription
+    ) {
         Sinks.Empty<Alo<ConsumerRecord<K, V>>> sink = Sinks.empty();
         return records.map(record -> aloFactory.create(record, record.receiverOffset()::acknowledge, sink::tryEmitError))
             .mergeWith(sink.asMono())
@@ -266,11 +262,6 @@ public class AloKafkaReceiver<K, V> {
 
     private static long nextClientIdCount(String clientId) {
         return COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, key -> new AtomicLong()).incrementAndGet();
-    }
-
-    private static <K, V> AloConsumerRecordFactory<K, V> createAloFactory(Map<String, Object> config) {
-        return ConfigLoading.<AloConsumerRecordFactory<K, V>>loadConfigured(config, ALO_FACTORY_CONFIG)
-            .orElseGet(DefaultAloConsumerRecordFactory::new);
     }
 
     private static void loadInto(Map<String, Object> destination, Map<String, Object> source, String key, Object def) {

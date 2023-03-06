@@ -1,7 +1,9 @@
 package io.atleon.aws.sqs;
 
 import io.atleon.core.Alo;
+import io.atleon.core.AloFactory;
 import io.atleon.core.AloFlux;
+import io.atleon.core.ComposedAlo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -129,7 +131,7 @@ public class AloSqsReceiver<T> {
      * Creates a new AloSqsReceiver from the provided {@link SqsConfigSource}
      *
      * @param configSource The reactive source of {@link SqsConfig}
-     * @param <T> The types of deserialized message bodies contained in received messages
+     * @param <T>          The types of deserialized message bodies contained in received messages
      * @return A new AloSqsReceiver
      */
     public static <T> AloSqsReceiver<T> from(SqsConfigSource configSource) {
@@ -163,13 +165,14 @@ public class AloSqsReceiver<T> {
 
     private Flux<Alo<ReceivedSqsMessage<T>>> receiveMessages(SqsConfig config, String queueUrl) {
         SqsReceiverOptions options = newReceiverOptions(config);
+        AloFactory<ReceivedSqsMessage<T>> aloFactory = ComposedAlo.factory();
         BodyDeserializer<T> bodyDeserializer = config.loadConfiguredOrThrow(BODY_DESERIALIZER_CONFIG);
         NacknowledgerFactory<T> nacknowledgerFactory = createNacknowledgerFactory(config);
 
         Sinks.Empty<SqsReceiverMessage> sink = Sinks.empty();
         return SqsReceiver.create(options).receiveManual(queueUrl)
             .mergeWith(sink.asMono())
-            .map(message -> toAlo(message, bodyDeserializer, nacknowledgerFactory, sink::tryEmitError));
+            .map(message -> toAlo(aloFactory, message, bodyDeserializer, nacknowledgerFactory, sink::tryEmitError));
     }
 
     private static SqsReceiverOptions newReceiverOptions(SqsConfig config) {
@@ -200,6 +203,7 @@ public class AloSqsReceiver<T> {
     }
 
     private static <T> Alo<ReceivedSqsMessage<T>> toAlo(
+        AloFactory<ReceivedSqsMessage<T>> aloFactory,
         SqsReceiverMessage message,
         BodyDeserializer<T> bodyDeserializer,
         NacknowledgerFactory<T> nacknowledgerFactory,
@@ -212,7 +216,7 @@ public class AloSqsReceiver<T> {
             message.messageSystemAttributes(),
             bodyDeserializer.deserialize(message.body())
         );
-        return new DefaultAloReceivedSqsMessage<>(
+        return aloFactory.create(
             deserialized,
             message.deleter(),
             nacknowledgerFactory.create(deserialized, message.deleter(), message.visibilityChanger(), errorEmitter)

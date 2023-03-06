@@ -2,7 +2,9 @@ package io.atleon.rabbitmq;
 
 import com.rabbitmq.client.ConnectionFactory;
 import io.atleon.core.Alo;
+import io.atleon.core.AloFactory;
 import io.atleon.core.AloFlux;
+import io.atleon.core.ComposedAlo;
 import io.atleon.util.Defaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,12 +55,6 @@ public class AloRabbitMQReceiver<T> {
      */
     public static final String NACK_STRATEGY_CONFIG = CONFIG_PREFIX + "nack.strategy";
 
-    /**
-     * An implementation of {@link AloRabbitMQMessageFactory} used to wrap messages in an
-     * implementation of {@link Alo}. Default is {@link DefaultAloRabbitMQMessageFactory}
-     */
-    public static final String ALO_FACTORY_CONFIG = CONFIG_PREFIX + "alo.factory";
-
     private static final Logger LOGGER = LoggerFactory.getLogger(AloRabbitMQReceiver.class);
 
     private final Mono<ReceiveResources<T>> futureResources;
@@ -89,8 +85,7 @@ public class AloRabbitMQReceiver<T> {
      */
     public AloFlux<T> receiveAloBodies(String queue) {
         return receiveAloMessages(queue)
-            .filter(message -> message.getBody() != null)
-            .map(RabbitMQMessage::getBody);
+            .mapNotNull(RabbitMQMessage::getBody);
     }
 
     /**
@@ -122,31 +117,30 @@ public class AloRabbitMQReceiver<T> {
 
         private final NackStrategy nackStrategy;
 
-        private final AloRabbitMQMessageFactory<T> messageFactory;
+        private final AloFactory<RabbitMQMessage<T>> aloFactory;
 
         private ReceiveResources(
             ConnectionFactory connectionFactory,
             int qos,
             BodyDeserializer<T> bodyDeserializer,
             NackStrategy nackStrategy,
-            AloRabbitMQMessageFactory<T> messageFactory) {
+            AloFactory<RabbitMQMessage<T>> aloFactory
+        ) {
             this.connectionFactory = connectionFactory;
             this.qos = qos;
             this.bodyDeserializer = bodyDeserializer;
             this.nackStrategy = nackStrategy;
-            this.messageFactory = messageFactory;
+            this.aloFactory = aloFactory;
         }
 
         public static <T> ReceiveResources<T> fromConfig(RabbitMQConfig config) {
-            AloRabbitMQMessageFactory<T> messageFactory =
-                config.<AloRabbitMQMessageFactory<T>>loadConfigured(ALO_FACTORY_CONFIG)
-                    .orElseGet(DefaultAloRabbitMQMessageFactory::new);
             return new ReceiveResources<T>(
                 config.getConnectionFactory(),
                 config.load(QOS_CONFIG, Integer::parseInt).orElse(Defaults.PREFETCH),
                 config.loadConfiguredOrThrow(BODY_DESERIALIZER_CONFIG),
                 config.load(NACK_STRATEGY_CONFIG, NackStrategy::valueOf).orElse(NackStrategy.EMIT),
-                messageFactory);
+                ComposedAlo.factory()
+            );
         }
 
         public Flux<Alo<RabbitMQMessage<T>>> receive(String queue, Consumer<? super Throwable> errorEmitter) {
@@ -172,7 +166,7 @@ public class AloRabbitMQReceiver<T> {
 
             Runnable acknowledger = () -> ack(delivery, errorEmitter);
             Consumer<? super Throwable> nacknowledger = error -> nack(delivery, errorEmitter, error);
-            return messageFactory.create(rabbitMessage, acknowledger, nacknowledger);
+            return aloFactory.create(rabbitMessage, acknowledger, nacknowledger);
         }
 
         private void ack(AcknowledgableDelivery delivery, Consumer<? super Throwable> errorEmitter) {
