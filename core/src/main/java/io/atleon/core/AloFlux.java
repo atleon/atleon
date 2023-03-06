@@ -198,47 +198,14 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see Flux#bufferTimeout(int, Duration)
      */
     public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime) {
-        return bufferTimeout(maxSize, maxTime, Schedulers.parallel(), buffer -> buffer.get(0).propagator());
+        return bufferTimeout(maxSize, maxTime, Schedulers.parallel());
     }
 
     /**
      * @see Flux#bufferTimeout(int, Duration, Scheduler)
      */
     public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime, Scheduler scheduler) {
-        return bufferTimeout(maxSize, maxTime, scheduler, buffer -> buffer.get(0).propagator());
-    }
-
-    /**
-     * Same {@link AloFlux#bufferTimeout(int, Duration, Scheduler, Function)} with default
-     * Scheduler of {@link Schedulers#parallel()}
-     */
-    public AloFlux<List<T>> bufferTimeout(
-        int maxSize,
-        Duration maxTime,
-        Function<? super List<Alo<T>>, AloFactory<List<T>>> bufferToAloFactory) {
-        return bufferTimeout(maxSize, maxTime, Schedulers.parallel(), bufferToAloFactory);
-    }
-
-    /**
-     * With the same semantics as {@link Flux#bufferTimeout(int, Duration, Scheduler)}, this
-     * operator causes items to be buffered in to Lists within bounded size and time. The one
-     * nuance to this method is the provided Function which produces an {@link AloFactory} which is
-     * used to create an implementation of Alo that wraps the buffered data items.
-     *
-     * @param maxSize            the max collected size
-     * @param maxTime            the timeout enforcing the release of a partial buffer
-     * @param scheduler          a time-capable Scheduler instance to run on
-     * @param bufferToAloFactory Function that provides an AloFactory to wrap list of items
-     * @return An AloFlux that buffers upstream elements in bounded size and time
-     */
-    public AloFlux<List<T>> bufferTimeout(
-        int maxSize,
-        Duration maxTime,
-        Scheduler scheduler,
-        Function<? super List<Alo<T>>, AloFactory<List<T>>> bufferToAloFactory) {
-        return wrapped.bufferTimeout(maxSize, maxTime, scheduler)
-            .map(buffer -> AloFactory.invertList(buffer, bufferToAloFactory.apply(buffer)))
-            .as(AloFlux::wrap);
+        return wrapped.bufferTimeout(maxSize, maxTime, scheduler).map(AloOps::fanIn).as(AloFlux::wrap);
     }
 
     /**

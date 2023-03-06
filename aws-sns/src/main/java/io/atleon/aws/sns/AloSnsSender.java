@@ -14,7 +14,7 @@ import java.util.function.Function;
 
 /**
  * A reactive sender of {@link Alo} data to SNS topics, with forwarding methods for non-Alo items.
- * <P>
+ * <p>
  * At most one instance of an {@link SnsSender} is kept and can be closed upon invoking
  * {@link AloSnsSender#close()}. However, if after closing, more sent Publishers are subscribed to,
  * a new Client instance will be created and cached.
@@ -165,7 +165,7 @@ public class AloSnsSender<T> implements Closeable {
             return new Resources<>(SnsSender.create(options), config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG));
         }
 
-        public  Mono<SnsSenderResult<SnsMessage<T>>> send(SnsMessage<T> message, SnsAddress address) {
+        public Mono<SnsSenderResult<SnsMessage<T>>> send(SnsMessage<T> message, SnsAddress address) {
             return sender.send(toSenderMessage(message, Function.identity()), address);
         }
 
@@ -187,7 +187,7 @@ public class AloSnsSender<T> implements Closeable {
             return AloFlux.toFlux(alos)
                 .map(alo -> alo.supplyInContext(() -> toSenderMessage(alo, messageCreator.compose(Alo::get))))
                 .transform(senderMessages -> sender.send(senderMessages, topicArn))
-                .map(this::toAloOfMessageResult);
+                .map(result -> result.correlationMetadata().map(result::replaceCorrelationMetadata));
         }
 
         public void close() {
@@ -205,12 +205,6 @@ public class AloSnsSender<T> implements Closeable {
                 .body(bodySerializer.serialize(snsMessage.body()))
                 .correlationMetadata(data)
                 .build();
-        }
-
-        private <R> Alo<SnsSenderResult<R>> toAloOfMessageResult(SnsSenderResult<Alo<R>> messageResultOfAlo) {
-            Alo<R> alo = messageResultOfAlo.correlationMetadata();
-            return alo.<SnsSenderResult<R>>propagator()
-                .create(messageResultOfAlo.mapCorrelationMetadata(Alo::get), alo.getAcknowledger(), alo.getNacknowledger());
         }
     }
 }

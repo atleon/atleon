@@ -14,7 +14,7 @@ import java.util.function.Function;
 
 /**
  * A reactive sender of {@link Alo} data to SQS queues, with forwarding methods for non-Alo items.
- * <P>
+ * <p>
  * At most one instance of a {@link SqsSender} is kept and can be closed upon invoking
  * {@link AloSqsSender#close()}. However, if after closing, more sent Publishers are subscribed to,
  * a new Sender instance will be created and cached.
@@ -180,7 +180,7 @@ public class AloSqsSender<T> implements Closeable {
             return AloFlux.toFlux(alos)
                 .map(alo -> alo.supplyInContext(() -> toSenderMessage(alo, messageCreator.compose(Alo::get))))
                 .transform(senderMessages -> sender.send(senderMessages, queueUrl))
-                .map(this::toAloOfMessageResult);
+                .map(result -> result.correlationMetadata().map(result::replaceCorrelationMetadata));
         }
 
         public void close() {
@@ -198,12 +198,6 @@ public class AloSqsSender<T> implements Closeable {
                 .delaySeconds(sqsMessage.senderDelaySeconds().orElse(null))
                 .correlationMetadata(data)
                 .build();
-        }
-
-        private <R> Alo<SqsSenderResult<R>> toAloOfMessageResult(SqsSenderResult<Alo<R>> messageResultOfAlo) {
-            Alo<R> alo = messageResultOfAlo.correlationMetadata();
-            return alo.<SqsSenderResult<R>>propagator()
-                .create(messageResultOfAlo.mapCorrelationMetadata(Alo::get), alo.getAcknowledger(), alo.getNacknowledger());
         }
     }
 }

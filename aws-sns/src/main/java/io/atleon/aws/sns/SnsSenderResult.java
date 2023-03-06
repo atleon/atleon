@@ -54,6 +54,10 @@ public final class SnsSenderResult<C> implements SenderResult {
         return Optional.ofNullable(error);
     }
 
+    public <R> SnsSenderResult<R> replaceCorrelationMetadata(R newCorrelationMetadata) {
+        return new SnsSenderResult<>(requestId, successMetadata, error, newCorrelationMetadata);
+    }
+
     public <R> SnsSenderResult<R> mapCorrelationMetadata(Function<? super C, ? extends R> mapper) {
         return new SnsSenderResult<>(requestId, successMetadata, error, mapper.apply(correlationMetadata));
     }
