@@ -22,6 +22,15 @@ public final class ComposedAlo<T> implements Alo<T> {
         this.nacknowledger = nacknowledger;
     }
 
+    public static <T> AloFactory<T> factory() {
+        return ComposedAlo::new;
+    }
+
+    @Override
+    public String toString() {
+        return "ComposedAlo{t=" + t + "}";
+    }
+
     @Override
     public <R> AloFactory<R> propagator() {
         return ComposedAlo::new;

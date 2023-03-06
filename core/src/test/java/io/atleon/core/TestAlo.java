@@ -26,7 +26,7 @@ public final class TestAlo implements Alo<String> {
 
     @Override
     public <R> AloFactory<R> propagator() {
-        return ComposedAlo::new;
+        return ComposedAlo.factory();
     }
 
     @Override

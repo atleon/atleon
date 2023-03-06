@@ -73,7 +73,7 @@ public interface Alo<T> extends Contextual {
      * Create an {@link AloFactory} for some other data item (ordinarily derived from a
      * transformation of this Alo's data item) that propagates any relevant resources (like tracing
      * context). If there is nothing to propagate, this can typically be implemented by returning
-     * {@link ComposedAlo#ComposedAlo(Object, Runnable, Consumer) ComposedAlo::new}
+     * {@link ComposedAlo#factory()}
      *
      * @param <R> The type of data item for which the returned AloFactory will wrap with Alo
      * @return An AloFactory used to create Alo implementations with any propagated data
