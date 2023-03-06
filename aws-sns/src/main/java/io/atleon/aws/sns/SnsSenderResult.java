@@ -50,6 +50,16 @@ public final class SnsSenderResult<C> implements SenderResult {
     }
 
     @Override
+    public String toString() {
+        return "SnsSenderResult{" +
+            "requestId='" + requestId + '\'' +
+            ", successMetadata=" + successMetadata +
+            ", error=" + error +
+            ", correlationMetadata=" + correlationMetadata +
+            '}';
+    }
+
+    @Override
     public Optional<Throwable> failureCause() {
         return Optional.ofNullable(error);
     }

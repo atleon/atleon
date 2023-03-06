@@ -21,9 +21,11 @@ class AloFluxTest {
         List<String> result = new ArrayList<>();
         AloFlux.wrap(Flux.just(empty, nonEmpty))
             .mapNotNull((string) -> string.isEmpty() ? null : string)
-            .subscribe((alo) -> result.add(alo.get().toString()));
+            .subscribe((alo) -> result.add(alo.get()));
 
         assertEquals(Collections.singletonList(nonEmpty.get()), result);
+        assertEquals(1, empty.mapCount());
+        assertEquals(1, nonEmpty.mapCount());
         assertTrue(empty.isAcknowledged());
         assertFalse(nonEmpty.isAcknowledged());
     }
