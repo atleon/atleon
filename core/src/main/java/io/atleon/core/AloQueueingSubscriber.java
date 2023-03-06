@@ -64,7 +64,7 @@ final class AloQueueingSubscriber<T, A extends Alo<T>> implements Subscriber<A>,
 
     @Override
     public void onNext(A a) {
-        AcknowledgementQueue queue = queuesByGroup.computeIfAbsent(groupExtractor.apply(a.get()), group -> queueSupplier.get());
+        AcknowledgementQueue queue = queuesByGroup.computeIfAbsent(groupExtractor.apply(a.get()), __ -> queueSupplier.get());
 
         AcknowledgementQueue.InFlight inFlight = queue.add(a.getAcknowledger(), a.getNacknowledger());
 

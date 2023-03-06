@@ -1,6 +1,6 @@
 package io.atleon.core;
 
-import java.util.function.BinaryOperator;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -59,16 +59,14 @@ public interface Alo<T> extends Contextual {
     }
 
     /**
-     * Apply a reduction on this Alo with another, producing a reduced Alo
+     * Create an {@link AloFactory} that will be used to "fan in" the provided list of Alos which
+     * reference the same type of data item as this one. Defaults to {@link Alo#propagator()}.
      *
-     * @param reducer The reduction to apply
-     * @param other   The other Alo to apply reduction with
-     * @return a reduced Alo
+     * @param alos The list of Alos to be "fanned in"
+     * @return An AloFactory that will later be used to create a "fanned in" result
      */
-    default Alo<T> reduce(BinaryOperator<T> reducer, Alo<? extends T> other) {
-        Runnable acknowledger = AloOps.combineAcknowledgers(getAcknowledger(), other.getAcknowledger());
-        Consumer<Throwable> nacknowledger = AloOps.combineNacknowledgers(getNacknowledger(), other.getNacknowledger());
-        return this.<T>propagator().create(reducer.apply(get(), other.get()), acknowledger, nacknowledger);
+    default AloFactory<List<T>> fanInPropagator(List<Alo<T>> alos) {
+        return propagator();
     }
 
     /**

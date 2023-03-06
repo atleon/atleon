@@ -31,6 +31,10 @@ public interface Deduplication<T> {
 
     class Identity<T> implements Deduplication<T> {
 
+        private Identity() {
+
+        }
+
         @Override
         public Object extractKey(T t) {
             return t;

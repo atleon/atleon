@@ -8,25 +8,28 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
+import java.util.List;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
 
 final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publisher<T>> {
 
-    private static final Scheduler DEFAULT_SCHEDULER = Schedulers.newBoundedElastic(
-        Defaults.THREAD_CAP, Integer.MAX_VALUE, DeduplicatingTransformer.class.getSimpleName());
+    private static final Scheduler DEFAULT_SCHEDULER =
+        Schedulers.newBoundedElastic(Defaults.THREAD_CAP, Integer.MAX_VALUE, DeduplicatingTransformer.class.getSimpleName());
 
     private final DeduplicationConfig config;
 
-    private final Deduplication<T> deduplication;
+    private final Deduplicator<T, ?> deduplicator;
 
     private final Scheduler sourceScheduler;
 
     private DeduplicatingTransformer(
         DeduplicationConfig config,
-        Deduplication<T> deduplication,
-        Scheduler sourceScheduler) {
+        Deduplicator<T, ?> deduplicator,
+        Scheduler sourceScheduler
+    ) {
         this.config = config;
-        this.deduplication = deduplication;
+        this.deduplicator = deduplicator;
         this.sourceScheduler = sourceScheduler;
     }
 
@@ -37,7 +40,7 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
 
     static <T> DeduplicatingTransformer<T>
     identity(DeduplicationConfig config, Deduplication<T> deduplication, Scheduler sourceScheduler) {
-        return new DeduplicatingTransformer<>(config, deduplication, sourceScheduler);
+        return new DeduplicatingTransformer<>(config, Deduplicator.identity(deduplication), sourceScheduler);
     }
 
     static <T> DeduplicatingTransformer<Alo<T>>
@@ -47,7 +50,7 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
 
     static <T> DeduplicatingTransformer<Alo<T>>
     alo(DeduplicationConfig config, Deduplication<T> deduplication, Scheduler sourceScheduler) {
-        return new DeduplicatingTransformer<>(config, new AloDeduplication<>(deduplication), sourceScheduler);
+        return new DeduplicatingTransformer<>(config, Deduplicator.alo(deduplication), sourceScheduler);
     }
 
     @Override
@@ -68,7 +71,7 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
         Scheduler scheduler = Schedulers.single(sourceScheduler);
         return Flux.from(publisher)
             .publishOn(scheduler, config.getDeduplicationSourcePrefetch())
-            .groupBy(deduplication::extractKey)
+            .groupBy(deduplicator::extractKey)
             .flatMap(groupedFlux -> deduplicateGroup(groupedFlux, scheduler), config.getDeduplicationConcurrency())
             .subscribeOn(scheduler);
     }
@@ -76,25 +79,49 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
     private Mono<T> deduplicateGroup(GroupedFlux<Object, T> groupedFlux, Scheduler scheduler) {
         return groupedFlux.take(config.getDeduplicationDuration(), scheduler)
             .take(config.getMaxDeduplicationSize())
-            .reduce(deduplication::reduceDuplicates);
+            .collectList()
+            .map(deduplicator::deduplicate);
     }
 
-    private static final class AloDeduplication<T> implements Deduplication<Alo<T>> {
+    private static final class Deduplicator<T, R> {
 
-        private final Deduplication<T> deduplication;
+        private final Function<T, R> dataExtractor;
 
-        public AloDeduplication(Deduplication<T> deduplication) {
-            this.deduplication = deduplication;
+        private final Function<R, Object> keyExtractor;
+
+        private final Function<List<T>, T> reducer;
+
+        private Deduplicator(Function<T, R> dataExtractor, Function<R, Object> keyExtractor, Function<List<T>, T> reducer) {
+            this.dataExtractor = dataExtractor;
+            this.keyExtractor = keyExtractor;
+            this.reducer = reducer;
         }
 
-        @Override
-        public Object extractKey(Alo<T> alo) {
-            return deduplication.extractKey(alo.get());
+        public static <T> Deduplicator<T, T> identity(Deduplication<T> deduplication) {
+            Function<List<T>, T> reducer = singleReducer(deduplication::reduceDuplicates);
+            return new Deduplicator<>(Function.identity(), deduplication::extractKey, reducer);
         }
 
-        @Override
-        public Alo<T> reduceDuplicates(Alo<T> alo1, Alo<T> alo2) {
-            return alo1.reduce(deduplication::reduceDuplicates, alo2);
+        public static <T> Deduplicator<Alo<T>, T> alo(Deduplication<T> deduplication) {
+            Function<List<T>, T> reducer = singleReducer(deduplication::reduceDuplicates);
+            Function<List<Alo<T>>, Alo<T>> aloReducer = it -> it.size() <= 1 ? it.get(0) : AloOps.fanIn(it).map(reducer);
+            return new Deduplicator<>(Alo::get, deduplication::extractKey, aloReducer);
+        }
+
+        public Object extractKey(T t) {
+            return keyExtractor.apply(dataExtractor.apply(t));
+        }
+
+        public T deduplicate(List<T> list) {
+            return reducer.apply(list);
+        }
+
+        private static <T> Function<List<T>, T> singleReducer(BinaryOperator<T> accumulator) {
+            return list -> list.stream().reduce(accumulator).orElseThrow(Deduplicator::newEmptyDeduplicationGroupException);
+        }
+
+        private static IllegalStateException newEmptyDeduplicationGroupException() {
+            return new IllegalStateException("Something bad has happened. Deduplication group was empty.");
         }
     }
 }

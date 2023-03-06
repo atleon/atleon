@@ -54,6 +54,10 @@ public final class SqsSenderResult<C> implements SenderResult {
         return Optional.ofNullable(error);
     }
 
+    public <R> SqsSenderResult<R> replaceCorrelationMetadata(R newCorrelationMetadata) {
+        return new SqsSenderResult<>(requestId, successMetadata, error, newCorrelationMetadata);
+    }
+
     public <R> SqsSenderResult<R> mapCorrelationMetadata(Function<? super C, ? extends R> mapper) {
         return new SqsSenderResult<>(requestId, successMetadata, error, mapper.apply(correlationMetadata));
     }
