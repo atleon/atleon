@@ -24,35 +24,28 @@ import java.util.function.Consumer;
  */
 final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
-    private final Publisher<? extends T> source;
-
-    private final Runnable acknowledger;
-
-    private final Consumer<? super Throwable> nacknowledger;
-
-    private final AloFactory<T> factory;
+    private final Alo<Publisher<T>> aloSource;
 
     private final AtomicBoolean subscribedOnce = new AtomicBoolean(false);
 
-    private AcknowledgingPublisher(
-        Publisher<? extends T> source,
-        Runnable acknowledger,
-        Consumer<? super Throwable> nacknowledger,
-        AloFactory<T> factory) {
-        this.source = source;
-        this.acknowledger = acknowledger;
-        this.nacknowledger = nacknowledger;
-        this.factory = factory;
+    private AcknowledgingPublisher(Alo<Publisher<T>> aloSource) {
+        this.aloSource = aloSource;
     }
 
-    public static <T> Publisher<Alo<T>> fromAloPublisher(Alo<Publisher<T>> ap) {
-        return new AcknowledgingPublisher<>(ap.get(), ap.getAcknowledger(), ap.getNacknowledger(), ap.propagator());
+    public static <T> Publisher<Alo<T>> fromAloPublisher(Alo<Publisher<T>> aloPublisher) {
+        return new AcknowledgingPublisher<>(aloPublisher);
     }
 
     @Override
     public void subscribe(Subscriber<? super Alo<T>> subscriber) {
         if (subscribedOnce.compareAndSet(false, true)) {
-            source.subscribe(new AcknowledgingSubscriber<>(acknowledger, nacknowledger, factory, subscriber));
+            Subscriber<T> acknowledgingSubscriber = new AcknowledgingSubscriber<>(
+                aloSource.getAcknowledger(),
+                aloSource.getNacknowledger(),
+                aloSource.propagator(),
+                subscriber
+            );
+            aloSource.runInContext(() -> aloSource.get().subscribe(acknowledgingSubscriber));
         } else {
             throw new IllegalStateException("AcknowledgingPublisher may only be subscribed to once");
         }
@@ -60,7 +53,7 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
     private static final class AcknowledgingSubscriber<T> implements Subscriber<T> {
 
-        private enum State { ACTIVE, IN_FLIGHT, EXECUTED }
+        private enum State {ACTIVE, IN_FLIGHT, EXECUTED}
 
         private final AtomicReference<State> state = new AtomicReference<>(State.ACTIVE);
 
@@ -78,7 +71,8 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
             Runnable acknowledger,
             Consumer<? super Throwable> nacknowledger,
             AloFactory<T> factory,
-            Subscriber<? super Alo<T>> subscriber) {
+            Subscriber<? super Alo<T>> subscriber
+        ) {
             this.acknowledger = acknowledger;
             this.nacknowledger = nacknowledger;
             this.factory = factory;
@@ -133,19 +127,23 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
         }
 
         private Alo<T> wrap(T value, Reference<T> valueReference) {
-            return factory.create(value, () -> {
-                synchronized (unacknowledged) {
-                    if (unacknowledged.remove(valueReference)) {
-                        maybeExecuteAcknowledger();
+            return factory.create(
+                value,
+                () -> {
+                    synchronized (unacknowledged) {
+                        if (unacknowledged.remove(valueReference)) {
+                            maybeExecuteAcknowledger();
+                        }
+                    }
+                },
+                error -> {
+                    synchronized (unacknowledged) {
+                        if (unacknowledged.contains(valueReference)) {
+                            maybeExecuteNacknowledger(error);
+                        }
                     }
                 }
-            }, error -> {
-                synchronized (unacknowledged) {
-                    if (unacknowledged.contains(valueReference)) {
-                        maybeExecuteNacknowledger(error);
-                    }
-                }
-            });
+            );
         }
 
         private void maybeExecuteAcknowledger() {

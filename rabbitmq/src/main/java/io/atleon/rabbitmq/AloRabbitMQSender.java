@@ -8,12 +8,14 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.core.publisher.SynchronousSink;
 import reactor.rabbitmq.CorrelableOutboundMessage;
 import reactor.rabbitmq.SendOptions;
 import reactor.rabbitmq.Sender;
 import reactor.rabbitmq.SenderOptions;
 
 import java.io.Closeable;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
@@ -219,7 +221,7 @@ public class AloRabbitMQSender<T> implements Closeable {
             Function<R, RabbitMQMessage<T>> messageCreator
         ) {
             return Flux.from(items)
-                .map(item -> toCorrelableOutboundMessage(item, messageCreator))
+                .map(item -> toOutboundMessage(item, messageCreator))
                 .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, SEND_OPTIONS))
                 .map(RabbitMQSenderResult::fromMessageResult);
         }
@@ -229,7 +231,7 @@ public class AloRabbitMQSender<T> implements Closeable {
             Function<R, RabbitMQMessage<T>> messageCreator
         ) {
             return AloFlux.toFlux(alos)
-                .map(alo -> alo.supplyInContext(() -> toCorrelableOutboundMessage(alo, messageCreator.compose(Alo::get))))
+                .handle(newAloEmitter(messageCreator.compose(Alo::get)))
                 .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, ALO_SEND_OPTIONS))
                 .map(RabbitMQSenderResult::fromMessageResultOfAlo);
         }
@@ -238,7 +240,13 @@ public class AloRabbitMQSender<T> implements Closeable {
             sender.close();
         }
 
-        private <R> CorrelableOutboundMessage<R> toCorrelableOutboundMessage(
+        private <R> BiConsumer<Alo<R>, SynchronousSink<CorrelableOutboundMessage<Alo<R>>>> newAloEmitter(
+            Function<Alo<R>, RabbitMQMessage<T>> aloToRabbitMQMessage
+        ) {
+            return (alo, sink) -> alo.runInContext(() -> sink.next(toOutboundMessage(alo, aloToRabbitMQMessage)));
+        }
+
+        private <R> CorrelableOutboundMessage<R> toOutboundMessage(
             R data,
             Function<R, RabbitMQMessage<T>> dataToRabbitMQMessage
         ) {
