@@ -330,7 +330,7 @@ public class AloKafkaSender<K, V> implements Closeable {
         }
 
         public static <K, V> Resources<K, V> fromConfig(Map<String, Object> config) {
-            return new Resources<>(KafkaSender.create(newSenderOptions(config)));
+            return new Resources<>(KafkaSender.create(ContextualProducerFactory.INSTANCE, newSenderOptions(config)));
         }
 
         public <T> Flux<KafkaSenderResult<T>> send(
