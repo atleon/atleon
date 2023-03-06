@@ -23,7 +23,7 @@ import java.util.function.Function;
  * <p>Acknowledgers and Nacknowledgers referenced by Alo implementations must be
  * <strong>safe</strong>. They <i>must not throw Exceptions.</i>
  *
- * @param <T> The type of data item contained in this Alo
+ * @param <T> The type of data item exposed by this Alo
  */
 public interface Alo<T> extends Contextual {
 
@@ -59,13 +59,13 @@ public interface Alo<T> extends Contextual {
     }
 
     /**
-     * Create an {@link AloFactory} that will be used to "fan in" the provided list of Alos which
-     * reference the same type of data item as this one. Defaults to {@link Alo#propagator()}.
+     * Create an {@link AloFactory} that will be used to "fan in" the provided list of Alos.
+     * Defaults to {@link Alo#propagator()}.
      *
      * @param alos The list of Alos to be "fanned in"
      * @return An AloFactory that will later be used to create a "fanned in" result
      */
-    default AloFactory<List<T>> fanInPropagator(List<Alo<T>> alos) {
+    default <R> AloFactory<List<R>> fanInPropagator(List<? extends Alo<?>> alos) {
         return propagator();
     }
 

@@ -85,7 +85,7 @@ final class AloOps {
         if (alos.size() == 1) {
             return firstAlo.map(Collections::singletonList);
         } else {
-            return firstAlo.fanInPropagator(alos).create(
+            return firstAlo.<T>fanInPropagator(alos).create(
                 alos.stream().map(Alo::get).collect(Collectors.toList()),
                 combineAcknowledgers(alos.stream().map(Alo::getAcknowledger).collect(Collectors.toList())),
                 combineNacknowledgers(alos.stream().map(Alo::getNacknowledger).collect(Collectors.toList()))

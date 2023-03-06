@@ -141,7 +141,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
         return new AloFlux<>(wrapped.handle((alo, sink) -> {
             Alo<Optional<? extends V>> result = alo.map(mapper);
             if (result.get().isPresent()) {
-                sink.next(result.map(Optional::get));
+                sink.next(PresentAlo.wrap(result));
             } else {
                 Alo.acknowledge(alo);
             }
