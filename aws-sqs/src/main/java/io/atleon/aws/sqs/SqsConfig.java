@@ -1,6 +1,8 @@
 package io.atleon.aws.sqs;
 
 import io.atleon.aws.util.AwsConfig;
+import io.atleon.core.AloDecorator;
+import io.atleon.core.AloDecoratorConfig;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
 import io.atleon.util.Instantiation;
@@ -12,6 +14,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -38,6 +41,10 @@ public class SqsConfig {
             .credentialsProvider(AwsConfig.loadCredentialsProvider(properties))
             .region(AwsConfig.loadRegion(properties).orElse(null))
             .build();
+    }
+
+    public <T> Optional<AloDecorator<ReceivedSqsMessage<T>>> loadAloDecorator(String descriptorsProperty) {
+        return AloDecoratorConfig.load(AloReceivedSqsMessageDecorator.class, properties, descriptorsProperty);
     }
 
     public <T extends Configurable> T loadConfiguredOrThrow(String property) {
