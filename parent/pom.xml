@@ -21,6 +21,7 @@
         <javassist.version>3.27.0-GA</javassist.version>
         <junit-jupiter.version>5.6.3</junit-jupiter.version>
         <micrometer.version>1.0.7</micrometer.version>
+        <opentracing.verion>0.32.0</opentracing.verion>
         <rabbitmq-amqp-client.version>5.13.1</rabbitmq-amqp-client.version>
         <reactive-streams.version>1.0.3</reactive-streams.version>
         <reactor.version>3.4.12</reactor.version>
@@ -76,6 +77,16 @@
             <dependency>
                 <groupId>io.atleon</groupId>
                 <artifactId>atleon-kafka-embedded</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
+                <artifactId>atleon-opentracing</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
+                <artifactId>atleon-opentracing-auto</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -169,6 +180,21 @@
                 <groupId>io.micrometer</groupId>
                 <artifactId>micrometer-core</artifactId>
                 <version>${micrometer.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opentracing</groupId>
+                <artifactId>opentracing-api</artifactId>
+                <version>${opentracing.verion}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opentracing</groupId>
+                <artifactId>opentracing-mock</artifactId>
+                <version>${opentracing.verion}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opentracing</groupId>
+                <artifactId>opentracing-util</artifactId>
+                <version>${opentracing.verion}</version>
             </dependency>
             <dependency>
                 <groupId>io.projectreactor</groupId>
