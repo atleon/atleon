@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.9.1]
+atleon `0.9.1` is a beta release containing updates outlined below
+
+### Additions
+* [#91] - Added ability for `Alo` implementations to distinguish fan-in propagation from regular propagation
+* [#97] - Introduced `Alo` decoration pattern through `AloDecorator`
+
+### Fixes
+* [#94] - Added `DelegatingAlo` interface and used it to remove unnecessary `Alo::map` from `AloFlux.mapNotNull` and `AloFlux.mapPresent`
+
+### Removals
+* [#89] - Removed unused/unnecessary `SendInterceptor` patterns in Senders
+* [#92] - Removed redundant implementations of `Alo`
+* [#99] - Removed compile dependency on SLF4J from Micrometer module
+
 # [0.9.0]
 atleon `0.9.0` is a beta release containing updates outlined below
 
