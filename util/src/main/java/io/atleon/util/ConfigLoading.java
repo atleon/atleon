@@ -54,8 +54,11 @@ public final class ConfigLoading {
     }
 
     public static <T> Set<T> loadSetOrEmpty(Map<String, ?> configs, String property, Function<? super String, T> parser) {
-        return loadCollection(configs, property, parser, Collectors.<T, Set<T>>toCollection(LinkedHashSet::new))
-            .orElse(Collections.emptySet());
+        return loadSet(configs, property, parser).orElse(Collections.emptySet());
+    }
+
+    public static <T> Optional<Set<T>> loadSet(Map<String, ?> configs, String property, Function<? super String, T> parser) {
+        return loadCollection(configs, property, parser, Collectors.<T, Set<T>>toCollection(LinkedHashSet::new));
     }
 
     public static <T, R> Optional<R> loadCollection(

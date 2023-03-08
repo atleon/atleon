@@ -3,6 +3,7 @@ package io.atleon.core;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Instantiation;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -33,7 +34,8 @@ public final class AloDecoratorConfig {
         Map<String, ?> properties,
         String descriptorProperty
     ) {
-        Set<String> descriptors = ConfigLoading.loadSetOrEmpty(properties, descriptorProperty, Function.identity());
+        Set<String> descriptors = ConfigLoading.loadSet(properties, descriptorProperty, Function.identity())
+            .orElse(Collections.singleton(DESCRIPTOR_AUTO));
         List<AloDecorator<T>> decorators = descriptors.stream()
             .flatMap(descriptor -> instantiate(type, descriptor))
             .peek(decorator -> decorator.configure(properties))
