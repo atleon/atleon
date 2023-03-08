@@ -23,7 +23,10 @@ The following Kafka [End to End to End](core/src/main/java/io/atleon/examples/en
 [Kafka Deduplication](core/src/main/java/io/atleon/examples/deduplication/KafkaDeduplication.java) shows how to add deduplication to the processing of a Kafka topic. This example maintains the incorporation of [Acknowledgement](../core/src/main/java/io/atleon/core/Alo.java) propagation such as to maintain at-least-once processing guarantee
 
 ## Metrics
-[Kafka Metrics](core/src/main/java/io/atleon/examples/metrics/KafkaMetrics.java) shows how Atleon integrates with Micrometer to provide Metrics from native Kafka Reporting and from available Metric transformation in streaming processes
+[Kafka Micrometer](core/src/main/java/io/atleon/examples/metrics/KafkaMicrometer.java) shows how Atleon integrates with Micrometer to provide Metrics from native Kafka Reporting and from available Metric transformation in streaming processes
+
+## Tracing
+[Kafka Opentracing](core/src/main/java/io/atleon/examples/tracing/KafkaOpentracing.java) shows how Atleon integrates with Opentracing to provide traces in reactive pipelines
 
 ## Spring
 [Example Kafka Application](spring/src/main/java/io/atleon/examples/spring/kafka/ExampleKafkaApplication.java) demonstrates general intended usage of Atleon in Spring (Boot) applications

@@ -112,6 +112,13 @@
             <artifactId>sqs</artifactId>
         </dependency>
 
+        <!-- Project Runtime Dependencies -->
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-opentracing-auto</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- Third Party Runtime Dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

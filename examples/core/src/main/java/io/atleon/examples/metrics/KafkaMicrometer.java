@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
  * emissions. This example includes Atleon's Kafka-specific integration with Micrometer in order to
  * surface metrics such as consumer lag, fetch, and request metrics.
  */
-public class KafkaMetrics {
+public class KafkaMicrometer {
 
     private static final String BOOTSTRAP_SERVERS = EmbeddedKafka.startAndGetBootstrapServersConnect();
 
@@ -43,7 +43,7 @@ public class KafkaMetrics {
         // Micrometer Metrics Reporter such that Kafka metrics are sent to Micrometer
         KafkaConfigSource kafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
-            .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaMetrics.class.getSimpleName())
+            .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaMicrometer.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
@@ -54,8 +54,8 @@ public class KafkaMetrics {
         // Micrometer Metrics Reporter such that Kafka metrics are sent to Micrometer
         KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
-            .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaMetrics.class.getSimpleName())
-            .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaMetrics.class.getSimpleName())
+            .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaMicrometer.class.getSimpleName())
+            .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaMicrometer.class.getSimpleName())
             .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
             .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
@@ -74,10 +74,10 @@ public class KafkaMetrics {
         //Step 6) Apply stream processing to the Kafka topic we produced records to
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
             .receiveAloValues(Collections.singletonList(TOPIC_1))
-            .metrics(KafkaMetrics.class.getSimpleName(), "flow", "inbound")
+            .metrics(KafkaMicrometer.class.getSimpleName(), "flow", "inbound")
             .map(String::toUpperCase)
             .transform(AloKafkaSender.<String, String>from(kafkaSenderConfig).sendAloValues(TOPIC_2, Function.identity()))
-            .metrics(KafkaMetrics.class.getSimpleName(), "flow", "outbound")
+            .metrics(KafkaMicrometer.class.getSimpleName(), "flow", "outbound")
             .consumeAloAndGet(Alo::acknowledge)
             .publish()
             .autoConnect(0)
@@ -90,8 +90,8 @@ public class KafkaMetrics {
         //for "interesting" Meters for the sake of brevity in this sample. You can modify or remove
         //this filtering to see the complete set of Metrics available
         List<Meter> interestingMeters = meterRegistry.getMeters().stream()
-            .filter(KafkaMetrics::doesMeterHaveInterestingId)
-            .filter(KafkaMetrics::doesMeterHaveInterestingMeasurement)
+            .filter(KafkaMicrometer::doesMeterHaveInterestingId)
+            .filter(KafkaMicrometer::doesMeterHaveInterestingMeasurement)
             .sorted(Comparator.comparing(meter -> meter.getId().getName()))
             .collect(Collectors.toList());
 
@@ -110,7 +110,7 @@ public class KafkaMetrics {
     }
 
     private static boolean doesMeterHaveInterestingId(Meter meter) {
-        return meter.getId().getName().contains(KafkaMetrics.class.getSimpleName()) ||
+        return meter.getId().getName().contains(KafkaMicrometer.class.getSimpleName()) ||
             meter.getId().getName().contains("lag");
     }
 
