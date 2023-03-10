@@ -83,9 +83,7 @@ public final class SnsSender implements Closeable {
      * @return A Publisher of the results of sending each message
      */
     public <C> Flux<SnsSenderResult<C>> send(Publisher<SnsSenderMessage<C>> messages, String topicArn) {
-        return futureClient.flatMapMany(client ->
-            batcher.applyMapping(messages, batch -> send(client, batch, topicArn), maxRequestsInFlight)
-        );
+        return futureClient.flatMapMany(client -> send(client, Flux.from(messages), topicArn));
     }
 
     @Override
@@ -103,14 +101,22 @@ public final class SnsSender implements Closeable {
             .onErrorResume(error -> Mono.just(createFailureResult(requestId, error, correlationMetadata)));
     }
 
-    private <C> Flux<SnsSenderResult<C>> send(SnsAsyncClient client, List<SnsSenderMessage<C>> messages, String topicArn) {
+    private <C> Flux<SnsSenderResult<C>> send(SnsAsyncClient client, Flux<SnsSenderMessage<C>> messages, String topicArn) {
+        return batcher.applyMapping(
+            messages.map(SnsPublishEntry::create),
+            entries -> send(client, entries, topicArn),
+            maxRequestsInFlight
+        );
+    }
+
+    private <C> Flux<SnsSenderResult<C>> send(SnsAsyncClient client, List<SnsPublishEntry<C>> entries, String topicArn) {
         PublishBatchRequest request = PublishBatchRequest.builder()
             .topicArn(topicArn)
-            .publishBatchRequestEntries(messages.stream().map(this::createBatchRequestEntry).collect(Collectors.toList()))
+            .publishBatchRequestEntries(entries.stream().map(SnsPublishEntry::requestEntry).collect(Collectors.toList()))
             .build();
-        Map<String, C> correlationMetadataByRequestId = messages.stream()
+        Map<String, C> correlationMetadataByRequestId = entries.stream()
             .filter(message -> message.correlationMetadata() != null)
-            .collect(Collectors.toMap(SnsSenderMessage::requestId, SnsSenderMessage::correlationMetadata));
+            .collect(Collectors.toMap(SnsPublishEntry::requestId, SnsPublishEntry::correlationMetadata));
         return Mono.fromFuture(() -> client.publishBatch(request))
             .retryWhen(DEFAULT_RETRY)
             .flatMapIterable(response -> createResults(response, correlationMetadataByRequestId));
@@ -138,18 +144,6 @@ public final class SnsSender implements Closeable {
             default:
                 throw new UnsupportedOperationException("Publishing not supported for addressType=" + address.type());
         }
-    }
-
-    private <C> PublishBatchRequestEntry createBatchRequestEntry(SnsSenderMessage<C> message) {
-        return PublishBatchRequestEntry.builder()
-            .id(message.requestId())
-            .messageDeduplicationId(message.messageDeduplicationId().orElse(null))
-            .messageGroupId(message.messageGroupId().orElse(null))
-            .messageAttributes(message.messageAttributes())
-            .messageStructure(message.messageStructure().orElse(null))
-            .subject(message.subject().orElse(null))
-            .message(message.body())
-            .build();
     }
 
     private <C> List<SnsSenderResult<C>> createResults(
@@ -198,6 +192,43 @@ public final class SnsSender implements Closeable {
 
         public String message() {
             return message;
+        }
+    }
+
+    private static final class SnsPublishEntry<C> {
+
+        private final PublishBatchRequestEntry requestEntry;
+
+        private final C correlationMetadata;
+
+        private SnsPublishEntry(PublishBatchRequestEntry requestEntry, C correlationMetadata) {
+            this.requestEntry = requestEntry;
+            this.correlationMetadata = correlationMetadata;
+        }
+
+        public static <C> SnsPublishEntry<C> create(SnsSenderMessage<C> message) {
+            PublishBatchRequestEntry requestEntry = PublishBatchRequestEntry.builder()
+                .id(message.requestId())
+                .messageDeduplicationId(message.messageDeduplicationId().orElse(null))
+                .messageGroupId(message.messageGroupId().orElse(null))
+                .messageAttributes(message.messageAttributes())
+                .messageStructure(message.messageStructure().orElse(null))
+                .subject(message.subject().orElse(null))
+                .message(message.body())
+                .build();
+            return new SnsPublishEntry<>(requestEntry, message.correlationMetadata());
+        }
+
+        public String requestId() {
+            return requestEntry.id();
+        }
+
+        public PublishBatchRequestEntry requestEntry() {
+            return requestEntry;
+        }
+
+        public C correlationMetadata() {
+            return correlationMetadata;
         }
     }
 }

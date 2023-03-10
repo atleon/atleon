@@ -98,13 +98,12 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
         }
 
         public static <T> Deduplicator<T, T> identity(Deduplication<T> deduplication) {
-            Function<List<T>, T> reducer = singleReducer(deduplication::reduceDuplicates);
+            Function<List<T>, T> reducer = group -> reduceToSingle(group, deduplication::reduceDuplicates);
             return new Deduplicator<>(Function.identity(), deduplication::extractKey, reducer);
         }
 
         public static <T> Deduplicator<Alo<T>, T> alo(Deduplication<T> deduplication) {
-            Function<List<T>, T> reducer = singleReducer(deduplication::reduceDuplicates);
-            Function<List<Alo<T>>, Alo<T>> aloReducer = it -> it.size() <= 1 ? it.get(0) : AloOps.fanIn(it).map(reducer);
+            Function<List<Alo<T>>, Alo<T>> aloReducer = group -> reduceToSingleAlo(group, deduplication::reduceDuplicates);
             return new Deduplicator<>(Alo::get, deduplication::extractKey, aloReducer);
         }
 
@@ -116,8 +115,16 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
             return reducer.apply(list);
         }
 
-        private static <T> Function<List<T>, T> singleReducer(BinaryOperator<T> accumulator) {
-            return list -> list.stream().reduce(accumulator).orElseThrow(Deduplicator::newEmptyDeduplicationGroupException);
+        private static <T> Alo<T> reduceToSingleAlo(List<Alo<T>> group, BinaryOperator<T> accumulator) {
+            if (group.isEmpty()) {
+                throw newEmptyDeduplicationGroupException();
+            } else {
+                return group.size() == 1 ? group.get(0) : AloOps.fanIn(group).map(it -> reduceToSingle(it, accumulator));
+            }
+        }
+
+        private static <T> T reduceToSingle(List<T> group, BinaryOperator<T> accumulator) {
+            return group.stream().reduce(accumulator).orElseThrow(Deduplicator::newEmptyDeduplicationGroupException);
         }
 
         private static IllegalStateException newEmptyDeduplicationGroupException() {

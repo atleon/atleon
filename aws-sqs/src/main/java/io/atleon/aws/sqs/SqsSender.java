@@ -65,7 +65,7 @@ public final class SqsSender implements Closeable {
      * @return A Publisher of the result of sending the message
      */
     public <C> Mono<SqsSenderResult<C>> send(SqsSenderMessage<C> message, String queueUrl) {
-        return futureClient.flatMapMany(client -> send(client, Collections.singletonList(message), queueUrl)).next();
+        return futureClient.flatMapMany(client -> send(client, SqsSendEntry.singletonList(message), queueUrl)).next();
     }
 
     /**
@@ -82,9 +82,7 @@ public final class SqsSender implements Closeable {
      * @return A Publisher of the results of sending each message
      */
     public <C> Flux<SqsSenderResult<C>> send(Publisher<SqsSenderMessage<C>> messages, String queueUrl) {
-        return futureClient.flatMapMany(client ->
-            batcher.applyMapping(messages, batch -> send(client, batch, queueUrl), maxRequestsInFlight)
-        );
+        return futureClient.flatMapMany(client -> send(client, Flux.from(messages), queueUrl));
     }
 
     @Override
@@ -92,29 +90,25 @@ public final class SqsSender implements Closeable {
         closeSink.tryEmitNext(System.currentTimeMillis());
     }
 
-    private <C> Flux<SqsSenderResult<C>> send(SqsAsyncClient client, List<SqsSenderMessage<C>> messages, String queueUrl) {
+    private <C> Flux<SqsSenderResult<C>> send(SqsAsyncClient client, Flux<SqsSenderMessage<C>> messages, String topicArn) {
+        return batcher.applyMapping(
+            messages.map(SqsSendEntry::create),
+            entries -> send(client, entries, topicArn),
+            maxRequestsInFlight
+        );
+    }
+
+    private <C> Flux<SqsSenderResult<C>> send(SqsAsyncClient client, List<SqsSendEntry<C>> entries, String queueUrl) {
         SendMessageBatchRequest request = SendMessageBatchRequest.builder()
             .queueUrl(queueUrl)
-            .entries(messages.stream().map(this::createBatchRequestEntry).collect(Collectors.toList()))
+            .entries(entries.stream().map(SqsSendEntry::requestEntry).collect(Collectors.toList()))
             .build();
-        Map<String, C> correlationMetadataByRequestId = messages.stream()
+        Map<String, C> correlationMetadataByRequestId = entries.stream()
             .filter(message -> message.correlationMetadata() != null)
-            .collect(Collectors.toMap(SqsSenderMessage::requestId, SqsSenderMessage::correlationMetadata));
+            .collect(Collectors.toMap(SqsSendEntry::requestId, SqsSendEntry::correlationMetadata));
         return Mono.fromFuture(() -> client.sendMessageBatch(request))
             .retryWhen(DEFAULT_RETRY)
             .flatMapIterable(response -> createResults(response, correlationMetadataByRequestId));
-    }
-
-    private <C> SendMessageBatchRequestEntry createBatchRequestEntry(SqsSenderMessage<C> message) {
-        return SendMessageBatchRequestEntry.builder()
-            .id(message.requestId())
-            .messageDeduplicationId(message.messageDeduplicationId().orElse(null))
-            .messageGroupId(message.messageGroupId().orElse(null))
-            .messageAttributes(message.messageAttributes())
-            .messageSystemAttributesWithStrings(message.messageSystemAttributes())
-            .messageBody(message.body())
-            .delaySeconds(message.senderDelaySeconds().orElse(null))
-            .build();
     }
 
     private <C> List<SqsSenderResult<C>> createResults(
@@ -155,6 +149,47 @@ public final class SqsSender implements Closeable {
 
         public String message() {
             return message;
+        }
+    }
+
+    private static final class SqsSendEntry<C> {
+
+        private final SendMessageBatchRequestEntry requestEntry;
+
+        private final C correlationMetadata;
+
+        private SqsSendEntry(SendMessageBatchRequestEntry requestEntry, C correlationMetadata) {
+            this.requestEntry = requestEntry;
+            this.correlationMetadata = correlationMetadata;
+        }
+
+        public static <C> List<SqsSendEntry<C>> singletonList(SqsSenderMessage<C> message) {
+            return Collections.singletonList(create(message));
+        }
+
+        public static <C> SqsSendEntry<C> create(SqsSenderMessage<C> message) {
+            SendMessageBatchRequestEntry requestEntry = SendMessageBatchRequestEntry.builder()
+                .id(message.requestId())
+                .messageDeduplicationId(message.messageDeduplicationId().orElse(null))
+                .messageGroupId(message.messageGroupId().orElse(null))
+                .messageAttributes(message.messageAttributes())
+                .messageSystemAttributesWithStrings(message.messageSystemAttributes())
+                .messageBody(message.body())
+                .delaySeconds(message.senderDelaySeconds().orElse(null))
+                .build();
+            return new SqsSendEntry<>(requestEntry, message.correlationMetadata());
+        }
+
+        public String requestId() {
+            return requestEntry.id();
+        }
+
+        public SendMessageBatchRequestEntry requestEntry() {
+            return requestEntry;
+        }
+
+        public C correlationMetadata() {
+            return correlationMetadata;
         }
     }
 }

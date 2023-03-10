@@ -8,8 +8,10 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.core.publisher.SynchronousSink;
 
 import java.io.Closeable;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 
 /**
@@ -185,13 +187,19 @@ public class AloSnsSender<T> implements Closeable {
             String topicArn
         ) {
             return AloFlux.toFlux(alos)
-                .map(alo -> alo.supplyInContext(() -> toSenderMessage(alo, messageCreator.compose(Alo::get))))
+                .handle(newAloEmitter(messageCreator.compose(Alo::get)))
                 .transform(senderMessages -> sender.send(senderMessages, topicArn))
                 .map(result -> result.correlationMetadata().map(result::replaceCorrelationMetadata));
         }
 
         public void close() {
             sender.close();
+        }
+
+        private <R> BiConsumer<Alo<R>, SynchronousSink<SnsSenderMessage<Alo<R>>>> newAloEmitter(
+            Function<Alo<R>, SnsMessage<T>> aloToSnsMessage
+        ) {
+            return (alo, sink) -> alo.runInContext(() -> sink.next(toSenderMessage(alo, aloToSnsMessage)));
         }
 
         private <R> SnsSenderMessage<R> toSenderMessage(R data, Function<R, SnsMessage<T>> dataToSnsMessage) {
