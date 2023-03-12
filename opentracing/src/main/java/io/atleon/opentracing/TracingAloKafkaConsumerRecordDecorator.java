@@ -3,8 +3,6 @@ package io.atleon.opentracing;
 import io.atleon.core.Alo;
 import io.atleon.kafka.AloKafkaConsumerRecordDecorator;
 import io.atleon.util.ConfigLoading;
-import io.opentracing.References;
-import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -13,7 +11,6 @@ import org.apache.kafka.common.header.Header;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -23,33 +20,33 @@ import java.util.function.Function;
  * @param <K> The types of keys in records decorated by this decorator
  * @param <V> The types of values in records decorated by this decorator
  */
-public class TracingAloKafkaConsumerRecordDecorator<K, V> extends ConsumerTracing implements AloKafkaConsumerRecordDecorator<K, V> {
+public class TracingAloKafkaConsumerRecordDecorator<K, V>
+    extends TracingConsumptionDecorator<ConsumerRecord<K, V>>
+    implements AloKafkaConsumerRecordDecorator<K, V> {
 
     private String groupId = null;
 
     @Override
     public void configure(Map<String, ?> properties) {
+        super.configure(properties);
         groupId = ConfigLoading.load(properties, ConsumerConfig.GROUP_ID_CONFIG, Function.identity(), groupId);
     }
 
     @Override
-    public Alo<ConsumerRecord<K, V>> decorate(Alo<ConsumerRecord<K, V>> alo) {
-        ConsumerRecord<K, V> consumerRecord = alo.get();
-        Tracer.SpanBuilder spanBuilder = newSpanBuilder("atleon.kafka.consume")
+    protected Tracer.SpanBuilder newSpanBuilder(SpanBuilderFactory spanBuilderFactory, ConsumerRecord<K, V> record) {
+        return spanBuilderFactory.newSpanBuilder("atleon.kafka.consume")
             .withTag("group", groupId)
-            .withTag("topic", consumerRecord.topic())
-            .withTag("partition", consumerRecord.partition())
-            .withTag("offset", consumerRecord.offset());
-        extractSpanContext(consumerRecord)
-            .ifPresent(it -> spanBuilder.addReference(References.FOLLOWS_FROM, it));
-        return TracingAlo.start(alo, tracerFacade(), spanBuilder);
+            .withTag("topic", record.topic())
+            .withTag("partition", record.partition())
+            .withTag("offset", record.offset());
     }
 
-    protected Optional<SpanContext> extractSpanContext(ConsumerRecord<?, ?> consumerRecord) {
+    @Override
+    protected Map<String, String> extractHeaderMap(ConsumerRecord<K, V> record) {
         Map<String, String> headerMap = new LinkedHashMap<>();
-        for (Header header : consumerRecord.headers()) {
+        for (Header header : record.headers()) {
             headerMap.put(header.key(), new String(header.value(), StandardCharsets.UTF_8));
         }
-        return extractSpanContext(headerMap);
+        return headerMap;
     }
 }

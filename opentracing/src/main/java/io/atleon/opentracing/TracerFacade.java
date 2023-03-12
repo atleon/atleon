@@ -32,6 +32,11 @@ final class TracerFacade {
         return new TracerFacade(Objects.requireNonNull(tracer));
     }
 
+    public Optional<SpanContext> activeSpanContext() {
+        Span activeSpan = tracer.activeSpan();
+        return activeSpan == null ? Optional.empty() : Optional.of(activeSpan.context());
+    }
+
     public Tracer.SpanBuilder newSpanBuilder(String operationName) {
         return tracer.buildSpan(operationName)
             .ignoreActiveSpan()
