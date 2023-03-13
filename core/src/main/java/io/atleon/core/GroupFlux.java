@@ -45,7 +45,7 @@ public class GroupFlux<T> implements AloExtendedFlux<T> {
     }
 
     /**
-     * Transform the elements emitted by this {@link AloExtendedFlux} asynchronously into
+     * Transform the elements emitted by this {@link GroupFlux} asynchronously into
      * Publishers of {@link Alo}, then flatten these inner Publishers in to a single
      * {@link AloFlux}, which allows them to interleave
      *
