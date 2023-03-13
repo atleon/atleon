@@ -18,7 +18,7 @@ import java.util.Optional;
  *
  * @param <T> The type of data being consumed
  */
-public abstract class TracingConsumptionDecorator<T> implements AloDecorator<T> {
+public abstract class TracingAloConsumptionDecorator<T> implements AloDecorator<T> {
 
     private final TracerFacade tracerFacade = TracerFacade.global();
 
@@ -37,12 +37,12 @@ public abstract class TracingConsumptionDecorator<T> implements AloDecorator<T> 
     protected final Optional<SpanContext> deduceSpanContextToLink(T t) {
         Optional<SpanContext> activeSpanContext = tracerFacade.activeSpanContext();
         Optional<SpanContext> extractedSpanContext = extractSpanContext(t);
-        if (!activeSpanContext.isPresent() || !extractedSpanContext.isPresent()) {
-            return activeSpanContext.isPresent() ? activeSpanContext : extractedSpanContext;
-        } else {
+        if (activeSpanContext.isPresent() && extractedSpanContext.isPresent()) {
             String activeTraceId = activeSpanContext.get().toTraceId();
             String extractedTraceId = extractedSpanContext.get().toTraceId();
             return Objects.equals(activeTraceId, extractedTraceId) ? activeSpanContext : extractedSpanContext;
+        } else {
+            return activeSpanContext.isPresent() ? activeSpanContext : extractedSpanContext;
         }
     }
 

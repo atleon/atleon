@@ -21,7 +21,7 @@ import java.util.function.Function;
  * @param <V> The types of values in records decorated by this decorator
  */
 public class TracingAloKafkaConsumerRecordDecorator<K, V>
-    extends TracingConsumptionDecorator<ConsumerRecord<K, V>>
+    extends TracingAloConsumptionDecorator<ConsumerRecord<K, V>>
     implements AloKafkaConsumerRecordDecorator<K, V> {
 
     private String groupId = null;

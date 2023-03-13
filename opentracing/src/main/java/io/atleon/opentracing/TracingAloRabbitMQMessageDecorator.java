@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  * @param <T> The types of (deserialized) body payloads referenced by {@link RabbitMQMessage}s
  */
 public class TracingAloRabbitMQMessageDecorator<T>
-    extends TracingConsumptionDecorator<RabbitMQMessage<T>>
+    extends TracingAloConsumptionDecorator<RabbitMQMessage<T>>
     implements AloRabbitMQMessageDecorator<T> {
 
     @Override

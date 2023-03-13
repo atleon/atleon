@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedSqsMessage}s
  */
 public class TracingAloReceivedSqsMessageDecorator<T>
-    extends TracingConsumptionDecorator<ReceivedSqsMessage<T>>
+    extends TracingAloConsumptionDecorator<ReceivedSqsMessage<T>>
     implements AloReceivedSqsMessageDecorator<T> {
 
     @Override
