@@ -11,7 +11,7 @@ class AloDecoratorConfigTest {
 
     @Test
     public void decoratorsAreAutoLoadedIfNotSpecifiedDirectly() {
-        Optional<AloDecorator<Object>> decorator = AloDecoratorConfig.load(AloDecorator.class, Collections.emptyMap(), "");
+        Optional<AloDecorator<Object>> decorator = AloDecoratorConfig.load(Collections.emptyMap(), AloDecorator.class);
 
         assertTrue(decorator.isPresent());
         assertTrue(decorator.get() instanceof TestAloDecorator);

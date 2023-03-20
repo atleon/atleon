@@ -2,10 +2,8 @@ package io.atleon.rabbitmq;
 
 import com.rabbitmq.client.ConnectionFactory;
 import io.atleon.core.Alo;
-import io.atleon.core.AloDecoratorConfig;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFlux;
-import io.atleon.core.ComposedAlo;
 import io.atleon.util.Defaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +20,10 @@ import java.util.function.Consumer;
 /**
  * A reactive RabbitMQ receiver with at-least-once semantics for consuming messages from a queue in
  * a RabbitMQ cluster.
+ * <p>
+ * Note that {@link io.atleon.core.AloDecorator AloDecorators} applied via
+ * {@link io.atleon.core.AloDecoratorConfig#ALO_DECORATOR_DESCRIPTORS_CONFIG} must be
+ * implementations of {@link AloRabbitMQMessageDecorator}.
  *
  * @param <T> Inbound message deserialized body type
  */
@@ -56,15 +58,6 @@ public class AloRabbitMQReceiver<T> {
      */
     public static final String NACK_STRATEGY_CONFIG = CONFIG_PREFIX + "nack.strategy";
 
-    /**
-     * Optional comma-separated list of {@link AloRabbitMQMessageDecorator} descriptors. Each
-     * descriptor is either a predefined type defined in {@link AloDecoratorConfig} or a fully
-     * qualified name of a class that implements {@link AloRabbitMQMessageDecorator}. Defaults to
-     * {@link AloDecoratorConfig#DESCRIPTOR_AUTO}, which results in automatic loading of decorators
-     * through the {@link java.util.ServiceLoader} SPI.
-     */
-    public static final String ALO_DECORATOR_DESCRIPTORS_CONFIG = CONFIG_PREFIX + "alo.decorator.descriptors";
-
     private static final Logger LOGGER = LoggerFactory.getLogger(AloRabbitMQReceiver.class);
 
     private final Mono<ReceiveResources<T>> futureResources;
@@ -79,7 +72,7 @@ public class AloRabbitMQReceiver<T> {
      * Creates a new AloRabbitMQReceiver from the provided {@link RabbitMQConfigSource}
      *
      * @param configSource The reactive source of {@link RabbitMQConfig}
-     * @param <T> The types of deserialized message bodies contained in received messages
+     * @param <T>          The types of deserialized message bodies contained in received messages
      * @return A new AloRabbitMQReceiver
      */
     public static <T> AloRabbitMQReceiver<T> from(RabbitMQConfigSource configSource) {
@@ -149,7 +142,7 @@ public class AloRabbitMQReceiver<T> {
                 config.load(QOS_CONFIG, Integer::parseInt).orElse(Defaults.PREFETCH),
                 config.loadConfiguredOrThrow(BODY_DESERIALIZER_CONFIG),
                 config.load(NACK_STRATEGY_CONFIG, NackStrategy::valueOf).orElse(NackStrategy.EMIT),
-                loadAloFactory(config)
+                config.loadAloFactory()
             );
         }
 
@@ -200,13 +193,6 @@ public class AloRabbitMQReceiver<T> {
                     errorEmitter.accept(fatalError);
                 }
             }
-        }
-
-        private static <T> AloFactory<RabbitMQMessage<T>> loadAloFactory(RabbitMQConfig config) {
-            AloFactory<RabbitMQMessage<T>> aloFactory = ComposedAlo.factory();
-            return config.<T>loadAloDecorator(ALO_DECORATOR_DESCRIPTORS_CONFIG)
-                .map(aloFactory::withDecorator)
-                .orElse(aloFactory);
         }
     }
 }

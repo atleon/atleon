@@ -20,6 +20,14 @@ import java.util.stream.StreamSupport;
 public final class AloDecoratorConfig {
 
     /**
+     * Optional comma-separated list of {@link AloDecorator} descriptors. Each descriptor is either
+     * a predefined type defined in this class or a fully qualified name of a class that implements
+     * {@link AloDecorator}. Defaults to {@link #DESCRIPTOR_AUTO}, which results in automatic
+     * loading of decorators through the {@link java.util.ServiceLoader} SPI.
+     */
+    public static final String ALO_DECORATOR_DESCRIPTORS_CONFIG = "alo.decorator.descriptors";
+
+    /**
      * Descriptor used to activate automatic loading of {@link AloDecorator}s through
      * {@link ServiceLoader} SPI
      */
@@ -29,12 +37,8 @@ public final class AloDecoratorConfig {
 
     }
 
-    public static <T, C extends AloDecorator<T>> Optional<AloDecorator<T>> load(
-        Class<C> type,
-        Map<String, ?> properties,
-        String descriptorProperty
-    ) {
-        Set<String> descriptors = ConfigLoading.loadSet(properties, descriptorProperty, Function.identity())
+    public static <T, D extends AloDecorator<T>> Optional<AloDecorator<T>> load(Map<String, ?> properties, Class<D> type) {
+        Set<String> descriptors = ConfigLoading.loadSet(properties, ALO_DECORATOR_DESCRIPTORS_CONFIG, Function.identity())
             .orElse(Collections.singleton(DESCRIPTOR_AUTO));
         List<AloDecorator<T>> decorators = descriptors.stream()
             .flatMap(descriptor -> instantiate(type, descriptor))
@@ -43,9 +47,9 @@ public final class AloDecoratorConfig {
         return decorators.isEmpty() ? Optional.empty() : Optional.of(AloDecorator.combine(decorators));
     }
 
-    private static <T, C extends AloDecorator<T>> Stream<C> instantiate(Class<C> type, String descriptor) {
+    private static <T, D extends AloDecorator<T>> Stream<D> instantiate(Class<D> type, String descriptor) {
         if (descriptor.equalsIgnoreCase(DESCRIPTOR_AUTO)) {
-            ServiceLoader<C> serviceLoader = ServiceLoader.load(type);
+            ServiceLoader<D> serviceLoader = ServiceLoader.load(type);
             return StreamSupport.stream(serviceLoader.spliterator(), false);
         } else {
             return Stream.of(descriptor).map(Instantiation::one).map(type::cast);
