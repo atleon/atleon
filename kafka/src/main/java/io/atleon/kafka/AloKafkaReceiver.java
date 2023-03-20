@@ -50,7 +50,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * have been acknowledged.
  * <p>
  * Note that {@link io.atleon.core.AloDecorator AloDecorators} applied via
- * {@link io.atleon.core.AloDecoratorConfig#ALO_DECORATOR_DESCRIPTORS_CONFIG} must be
+ * {@link io.atleon.core.AloDecoratorConfig#ALO_DECORATOR_TYPES_CONFIG} must be
  * implementations of {@link AloKafkaConsumerRecordDecorator}.
  *
  * @param <K> inbound record key type

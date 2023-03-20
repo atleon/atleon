@@ -20,39 +20,42 @@ import java.util.stream.StreamSupport;
 public final class AloDecoratorConfig {
 
     /**
-     * Optional comma-separated list of {@link AloDecorator} descriptors. Each descriptor is either
-     * a predefined type defined in this class or a fully qualified name of a class that implements
-     * {@link AloDecorator}. Defaults to {@link #DESCRIPTOR_AUTO}, which results in automatic
+     * Optional comma-separated list of {@link AloDecorator} types. Each type is either a
+     * predefined type defined in this class or a fully qualified name of a class that implements
+     * {@link AloDecorator}. Defaults to {@link #DECORATOR_TYPE_AUTO}, which results in automatic
      * loading of decorators through the {@link java.util.ServiceLoader} SPI.
      */
-    public static final String ALO_DECORATOR_DESCRIPTORS_CONFIG = "alo.decorator.descriptors";
+    public static final String ALO_DECORATOR_TYPES_CONFIG = "alo.decorator.types";
 
     /**
-     * Descriptor used to activate automatic loading of {@link AloDecorator}s through
+     * Type name used to activate automatic loading of {@link AloDecorator}s through
      * {@link ServiceLoader} SPI
      */
-    public static final String DESCRIPTOR_AUTO = "auto";
+    public static final String DECORATOR_TYPE_AUTO = "auto";
 
     private AloDecoratorConfig() {
 
     }
 
-    public static <T, D extends AloDecorator<T>> Optional<AloDecorator<T>> load(Map<String, ?> properties, Class<D> type) {
-        Set<String> descriptors = ConfigLoading.loadSet(properties, ALO_DECORATOR_DESCRIPTORS_CONFIG, Function.identity())
-            .orElse(Collections.singleton(DESCRIPTOR_AUTO));
-        List<AloDecorator<T>> decorators = descriptors.stream()
-            .flatMap(descriptor -> instantiate(type, descriptor))
+    public static <T, D extends AloDecorator<T>> Optional<AloDecorator<T>> load(
+        Map<String, ?> properties,
+        Class<D> superType
+    ) {
+        Set<String> types = ConfigLoading.loadSet(properties, ALO_DECORATOR_TYPES_CONFIG, Function.identity())
+            .orElse(Collections.singleton(DECORATOR_TYPE_AUTO));
+        List<AloDecorator<T>> decorators = types.stream()
+            .flatMap(descriptor -> instantiate(superType, descriptor))
             .peek(decorator -> decorator.configure(properties))
             .collect(Collectors.toList());
         return decorators.isEmpty() ? Optional.empty() : Optional.of(AloDecorator.combine(decorators));
     }
 
-    private static <T, D extends AloDecorator<T>> Stream<D> instantiate(Class<D> type, String descriptor) {
-        if (descriptor.equalsIgnoreCase(DESCRIPTOR_AUTO)) {
-            ServiceLoader<D> serviceLoader = ServiceLoader.load(type);
+    private static <T, D extends AloDecorator<T>> Stream<D> instantiate(Class<D> superType, String type) {
+        if (type.equalsIgnoreCase(DECORATOR_TYPE_AUTO)) {
+            ServiceLoader<D> serviceLoader = ServiceLoader.load(superType);
             return StreamSupport.stream(serviceLoader.spliterator(), false);
         } else {
-            return Stream.of(descriptor).map(Instantiation::one).map(type::cast);
+            return Stream.of(type).map(Instantiation::one).map(superType::cast);
         }
     }
 }

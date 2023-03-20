@@ -13,10 +13,10 @@ public final class AloFactoryConfig {
 
     public static <T, D extends AloDecorator<T>> AloFactory<T> loadDecorated(
         Map<String, ?> properties,
-        Class<D> decoratorType
+        Class<D> decoratorSuperType
     ) {
         AloFactory<T> aloFactory = loadDefault();
-        return AloDecoratorConfig.load(properties, decoratorType)
+        return AloDecoratorConfig.load(properties, decoratorSuperType)
             .map(aloFactory::withDecorator)
             .orElse(aloFactory);
     }

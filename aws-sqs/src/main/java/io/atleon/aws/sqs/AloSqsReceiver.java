@@ -18,7 +18,7 @@ import java.util.function.Consumer;
  * is terminated for any reason, the client is closed.
  * <p>
  * Note that {@link io.atleon.core.AloDecorator AloDecorators} applied via
- * {@link io.atleon.core.AloDecoratorConfig#ALO_DECORATOR_DESCRIPTORS_CONFIG} must be
+ * {@link io.atleon.core.AloDecoratorConfig#ALO_DECORATOR_TYPES_CONFIG} must be
  * implementations of {@link AloReceivedSqsMessageDecorator}.
  *
  * @param <T> The deserialized type of SQS Message bodies
