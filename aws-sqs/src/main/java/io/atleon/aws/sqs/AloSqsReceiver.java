@@ -1,10 +1,8 @@
 package io.atleon.aws.sqs;
 
 import io.atleon.core.Alo;
-import io.atleon.core.AloDecoratorConfig;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFlux;
-import io.atleon.core.ComposedAlo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -18,6 +16,10 @@ import java.util.function.Consumer;
  * Each subscription to returned {@link AloFlux}s is backed by an
  * {@link software.amazon.awssdk.services.sqs.SqsAsyncClient SqsAsyncClient}. When a subscription
  * is terminated for any reason, the client is closed.
+ * <p>
+ * Note that {@link io.atleon.core.AloDecorator AloDecorators} applied via
+ * {@link io.atleon.core.AloDecoratorConfig#ALO_DECORATOR_DESCRIPTORS_CONFIG} must be
+ * implementations of {@link AloReceivedSqsMessageDecorator}.
  *
  * @param <T> The deserialized type of SQS Message bodies
  */
@@ -120,15 +122,6 @@ public class AloSqsReceiver<T> {
      */
     public static final String CLOSE_TIMEOUT_CONFIG = CONFIG_PREFIX + "close.timeout";
 
-    /**
-     * Optional comma-separated list of {@link AloReceivedSqsMessageDecorator} descriptors. Each
-     * descriptor is either a predefined type defined in {@link AloDecoratorConfig} or a fully
-     * qualified name of a class that implements {@link AloReceivedSqsMessageDecorator}. Defaults
-     * to {@link AloDecoratorConfig#DESCRIPTOR_AUTO}, which results in automatic loading of
-     * decorators through the {@link java.util.ServiceLoader} SPI.
-     */
-    public static final String ALO_DECORATOR_DESCRIPTORS_CONFIG = CONFIG_PREFIX + "alo.decorator.descriptors";
-
     private static final Logger LOGGER = LoggerFactory.getLogger(AloSqsReceiver.class);
 
     private final SqsConfigSource configSource;
@@ -175,7 +168,7 @@ public class AloSqsReceiver<T> {
 
     private Flux<Alo<ReceivedSqsMessage<T>>> receiveMessages(SqsConfig config, String queueUrl) {
         SqsReceiverOptions options = newReceiverOptions(config);
-        AloFactory<ReceivedSqsMessage<T>> aloFactory = loadAloFactory(config);
+        AloFactory<ReceivedSqsMessage<T>> aloFactory = config.loadAloFactory();
         BodyDeserializer<T> bodyDeserializer = config.loadConfiguredOrThrow(BODY_DESERIALIZER_CONFIG);
         NacknowledgerFactory<T> nacknowledgerFactory = createNacknowledgerFactory(config);
 
@@ -197,13 +190,6 @@ public class AloSqsReceiver<T> {
             .deleteInterval(config.loadDuration(DELETE_BATCH_INTERVAL_CONFIG, SqsReceiverOptions.DEFAULT_DELETE_INTERVAL))
             .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG, SqsReceiverOptions.DEFAULT_CLOSE_TIMEOUT))
             .build();
-    }
-
-    private static <T> AloFactory<ReceivedSqsMessage<T>> loadAloFactory(SqsConfig config) {
-        AloFactory<ReceivedSqsMessage<T>> aloFactory = ComposedAlo.factory();
-        return config.<T>loadAloDecorator(ALO_DECORATOR_DESCRIPTORS_CONFIG)
-            .map(aloFactory::withDecorator)
-            .orElse(aloFactory);
     }
 
     private static <T> NacknowledgerFactory<T> createNacknowledgerFactory(SqsConfig config) {

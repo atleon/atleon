@@ -1,8 +1,8 @@
 package io.atleon.rabbitmq;
 
 import com.rabbitmq.client.ConnectionFactory;
-import io.atleon.core.AloDecorator;
-import io.atleon.core.AloDecoratorConfig;
+import io.atleon.core.AloFactory;
+import io.atleon.core.AloFactoryConfig;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
 
@@ -25,8 +25,8 @@ public class RabbitMQConfig {
         return connectionFactory;
     }
 
-    public <T> Optional<AloDecorator<RabbitMQMessage<T>>> loadAloDecorator(String descriptorsProperty) {
-        return AloDecoratorConfig.load(AloRabbitMQMessageDecorator.class, properties, descriptorsProperty);
+    public <T> AloFactory<T> loadAloFactory() {
+        return AloFactoryConfig.loadDecorated(properties, AloRabbitMQMessageDecorator.class);
     }
 
     public <T extends Configurable> T loadConfiguredOrThrow(String property) {

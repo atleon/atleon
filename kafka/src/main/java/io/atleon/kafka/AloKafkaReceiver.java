@@ -1,11 +1,9 @@
 package io.atleon.kafka;
 
 import io.atleon.core.Alo;
-import io.atleon.core.AloDecorator;
-import io.atleon.core.AloDecoratorConfig;
 import io.atleon.core.AloFactory;
+import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
-import io.atleon.core.ComposedAlo;
 import io.atleon.core.OrderManagingAcknowledgementOperator;
 import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -25,7 +23,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -51,6 +48,10 @@ import java.util.concurrent.atomic.AtomicLong;
  * acknowledged. Therefore, no further offset would be committed for T-0, since T-0-A has not
  * yet been acknowledged, and the offset for T-1-E would be committed since, T-1-D and T-1-E
  * have been acknowledged.
+ * <p>
+ * Note that {@link io.atleon.core.AloDecorator AloDecorators} applied via
+ * {@link io.atleon.core.AloDecoratorConfig#ALO_DECORATOR_DESCRIPTORS_CONFIG} must be
+ * implementations of {@link AloKafkaConsumerRecordDecorator}.
  *
  * @param <K> inbound record key type
  * @param <V> inbound record value type
@@ -110,15 +111,6 @@ public class AloKafkaReceiver<K, V> {
      * partitions), we use a default equal to what's used in KafkaConsumer::close
      */
     public static final String CLOSE_TIMEOUT_CONFIG = CONFIG_PREFIX + "close.timeout";
-
-    /**
-     * Optional comma-separated list of {@link AloKafkaConsumerRecordDecorator} descriptors. Each
-     * descriptor is either a predefined type defined in {@link AloDecoratorConfig} or a fully
-     * qualified name of a class that implements {@link AloKafkaConsumerRecordDecorator}. Defaults
-     * to {@link AloDecoratorConfig#DESCRIPTOR_AUTO}, which results in automatic loading of
-     * decorators through the {@link java.util.ServiceLoader} SPI.
-     */
-    public static final String ALO_DECORATOR_DESCRIPTORS_CONFIG = CONFIG_PREFIX + "alo.decorator.descriptors";
 
     private static final boolean DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS = false;
 
@@ -229,7 +221,7 @@ public class AloKafkaReceiver<K, V> {
         loadInto(options, config, MAX_COMMIT_ATTEMPTS_CONFIG, DEFAULT_MAX_COMMIT_ATTEMPTS);
         loadInto(options, config, CLOSE_TIMEOUT_CONFIG, DEFAULT_CLOSE_TIMEOUT);
 
-        AloFactory<ConsumerRecord<K, V>> aloFactory = loadAloFactory(config);
+        AloFactory<ConsumerRecord<K, V>> aloFactory = AloFactoryConfig.loadDecorated(config, AloKafkaConsumerRecordDecorator.class);
         long maxInFlightPerSubscription = ConfigLoading.loadOrThrow(options, MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG, Long::valueOf);
 
         // 1) Create Consumer config from remaining configs that are NOT options (help avoid WARNs)
@@ -270,13 +262,6 @@ public class AloKafkaReceiver<K, V> {
             .mergeWith(sink.asMono())
             .transform(aloRecords -> new OrderManagingAcknowledgementOperator<>(
                 aloRecords, ConsumerRecordExtraction::extractTopicPartition, maxInFlightPerSubscription));
-    }
-
-    private static <K, V> AloFactory<ConsumerRecord<K, V>> loadAloFactory(Map<String, ?> config) {
-        AloFactory<ConsumerRecord<K ,V>> aloFactory = ComposedAlo.factory();
-        Optional<AloDecorator<ConsumerRecord<K, V>>> loadedDecorator =
-            AloDecoratorConfig.load(AloKafkaConsumerRecordDecorator.class, config, ALO_DECORATOR_DESCRIPTORS_CONFIG);
-        return loadedDecorator.map(aloFactory::withDecorator).orElse(aloFactory);
     }
 
     private static long nextClientIdCount(String clientId) {

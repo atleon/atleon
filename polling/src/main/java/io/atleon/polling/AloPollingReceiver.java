@@ -2,8 +2,8 @@ package io.atleon.polling;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
+import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
-import io.atleon.core.ComposedAlo;
 import io.atleon.core.OrderManagingAcknowledgementOperator;
 import io.atleon.polling.reactive.PollerOptions;
 import io.atleon.polling.reactive.PollingReceiver;
@@ -54,7 +54,7 @@ public class AloPollingReceiver<P, O> {
                                final PollingSourceConfig config) {
         this.pollable = pollable;
         this.config = config;
-        this.resourcesMono = Mono.just(ReceiveResources.create(ComposedAlo.factory(), config.getNackStrategy()));
+        this.resourcesMono = Mono.just(ReceiveResources.create(AloFactoryConfig.loadDefault(), config.getNackStrategy()));
     }
 
     public static <P, O> AloPollingReceiver<P, O> from(final Pollable<P, O> pollable,
