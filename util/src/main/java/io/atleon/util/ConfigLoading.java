@@ -2,7 +2,6 @@ package io.atleon.util;
 
 import java.net.URI;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -140,21 +139,6 @@ public final class ConfigLoading {
     public static Optional<Set<String>> loadSetOfString(Map<String, ?> configs, String property) {
         return loadStream(configs, property, Objects::toString)
             .map(stream -> stream.collect(Collectors.toCollection(LinkedHashSet::new)));
-    }
-
-    public static Map<String, Object> loadPrefixedEnvironmentalProperties(String prefix) {
-        return loadPrefixed(Arrays.asList(System.getenv(), System.getProperties()), prefix);
-    }
-
-    private static Map<String, Object> loadPrefixed(List<Map<?, ?>> configsList, String prefix) {
-        return configsList.stream()
-            .flatMap(configs -> configs.entrySet().stream())
-            .filter(entry -> entry.getKey().toString().startsWith(prefix))
-            .collect(Collectors.toMap(
-                entry -> entry.getKey().toString().substring(prefix.length()),
-                Map.Entry::getValue,
-                (firstValue, secondValue) -> secondValue
-            ));
     }
 
     private static <T> Optional<T> load(Map<String, ?> configs, String property, Function<Object, T> coercer) {
