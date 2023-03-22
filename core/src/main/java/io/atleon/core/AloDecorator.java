@@ -33,6 +33,11 @@ public interface AloDecorator<T> extends Configurable {
         }
 
         @Override
+        public void configure(Map<String, ?> properties) {
+            decorators.forEach(decorator -> decorator.configure(properties));
+        }
+
+        @Override
         public Alo<T> decorate(Alo<T> alo) {
             for (AloDecorator<T> decorator : decorators) {
                 alo = decorator.decorate(alo);

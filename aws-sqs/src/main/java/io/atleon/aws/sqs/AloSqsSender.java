@@ -152,12 +152,15 @@ public class AloSqsSender<T> implements Closeable {
 
         public static <T> Resources<T> fromConfig(SqsConfig config) {
             SqsSenderOptions options = SqsSenderOptions.newBuilder(config::buildClient)
-                .batchSize(config.loadInt(BATCH_SIZE_CONFIG, SqsSenderOptions.DEFAULT_BATCH_SIZE))
-                .batchDuration(config.loadDuration(BATCH_DURATION_CONFIG, SqsSenderOptions.DEFAULT_BATCH_DURATION))
-                .batchPrefetch(config.loadInt(BATCH_PREFETCH_CONFIG, SqsSenderOptions.DEFAULT_BATCH_PREFETCH))
-                .maxRequestsInFlight(config.loadInt(MAX_REQUESTS_IN_FLIGHT_CONFIG, SqsSenderOptions.DEFAULT_MAX_REQUESTS_IN_FLIGHT))
+                .batchSize(config.loadInt(BATCH_SIZE_CONFIG).orElse(SqsSenderOptions.DEFAULT_BATCH_SIZE))
+                .batchDuration(config.loadDuration(BATCH_DURATION_CONFIG).orElse(SqsSenderOptions.DEFAULT_BATCH_DURATION))
+                .batchPrefetch(config.loadInt(BATCH_PREFETCH_CONFIG).orElse(SqsSenderOptions.DEFAULT_BATCH_PREFETCH))
+                .maxRequestsInFlight(config.loadInt(MAX_REQUESTS_IN_FLIGHT_CONFIG).orElse(SqsSenderOptions.DEFAULT_MAX_REQUESTS_IN_FLIGHT))
                 .build();
-            return new Resources<>(SqsSender.create(options), config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG));
+            return new Resources<T>(
+                SqsSender.create(options),
+                config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG, BodySerializer.class)
+            );
         }
 
         public Mono<SqsSenderResult<SqsMessage<T>>> send(SqsMessage<T> message, String queueUrl) {

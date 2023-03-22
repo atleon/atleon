@@ -26,8 +26,9 @@ public final class AvroSchemas {
 
     public static Schema getOrSupply(Object data, Supplier<Schema> schemaSupplier) {
         try {
-            return data instanceof GenericContainer ? GenericContainer.class.cast(data).getSchema() :
-                SpecificData.get().getSchema(TypeResolution.safelyGetClass(data));
+            return data instanceof GenericContainer
+                ? GenericContainer.class.cast(data).getSchema()
+                : SpecificData.get().getSchema(TypeResolution.safelyGetClass(data));
         } catch (AvroRuntimeException e) {
             return schemaSupplier.get();
         }

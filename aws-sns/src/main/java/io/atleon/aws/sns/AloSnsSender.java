@@ -159,12 +159,15 @@ public class AloSnsSender<T> implements Closeable {
 
         public static <T> Resources<T> fromConfig(SnsConfig config) {
             SnsSenderOptions options = SnsSenderOptions.newBuilder(config::buildClient)
-                .batchSize(config.loadInt(BATCH_SIZE_CONFIG, SnsSenderOptions.DEFAULT_BATCH_SIZE))
-                .batchDuration(config.loadDuration(BATCH_DURATION_CONFIG, SnsSenderOptions.DEFAULT_BATCH_DURATION))
-                .batchPrefetch(config.loadInt(BATCH_PREFETCH_CONFIG, SnsSenderOptions.DEFAULT_BATCH_PREFETCH))
-                .maxRequestsInFlight(config.loadInt(MAX_REQUESTS_IN_FLIGHT_CONFIG, SnsSenderOptions.DEFAULT_MAX_REQUESTS_IN_FLIGHT))
+                .batchSize(config.loadInt(BATCH_SIZE_CONFIG).orElse(SnsSenderOptions.DEFAULT_BATCH_SIZE))
+                .batchDuration(config.loadDuration(BATCH_DURATION_CONFIG).orElse(SnsSenderOptions.DEFAULT_BATCH_DURATION))
+                .batchPrefetch(config.loadInt(BATCH_PREFETCH_CONFIG).orElse(SnsSenderOptions.DEFAULT_BATCH_PREFETCH))
+                .maxRequestsInFlight(config.loadInt(MAX_REQUESTS_IN_FLIGHT_CONFIG).orElse(SnsSenderOptions.DEFAULT_MAX_REQUESTS_IN_FLIGHT))
                 .build();
-            return new Resources<>(SnsSender.create(options), config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG));
+            return new Resources<T>(
+                SnsSender.create(options),
+                config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG, BodySerializer.class)
+            );
         }
 
         public Mono<SnsSenderResult<SnsMessage<T>>> send(SnsMessage<T> message, SnsAddress address) {

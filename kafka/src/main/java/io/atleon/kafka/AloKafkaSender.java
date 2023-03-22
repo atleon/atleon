@@ -367,14 +367,14 @@ public class AloKafkaSender<K, V> implements Closeable {
             // 2) Note Client ID and, if enabled, increment client ID in consumer config
             Map<String, Object> producerConfig = new HashMap<>(config);
             options.keySet().forEach(producerConfig::remove);
-            String clientId = ConfigLoading.loadOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG, Object::toString);
-            if (ConfigLoading.loadOrThrow(options, AUTO_INCREMENT_CLIENT_ID_CONFIG, Boolean::valueOf)) {
+            String clientId = ConfigLoading.loadStringOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG);
+            if (ConfigLoading.loadBooleanOrThrow(options, AUTO_INCREMENT_CLIENT_ID_CONFIG)) {
                 producerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
             }
 
             return SenderOptions.<K, V>create(producerConfig)
-                .maxInFlight(ConfigLoading.loadOrThrow(options, MAX_IN_FLIGHT_PER_SEND_CONFIG, Integer::valueOf))
-                .stopOnError(ConfigLoading.loadOrThrow(options, STOP_ON_ERROR_CONFIG, Boolean::valueOf));
+                .maxInFlight(ConfigLoading.loadIntOrThrow(options, MAX_IN_FLIGHT_PER_SEND_CONFIG))
+                .stopOnError(ConfigLoading.loadBooleanOrThrow(options, STOP_ON_ERROR_CONFIG));
         }
 
         private static long nextClientIdCount(String clientId) {

@@ -32,8 +32,7 @@ public class KafkaConfigSource extends ConfigSource<Map<String, Object>, KafkaCo
     }
 
     public static KafkaConfigSource useClientIdAsName() {
-        return new KafkaConfigSource(properties ->
-            ConfigLoading.load(properties, CommonClientConfigs.CLIENT_ID_CONFIG, Object::toString));
+        return new KafkaConfigSource(map -> ConfigLoading.loadString(map, CommonClientConfigs.CLIENT_ID_CONFIG));
     }
 
     public KafkaConfigSource withClientId(String clientId) {

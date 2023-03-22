@@ -1,0 +1,135 @@
+package io.atleon.util;
+
+import org.junit.jupiter.api.Test;
+
+import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class ConfigLoadingTest {
+
+    @Test
+    public void parseableConfigsAreLoadedCorrectly() {
+        assertEquals(
+            Duration.ofSeconds(10),
+            ConfigLoading.loadDurationOrThrow(Collections.singletonMap("duration", "PT10S"), "duration")
+        );
+        assertTrue(ConfigLoading.loadBooleanOrThrow(Collections.singletonMap("boolean", "true"), "boolean"));
+        assertEquals(10, ConfigLoading.loadIntOrThrow(Collections.singletonMap("integer", "10"), "integer"));
+        assertEquals(15L, ConfigLoading.loadLongOrThrow(Collections.singletonMap("long", "15"), "long"));
+        assertEquals("x", ConfigLoading.loadStringOrThrow(Collections.singletonMap("string", "x"), "string"));
+    }
+
+    @Test
+    public void configsArePassedThroughIfAlreadyTheCorrectType() {
+        Duration duration = Duration.ofSeconds(10);
+
+        Map<String, ?> configs = Collections.singletonMap("duration", duration);
+
+        Duration loadedDuration = ConfigLoading.loadDurationOrThrow(configs, "duration");
+
+        assertSame(duration, loadedDuration);
+    }
+
+    @Test
+    public void configsCanBeLoadedAsSetsOfStrings() {
+        assertEquals(
+            Stream.of("one").collect(Collectors.toCollection(LinkedHashSet::new)),
+            ConfigLoading.loadSetOfStringOrEmpty(Collections.singletonMap("list", "one"), "list")
+        );
+        assertEquals(
+            Stream.of("one", "two", "three").collect(Collectors.toCollection(LinkedHashSet::new)),
+            ConfigLoading.loadSetOfStringOrEmpty(Collections.singletonMap("list", "one,two, three"), "list")
+        );
+    }
+
+    @Test
+    public void instancesArePassedThroughIfAlreadyTheCorrectType() {
+        Object instance = new TestConfigurable();
+
+        Map<String, ?> configs = Collections.singletonMap("instances", instance);
+
+        List<Configurable> loadedInstances =
+            ConfigLoading.loadListOfInstancesOrEmpty(configs, "instances", Configurable.class);
+
+        assertEquals(1, loadedInstances.size());
+        assertSame(instance, loadedInstances.get(0));
+    }
+
+    @Test
+    public void instancesAreCreatedIfClassIsSpecified() {
+        Map<String, ?> configs = Collections.singletonMap("instances", TestConfigurable.class);
+
+        List<Configurable> loadedInstances =
+            ConfigLoading.loadListOfInstancesOrEmpty(configs, "instances", Configurable.class);
+
+        assertEquals(1, loadedInstances.size());
+        assertTrue(loadedInstances.get(0) instanceof TestConfigurable);
+    }
+
+    @Test
+    public void instancesAreCreatedIfClassNameIsSpecified() {
+        Map<String, ?> configs = Collections.singletonMap("instances", TestConfigurable.class.getName());
+
+        List<Configurable> loadedInstances =
+            ConfigLoading.loadListOfInstancesOrEmpty(configs, "instances", Configurable.class);
+
+        assertEquals(1, loadedInstances.size());
+        assertTrue(loadedInstances.get(0) instanceof TestConfigurable);
+    }
+
+    @Test
+    public void configurablesCanBeLoadedAndConfigured() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("configurable", TestConfigurable.class);
+        configs.put(TestConfigurable.VALUE_CONFIG, "configured");
+
+        TestConfigurable configurable = ConfigLoading.loadConfiguredOrThrow(configs, "configurable", TestConfigurable.class);
+
+        assertEquals("configured", configurable.getValue());
+    }
+
+    @Test
+    public void configurablesWithPredefinedTypesCanBeLoadedAndConfigured() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("configurable", "test");
+        configs.put(TestConfigurable.VALUE_CONFIG, "configured");
+
+        Optional<List<TestConfigurable>> result = ConfigLoading.loadListOfConfiguredWithPredefinedTypes(
+            configs,
+            "configurable",
+            TestConfigurable.class,
+            typeName -> typeName.equalsIgnoreCase("test") ? Optional.of(new TestConfigurable()) : Optional.empty()
+        );
+
+        assertTrue(result.isPresent());
+        assertEquals(1, result.get().size());
+        assertEquals("configured", result.get().get(0).getValue());
+    }
+
+    public static final class TestConfigurable implements Configurable {
+
+        public static final String VALUE_CONFIG = "value";
+
+        private String value = "unconfigured";
+
+        @Override
+        public void configure(Map<String, ?> properties) {
+            this.value = ConfigLoading.loadStringOrThrow(properties, VALUE_CONFIG);
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+}

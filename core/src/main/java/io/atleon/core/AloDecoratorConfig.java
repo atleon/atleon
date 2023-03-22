@@ -1,18 +1,10 @@
 package io.atleon.core;
 
 import io.atleon.util.ConfigLoading;
-import io.atleon.util.Instantiation;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.ServiceLoader;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 /**
  * Utility for loading {@link AloDecorator}s
@@ -29,7 +21,7 @@ public final class AloDecoratorConfig {
 
     /**
      * Type name used to activate automatic loading of {@link AloDecorator}s through
-     * {@link ServiceLoader} SPI
+     * {@link java.util.ServiceLoader ServiceLoader} SPI
      */
     public static final String DECORATOR_TYPE_AUTO = "auto";
 
@@ -37,25 +29,38 @@ public final class AloDecoratorConfig {
 
     }
 
-    public static <T, D extends AloDecorator<T>> Optional<AloDecorator<T>> load(
-        Map<String, ?> properties,
-        Class<D> superType
-    ) {
-        Set<String> types = ConfigLoading.loadSet(properties, ALO_DECORATOR_TYPES_CONFIG, Function.identity())
-            .orElse(Collections.singleton(DECORATOR_TYPE_AUTO));
-        List<AloDecorator<T>> decorators = types.stream()
-            .flatMap(descriptor -> instantiate(superType, descriptor))
-            .peek(decorator -> decorator.configure(properties))
-            .collect(Collectors.toList());
+    public static <T, D extends AloDecorator<T>> Optional<AloDecorator<T>>
+    load(Map<String, ?> properties, Class<D> superType) {
+        List<AloDecorator<T>> decorators = loadExplicit(properties, superType)
+            .orElseGet(() -> ConfigLoading.loadListOfConfiguredServices(superType, properties));
         return decorators.isEmpty() ? Optional.empty() : Optional.of(AloDecorator.combine(decorators));
     }
 
-    private static <T, D extends AloDecorator<T>> Stream<D> instantiate(Class<D> superType, String type) {
-        if (type.equalsIgnoreCase(DECORATOR_TYPE_AUTO)) {
-            ServiceLoader<D> serviceLoader = ServiceLoader.load(superType);
-            return StreamSupport.stream(serviceLoader.spliterator(), false);
+    private static <T, D extends AloDecorator<T>> Optional<List<AloDecorator<T>>>
+    loadExplicit(Map<String, ?> properties, Class<D> superType) {
+        return ConfigLoading.loadListOfConfiguredWithPredefinedTypes(
+            properties,
+            ALO_DECORATOR_TYPES_CONFIG,
+            superType,
+            typeName -> instantiatePredefined(properties, superType, typeName)
+        );
+    }
+
+    private static <T> Optional<AloDecorator<T>>
+    instantiatePredefined(Map<String, ?> properties, Class<? extends AloDecorator<T>> superType, String typeName) {
+        if (typeName.equalsIgnoreCase(DECORATOR_TYPE_AUTO)) {
+            List<AloDecorator<T>> decorators = ConfigLoading.loadListOfConfiguredServices(superType, properties);
+            return Optional.of(decorators.isEmpty() ? new NoOpAloDecorator<>() : AloDecorator.combine(decorators));
         } else {
-            return Stream.of(type).map(Instantiation::one).map(superType::cast);
+            return Optional.empty();
+        }
+    }
+
+    private static final class NoOpAloDecorator<T> implements AloDecorator<T> {
+
+        @Override
+        public Alo<T> decorate(Alo<T> alo) {
+            return alo;
         }
     }
 }

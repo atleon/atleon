@@ -29,11 +29,15 @@ public class RabbitMQConfig {
         return AloFactoryConfig.loadDecorated(properties, AloRabbitMQMessageDecorator.class);
     }
 
-    public <T extends Configurable> T loadConfiguredOrThrow(String property) {
-        return ConfigLoading.loadConfiguredOrThrow(properties, property);
+    public <T extends Configurable> T loadConfiguredOrThrow(String property, Class<? extends T> type) {
+        return ConfigLoading.loadConfiguredOrThrow(properties, property, type);
     }
 
-    public <T> Optional<T> load(String property, Function<? super String, T> parser) {
-        return ConfigLoading.load(properties, property, parser);
+    public Optional<Integer> loadInt(String property) {
+        return ConfigLoading.loadInt(properties, property);
+    }
+
+    public <T> Optional<T> loadParseable(String property, Class<T> type, Function<? super String, T> parser) {
+        return ConfigLoading.loadParseable(properties, property, type, parser);
     }
 }

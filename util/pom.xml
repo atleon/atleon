@@ -11,4 +11,17 @@
     <artifactId>atleon-util</artifactId>
     <packaging>jar</packaging>
 
+    <dependencies>
+        <!-- Third Party Test Dependencies -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 </project>

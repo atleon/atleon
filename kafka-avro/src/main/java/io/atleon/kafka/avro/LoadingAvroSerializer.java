@@ -51,8 +51,10 @@ public abstract class LoadingAvroSerializer<T> extends LoadingAvroSerDe implemen
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
         this.configureClientProperties(new KafkaAvroSerializerConfig(configs), new AvroSchemaProvider());
-        this.writerSchemaCaching = ConfigLoading.load(configs, WRITER_SCHEMA_CACHING_PROPERTY, Boolean::valueOf, writerSchemaCaching);
-        this.writerSchemaGeneration = ConfigLoading.load(configs, WRITER_SCHEMA_GENERATION_PROPERTY, Boolean::valueOf, writerSchemaGeneration);
+        this.writerSchemaCaching = ConfigLoading.loadBoolean(configs, WRITER_SCHEMA_CACHING_PROPERTY)
+            .orElse(writerSchemaCaching);
+        this.writerSchemaGeneration = ConfigLoading.loadBoolean(configs, WRITER_SCHEMA_GENERATION_PROPERTY)
+            .orElse(writerSchemaGeneration);
         this.isKey = isKey;
     }
 
