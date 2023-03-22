@@ -139,9 +139,9 @@ public class AloRabbitMQReceiver<T> {
         public static <T> ReceiveResources<T> fromConfig(RabbitMQConfig config) {
             return new ReceiveResources<T>(
                 config.getConnectionFactory(),
-                config.load(QOS_CONFIG, Integer::parseInt).orElse(Defaults.PREFETCH),
-                config.loadConfiguredOrThrow(BODY_DESERIALIZER_CONFIG),
-                config.load(NACK_STRATEGY_CONFIG, NackStrategy::valueOf).orElse(NackStrategy.EMIT),
+                config.loadInt(QOS_CONFIG).orElse(Defaults.PREFETCH),
+                config.loadConfiguredOrThrow(BODY_DESERIALIZER_CONFIG, BodyDeserializer.class),
+                config.loadParseable(NACK_STRATEGY_CONFIG, NackStrategy.class, NackStrategy::valueOf).orElse(NackStrategy.EMIT),
                 config.loadAloFactory()
             );
         }

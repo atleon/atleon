@@ -1,7 +1,6 @@
 package io.atleon.core;
 
 import io.atleon.util.ConfigLoading;
-import io.atleon.util.Instantiation;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -69,7 +68,7 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
         List<ConfigProcessor> processors = defaultInterceptors().stream()
             .map(ConfigInterceptor::asProcessor)
             .collect(Collectors.toList());
-        processors.addAll(ConfigLoading.loadListOrEmpty(properties, PROCESSORS_PROPERTY, Instantiation::one));
+        processors.addAll(ConfigLoading.loadListOfInstancesOrEmpty(properties, PROCESSORS_PROPERTY, ConfigProcessor.class));
         return processors;
     }
 

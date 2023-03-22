@@ -56,9 +56,12 @@ public abstract class LoadingAvroDeserializer<T> extends LoadingAvroSerDe implem
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
         this.configureClientProperties(new KafkaAvroDeserializerConfig(configs), new AvroSchemaProvider());
-        this.readNullOnFailure = ConfigLoading.load(configs, READ_NULL_ON_FAILURE_PROPERTY, Boolean::valueOf, readNullOnFailure);
-        this.readerSchemaLoading = ConfigLoading.load(configs, READER_SCHEMA_LOADING_PROPERTY, Boolean::valueOf, readerSchemaLoading);
-        this.readerReferenceSchemaGeneration = ConfigLoading.load(configs, READER_REFERENCE_SCHEMA_GENERATION_PROPERTY, Boolean::valueOf, readerReferenceSchemaGeneration);
+        this.readNullOnFailure = ConfigLoading.loadBoolean(configs, READ_NULL_ON_FAILURE_PROPERTY)
+            .orElse(readNullOnFailure);
+        this.readerSchemaLoading = ConfigLoading.loadBoolean(configs, READER_SCHEMA_LOADING_PROPERTY)
+            .orElse(readerSchemaLoading);
+        this.readerReferenceSchemaGeneration = ConfigLoading.loadBoolean(configs, READER_REFERENCE_SCHEMA_GENERATION_PROPERTY)
+            .orElse(readerReferenceSchemaGeneration);
     }
 
     @Override

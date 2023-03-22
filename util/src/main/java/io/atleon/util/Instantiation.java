@@ -4,9 +4,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public final class Instantiation {
 
@@ -14,24 +12,24 @@ public final class Instantiation {
 
     }
 
-    public static <T extends Configurable> List<T> manyConfigured(List<Class<? extends T>> clazzes, Map<String, ?> configs) {
-        return clazzes.stream().map(clazz -> oneConfigured(clazz, configs)).collect(Collectors.toList());
+    public static <T> T oneTyped(Class<? extends T> typeOrSubType, String qualifiedNameOfSubType, Object... parameters) {
+        return oneTyped(typeOrSubType, TypeResolution.classForQualifiedName(qualifiedNameOfSubType), parameters);
     }
 
-    public static <T extends Configurable> T oneConfigured(Class<? extends T> clazz, Map<String, ?> configs) {
-        T configurable = one(clazz);
-        configurable.configure(configs);
-        return configurable;
-    }
-
-    public static <T> T one(String qualifiedName, Object... parameters) {
-        return one(TypeResolution.classForQualifiedName(qualifiedName), parameters);
+    public static <T> T oneTyped(Class<? extends T> typeOrSubType, Class<?> subType, Object... parameters) {
+        if (typeOrSubType.isAssignableFrom(subType)) {
+            return typeOrSubType.cast(one(subType, parameters));
+        } else {
+            throw new IllegalArgumentException("Cannot instantiate type=" + typeOrSubType + " using subType=" + subType);
+        }
     }
 
     public static <T> T one(Class<? extends T> clazz, Object... parameters) {
         try {
-            List<Class<?>> parameterTypes = Arrays.stream(parameters).map(Instantiation::deduceParameterClass).collect(Collectors.toList());
-            Constructor<? extends T> constructor = clazz.getDeclaredConstructor(parameterTypes.toArray(new Class[parameterTypes.size()]));
+            Class<?>[] parameterTypes = Arrays.stream(parameters)
+                .map(Instantiation::deduceParameterClass)
+                .toArray(Class[]::new);
+            Constructor<? extends T> constructor = clazz.getDeclaredConstructor(parameterTypes);
             ensureConstructorAccessibility(constructor);
             return constructor.newInstance(parameters);
         } catch (Exception e) {
@@ -47,7 +45,7 @@ public final class Instantiation {
         }
     }
 
-    private static void ensureConstructorAccessibility(Constructor constructor) {
+    private static void ensureConstructorAccessibility(Constructor<?> constructor) {
         if (!Modifier.isPublic(constructor.getModifiers()) && !constructor.isAccessible()) {
             constructor.setAccessible(true);
         }

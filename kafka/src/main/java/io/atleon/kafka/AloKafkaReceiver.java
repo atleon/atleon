@@ -222,29 +222,29 @@ public class AloKafkaReceiver<K, V> {
         loadInto(options, config, CLOSE_TIMEOUT_CONFIG, DEFAULT_CLOSE_TIMEOUT);
 
         AloFactory<ConsumerRecord<K, V>> aloFactory = AloFactoryConfig.loadDecorated(config, AloKafkaConsumerRecordDecorator.class);
-        long maxInFlightPerSubscription = ConfigLoading.loadOrThrow(options, MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG, Long::valueOf);
+        long maxInFlightPerSubscription = ConfigLoading.loadLongOrThrow(options, MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG);
 
         // 1) Create Consumer config from remaining configs that are NOT options (help avoid WARNs)
         // 2) Note Client ID and, if enabled, increment client ID in consumer config
         Map<String, Object> consumerConfig = new HashMap<>(config);
         options.keySet().forEach(consumerConfig::remove);
-        String clientId = ConfigLoading.loadOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG, Object::toString);
-        if (ConfigLoading.loadOrThrow(options, AUTO_INCREMENT_CLIENT_ID_CONFIG, Boolean::valueOf)) {
+        String clientId = ConfigLoading.loadStringOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG);
+        if (ConfigLoading.loadBooleanOrThrow(options, AUTO_INCREMENT_CLIENT_ID_CONFIG)) {
             consumerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
         }
 
         // Create Future that allows blocking on partition assignment and positioning
         CompletableFuture<Collection<ReceiverPartition>> assignedPartitions =
-            ConfigLoading.loadOrThrow(options, BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG, Boolean::valueOf) ?
+            ConfigLoading.loadBooleanOrThrow(options, BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG) ?
                 new CompletableFuture<>() : CompletableFuture.completedFuture(Collections.emptyList());
         Future<?> positions = assignedPartitions.thenAccept(partitions -> partitions.forEach(ReceiverPartition::position));
 
         ReceiverOptions<K, V> receiverOptions = ReceiverOptions.<K, V>create(consumerConfig)
             .subscription(topics)
-            .pollTimeout(ConfigLoading.loadOrThrow(options, POLL_TIMEOUT_CONFIG, Duration::parse))
-            .commitInterval(ConfigLoading.loadOrThrow(options, COMMIT_INTERVAL_CONFIG, Duration::parse))
-            .maxCommitAttempts(ConfigLoading.loadOrThrow(options, MAX_COMMIT_ATTEMPTS_CONFIG, Integer::valueOf))
-            .closeTimeout(ConfigLoading.loadOrThrow(options, CLOSE_TIMEOUT_CONFIG, Duration::parse))
+            .pollTimeout(ConfigLoading.loadDurationOrThrow(options, POLL_TIMEOUT_CONFIG))
+            .commitInterval(ConfigLoading.loadDurationOrThrow(options, COMMIT_INTERVAL_CONFIG))
+            .maxCommitAttempts(ConfigLoading.loadIntOrThrow(options, MAX_COMMIT_ATTEMPTS_CONFIG))
+            .closeTimeout(ConfigLoading.loadDurationOrThrow(options, CLOSE_TIMEOUT_CONFIG))
             .addAssignListener(assignedPartitions::complete);
 
         return KafkaReceiver.create(receiverOptions).receive()

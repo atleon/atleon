@@ -16,16 +16,8 @@ public final class TypeResolution {
 
     }
 
-    public static String extractSimpleName(Object object) {
-        return safelyGetClass(object).getSimpleName();
-    }
-
-    public static Class safelyGetClass(Object object) {
+    public static Class<?> safelyGetClass(Object object) {
         return object == null ? Void.class : object.getClass();
-    }
-
-    public static <T> Class<T> classForPackageAndClass(String pkg, String name) {
-        return classForQualifiedName(pkg + "." + name);
     }
 
     public static <T> Class<T> classForQualifiedName(String qualifiedName) {
@@ -36,23 +28,23 @@ public final class TypeResolution {
         }
     }
 
-    public static boolean isGenericClass(Class clazz) {
+    public static boolean isGenericClass(Class<?> clazz) {
         return clazz.getTypeParameters().length > 0;
     }
 
-    public static boolean isDataStructure(Class clazz) {
+    public static boolean isDataStructure(Class<?> clazz) {
         return Collection.class.isAssignableFrom(clazz) || Map.class.isAssignableFrom(clazz);
     }
 
-    public static Set<Type> getAllTypeParameters(Class clazz) {
+    public static Set<Type> getAllTypeParameters(Class<?> clazz) {
         return withSuperClasses(clazz).stream()
-            .<TypeVariable[]>map(Class::getTypeParameters)
+            .<TypeVariable<?>[]>map(Class::getTypeParameters)
             .flatMap(Arrays::stream)
             .collect(Collectors.toSet());
     }
 
-    private static List<Class> withSuperClasses(Class clazz) {
-        List<Class> classes = new ArrayList<>();
+    private static List<Class<?>> withSuperClasses(Class<?> clazz) {
+        List<Class<?>> classes = new ArrayList<>();
         classes.add(clazz);
         while ((clazz = clazz.getSuperclass()) != null) {
             classes.add(clazz);

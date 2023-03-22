@@ -20,7 +20,7 @@ public class ReflectEncoderAvroSerializer<T> extends LoadingAvroSerializer<T> {
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
         super.configure(configs, isKey);
-        this.reflectAllowNull = ConfigLoading.load(configs, REFLECT_ALLOW_NULL_PROPERTY, Boolean::valueOf, reflectAllowNull);
+        this.reflectAllowNull = ConfigLoading.loadBoolean(configs, REFLECT_ALLOW_NULL_PROPERTY).orElse(reflectAllowNull);
     }
 
     @Override

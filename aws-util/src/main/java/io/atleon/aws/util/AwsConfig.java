@@ -11,7 +11,6 @@ import software.amazon.awssdk.regions.Region;
 
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 
 /**
  * Utility class used to build AWS resources from property-based configs
@@ -72,7 +71,8 @@ public final class AwsConfig {
     }
 
     public static AwsCredentialsProvider loadCredentialsProvider(Map<String, ?> configs) {
-        String type = ConfigLoading.load(configs, CREDENTIALS_PROVIDER_TYPE_CONFIG, Function.identity(), CREDENTIALS_PROVIDER_TYPE_DEFAULT);
+        String type = ConfigLoading.loadString(configs, CREDENTIALS_PROVIDER_TYPE_CONFIG)
+            .orElse(CREDENTIALS_PROVIDER_TYPE_DEFAULT);
         switch (type) {
             case CREDENTIALS_PROVIDER_TYPE_DEFAULT:
                 return DefaultCredentialsProvider.create();
@@ -84,18 +84,18 @@ public final class AwsConfig {
     }
 
     public static AwsCredentials loadAwsCredentials(Map<String, ?> configs) {
-        String type = ConfigLoading.load(configs, CREDENTIALS_TYPE_CONFIG, Function.identity(), CREDENTIALS_TYPE_BASIC);
+        String type = ConfigLoading.loadString(configs, CREDENTIALS_TYPE_CONFIG).orElse(CREDENTIALS_TYPE_BASIC);
         switch (type) {
             case CREDENTIALS_TYPE_BASIC:
                 return AwsBasicCredentials.create(
-                    ConfigLoading.loadOrThrow(configs, CREDENTIALS_ACCESS_KEY_ID_CONFIG, Function.identity()),
-                    ConfigLoading.loadOrThrow(configs, CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, Function.identity())
+                    ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_ACCESS_KEY_ID_CONFIG),
+                    ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_SECRET_ACCESS_KEY_CONFIG)
                 );
             case CREDENTIALS_TYPE_SESSION:
                 return AwsSessionCredentials.create(
-                    ConfigLoading.loadOrThrow(configs, CREDENTIALS_ACCESS_KEY_ID_CONFIG, Function.identity()),
-                    ConfigLoading.loadOrThrow(configs, CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, Function.identity()),
-                    ConfigLoading.loadOrThrow(configs, CREDENTIALS_SESSION_TOKEN_CONFIG, Function.identity())
+                    ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_ACCESS_KEY_ID_CONFIG),
+                    ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_SECRET_ACCESS_KEY_CONFIG),
+                    ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_SESSION_TOKEN_CONFIG)
                 );
             default:
                 throw new IllegalArgumentException("Cannot create AwsCredentials for type=" + type);
@@ -103,6 +103,6 @@ public final class AwsConfig {
     }
 
     public static Optional<Region> loadRegion(Map<String, ?> configs) {
-        return ConfigLoading.load(configs, REGION_CONFIG, Region::of);
+        return ConfigLoading.loadParseable(configs, REGION_CONFIG, Region.class, Region::of);
     }
 }

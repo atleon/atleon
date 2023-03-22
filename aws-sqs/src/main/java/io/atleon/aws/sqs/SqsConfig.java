@@ -5,15 +5,13 @@ import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
-import io.atleon.util.Instantiation;
-import io.atleon.util.TypeResolution;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
-import java.net.URI;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -36,7 +34,7 @@ public class SqsConfig {
 
     public SqsAsyncClient buildClient() {
         return SqsAsyncClient.builder()
-            .endpointOverride(ConfigLoading.load(properties, ENDPOINT_OVERRIDE_CONFIG, URI::create).orElse(null))
+            .endpointOverride(ConfigLoading.loadUri(properties, ENDPOINT_OVERRIDE_CONFIG).orElse(null))
             .credentialsProvider(AwsConfig.loadCredentialsProvider(properties))
             .region(AwsConfig.loadRegion(properties).orElse(null))
             .build();
@@ -46,27 +44,27 @@ public class SqsConfig {
         return AloFactoryConfig.loadDecorated(properties, AloReceivedSqsMessageDecorator.class);
     }
 
-    public <T extends Configurable> T loadConfiguredOrThrow(String property) {
-        return ConfigLoading.loadConfiguredOrThrow(properties, property);
-    }
-
-    public <T extends Configurable> T createConfigured(String qualifiedName) {
-        return Instantiation.oneConfigured(TypeResolution.classForQualifiedName(qualifiedName), properties);
+    public <T extends Configurable> T loadConfiguredOrThrow(String property, Class<? extends T> type) {
+        return ConfigLoading.loadConfiguredOrThrow(properties, property, type);
     }
 
     public Set<String> loadSetOfStringOrEmpty(String key) {
-        return ConfigLoading.loadSetOrEmpty(properties, key, Function.identity());
+        return ConfigLoading.loadSetOfStringOrEmpty(properties, key);
     }
 
-    public Duration loadDuration(String key, Duration defaultValue) {
-        return ConfigLoading.load(properties, key, Duration::parse, defaultValue);
+    public <T, N extends NacknowledgerFactory<T>> Optional<NacknowledgerFactory<T>> loadNacknowledgerFactory(
+        String key,
+        Class<N> type,
+        Function<String, Optional<NacknowledgerFactory<T>>> predefinedTypeInstantiator
+    ) {
+        return ConfigLoading.loadConfiguredWithPredefinedTypes(properties, key, type, predefinedTypeInstantiator);
     }
 
-    public String loadString(String key, String defaultValue) {
-        return ConfigLoading.load(properties, key, Function.identity(), defaultValue);
+    public Optional<Duration> loadDuration(String key) {
+        return ConfigLoading.loadDuration(properties, key);
     }
 
-    public int loadInt(String key, int defaultValue) {
-        return ConfigLoading.load(properties, key, Integer::parseInt, defaultValue);
+    public Optional<Integer> loadInt(String key) {
+        return ConfigLoading.loadInt(properties, key);
     }
 }

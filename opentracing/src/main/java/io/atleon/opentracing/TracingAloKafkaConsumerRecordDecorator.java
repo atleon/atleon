@@ -11,7 +11,6 @@ import org.apache.kafka.common.header.Header;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.function.Function;
 
 /**
  * An {@link AloKafkaConsumerRecordDecorator} that decorates {@link Alo} elements with tracing
@@ -29,7 +28,7 @@ public class TracingAloKafkaConsumerRecordDecorator<K, V>
     @Override
     public void configure(Map<String, ?> properties) {
         super.configure(properties);
-        groupId = ConfigLoading.load(properties, ConsumerConfig.GROUP_ID_CONFIG, Function.identity(), groupId);
+        groupId = ConfigLoading.loadString(properties, ConsumerConfig.GROUP_ID_CONFIG).orElse(groupId);
     }
 
     @Override

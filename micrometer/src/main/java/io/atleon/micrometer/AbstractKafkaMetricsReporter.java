@@ -12,13 +12,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
 
-    public enum FilterInclusion { BLACKLIST, WHITELIST }
+    public enum FilterInclusion {BLACKLIST, WHITELIST}
 
     public static final String CONFIG_PREFIX = "metric.reporter.";
 
@@ -44,8 +43,8 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
     @Override
     public void configure(Map<String, ?> configs) {
         this.meterRegistry = createMeterRegistry(configs);
-        this.filteredMetricNamesInclusion = ConfigLoading.load(configs, FILTER_NAMES_INCLUSION_CONFIG, FilterInclusion::valueOf, filteredMetricNamesInclusion);
-        this.filteredMetricNames = ConfigLoading.loadSetOrEmpty(configs, FILTER_NAMES_CONFIG, Function.identity());
+        this.filteredMetricNamesInclusion = loadFilterInclusion(configs).orElse(FilterInclusion.BLACKLIST);
+        this.filteredMetricNames = ConfigLoading.loadSetOfStringOrEmpty(configs, FILTER_NAMES_CONFIG);
     }
 
     @Override
@@ -125,6 +124,15 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
 
     protected static String removeUpToLastAndIncluding(String string, char toRemove) {
         return string.substring(string.lastIndexOf(toRemove) + 1);
+    }
+
+    private static Optional<FilterInclusion> loadFilterInclusion(Map<String, ?> configs) {
+        return ConfigLoading.loadParseable(
+            configs,
+            FILTER_NAMES_INCLUSION_CONFIG,
+            FilterInclusion.class,
+            FilterInclusion::valueOf
+        );
     }
 
     private static void registerGauge(MeterRegistry meterRegistry, MeterKey meterKey, KafkaMetric metric) {

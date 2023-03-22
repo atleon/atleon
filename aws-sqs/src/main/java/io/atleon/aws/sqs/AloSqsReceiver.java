@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
+import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
@@ -44,24 +45,17 @@ public class AloSqsReceiver<T> {
      * message as no longer in flight and resets its visibility such that it is either re-received
      * in the future or dead-lettered (note that when using {@value #NACKNOWLEDGER_TYPE_VISIBILITY_RESET},
      * the number of seconds the visibility is reset by is configurable through
-     * {@link #NACKNOWLEDGER_VISIBILITY_RESET_SECONDS_CONFIG}, where the default is zero, leading
-     * to the message being immediately re-receivable). Any other non-predefined value is treated
-     * as a qualified class name of an implementation of {@link NacknowledgerFactory} which allows
-     * more fine-grained control over what happens when an SQS Message is negatively acknowledged.
-     * Defaults to "emit".
+     * {@link NacknowledgerFactory#VISIBILITY_RESET_SECONDS_CONFIG}, where the default is zero,
+     * leading to the message being immediately re-receivable). Any other non-predefined value is
+     * treated as a qualified class name of an implementation of {@link NacknowledgerFactory} which
+     * allows more fine-grained control over what happens when an SQS Message is negatively
+     * acknowledged. Defaults to "emit".
      */
     public static final String NACKNOWLEDGER_TYPE_CONFIG = CONFIG_PREFIX + "nacknowledger.type";
 
     public static final String NACKNOWLEDGER_TYPE_EMIT = "emit";
 
     public static final String NACKNOWLEDGER_TYPE_VISIBILITY_RESET = "visibility_reset";
-
-    /**
-     * When {@link #NACKNOWLEDGER_TYPE_CONFIG} is set to {@value #NACKNOWLEDGER_TYPE_VISIBILITY_RESET},
-     * this configures the number of seconds that a nacknowledged messages has its visibility reset
-     * by.
-     */
-    public static final String NACKNOWLEDGER_VISIBILITY_RESET_SECONDS_CONFIG = "nacknowledger.visibility.reset.seconds";
 
     /**
      * Configures the maximum number of messages returned by each Receive Message Request to SQS.
@@ -169,7 +163,7 @@ public class AloSqsReceiver<T> {
     private Flux<Alo<ReceivedSqsMessage<T>>> receiveMessages(SqsConfig config, String queueUrl) {
         SqsReceiverOptions options = newReceiverOptions(config);
         AloFactory<ReceivedSqsMessage<T>> aloFactory = config.loadAloFactory();
-        BodyDeserializer<T> bodyDeserializer = config.loadConfiguredOrThrow(BODY_DESERIALIZER_CONFIG);
+        BodyDeserializer<T> bodyDeserializer = config.loadConfiguredOrThrow(BODY_DESERIALIZER_CONFIG, BodyDeserializer.class);
         NacknowledgerFactory<T> nacknowledgerFactory = createNacknowledgerFactory(config);
 
         Sinks.Empty<SqsReceiverMessage> sink = Sinks.empty();
@@ -180,28 +174,34 @@ public class AloSqsReceiver<T> {
 
     private static SqsReceiverOptions newReceiverOptions(SqsConfig config) {
         return SqsReceiverOptions.newBuilder(config::buildClient)
-            .maxMessagesPerReception(config.loadInt(MAX_MESSAGES_PER_RECEPTION_CONFIG, SqsReceiverOptions.DEFAULT_MAX_MESSAGES_PER_RECEPTION))
+            .maxMessagesPerReception(config.loadInt(MAX_MESSAGES_PER_RECEPTION_CONFIG).orElse(SqsReceiverOptions.DEFAULT_MAX_MESSAGES_PER_RECEPTION))
             .messageAttributesToRequest(config.loadSetOfStringOrEmpty(MESSAGE_ATTRIBUTES_TO_REQUEST_CONFIG))
             .messageSystemAttributesToRequest(config.loadSetOfStringOrEmpty(MESSAGE_SYSTEM_ATTRIBUTES_TO_REQUEST_CONFIG))
-            .waitTimeSecondsPerReception(config.loadInt(WAIT_TIME_SECONDS_PER_RECEPTION_CONFIG, SqsReceiverOptions.DEFAULT_WAIT_TIME_SECONDS_PER_RECEPTION))
-            .visibilityTimeoutSeconds(config.loadInt(VISIBILITY_TIMEOUT_SECONDS_CONFIG, SqsReceiverOptions.DEFAULT_VISIBILITY_TIMEOUT_SECONDS))
-            .maxInFlightPerSubscription(config.loadInt(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG, SqsReceiverOptions.DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION))
-            .deleteBatchSize(config.loadInt(DELETE_BATCH_SIZE_CONFIG, SqsReceiverOptions.DEFAULT_DELETE_BATCH_SIZE))
-            .deleteInterval(config.loadDuration(DELETE_BATCH_INTERVAL_CONFIG, SqsReceiverOptions.DEFAULT_DELETE_INTERVAL))
-            .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG, SqsReceiverOptions.DEFAULT_CLOSE_TIMEOUT))
+            .waitTimeSecondsPerReception(config.loadInt(WAIT_TIME_SECONDS_PER_RECEPTION_CONFIG).orElse(SqsReceiverOptions.DEFAULT_WAIT_TIME_SECONDS_PER_RECEPTION))
+            .visibilityTimeoutSeconds(config.loadInt(VISIBILITY_TIMEOUT_SECONDS_CONFIG).orElse(SqsReceiverOptions.DEFAULT_VISIBILITY_TIMEOUT_SECONDS))
+            .maxInFlightPerSubscription(config.loadInt(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG).orElse(SqsReceiverOptions.DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION))
+            .deleteBatchSize(config.loadInt(DELETE_BATCH_SIZE_CONFIG).orElse(SqsReceiverOptions.DEFAULT_DELETE_BATCH_SIZE))
+            .deleteInterval(config.loadDuration(DELETE_BATCH_INTERVAL_CONFIG).orElse(SqsReceiverOptions.DEFAULT_DELETE_INTERVAL))
+            .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(SqsReceiverOptions.DEFAULT_CLOSE_TIMEOUT))
             .build();
     }
 
     private static <T> NacknowledgerFactory<T> createNacknowledgerFactory(SqsConfig config) {
-        String nacknowledgerType = config.loadString(NACKNOWLEDGER_TYPE_CONFIG, NACKNOWLEDGER_TYPE_EMIT);
-        switch (nacknowledgerType) {
-            case NACKNOWLEDGER_TYPE_EMIT:
-                return new NacknowledgerFactory.Emit<>();
-            case NACKNOWLEDGER_TYPE_VISIBILITY_RESET:
-                int seconds = config.loadInt(NACKNOWLEDGER_VISIBILITY_RESET_SECONDS_CONFIG, 0);
-                return new NacknowledgerFactory.VisibilityReset<>(LOGGER, seconds);
-            default:
-                return config.createConfigured(nacknowledgerType);
+        Optional<NacknowledgerFactory<T>> nacknowledgerFactory = config.loadNacknowledgerFactory(
+            NACKNOWLEDGER_TYPE_CONFIG,
+            NacknowledgerFactory.class,
+            AloSqsReceiver::instantiatePredefinedNacknowledgerFactory
+        );
+        return nacknowledgerFactory.orElseGet(NacknowledgerFactory.Emit::new);
+    }
+
+    private static <T> Optional<NacknowledgerFactory<T>> instantiatePredefinedNacknowledgerFactory(String typeName) {
+        if (typeName.equalsIgnoreCase(NACKNOWLEDGER_TYPE_EMIT)) {
+            return Optional.of(new NacknowledgerFactory.Emit<>());
+        } else if (typeName.equalsIgnoreCase(NACKNOWLEDGER_TYPE_VISIBILITY_RESET)) {
+            return Optional.of(new NacknowledgerFactory.VisibilityReset<>(LOGGER));
+        } else {
+            return Optional.empty();
         }
     }
 
