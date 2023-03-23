@@ -1,6 +1,7 @@
 package io.atleon.core;
 
 import io.atleon.util.Throwing;
+import org.jetbrains.annotations.NotNull;
 import reactor.core.Disposable;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -48,5 +49,6 @@ public abstract class AloStream<C extends AloStreamConfig> {
         }
     }
 
-    protected abstract Disposable startDisposable(C config);
+    @NotNull
+    protected abstract Disposable startDisposable(@NotNull C config);
 }
