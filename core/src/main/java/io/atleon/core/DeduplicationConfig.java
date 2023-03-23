@@ -21,7 +21,7 @@ public final class DeduplicationConfig {
      * @param deduplicationDuration The Duration in which to deduplicate items
      */
     public DeduplicationConfig(Duration deduplicationDuration) {
-        this(deduplicationDuration, Long.MAX_VALUE, Defaults.CONCURRENCY, Defaults.PREFETCH);
+        this(deduplicationDuration, Long.MAX_VALUE);
     }
 
     /**
@@ -29,7 +29,7 @@ public final class DeduplicationConfig {
      * @param maxDeduplicationSize The max number of items with any given key to dedpulicate
      */
     public DeduplicationConfig(Duration deduplicationDuration, long maxDeduplicationSize) {
-        this(deduplicationDuration, maxDeduplicationSize, Defaults.CONCURRENCY, Defaults.PREFETCH);
+        this(deduplicationDuration, maxDeduplicationSize, Integer.MAX_VALUE);
     }
 
     /**
@@ -37,10 +37,7 @@ public final class DeduplicationConfig {
      * @param maxDeduplicationSize The max number of items with any given key to dedpulicate
      * @param deduplicationConcurrency The max number of concurrent deduplications to allow
      */
-    public DeduplicationConfig(
-        Duration deduplicationDuration,
-        long maxDeduplicationSize,
-        int deduplicationConcurrency) {
+    public DeduplicationConfig(Duration deduplicationDuration, long maxDeduplicationSize, int deduplicationConcurrency) {
         this(deduplicationDuration, maxDeduplicationSize, deduplicationConcurrency, Defaults.PREFETCH);
     }
 
@@ -54,7 +51,8 @@ public final class DeduplicationConfig {
         Duration deduplicationDuration,
         long maxDeduplicationSize,
         int deduplicationConcurrency,
-        int deduplicationSourcePrefetch) {
+        int deduplicationSourcePrefetch
+    ) {
         this.deduplicationDuration = deduplicationDuration;
         this.maxDeduplicationSize = maxDeduplicationSize;
         this.deduplicationConcurrency = deduplicationConcurrency;
