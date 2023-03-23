@@ -5,14 +5,12 @@ import io.atleon.kafka.AloKafkaReceiver;
 import io.atleon.kafka.AloKafkaSender;
 import io.atleon.kafka.KafkaConfigSource;
 import io.atleon.kafka.embedded.EmbeddedKafka;
-import io.atleon.util.Defaults;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
@@ -44,9 +42,6 @@ public class KafkaErrorHandling {
     private static final String TOPIC_1 = "TOPIC_1";
 
     private static final String TOPIC_2 = "TOPIC_2";
-
-    private static final Scheduler SCHEDULER = Schedulers.newBoundedElastic(
-        Defaults.THREAD_CAP, Integer.MAX_VALUE, KafkaErrorHandling.class.getSimpleName());
 
     public static void main(String[] args) throws Exception {
         //Step 1) Create Kafka Config for Producer that backs Sender
@@ -93,7 +88,7 @@ public class KafkaErrorHandling {
             .resubscribeOnError(KafkaErrorHandling.class.getSimpleName(), Duration.ofSeconds(2L))
             .groupBy(Function.identity())
             .map(groupedFlux -> groupedFlux
-                .publishOn(SCHEDULER)
+                .publishOn(Schedulers.boundedElastic())
                 .map(String::toUpperCase)
                 .doOnNext(next -> {
                     try {

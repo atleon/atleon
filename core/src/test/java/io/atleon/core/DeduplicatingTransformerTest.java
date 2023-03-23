@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
@@ -26,7 +27,7 @@ class DeduplicatingTransformerTest {
     private final Sinks.Many<String> sink = Sinks.many().multicast().onBackpressureBuffer();
 
     private final Flux<String> downstream = sink.asFlux()
-        .transform(DeduplicatingTransformer.identity(CONFIG, Deduplication.identity()));
+        .transform(DeduplicatingTransformer.identity(CONFIG, Deduplication.identity(), Schedulers.parallel()));
 
     @Test
     public void duplicatesAreNotEmitted() {
@@ -80,7 +81,8 @@ class DeduplicatingTransformerTest {
 
     @Test
     public void dataAreSequentiallyProcessed() {
-        Flux<String> invertedDownstream = sink.asFlux().transform(DeduplicatingTransformer.identity(CONFIG, new InvertedReducerDeduplication()));
+        Flux<String> invertedDownstream = sink.asFlux()
+            .transform(DeduplicatingTransformer.identity(CONFIG, new InvertedReducerDeduplication(), Schedulers.parallel()));
 
         StepVerifier.create(invertedDownstream)
             .expectSubscription()
@@ -124,7 +126,7 @@ class DeduplicatingTransformerTest {
                 public List<Long> reduceDuplicates(List<Long> t1, List<Long> t2) {
                     return Stream.concat(t1.stream(), t2.stream()).collect(Collectors.toList());
                 }
-            }))
+            }, Schedulers.parallel()))
             .doOnNext(buffer -> {
                 // Mimic real-world computationally-bound processing overhead
                 long startNano = System.nanoTime();

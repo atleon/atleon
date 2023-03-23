@@ -36,10 +36,6 @@
             <groupId>io.atleon</groupId>
             <artifactId>atleon-rabbitmq</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.atleon</groupId>
-            <artifactId>atleon-util</artifactId>
-        </dependency>
 
         <!-- Third Party Compile Dependencies -->
         <dependency>

@@ -1,6 +1,5 @@
 package io.atleon.core;
 
-import io.atleon.util.Defaults;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
@@ -16,7 +15,7 @@ class RateLimitingTransformerTest {
 
     private static final double PERMITS_PER_SECOND = Duration.ofMillis(1000L).dividedBy(PERMIT_DURATION.toMillis()).toMillis();
 
-    private final RateLimitingConfig config = new RateLimitingConfig(PERMITS_PER_SECOND, Defaults.PREFETCH);
+    private final RateLimitingConfig config = new RateLimitingConfig(PERMITS_PER_SECOND);
 
     @Test
     public void publishersCanBeRateLimited() {

@@ -1,6 +1,5 @@
 package io.atleon.core;
 
-import io.atleon.util.Defaults;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
@@ -13,9 +12,6 @@ import java.util.function.BinaryOperator;
 import java.util.function.Function;
 
 final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publisher<T>> {
-
-    private static final Scheduler DEFAULT_SCHEDULER =
-        Schedulers.newBoundedElastic(Defaults.THREAD_CAP, Integer.MAX_VALUE, DeduplicatingTransformer.class.getSimpleName());
 
     private final DeduplicationConfig config;
 
@@ -34,18 +30,8 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
     }
 
     static <T> DeduplicatingTransformer<T>
-    identity(DeduplicationConfig config, Deduplication<T> deduplication) {
-        return identity(config, deduplication, DEFAULT_SCHEDULER);
-    }
-
-    static <T> DeduplicatingTransformer<T>
     identity(DeduplicationConfig config, Deduplication<T> deduplication, Scheduler sourceScheduler) {
         return new DeduplicatingTransformer<>(config, Deduplicator.identity(deduplication), sourceScheduler);
-    }
-
-    static <T> DeduplicatingTransformer<Alo<T>>
-    alo(DeduplicationConfig config, Deduplication<T> deduplication) {
-        return alo(config, deduplication, DEFAULT_SCHEDULER);
     }
 
     static <T> DeduplicatingTransformer<Alo<T>>

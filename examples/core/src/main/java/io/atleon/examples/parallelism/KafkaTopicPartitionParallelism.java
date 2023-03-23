@@ -6,14 +6,12 @@ import io.atleon.kafka.AloKafkaSender;
 import io.atleon.kafka.ConsumerRecordExtraction;
 import io.atleon.kafka.KafkaConfigSource;
 import io.atleon.kafka.embedded.EmbeddedKafka;
-import io.atleon.util.Defaults;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
@@ -35,9 +33,6 @@ public class KafkaTopicPartitionParallelism {
     private static final int NUM_SAMPLES = 10000;
 
     private static final long MAX_SLEEP_MILLIS = 10;
-
-    private static final Scheduler SCHEDULER = Schedulers.newBoundedElastic(
-        Defaults.THREAD_CAP, Integer.MAX_VALUE, KafkaTopicPartitionParallelism.class.getSimpleName());
 
     public static void main(String[] args) throws Exception {
         //Step 1) Create Kafka Config for Producer that backs Sender
@@ -67,7 +62,7 @@ public class KafkaTopicPartitionParallelism {
             .receiveAloRecords(Collections.singletonList(TOPIC))
             .groupBy(ConsumerRecordExtraction::extractTopicPartition)
             .flatMapAlo(groupedFlux -> groupedFlux
-                .publishOn(SCHEDULER)
+                .publishOn(Schedulers.boundedElastic())
                 .map(consumerRecord -> consumerRecord.value().toUpperCase())
                 .doOnNext(next -> {
                     try {
