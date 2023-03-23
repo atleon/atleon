@@ -1,6 +1,5 @@
 package io.atleon.core;
 
-import io.atleon.util.Defaults;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.Disposable;
@@ -225,7 +224,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @return AloFlux of deduplicated items
      */
     public AloFlux<T> deduplicate(DeduplicationConfig config, Deduplication<T> deduplication) {
-        return new AloFlux<>(wrapped.transform(DeduplicatingTransformer.alo(config, deduplication)));
+        return deduplicate(config, deduplication, Schedulers.parallel());
     }
 
     /**
@@ -424,7 +423,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see AloFlux#limitPerSecond(RateLimitingConfig)
      */
     public AloFlux<T> limitPerSecond(double limitPerSecond) {
-        return limitPerSecond(new RateLimitingConfig(limitPerSecond, Defaults.PREFETCH));
+        return limitPerSecond(new RateLimitingConfig(limitPerSecond));
     }
 
     /**
