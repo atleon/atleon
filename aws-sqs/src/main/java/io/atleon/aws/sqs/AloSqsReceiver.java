@@ -187,12 +187,14 @@ public class AloSqsReceiver<T> {
     }
 
     private static <T> NacknowledgerFactory<T> createNacknowledgerFactory(SqsConfig config) {
-        Optional<NacknowledgerFactory<T>> nacknowledgerFactory = config.loadNacknowledgerFactory(
-            NACKNOWLEDGER_TYPE_CONFIG,
-            NacknowledgerFactory.class,
-            AloSqsReceiver::instantiatePredefinedNacknowledgerFactory
-        );
+        Optional<NacknowledgerFactory<T>> nacknowledgerFactory =
+            loadNacknowledgerFactory(config, NACKNOWLEDGER_TYPE_CONFIG, NacknowledgerFactory.class);
         return nacknowledgerFactory.orElseGet(NacknowledgerFactory.Emit::new);
+    }
+
+    private static <T, N extends NacknowledgerFactory<T>> Optional<NacknowledgerFactory<T>>
+    loadNacknowledgerFactory(SqsConfig config, String key, Class<N> type) {
+        return config.loadConfiguredWithPredefinedTypes(key, type, AloSqsReceiver::instantiatePredefinedNacknowledgerFactory);
     }
 
     private static <T> Optional<NacknowledgerFactory<T>> instantiatePredefinedNacknowledgerFactory(String typeName) {

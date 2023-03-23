@@ -15,6 +15,7 @@ import reactor.rabbitmq.ConsumeOptions;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.ReceiverOptions;
 
+import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
@@ -30,12 +31,10 @@ import java.util.function.Consumer;
 public class AloRabbitMQReceiver<T> {
 
     /**
-     * Strategy for handling Nacknowledgement
-     * - EMIT causes error to be emitted to subscribers
-     * - REQUEUE causes nacknowledged message to be nack'd with requeue
-     * - DISCARD causes nacknowledged message to be nack'ed with discard
-     * Default is EMIT
+     * @deprecated Use {@link #NACKNOWLEDGER_TYPE_EMIT}, {@link #NACKNOWLEDGER_TYPE_REQUEUE}, or
+     * {@link #NACKNOWLEDGER_TYPE_DISCARD}
      */
+    @Deprecated
     public enum NackStrategy {EMIT, REQUEUE, DISCARD}
 
     /**
@@ -54,17 +53,36 @@ public class AloRabbitMQReceiver<T> {
     public static final String BODY_DESERIALIZER_CONFIG = CONFIG_PREFIX + "body.deserializer";
 
     /**
-     * Strategy used for handling Nacknowledgement. See {@link NackStrategy}
+     * @deprecated Use {@link #NACKNOWLEDGER_TYPE_CONFIG}
      */
+    @Deprecated
     public static final String NACK_STRATEGY_CONFIG = CONFIG_PREFIX + "nack.strategy";
+
+    /**
+     * Configures the behavior of negatively acknowledging SQS Messages. Several simple types are
+     * available including {@value #NACKNOWLEDGER_TYPE_EMIT}, where the associated error is emitted
+     * in to the pipeline, {@value #NACKNOWLEDGER_TYPE_REQUEUE} which re-queues the associated
+     * message such that it is re-received in the future, and {@value #NACKNOWLEDGER_TYPE_DISCARD}
+     * which causes the message to be dropped or routed to a dead-letter queue, if configured. Any
+     * other non-predefined value is treated as a qualified class name of an implementation of
+     * {@link NacknowledgerFactory} which allows more fine-grained control over what happens when
+     * a RabbitMQ Message is negatively acknowledged. Defaults to "emit".
+     */
+    public static final String NACKNOWLEDGER_TYPE_CONFIG = CONFIG_PREFIX + "nacknowledger.type";
+
+    public static final String NACKNOWLEDGER_TYPE_EMIT = "emit";
+
+    public static final String NACKNOWLEDGER_TYPE_REQUEUE = "requeue";
+
+    public static final String NACKNOWLEDGER_TYPE_DISCARD = "discard";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloRabbitMQReceiver.class);
 
-    private final Mono<ReceiveResources<T>> futureResources;
+    private final Mono<Resources<T>> futureResources;
 
     private AloRabbitMQReceiver(RabbitMQConfigSource configSource) {
         this.futureResources = configSource.create()
-            .map(ReceiveResources::<T>fromConfig)
+            .map(Resources::<T>fromConfig)
             .cache();
     }
 
@@ -104,13 +122,13 @@ public class AloRabbitMQReceiver<T> {
             .as(AloFlux::wrap);
     }
 
-    private Flux<Alo<RabbitMQMessage<T>>> receiveMessages(ReceiveResources<T> resources, String queue) {
+    private Flux<Alo<RabbitMQMessage<T>>> receiveMessages(Resources<T> resources, String queue) {
         Sinks.Empty<Alo<RabbitMQMessage<T>>> sink = Sinks.empty();
         return resources.receive(queue, sink::tryEmitError)
             .mergeWith(sink.asMono());
     }
 
-    private static final class ReceiveResources<T> {
+    private static final class Resources<T> {
 
         private final ConnectionFactory connectionFactory;
 
@@ -118,35 +136,35 @@ public class AloRabbitMQReceiver<T> {
 
         private final BodyDeserializer<T> bodyDeserializer;
 
-        private final NackStrategy nackStrategy;
+        private final NacknowledgerFactory<T> nacknowledgerFactory;
 
         private final AloFactory<RabbitMQMessage<T>> aloFactory;
 
-        private ReceiveResources(
+        private Resources(
             ConnectionFactory connectionFactory,
             int qos,
             BodyDeserializer<T> bodyDeserializer,
-            NackStrategy nackStrategy,
+            NacknowledgerFactory<T> nacknowledgerFactory,
             AloFactory<RabbitMQMessage<T>> aloFactory
         ) {
             this.connectionFactory = connectionFactory;
             this.qos = qos;
             this.bodyDeserializer = bodyDeserializer;
-            this.nackStrategy = nackStrategy;
+            this.nacknowledgerFactory = nacknowledgerFactory;
             this.aloFactory = aloFactory;
         }
 
-        public static <T> ReceiveResources<T> fromConfig(RabbitMQConfig config) {
-            return new ReceiveResources<T>(
+        public static <T> Resources<T> fromConfig(RabbitMQConfig config) {
+            return new Resources<T>(
                 config.getConnectionFactory(),
                 config.loadInt(QOS_CONFIG).orElse(Defaults.PREFETCH),
                 config.loadConfiguredOrThrow(BODY_DESERIALIZER_CONFIG, BodyDeserializer.class),
-                config.loadParseable(NACK_STRATEGY_CONFIG, NackStrategy.class, NackStrategy::valueOf).orElse(NackStrategy.EMIT),
+                createNacknowledgerFactory(config),
                 config.loadAloFactory()
             );
         }
 
-        public Flux<Alo<RabbitMQMessage<T>>> receive(String queue, Consumer<? super Throwable> errorEmitter) {
+        public Flux<Alo<RabbitMQMessage<T>>> receive(String queue, Consumer<Throwable> errorEmitter) {
             ReceiverOptions receiverOptions = new ReceiverOptions()
                 .connectionFactory(connectionFactory);
 
@@ -159,17 +177,20 @@ public class AloRabbitMQReceiver<T> {
         }
 
         private Alo<RabbitMQMessage<T>>
-        deserialize(AcknowledgableDelivery delivery, Consumer<? super Throwable> errorEmitter) {
+        deserialize(AcknowledgableDelivery delivery, Consumer<Throwable> errorEmitter) {
             SerializedBody body = SerializedBody.ofBytes(delivery.getBody());
-            RabbitMQMessage<T> rabbitMessage = new RabbitMQMessage<>(
+            RabbitMQMessage<T> message = new RabbitMQMessage<>(
                 delivery.getEnvelope().getExchange(),
                 delivery.getEnvelope().getRoutingKey(),
                 delivery.getProperties(),
-                bodyDeserializer.deserialize(body));
+                bodyDeserializer.deserialize(body)
+            );
 
-            Runnable acknowledger = () -> ack(delivery, errorEmitter);
-            Consumer<? super Throwable> nacknowledger = error -> nack(delivery, errorEmitter, error);
-            return aloFactory.create(rabbitMessage, acknowledger, nacknowledger);
+            return aloFactory.create(
+                message,
+                () -> ack(delivery, errorEmitter),
+                nacknowledgerFactory.create(message, requeue -> nack(delivery, requeue, errorEmitter), errorEmitter)
+            );
         }
 
         private void ack(AcknowledgableDelivery delivery, Consumer<? super Throwable> errorEmitter) {
@@ -181,17 +202,48 @@ public class AloRabbitMQReceiver<T> {
             }
         }
 
-        private void nack(AcknowledgableDelivery delivery, Consumer<? super Throwable> errorEmitter, Throwable error) {
-            if (nackStrategy == NackStrategy.EMIT) {
-                errorEmitter.accept(error);
+        private void nack(AcknowledgableDelivery delivery, boolean requeue, Consumer<? super Throwable> errorEmitter) {
+            try {
+                delivery.nack(false, requeue);
+            } catch (Throwable fatalError) {
+                LOGGER.error("Failed to nack", fatalError);
+                errorEmitter.accept(fatalError);
+            }
+        }
+
+        private static <T> NacknowledgerFactory<T> createNacknowledgerFactory(RabbitMQConfig config) {
+            Optional<NacknowledgerFactory<T>> nacknowledgerFactory =
+                loadNacknowledgerFactory(config, NACKNOWLEDGER_TYPE_CONFIG, NacknowledgerFactory.class);
+            if (nacknowledgerFactory.isPresent()) {
+                return nacknowledgerFactory.get();
+            }
+
+            Optional<NackStrategy> deprecatedNackStrategy =
+                config.loadParseable(NACK_STRATEGY_CONFIG, NackStrategy.class, NackStrategy::valueOf);
+            if (deprecatedNackStrategy.isPresent()) {
+                LOGGER.warn("The configuration " + NACK_STRATEGY_CONFIG + " is deprecated. Use " + NACKNOWLEDGER_TYPE_CONFIG);
+                return deprecatedNackStrategy.map(Enum::name)
+                    .<NacknowledgerFactory<T>>flatMap(Resources::instantiatePredefinedNacknowledgerFactory)
+                    .orElseThrow(() -> new IllegalStateException("Failed to convert NackStrategy to NacknowledgerFactory"));
+            }
+
+            return new NacknowledgerFactory.Emit<>();
+        }
+
+        private static <T, N extends NacknowledgerFactory<T>> Optional<NacknowledgerFactory<T>>
+        loadNacknowledgerFactory(RabbitMQConfig config, String key, Class<N> type) {
+            return config.loadConfiguredWithPredefinedTypes(key, type, Resources::instantiatePredefinedNacknowledgerFactory);
+        }
+
+        private static <T> Optional<NacknowledgerFactory<T>> instantiatePredefinedNacknowledgerFactory(String typeName) {
+            if (typeName.equalsIgnoreCase(NACKNOWLEDGER_TYPE_EMIT)) {
+                return Optional.of(new NacknowledgerFactory.Emit<>());
+            } else if (typeName.equalsIgnoreCase(NACKNOWLEDGER_TYPE_REQUEUE)) {
+                return Optional.of(new NacknowledgerFactory.Nack<>(LOGGER, true));
+            } else if (typeName.equalsIgnoreCase(NACKNOWLEDGER_TYPE_DISCARD)) {
+                return Optional.of(new NacknowledgerFactory.Nack<>(LOGGER, false));
             } else {
-                try {
-                    delivery.nack(false, nackStrategy == NackStrategy.REQUEUE);
-                } catch (Throwable fatalError) {
-                    LOGGER.error("Failed to nack", fatalError);
-                    fatalError.addSuppressed(error);
-                    errorEmitter.accept(fatalError);
-                }
+                return Optional.empty();
             }
         }
     }

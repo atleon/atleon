@@ -52,10 +52,10 @@ public class SqsConfig {
         return ConfigLoading.loadSetOfStringOrEmpty(properties, key);
     }
 
-    public <T, N extends NacknowledgerFactory<T>> Optional<NacknowledgerFactory<T>> loadNacknowledgerFactory(
+    public <T extends Configurable> Optional<T> loadConfiguredWithPredefinedTypes(
         String key,
-        Class<N> type,
-        Function<String, Optional<NacknowledgerFactory<T>>> predefinedTypeInstantiator
+        Class<? extends T> type,
+        Function<String, Optional<T>> predefinedTypeInstantiator
     ) {
         return ConfigLoading.loadConfiguredWithPredefinedTypes(properties, key, type, predefinedTypeInstantiator);
     }

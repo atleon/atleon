@@ -33,6 +33,14 @@ public class RabbitMQConfig {
         return ConfigLoading.loadConfiguredOrThrow(properties, property, type);
     }
 
+    public <T extends Configurable> Optional<T> loadConfiguredWithPredefinedTypes(
+        String key,
+        Class<? extends T> type,
+        Function<String, Optional<T>> predefinedTypeInstantiator
+    ) {
+        return ConfigLoading.loadConfiguredWithPredefinedTypes(properties, key, type, predefinedTypeInstantiator);
+    }
+
     public Optional<Integer> loadInt(String property) {
         return ConfigLoading.loadInt(properties, property);
     }
