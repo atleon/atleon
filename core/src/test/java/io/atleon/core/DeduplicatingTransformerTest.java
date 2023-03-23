@@ -1,6 +1,5 @@
 package io.atleon.core;
 
-import io.atleon.util.Defaults;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -20,8 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class DeduplicatingTransformerTest {
 
-    private static final DeduplicationConfig CONFIG =
-        new DeduplicationConfig(Duration.ofMillis(800), 4, Defaults.CONCURRENCY, Defaults.PREFETCH);
+    private static final DeduplicationConfig CONFIG = new DeduplicationConfig(Duration.ofMillis(800), 4);
 
     private final Sinks.Many<String> sink = Sinks.many().multicast().onBackpressureBuffer();
 
