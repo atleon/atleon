@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.11.0]
+atleon `0.11.0` is a beta release containing updates outlined below
+
+### Additions
+* [#114] - `AloRabbitMQReceiver` now supports `AcknowledgerFactory` pattern
+* [#110] - Nullability and Non-Nullability annotation support added; Makes Kotlin experience better
+
+### Fixes
+* [#107] - `AloFactory` loading now centralized to `AloFactoryConfig`
+* [#109] - ConfigLoading now avoids unnecessary parsing when config values are already the desired type
+* [#112] - Environmentally loaded configs correctly sanitize environment variables
+* [#115] - Deduplication concurrency defaults to infinity
+* [#117] - Removed unnecessary use of custom Schedulers
+
 # [0.10.1]
 atleon `0.10.1` is a beta release containing updates outlined below
 
