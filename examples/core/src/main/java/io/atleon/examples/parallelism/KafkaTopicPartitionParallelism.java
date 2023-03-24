@@ -16,7 +16,6 @@ import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Function;
@@ -59,8 +58,8 @@ public class KafkaTopicPartitionParallelism {
         //IO-bound process.
         CountDownLatch latch = new CountDownLatch(NUM_SAMPLES);
         AloKafkaReceiver.<String, String>from(kafkaReceiverConfig)
-            .receiveAloRecords(Collections.singletonList(TOPIC))
-            .groupBy(ConsumerRecordExtraction::extractTopicPartition)
+            .receiveAloRecords(TOPIC)
+            .groupBy(ConsumerRecordExtraction::topicPartition)
             .flatMapAlo(groupedFlux -> groupedFlux
                 .publishOn(Schedulers.boundedElastic())
                 .map(consumerRecord -> consumerRecord.value().toUpperCase())

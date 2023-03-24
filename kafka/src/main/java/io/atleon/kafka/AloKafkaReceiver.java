@@ -261,7 +261,7 @@ public class AloKafkaReceiver<K, V> {
         return records.map(record -> aloFactory.create(record, record.receiverOffset()::acknowledge, sink::tryEmitError))
             .mergeWith(sink.asMono())
             .transform(aloRecords -> new OrderManagingAcknowledgementOperator<>(
-                aloRecords, ConsumerRecordExtraction::extractTopicPartition, maxInFlightPerSubscription));
+                aloRecords, ConsumerRecordExtraction::topicPartition, maxInFlightPerSubscription));
     }
 
     private static long nextClientIdCount(String clientId) {

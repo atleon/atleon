@@ -7,6 +7,7 @@ import io.atleon.kafka.KafkaConfigSource;
 import io.atleon.kafka.embedded.EmbeddedKafka;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -15,7 +16,6 @@ import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Function;
@@ -63,9 +63,9 @@ public class KafkaArbitraryParallelism {
         // "processing" in this case introduces a superficial blocking sleep which might mimic an
         // IO-bound process.
         CountDownLatch latch = new CountDownLatch(NUM_SAMPLES);
-        AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
-            .receiveAloValues(Collections.singletonList(TOPIC))
-            .groupByStringHash(Function.identity(), NUM_GROUPS)
+        AloKafkaReceiver.<String, String>from(kafkaReceiverConfig)
+            .receiveAloRecords(TOPIC)
+            .groupByStringHash(ConsumerRecord::key, NUM_GROUPS, ConsumerRecord::value)
             .flatMapAlo(groupedFluex -> groupedFluex
                 .publishOn(Schedulers.boundedElastic())
                 .map(String::toUpperCase)

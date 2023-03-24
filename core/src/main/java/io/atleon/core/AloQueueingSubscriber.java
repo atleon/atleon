@@ -49,7 +49,8 @@ final class AloQueueingSubscriber<T, A extends Alo<T>> implements Subscriber<A>,
         Subscriber<? super Alo<T>> actual,
         Function<T, ?> groupExtractor,
         Supplier<? extends AcknowledgementQueue> queueSupplier,
-        long maxInFlight) {
+        long maxInFlight
+    ) {
         this.actual = actual;
         this.queueSupplier = queueSupplier;
         this.groupExtractor = groupExtractor;
