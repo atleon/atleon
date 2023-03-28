@@ -12,7 +12,7 @@ public interface NacknowledgerFactory<T> extends Configurable {
 
     }
 
-    Consumer<Throwable> create(RabbitMQMessage<T> message, Nackable nackable, Consumer<Throwable> errorEmitter);
+    Consumer<Throwable> create(ReceivedRabbitMQMessage<T> message, Nackable nackable, Consumer<Throwable> errorEmitter);
 
     final class Emit<T> implements NacknowledgerFactory<T> {
 
@@ -21,7 +21,8 @@ public interface NacknowledgerFactory<T> extends Configurable {
         }
 
         @Override
-        public Consumer<Throwable> create(RabbitMQMessage<T> message, Nackable nackable, Consumer<Throwable> errorEmitter) {
+        public Consumer<Throwable>
+        create(ReceivedRabbitMQMessage<T> message, Nackable nackable, Consumer<Throwable> errorEmitter) {
             return errorEmitter;
         }
     }
@@ -38,7 +39,8 @@ public interface NacknowledgerFactory<T> extends Configurable {
         }
 
         @Override
-        public Consumer<Throwable> create(RabbitMQMessage<T> message, Nackable nackable, Consumer<Throwable> errorEmitter) {
+        public Consumer<Throwable>
+        create(ReceivedRabbitMQMessage<T> message, Nackable nackable, Consumer<Throwable> errorEmitter) {
             return error -> {
                 logger.warn("Nacknowledging RabbitMQ message", error);
                 nackable.nack(requeue);

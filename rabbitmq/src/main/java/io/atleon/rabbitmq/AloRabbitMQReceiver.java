@@ -24,7 +24,7 @@ import java.util.function.Consumer;
  * <p>
  * Note that {@link io.atleon.core.AloDecorator AloDecorators} applied via
  * {@link io.atleon.core.AloDecoratorConfig#ALO_DECORATOR_TYPES_CONFIG} must be
- * implementations of {@link AloRabbitMQMessageDecorator}.
+ * implementations of {@link AloReceivedRabbitMQMessageDecorator}.
  *
  * @param <T> Inbound message deserialized body type
  */
@@ -106,24 +106,24 @@ public class AloRabbitMQReceiver<T> {
      */
     public AloFlux<T> receiveAloBodies(String queue) {
         return receiveAloMessages(queue)
-            .mapNotNull(RabbitMQMessage::getBody);
+            .mapNotNull(ReceivedRabbitMQMessage::getBody);
     }
 
     /**
-     * Creates a Publisher of {@link Alo} items referencing {@link RabbitMQMessage}s wrapped as an
-     * {@link AloFlux}.
+     * Creates a Publisher of {@link Alo} items referencing {@link ReceivedRabbitMQMessage}s
+     * wrapped as an {@link AloFlux}.
      *
      * @param queue The queue to subscribe to
-     * @return A Publisher of Alo items referencing RabbitMQMessages
+     * @return A Publisher of Alo items referencing ReceivedRabbitMQMessages
      */
-    public AloFlux<RabbitMQMessage<T>> receiveAloMessages(String queue) {
+    public AloFlux<ReceivedRabbitMQMessage<T>> receiveAloMessages(String queue) {
         return futureResources
             .flatMapMany(resources -> receiveMessages(resources, queue))
             .as(AloFlux::wrap);
     }
 
-    private Flux<Alo<RabbitMQMessage<T>>> receiveMessages(Resources<T> resources, String queue) {
-        Sinks.Empty<Alo<RabbitMQMessage<T>>> sink = Sinks.empty();
+    private Flux<Alo<ReceivedRabbitMQMessage<T>>> receiveMessages(Resources<T> resources, String queue) {
+        Sinks.Empty<Alo<ReceivedRabbitMQMessage<T>>> sink = Sinks.empty();
         return resources.receive(queue, sink::tryEmitError)
             .mergeWith(sink.asMono());
     }
@@ -138,14 +138,14 @@ public class AloRabbitMQReceiver<T> {
 
         private final NacknowledgerFactory<T> nacknowledgerFactory;
 
-        private final AloFactory<RabbitMQMessage<T>> aloFactory;
+        private final AloFactory<ReceivedRabbitMQMessage<T>> aloFactory;
 
         private Resources(
             ConnectionFactory connectionFactory,
             int qos,
             BodyDeserializer<T> bodyDeserializer,
             NacknowledgerFactory<T> nacknowledgerFactory,
-            AloFactory<RabbitMQMessage<T>> aloFactory
+            AloFactory<ReceivedRabbitMQMessage<T>> aloFactory
         ) {
             this.connectionFactory = connectionFactory;
             this.qos = qos;
@@ -164,7 +164,7 @@ public class AloRabbitMQReceiver<T> {
             );
         }
 
-        public Flux<Alo<RabbitMQMessage<T>>> receive(String queue, Consumer<Throwable> errorEmitter) {
+        public Flux<Alo<ReceivedRabbitMQMessage<T>>> receive(String queue, Consumer<Throwable> errorEmitter) {
             ReceiverOptions receiverOptions = new ReceiverOptions()
                 .connectionFactory(connectionFactory);
 
@@ -173,13 +173,14 @@ public class AloRabbitMQReceiver<T> {
 
             return new Receiver(receiverOptions)
                 .consumeManualAck(queue, consumeOptions)
-                .map(delivery -> deserialize(delivery, errorEmitter));
+                .map(delivery -> deserialize(queue, delivery, errorEmitter));
         }
 
-        private Alo<RabbitMQMessage<T>>
-        deserialize(AcknowledgableDelivery delivery, Consumer<Throwable> errorEmitter) {
+        private Alo<ReceivedRabbitMQMessage<T>>
+        deserialize(String queue, AcknowledgableDelivery delivery, Consumer<Throwable> errorEmitter) {
             SerializedBody body = SerializedBody.ofBytes(delivery.getBody());
-            RabbitMQMessage<T> message = new RabbitMQMessage<>(
+            ReceivedRabbitMQMessage<T> message = new ReceivedRabbitMQMessage<>(
+                queue,
                 delivery.getEnvelope().getExchange(),
                 delivery.getEnvelope().getRoutingKey(),
                 delivery.getProperties(),
