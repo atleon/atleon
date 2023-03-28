@@ -26,7 +26,7 @@ public class RabbitMQConfig {
     }
 
     public <T> AloFactory<T> loadAloFactory() {
-        return AloFactoryConfig.loadDecorated(properties, AloRabbitMQMessageDecorator.class);
+        return AloFactoryConfig.loadDecorated(properties, AloReceivedRabbitMQMessageDecorator.class);
     }
 
     public <T extends Configurable> T loadConfiguredOrThrow(String property, Class<? extends T> type) {
