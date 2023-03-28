@@ -24,9 +24,9 @@ public class TracingAloReceivedRabbitMQMessageDecorator<T>
     @Override
     protected Tracer.SpanBuilder newSpanBuilder(SpanBuilderFactory spanBuilderFactory, ReceivedRabbitMQMessage<T> message) {
         return spanBuilderFactory.newSpanBuilder("atleon.rabbitmq.consume")
+            .withTag("queue", message.getQueue())
             .withTag("exchange", message.getExchange())
-            .withTag("routingKey", message.getRoutingKey())
-            .withTag("queue", message.getQueue());
+            .withTag("routingKey", message.getRoutingKey());
     }
 
     @Override
