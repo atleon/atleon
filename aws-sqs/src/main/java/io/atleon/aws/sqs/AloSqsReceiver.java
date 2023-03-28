@@ -214,13 +214,7 @@ public class AloSqsReceiver<T> {
         NacknowledgerFactory<T> nacknowledgerFactory,
         Consumer<Throwable> errorEmitter
     ) {
-        ReceivedSqsMessage<T> deserialized = DeserializedSqsMessage.create(
-            message.receiptHandle(),
-            message.messageId(),
-            message.messageAttributes(),
-            message.messageSystemAttributes(),
-            bodyDeserializer.deserialize(message.body())
-        );
+        ReceivedSqsMessage<T> deserialized = DeserializedSqsMessage.deserialize(message, bodyDeserializer);
         return aloFactory.create(
             deserialized,
             message.deleter(),
