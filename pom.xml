@@ -64,6 +64,7 @@
         <module>kafka-avro</module>
         <module>kafka-embedded</module>
         <module>micrometer</module>
+        <module>micrometer-auto</module>
         <module>opentracing</module>
         <module>opentracing-auto</module>
         <module>parent</module>

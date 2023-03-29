@@ -4,6 +4,7 @@ import io.atleon.core.Alo;
 import io.atleon.kafka.AloKafkaConsumerRecordDecorator;
 import io.atleon.util.ConfigLoading;
 import io.opentracing.Tracer;
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
@@ -23,17 +24,21 @@ public class TracingAloKafkaConsumerRecordDecorator<K, V>
     extends TracingAloConsumptionDecorator<ConsumerRecord<K, V>>
     implements AloKafkaConsumerRecordDecorator<K, V> {
 
+    private String clientId = null;
+
     private String groupId = null;
 
     @Override
     public void configure(Map<String, ?> properties) {
         super.configure(properties);
+        clientId = ConfigLoading.loadString(properties, CommonClientConfigs.CLIENT_ID_CONFIG).orElse(clientId);
         groupId = ConfigLoading.loadString(properties, ConsumerConfig.GROUP_ID_CONFIG).orElse(groupId);
     }
 
     @Override
     protected Tracer.SpanBuilder newSpanBuilder(SpanBuilderFactory spanBuilderFactory, ConsumerRecord<K, V> record) {
         return spanBuilderFactory.newSpanBuilder("atleon.kafka.consume")
+            .withTag("client", clientId)
             .withTag("group", groupId)
             .withTag("topic", record.topic())
             .withTag("partition", record.partition())

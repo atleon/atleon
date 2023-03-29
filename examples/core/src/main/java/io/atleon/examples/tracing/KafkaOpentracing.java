@@ -21,6 +21,11 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * This example shows Atleon's integration with Opentracing. Due to the inclusion of
+ * atleon-opentracing-auto as a runtime dependency, Alo items are automatically decorated with
+ * tracing context which is propagated through the pipeline.
+ */
 public class KafkaOpentracing {
 
     private static final String BOOTSTRAP_SERVERS = EmbeddedKafka.startAndGetBootstrapServersConnect();
@@ -57,7 +62,7 @@ public class KafkaOpentracing {
         AloKafkaSender<String, String> sender = AloKafkaSender.from(kafkaSenderConfig);
 
         //Step 5) Produce records to our input topic
-        int numToEmit = 2;
+        int numToEmit = 4;
         Flux.range(1, numToEmit)
             .map(index -> "test-" + index)
             .transform(sender.sendValues(TOPIC_1, Function.identity()))
