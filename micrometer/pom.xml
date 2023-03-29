@@ -24,6 +24,28 @@
             <artifactId>micrometer-core</artifactId>
         </dependency>
 
+        <!-- Project Provided Dependencies -->
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-aws-sqs</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-core</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-kafka</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-rabbitmq</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Third Party Provided Dependencies -->
         <dependency>
             <groupId>org.apache.kafka</groupId>

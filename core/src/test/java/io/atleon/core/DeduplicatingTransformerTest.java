@@ -25,7 +25,7 @@ class DeduplicatingTransformerTest {
     private final Sinks.Many<String> sink = Sinks.many().multicast().onBackpressureBuffer();
 
     private final Flux<String> downstream = sink.asFlux()
-        .transform(DeduplicatingTransformer.identity(CONFIG, Deduplication.identity(), Schedulers.parallel()));
+        .transform(DeduplicatingTransformer.identity(CONFIG, Deduplication.identity(), Schedulers.boundedElastic()));
 
     @Test
     public void duplicatesAreNotEmitted() {

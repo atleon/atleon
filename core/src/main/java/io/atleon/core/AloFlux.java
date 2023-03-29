@@ -224,7 +224,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @return AloFlux of deduplicated items
      */
     public AloFlux<T> deduplicate(DeduplicationConfig config, Deduplication<T> deduplication) {
-        return deduplicate(config, deduplication, Schedulers.parallel());
+        return deduplicate(config, deduplication, Schedulers.boundedElastic());
     }
 
     /**

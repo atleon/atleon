@@ -110,7 +110,8 @@ public class KafkaMicrometer {
     }
 
     private static boolean doesMeterHaveInterestingId(Meter meter) {
-        return meter.getId().getName().contains(KafkaMicrometer.class.getSimpleName()) ||
+        return meter.getId().getName().contains("atleon") ||
+            meter.getId().getName().contains(KafkaMicrometer.class.getSimpleName()) ||
             meter.getId().getName().contains("lag");
     }
 

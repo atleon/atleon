@@ -14,9 +14,10 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
- * Utility methods for consistently building resources from OpenTracing Tracers
+ * Facade wrapping a {@link Tracer} with convenience methods for creating/managing
+ * Opentracing resources.
  */
-final class TracerFacade {
+public final class TracerFacade {
 
     private final Tracer tracer;
 
