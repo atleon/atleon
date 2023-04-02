@@ -6,9 +6,12 @@
 
 Atleon is reactive message processing framework based on [Reactive Streams](https://www.reactive-streams.org/) and backed by [Project Reactor](https://projectreactor.io/).
 
-The primary goal of Atleon is to make it straightforward to implement infinite message processing pipelines compatible with non-blocking APIs, integrable with popular message brokers (like [Kafka](https://kafka.apache.org/), [RabbitMQ](https://www.rabbitmq.com/), etc.), while maintaining at-least-once (**At** **Le**ast **On**ce) processing guarantees.
+The primary goal of Atleon is to make it straightforward to implement infinite message processing pipelines compatible with non-blocking APIs, integrable with popular message brokers (like [Kafka](https://kafka.apache.org/), [RabbitMQ](https://www.rabbitmq.com/), etc.), while maintaining "At Least Once" (**At** **Le**ast **On**ce) processing guarantees.
 
-#### Example
+
+## Documentation and Getting Started
+Atleon documentation and instructions on how to get started are available in the [Wiki](../../wiki).
+
 An example message processing pipeline in Atleon looks like the following:
 
 ```java
@@ -37,13 +40,9 @@ public class MyStream extends AloStream<MyStreamConfig> {
 }
 ```
 
-## Documentation and Getting Started
-Atleon documentation and instructions on how to get started are available in the [Wiki](../../wiki).
-
 The [examples module](examples) contains runnable classes showing Atleon in action and intended usage.
 
-#### Building
-
+## Building
 Atleon is built using Maven. Installing Maven locally is optional as you can use the Maven Wrapper:
 
 ```$bash
@@ -51,9 +50,7 @@ Atleon is built using Maven. Installing Maven locally is optional as you can use
 ```
 
 ## Contributing
-
 Please refer to [CONTRIBUTING](CONTRIBUTING.md) for information on how to contribute to Atleon
 
 ## Legal
-
 This project is available under the [Apache 2.0 License](http://www.apache.org/licenses/LICENSE-2.0.html).
