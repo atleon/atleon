@@ -38,7 +38,7 @@ public class MyStream extends AloStream<MyStreamConfig> {
 ```
 
 ## Documentation and Getting Started
-Atleon documentation and instructions on how to get started are available in the [Wiki](./wiki).
+Atleon documentation and instructions on how to get started are available in the [Wiki](../../wiki).
 
 The [examples module](examples) contains runnable classes showing Atleon in action and intended usage.
 
