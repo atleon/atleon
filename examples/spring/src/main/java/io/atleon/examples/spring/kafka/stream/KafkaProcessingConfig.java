@@ -4,16 +4,16 @@ import io.atleon.core.AloStreamConfig;
 import io.atleon.kafka.AloKafkaReceiver;
 import io.atleon.kafka.KafkaConfigSource;
 import io.atleon.micrometer.AloKafkaMetricsReporter;
+import io.atleon.spring.AutoConfigureStream;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 import java.util.function.Consumer;
 
-@Component
+@AutoConfigureStream(KafkaProcessing.class)
 public class KafkaProcessingConfig implements AloStreamConfig {
 
     private final KafkaConfigSource baseKafkaConfig;

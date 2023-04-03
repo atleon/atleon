@@ -53,10 +53,8 @@ public class ConfiguredAloStreamStatusService implements AloStreamStatusService 
         return new AloStreamStatusDto(stream.name(), stream.state().name());
     }
 
-    private static ConfiguredAloStream logConflictingStreamsAndChooseFirst(
-        ConfiguredAloStream first,
-        ConfiguredAloStream second
-    ) {
+    private static ConfiguredAloStream
+    logConflictingStreamsAndChooseFirst(ConfiguredAloStream first, ConfiguredAloStream second) {
         LOGGER.warn("Conflicting Streams! Choosing first. name={} first={} second={}", first.name(), first, second);
         return first;
     }

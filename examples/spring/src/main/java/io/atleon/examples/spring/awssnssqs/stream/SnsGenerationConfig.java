@@ -6,12 +6,12 @@ import io.atleon.aws.sns.SnsConfigSource;
 import io.atleon.aws.sns.StringBodySerializer;
 import io.atleon.aws.util.AwsConfig;
 import io.atleon.core.AloStreamConfig;
+import io.atleon.spring.AutoConfigureStream;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Component;
 
 import java.net.URI;
 
-@Component
+@AutoConfigureStream(SnsGeneration.class)
 public class SnsGenerationConfig implements AloStreamConfig {
 
     private final URI endpointOverride;

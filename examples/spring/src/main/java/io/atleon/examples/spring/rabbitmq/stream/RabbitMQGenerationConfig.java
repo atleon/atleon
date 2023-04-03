@@ -4,11 +4,11 @@ import io.atleon.core.AloStreamConfig;
 import io.atleon.rabbitmq.AloRabbitMQSender;
 import io.atleon.rabbitmq.LongBodySerializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
+import io.atleon.spring.AutoConfigureStream;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
-@Component
+@AutoConfigureStream(RabbitMQGeneration.class)
 public class RabbitMQGenerationConfig implements AloStreamConfig {
 
     private final RabbitMQConfigSource rabbitMQConfig;
