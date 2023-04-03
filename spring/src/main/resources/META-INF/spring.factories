@@ -1,3 +1,4 @@
 # Auto Configure
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+io.atleon.spring.AloStreamAutoConfiguration,\
 io.atleon.spring.AtleonManagementAutoConfiguration

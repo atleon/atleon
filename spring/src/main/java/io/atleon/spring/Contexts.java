@@ -10,11 +10,15 @@ final class Contexts {
 
     }
 
+    public static boolean isPropertySetToFalse(ApplicationContext context, String property) {
+        return "false".equalsIgnoreCase(context.getEnvironment().getProperty(property));
+    }
+
     public static boolean isPropertySetToTrue(ConditionContext context, String property) {
         return "true".equalsIgnoreCase(context.getEnvironment().getProperty(property));
     }
 
-    public static boolean isPropertySetToFalse(ApplicationContext context, String property) {
+    public static boolean isPropertySetToFalse(ConditionContext context, String property) {
         return "false".equalsIgnoreCase(context.getEnvironment().getProperty(property));
     }
 

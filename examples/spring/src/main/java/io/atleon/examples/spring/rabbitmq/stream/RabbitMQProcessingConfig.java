@@ -4,13 +4,13 @@ import io.atleon.core.AloStreamConfig;
 import io.atleon.rabbitmq.AloRabbitMQReceiver;
 import io.atleon.rabbitmq.LongBodyDeserializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
+import io.atleon.spring.AutoConfigureStream;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 import java.util.function.Consumer;
 
-@Component
+@AutoConfigureStream(RabbitMQProcessing.class)
 public class RabbitMQProcessingConfig implements AloStreamConfig {
 
     private final RabbitMQConfigSource rabbitMQConfig;
