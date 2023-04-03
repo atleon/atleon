@@ -17,7 +17,7 @@ import java.util.logging.Logger;
 
 public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
 
-    public enum FilterInclusion {BLACKLIST, WHITELIST}
+    public enum FilterInclusion {BLOCKLIST, ALLOWLIST, @Deprecated BLACKLIST, @Deprecated  WHITELIST}
 
     public static final String CONFIG_PREFIX = "metric.reporter.";
 
@@ -36,14 +36,14 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
 
     protected MeterRegistry meterRegistry = Metrics.globalRegistry;
 
-    private FilterInclusion filteredMetricNamesInclusion = FilterInclusion.BLACKLIST;
+    private FilterInclusion filteredMetricNamesInclusion = FilterInclusion.BLOCKLIST;
 
     private Collection<String> filteredMetricNames = Collections.emptySet();
 
     @Override
     public void configure(Map<String, ?> configs) {
         this.meterRegistry = createMeterRegistry(configs);
-        this.filteredMetricNamesInclusion = loadFilterInclusion(configs).orElse(FilterInclusion.BLACKLIST);
+        this.filteredMetricNamesInclusion = loadFilterInclusion(configs).orElse(FilterInclusion.BLOCKLIST);
         this.filteredMetricNames = ConfigLoading.loadSetOfStringOrEmpty(configs, FILTER_NAMES_CONFIG);
     }
 
@@ -79,7 +79,7 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
     }
 
     protected boolean shouldReportMetric(KafkaMetric metric, String extractedMetricName) {
-        return FilterInclusion.WHITELIST.equals(filteredMetricNamesInclusion) == filteredMetricNames.contains(extractedMetricName);
+        return FilterInclusion.ALLOWLIST.equals(filteredMetricNamesInclusion) == filteredMetricNames.contains(extractedMetricName);
     }
 
     protected final MeterKey createMeterKey(KafkaMetric metric, String extractedMetricName) {
@@ -127,12 +127,24 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
     }
 
     private static Optional<FilterInclusion> loadFilterInclusion(Map<String, ?> configs) {
-        return ConfigLoading.loadParseable(
+        Optional<FilterInclusion> filterInclusion = ConfigLoading.loadParseable(
             configs,
             FILTER_NAMES_INCLUSION_CONFIG,
             FilterInclusion.class,
             FilterInclusion::valueOf
         );
+        return filterInclusion.map(AbstractKafkaMetricsReporter::sanitize);
+    }
+
+    private static FilterInclusion sanitize(FilterInclusion filterInclusion) {
+        switch (filterInclusion) {
+            case BLACKLIST:
+                return FilterInclusion.BLOCKLIST;
+            case WHITELIST:
+                return FilterInclusion.ALLOWLIST;
+            default:
+                return filterInclusion;
+        }
     }
 
     private static void registerGauge(MeterRegistry meterRegistry, MeterKey meterKey, KafkaMetric metric) {
