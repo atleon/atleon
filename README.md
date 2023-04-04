@@ -20,8 +20,6 @@ import io.atleon.core.DefaultAloSenderResultSubscriber;
 import io.atleon.kafka.AloKafkaSender;
 import reactor.core.Disposable;
 
-import java.util.function.Function;
-
 public class MyStream extends AloStream<MyStreamConfig> {
 
     @Override
