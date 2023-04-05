@@ -14,14 +14,11 @@ import java.util.Optional;
  */
 public final class DeserializedSqsMessage<T> extends AbstractSqsMessage<T> implements ReceivedSqsMessage<T> {
 
-    private final String queueUrl;
-
     private final String receiptHandle;
 
     private final String messageId;
 
     private DeserializedSqsMessage(
-        String queueUrl,
         String receiptHandle,
         String messageId,
         Map<String, MessageAttributeValue> messageAttributes,
@@ -29,7 +26,6 @@ public final class DeserializedSqsMessage<T> extends AbstractSqsMessage<T> imple
         T body
     ) {
         super(messageAttributes, messageSystemAttributes, body);
-        this.queueUrl = queueUrl;
         this.receiptHandle = receiptHandle;
         this.messageId = messageId;
     }
@@ -37,18 +33,12 @@ public final class DeserializedSqsMessage<T> extends AbstractSqsMessage<T> imple
     public static <T> DeserializedSqsMessage<T>
     deserialize(ReceivedSqsMessage<String> serializedMessage, BodyDeserializer<T> bodyDeserializer) {
         return new DeserializedSqsMessage<>(
-            serializedMessage.queueUrl(),
             serializedMessage.receiptHandle(),
             serializedMessage.messageId(),
             serializedMessage.messageAttributes(),
             serializedMessage.messageSystemAttributes(),
             bodyDeserializer.deserialize(serializedMessage.body())
         );
-    }
-
-    @Override
-    public String queueUrl() {
-        return queueUrl;
     }
 
     @Override

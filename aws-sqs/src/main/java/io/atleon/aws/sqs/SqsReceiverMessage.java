@@ -16,8 +16,6 @@ import java.util.stream.Collectors;
  */
 public final class SqsReceiverMessage extends AbstractSqsMessage<String> implements ReceivedSqsMessage<String> {
 
-    private final String queueUrl;
-
     private final String receiptHandle;
 
     private final String messageId;
@@ -27,7 +25,6 @@ public final class SqsReceiverMessage extends AbstractSqsMessage<String> impleme
     private final SqsMessageVisibilityChanger visibilityChanger;
 
     private SqsReceiverMessage(
-        String queueUrl,
         String receiptHandle,
         String messageId,
         Map<String, MessageAttributeValue> messageAttributes,
@@ -37,17 +34,14 @@ public final class SqsReceiverMessage extends AbstractSqsMessage<String> impleme
         SqsMessageVisibilityChanger visibilityChanger
     ) {
         super(messageAttributes, messageSystemAttributes, body);
-        this.queueUrl = queueUrl;
         this.receiptHandle = receiptHandle;
         this.messageId = messageId;
         this.deleter = deleter;
         this.visibilityChanger = visibilityChanger;
     }
 
-    static SqsReceiverMessage
-    create(String queueUrl, Message message, Runnable deleter, SqsMessageVisibilityChanger visibilityChanger) {
+    static SqsReceiverMessage create(Message message, Runnable deleter, SqsMessageVisibilityChanger visibilityChanger) {
         return new SqsReceiverMessage(
-            queueUrl,
             message.receiptHandle(),
             message.messageId(),
             message.messageAttributes(),
@@ -56,11 +50,6 @@ public final class SqsReceiverMessage extends AbstractSqsMessage<String> impleme
             deleter,
             visibilityChanger
         );
-    }
-
-    @Override
-    public String queueUrl() {
-        return queueUrl;
     }
 
     @Override
