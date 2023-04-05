@@ -202,7 +202,7 @@ public final class SqsReceiver {
             };
 
             inFlightReceiptHandles.add(receiptHandle);
-            doNext(SqsReceiverMessage.create(queueUrl, message, deleter, visibilityChanger));
+            doNext(SqsReceiverMessage.create(message, deleter, visibilityChanger));
         }
 
         private void deleteMessages(Collection<String> receiptHandles) {

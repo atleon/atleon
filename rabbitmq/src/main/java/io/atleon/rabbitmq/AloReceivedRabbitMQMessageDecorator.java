@@ -15,4 +15,9 @@ import io.atleon.core.AloDecorator;
  */
 public interface AloReceivedRabbitMQMessageDecorator<T> extends AloDecorator<ReceivedRabbitMQMessage<T>> {
 
+    /**
+     * This parameter will be populated during configuration to let the decorator know the name of
+     * the queue that is being consumed from.
+     */
+    String QUEUE_CONFIG = "alo.decorator.rabbitmq.queue";
 }

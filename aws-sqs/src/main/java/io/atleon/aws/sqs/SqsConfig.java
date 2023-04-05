@@ -40,8 +40,10 @@ public class SqsConfig {
             .build();
     }
 
-    public <T> AloFactory<ReceivedSqsMessage<T>> loadAloFactory() {
-        return AloFactoryConfig.loadDecorated(properties, AloReceivedSqsMessageDecorator.class);
+    public <T> AloFactory<ReceivedSqsMessage<T>> loadAloFactory(String queueUrl) {
+        Map<String, Object> propertiesWithQueue = new HashMap<>(properties);
+        propertiesWithQueue.put(AloReceivedSqsMessageDecorator.QUEUE_URL_CONFIG, queueUrl);
+        return AloFactoryConfig.loadDecorated(propertiesWithQueue, AloReceivedSqsMessageDecorator.class);
     }
 
     public <T extends Configurable> T loadConfiguredOrThrow(String property, Class<? extends T> type) {

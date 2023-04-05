@@ -15,4 +15,9 @@ import io.atleon.core.AloDecorator;
  */
 public interface AloReceivedSqsMessageDecorator<T> extends AloDecorator<ReceivedSqsMessage<T>> {
 
+    /**
+     * This parameter will be populated during configuration to let the decorator know what the URL
+     * is of the queue being consumed from.
+     */
+    String QUEUE_URL_CONFIG = "alo.decorator.sqs.queue.url";
 }

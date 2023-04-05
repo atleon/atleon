@@ -1,6 +1,5 @@
 package io.atleon.rabbitmq;
 
-import com.rabbitmq.client.ConnectionFactory;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFlux;
@@ -8,7 +7,6 @@ import io.atleon.util.Defaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.rabbitmq.ConsumeOptions;
@@ -78,12 +76,10 @@ public class AloRabbitMQReceiver<T> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloRabbitMQReceiver.class);
 
-    private final Mono<Resources<T>> futureResources;
+    private final RabbitMQConfigSource configSource;
 
     private AloRabbitMQReceiver(RabbitMQConfigSource configSource) {
-        this.futureResources = configSource.create()
-            .map(Resources::<T>fromConfig)
-            .cache();
+        this.configSource = configSource;
     }
 
     /**
@@ -117,70 +113,53 @@ public class AloRabbitMQReceiver<T> {
      * @return A Publisher of Alo items referencing ReceivedRabbitMQMessages
      */
     public AloFlux<ReceivedRabbitMQMessage<T>> receiveAloMessages(String queue) {
-        return futureResources
-            .flatMapMany(resources -> receiveMessages(resources, queue))
+        return configSource.create()
+            .map(Resources<T>::new)
+            .flatMapMany(resources -> resources.receive(queue))
             .as(AloFlux::wrap);
-    }
-
-    private Flux<Alo<ReceivedRabbitMQMessage<T>>> receiveMessages(Resources<T> resources, String queue) {
-        Sinks.Empty<Alo<ReceivedRabbitMQMessage<T>>> sink = Sinks.empty();
-        return resources.receive(queue, sink::tryEmitError)
-            .mergeWith(sink.asMono());
     }
 
     private static final class Resources<T> {
 
-        private final ConnectionFactory connectionFactory;
-
-        private final int qos;
+        private final RabbitMQConfig config;
 
         private final BodyDeserializer<T> bodyDeserializer;
 
         private final NacknowledgerFactory<T> nacknowledgerFactory;
 
-        private final AloFactory<ReceivedRabbitMQMessage<T>> aloFactory;
-
-        private Resources(
-            ConnectionFactory connectionFactory,
-            int qos,
-            BodyDeserializer<T> bodyDeserializer,
-            NacknowledgerFactory<T> nacknowledgerFactory,
-            AloFactory<ReceivedRabbitMQMessage<T>> aloFactory
-        ) {
-            this.connectionFactory = connectionFactory;
-            this.qos = qos;
-            this.bodyDeserializer = bodyDeserializer;
-            this.nacknowledgerFactory = nacknowledgerFactory;
-            this.aloFactory = aloFactory;
+        public Resources(RabbitMQConfig config) {
+            this.config = config;
+            this.bodyDeserializer = config.loadConfiguredOrThrow(BODY_DESERIALIZER_CONFIG, BodyDeserializer.class);
+            this.nacknowledgerFactory = createNacknowledgerFactory(config);
         }
 
-        public static <T> Resources<T> fromConfig(RabbitMQConfig config) {
-            return new Resources<T>(
-                config.getConnectionFactory(),
-                config.loadInt(QOS_CONFIG).orElse(Defaults.PREFETCH),
-                config.loadConfiguredOrThrow(BODY_DESERIALIZER_CONFIG, BodyDeserializer.class),
-                createNacknowledgerFactory(config),
-                config.loadAloFactory()
-            );
+        public Flux<Alo<ReceivedRabbitMQMessage<T>>> receive(String queue) {
+            AloFactory<ReceivedRabbitMQMessage<T>> aloFactory = config.loadAloFactory(queue);
+            Sinks.Empty<Alo<ReceivedRabbitMQMessage<T>>> sink = Sinks.empty();
+            return newReceiver()
+                .consumeManualAck(queue, newConsumeOptions())
+                .map(delivery -> deserialize(delivery, aloFactory, sink::tryEmitError))
+                .mergeWith(sink.asMono());
         }
 
-        public Flux<Alo<ReceivedRabbitMQMessage<T>>> receive(String queue, Consumer<Throwable> errorEmitter) {
+        private Receiver newReceiver() {
             ReceiverOptions receiverOptions = new ReceiverOptions()
-                .connectionFactory(connectionFactory);
-
-            ConsumeOptions consumeOptions = new ConsumeOptions()
-                .qos(qos);
-
-            return new Receiver(receiverOptions)
-                .consumeManualAck(queue, consumeOptions)
-                .map(delivery -> deserialize(queue, delivery, errorEmitter));
+                .connectionFactory(config.getConnectionFactory());
+            return new Receiver(receiverOptions);
         }
 
-        private Alo<ReceivedRabbitMQMessage<T>>
-        deserialize(String queue, AcknowledgableDelivery delivery, Consumer<Throwable> errorEmitter) {
+        private ConsumeOptions newConsumeOptions() {
+            return new ConsumeOptions()
+                .qos(config.loadInt(QOS_CONFIG).orElse(Defaults.PREFETCH));
+        }
+
+        private Alo<ReceivedRabbitMQMessage<T>> deserialize(
+            AcknowledgableDelivery delivery,
+            AloFactory<ReceivedRabbitMQMessage<T>> aloFactory,
+            Consumer<Throwable> errorEmitter
+        ) {
             SerializedBody body = SerializedBody.ofBytes(delivery.getBody());
             ReceivedRabbitMQMessage<T> message = new ReceivedRabbitMQMessage<>(
-                queue,
                 delivery.getEnvelope().getExchange(),
                 delivery.getEnvelope().getRoutingKey(),
                 delivery.getProperties(),
@@ -192,24 +171,6 @@ public class AloRabbitMQReceiver<T> {
                 () -> ack(delivery, errorEmitter),
                 nacknowledgerFactory.create(message, requeue -> nack(delivery, requeue, errorEmitter), errorEmitter)
             );
-        }
-
-        private void ack(AcknowledgableDelivery delivery, Consumer<? super Throwable> errorEmitter) {
-            try {
-                delivery.ack(false);
-            } catch (Throwable error) {
-                LOGGER.error("Failed to ack", error);
-                errorEmitter.accept(error);
-            }
-        }
-
-        private void nack(AcknowledgableDelivery delivery, boolean requeue, Consumer<? super Throwable> errorEmitter) {
-            try {
-                delivery.nack(false, requeue);
-            } catch (Throwable fatalError) {
-                LOGGER.error("Failed to nack", fatalError);
-                errorEmitter.accept(fatalError);
-            }
         }
 
         private static <T> NacknowledgerFactory<T> createNacknowledgerFactory(RabbitMQConfig config) {
@@ -245,6 +206,24 @@ public class AloRabbitMQReceiver<T> {
                 return Optional.of(new NacknowledgerFactory.Nack<>(LOGGER, false));
             } else {
                 return Optional.empty();
+            }
+        }
+
+        private static void ack(AcknowledgableDelivery delivery, Consumer<? super Throwable> errorEmitter) {
+            try {
+                delivery.ack(false);
+            } catch (Throwable error) {
+                LOGGER.error("Failed to ack", error);
+                errorEmitter.accept(error);
+            }
+        }
+
+        private static void nack(AcknowledgableDelivery delivery, boolean requeue, Consumer<? super Throwable> errorEmitter) {
+            try {
+                delivery.nack(false, requeue);
+            } catch (Throwable fatalError) {
+                LOGGER.error("Failed to nack", fatalError);
+                errorEmitter.accept(fatalError);
             }
         }
     }
