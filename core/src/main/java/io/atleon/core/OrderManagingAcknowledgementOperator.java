@@ -19,7 +19,8 @@ public class OrderManagingAcknowledgementOperator<T, A extends Alo<T>> implement
     }
 
     public OrderManagingAcknowledgementOperator(
-        Publisher<? extends A> source, Function<T, ?> groupExtractor,
+        Publisher<? extends A> source,
+        Function<T, ?> groupExtractor,
         long maxInFlight
     ) {
         this.source = source;

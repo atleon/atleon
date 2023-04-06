@@ -27,6 +27,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 /**
  * A reactive Kafka receiver with at-least-once semantics for consuming records from topics of a
@@ -207,78 +208,94 @@ public class AloKafkaReceiver<K, V> {
      */
     public AloFlux<ConsumerRecord<K, V>> receiveAloRecords(Collection<String> topics) {
         return configSource.create()
-            .flatMapMany(config -> receiveRecords(config, topics))
+            .map(Resources<K, V>::new)
+            .flatMapMany(resources -> resources.receive(topics))
             .as(AloFlux::wrap);
     }
 
-    private Flux<Alo<ConsumerRecord<K, V>>> receiveRecords(Map<String, Object> config, Collection<String> topics) {
-        Map<String, Object> options = new HashMap<>();
-        loadInto(options, config, BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG, DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS);
-        loadInto(options, config, MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG, DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION);
-        loadInto(options, config, AUTO_INCREMENT_CLIENT_ID_CONFIG, DEFAULT_AUTO_INCREMENT_CLIENT_ID);
-        loadInto(options, config, POLL_TIMEOUT_CONFIG, DEFAULT_POLL_TIMEOUT);
-        loadInto(options, config, COMMIT_INTERVAL_CONFIG, DEFAULT_COMMIT_INTERVAL);
-        loadInto(options, config, MAX_COMMIT_ATTEMPTS_CONFIG, DEFAULT_MAX_COMMIT_ATTEMPTS);
-        loadInto(options, config, CLOSE_TIMEOUT_CONFIG, DEFAULT_CLOSE_TIMEOUT);
+    private static final class Resources<K, V> {
 
-        AloFactory<ConsumerRecord<K, V>> aloFactory = AloFactoryConfig.loadDecorated(config, AloKafkaConsumerRecordDecorator.class);
-        long maxInFlightPerSubscription = ConfigLoading.loadLongOrThrow(options, MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG);
+        private final Map<String, Object> config;
 
-        // 1) Create Consumer config from remaining configs that are NOT options (help avoid WARNs)
-        // 2) Note Client ID and, if enabled, increment client ID in consumer config
-        Map<String, Object> consumerConfig = new HashMap<>(config);
-        options.keySet().forEach(consumerConfig::remove);
-        String clientId = ConfigLoading.loadStringOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG);
-        if (ConfigLoading.loadBooleanOrThrow(options, AUTO_INCREMENT_CLIENT_ID_CONFIG)) {
-            consumerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
+        public Resources(Map<String, Object> config) {
+            this.config = config;
         }
 
-        // Create Future that allows blocking on partition assignment and positioning
-        CompletableFuture<Collection<ReceiverPartition>> assignedPartitions =
-            ConfigLoading.loadBooleanOrThrow(options, BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG) ?
-                new CompletableFuture<>() : CompletableFuture.completedFuture(Collections.emptyList());
-        Future<?> positions = assignedPartitions.thenAccept(partitions -> partitions.forEach(ReceiverPartition::position));
+        public Flux<Alo<ConsumerRecord<K, V>>> receive(Collection<String> topics) {
+            CompletableFuture<Collection<ReceiverPartition>> assignment = new CompletableFuture<>();
+            AloFactory<ConsumerRecord<K, V>> aloFactory = AloFactoryConfig.loadDecorated(config, AloKafkaConsumerRecordDecorator.class);
+            Sinks.Empty<Alo<ConsumerRecord<K, V>>> sink = Sinks.empty();
+            return newReceiver(topics, assignment::complete)
+                .receive()
+                .transform(records -> maybeBlockRequestOnPartitionPositioning(records, assignment))
+                .map(record -> aloFactory.create(record, record.receiverOffset()::acknowledge, sink::tryEmitError))
+                .mergeWith(sink.asMono())
+                .transform(this::newOrderManagingAcknowledgementOperator);
+        }
 
-        ReceiverOptions<K, V> receiverOptions = ReceiverOptions.<K, V>create(consumerConfig)
-            .subscription(topics)
-            .pollTimeout(ConfigLoading.loadDurationOrThrow(options, POLL_TIMEOUT_CONFIG))
-            .commitInterval(ConfigLoading.loadDurationOrThrow(options, COMMIT_INTERVAL_CONFIG))
-            .maxCommitAttempts(ConfigLoading.loadIntOrThrow(options, MAX_COMMIT_ATTEMPTS_CONFIG))
-            .closeTimeout(ConfigLoading.loadDurationOrThrow(options, CLOSE_TIMEOUT_CONFIG))
-            .addAssignListener(assignedPartitions::complete);
+        private KafkaReceiver<K, V> newReceiver(
+            Collection<String> topics,
+            Consumer<Collection<ReceiverPartition>> onAssign
+        ) {
+            ReceiverOptions<K, V> receiverOptions = ReceiverOptions.<K, V>create(newConsumerConfig())
+                .subscription(topics)
+                .pollTimeout(ConfigLoading.loadDuration(config, POLL_TIMEOUT_CONFIG).orElse(DEFAULT_POLL_TIMEOUT))
+                .commitInterval(ConfigLoading.loadDuration(config, COMMIT_INTERVAL_CONFIG).orElse(DEFAULT_COMMIT_INTERVAL))
+                .maxCommitAttempts(ConfigLoading.loadInt(config, MAX_COMMIT_ATTEMPTS_CONFIG).orElse(DEFAULT_MAX_COMMIT_ATTEMPTS))
+                .closeTimeout(ConfigLoading.loadDuration(config, CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
+                .addAssignListener(onAssign);
+            return KafkaReceiver.create(receiverOptions);
+        }
 
-        return KafkaReceiver.create(receiverOptions).receive()
-            .transform(records -> positions.isDone() ? records : records.mergeWith(blockRequestOn(positions)))
-            .transform(records -> createAloRecords(records, aloFactory, maxInFlightPerSubscription));
-    }
+        private Map<String, Object> newConsumerConfig() {
+            // Initialize Consumer config from full config
+            Map<String, Object> consumerConfig = new HashMap<>(config);
 
-    private Flux<Alo<ConsumerRecord<K, V>>> createAloRecords(
-        Flux<ReceiverRecord<K, V>> records,
-        AloFactory<ConsumerRecord<K, V>> aloFactory,
-        long maxInFlightPerSubscription
-    ) {
-        Sinks.Empty<Alo<ConsumerRecord<K, V>>> sink = Sinks.empty();
-        return records.map(record -> aloFactory.create(record, record.receiverOffset()::acknowledge, sink::tryEmitError))
-            .mergeWith(sink.asMono())
-            .transform(aloRecords -> new OrderManagingAcknowledgementOperator<>(
-                aloRecords, ConsumerRecordExtraction::topicPartition, maxInFlightPerSubscription));
-    }
+            // Remove any Atleon-specific config (helps avoid warning logs about unused config)
+            consumerConfig.keySet().removeIf(key -> key.startsWith(CONFIG_PREFIX));
 
-    private static long nextClientIdCount(String clientId) {
-        return COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, key -> new AtomicLong()).incrementAndGet();
-    }
-
-    private static void loadInto(Map<String, Object> destination, Map<String, Object> source, String key, Object def) {
-        destination.put(key, source.getOrDefault(key, def));
-    }
-
-    private static <T> Mono<T> blockRequestOn(Future<?> future) {
-        return Mono.<T>empty().doOnRequest(requested -> {
-            try {
-                future.get();
-            } catch (Exception e) {
-                LOGGER.error("Failed to block Request Thread on Future", e);
+            // If enabled, increment Client ID
+            String clientId = ConfigLoading.loadStringOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG);
+            if (ConfigLoading.loadBoolean(config, AUTO_INCREMENT_CLIENT_ID_CONFIG).orElse(DEFAULT_AUTO_INCREMENT_CLIENT_ID)) {
+                consumerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
             }
-        });
+
+            return consumerConfig;
+        }
+
+        private Flux<ReceiverRecord<K, V>> maybeBlockRequestOnPartitionPositioning(
+            Flux<ReceiverRecord<K, V>> records,
+            CompletableFuture<Collection<ReceiverPartition>> assignment
+        ) {
+            boolean shouldApplyBlocking = ConfigLoading.loadBoolean(config, BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG)
+                .orElse(DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS);
+            return shouldApplyBlocking ? records.mergeWith(blockRequestOnPartitionPositioning(assignment)) : records;
+        }
+
+        private OrderManagingAcknowledgementOperator<ConsumerRecord<K, V>, Alo<ConsumerRecord<K, V>>>
+        newOrderManagingAcknowledgementOperator(Flux<Alo<ConsumerRecord<K, V>>> alos) {
+            long maxInFlight = ConfigLoading.loadLong(config, MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG)
+                .orElse(DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION);
+            return new OrderManagingAcknowledgementOperator<>(alos, ConsumerRecordExtraction::topicPartition, maxInFlight);
+        }
+
+        private static long nextClientIdCount(String clientId) {
+            return COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, key -> new AtomicLong()).incrementAndGet();
+        }
+
+        private static <T> Mono<T>
+        blockRequestOnPartitionPositioning(CompletableFuture<Collection<ReceiverPartition>> assignment) {
+            return blockRequestOn(assignment.thenAccept(partitions -> partitions.forEach(ReceiverPartition::position)));
+        }
+
+        private static <T> Mono<T> blockRequestOn(Future<?> future) {
+            return Mono.<T>empty().doOnRequest(requested -> {
+                try {
+                    future.get();
+                } catch (Exception e) {
+                    LOGGER.error("Failed to block Request Thread on Future", e);
+                }
+            });
+        }
     }
 }
