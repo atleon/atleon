@@ -36,6 +36,10 @@ public abstract class MeteringAloSignalListener<T> implements AloSignalListener<
         return new Composed<>(name, Tags.of(tagKeyValues), value -> Tags.empty());
     }
 
+    public static <T> AloSignalListener<T> composed(String name, Function<? super T, Iterable<Tag>> valueTagsExtractor) {
+        return new Composed(name, Tags.empty(), valueTagsExtractor);
+    }
+
     public static <T> AloSignalListener<T>
     composed(String name, Iterable<Tag> baseTags, Function<? super T, Iterable<Tag>> valueTagsExtractor) {
         return new Composed<>(name, Tags.of(baseTags), valueTagsExtractor);
