@@ -10,7 +10,6 @@ import io.atleon.spring.AutoConfigureStream;
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.net.URI;
-import java.util.Map;
 import java.util.function.Consumer;
 
 @AutoConfigureStream(SqsProcessing.class)
@@ -60,11 +59,6 @@ public class SqsProcessingConfig implements AloStreamConfig {
     }
 
     public static final class LongBodyDeserializer implements BodyDeserializer<Long> {
-
-        @Override
-        public void configure(Map<String, ?> properties) {
-
-        }
 
         @Override
         public Long deserialize(String body) {

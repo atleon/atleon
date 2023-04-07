@@ -1,13 +1,6 @@
 package io.atleon.rabbitmq;
 
-import java.util.Map;
-
-public class ByteArrayBodySerializer implements BodySerializer<byte[]> {
-
-    @Override
-    public void configure(Map<String, ?> properties) {
-
-    }
+public final class ByteArrayBodySerializer implements BodySerializer<byte[]> {
 
     @Override
     public SerializedBody serialize(byte[] bytes) {
