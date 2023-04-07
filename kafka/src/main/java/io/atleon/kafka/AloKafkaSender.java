@@ -85,14 +85,14 @@ public class AloKafkaSender<K, V> implements Closeable {
 
     private static final Map<String, AtomicLong> COUNTS_BY_CLIENT_ID = new ConcurrentHashMap<>();
 
-    private final Mono<Resources<K, V>> futureResources;
+    private final Mono<SendResources<K, V>> futureResources;
 
     private final Sinks.Many<Long> closeSink = Sinks.many().multicast().directBestEffort();
 
     private AloKafkaSender(KafkaConfigSource configSource) {
         this.futureResources = configSource.create()
-            .map(Resources::<K, V>fromConfig)
-            .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), Resources::close);
+            .map(SendResources::<K, V>fromConfig)
+            .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SendResources::close);
     }
 
     /**
@@ -321,16 +321,19 @@ public class AloKafkaSender<K, V> implements Closeable {
         return value -> new ProducerRecord<>(valueToTopic.apply(value), null, valueToKey.apply(value), value);
     }
 
-    private static final class Resources<K, V> {
+    private static final class SendResources<K, V> {
 
         private final KafkaSender<K, V> sender;
 
-        private Resources(KafkaSender<K, V> sender) {
+        private SendResources(KafkaSender<K, V> sender) {
             this.sender = sender;
         }
 
-        public static <K, V> Resources<K, V> fromConfig(Map<String, Object> config) {
-            return new Resources<>(KafkaSender.create(ContextualProducerFactory.INSTANCE, newSenderOptions(config)));
+        public static <K, V> SendResources<K, V> fromConfig(Map<String, Object> config) {
+            SenderOptions<K, V> senderOptions = SenderOptions.<K, V>create(newProducerConfig(config))
+                .maxInFlight(ConfigLoading.loadInt(config, MAX_IN_FLIGHT_PER_SEND_CONFIG).orElse(DEFAULT_MAX_IN_FLIGHT_PER_SEND))
+                .stopOnError(ConfigLoading.loadBoolean(config, STOP_ON_ERROR_CONFIG).orElse(DEFAULT_STOP_ON_ERROR));
+            return new SendResources<>(KafkaSender.create(ContextualProducerFactory.INSTANCE, senderOptions));
         }
 
         public <T> Flux<KafkaSenderResult<T>> send(
@@ -357,32 +360,24 @@ public class AloKafkaSender<K, V> implements Closeable {
             sender.close();
         }
 
-        private static <K, V> SenderOptions<K, V> newSenderOptions(Map<String, Object> config) {
-            Map<String, Object> options = new HashMap<>();
-            loadInto(options, config, AUTO_INCREMENT_CLIENT_ID_CONFIG, DEFAULT_AUTO_INCREMENT_CLIENT_ID);
-            loadInto(options, config, MAX_IN_FLIGHT_PER_SEND_CONFIG, DEFAULT_MAX_IN_FLIGHT_PER_SEND);
-            loadInto(options, config, STOP_ON_ERROR_CONFIG, DEFAULT_STOP_ON_ERROR);
-
-            // 1) Create Producer config from remaining configs that are NOT options (help avoid WARNs)
-            // 2) Note Client ID and, if enabled, increment client ID in consumer config
+        private static Map<String, Object> newProducerConfig(Map<String, Object> config) {
+            // Initialize Producer config from full config
             Map<String, Object> producerConfig = new HashMap<>(config);
-            options.keySet().forEach(producerConfig::remove);
+
+            // Remove any Atleon-specific config (helps avoid warning logs about unused config)
+            producerConfig.keySet().removeIf(key -> key.startsWith(CONFIG_PREFIX));
+
+            // If enabled, increment Client ID
             String clientId = ConfigLoading.loadStringOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG);
-            if (ConfigLoading.loadBooleanOrThrow(options, AUTO_INCREMENT_CLIENT_ID_CONFIG)) {
+            if (ConfigLoading.loadBoolean(config, AUTO_INCREMENT_CLIENT_ID_CONFIG).orElse(DEFAULT_AUTO_INCREMENT_CLIENT_ID)) {
                 producerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
             }
 
-            return SenderOptions.<K, V>create(producerConfig)
-                .maxInFlight(ConfigLoading.loadIntOrThrow(options, MAX_IN_FLIGHT_PER_SEND_CONFIG))
-                .stopOnError(ConfigLoading.loadBooleanOrThrow(options, STOP_ON_ERROR_CONFIG));
+            return producerConfig;
         }
 
         private static long nextClientIdCount(String clientId) {
             return COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, key -> new AtomicLong()).incrementAndGet();
-        }
-
-        private static void loadInto(Map<String, Object> destination, Map<String, Object> source, String key, Object def) {
-            destination.put(key, source.getOrDefault(key, def));
         }
     }
 }

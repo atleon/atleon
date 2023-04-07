@@ -66,14 +66,14 @@ public class AloSnsSender<T> implements Closeable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloSnsSender.class);
 
-    private final Mono<Resources<T>> futureResources;
+    private final Mono<SendResources<T>> futureResources;
 
     private final Sinks.Many<Long> closeSink = Sinks.many().multicast().directBestEffort();
 
     private AloSnsSender(SnsConfigSource configSource) {
         this.futureResources = configSource.create()
-            .map(Resources::<T>fromConfig)
-            .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), Resources::close);
+            .map(SendResources::<T>fromConfig)
+            .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SendResources::close);
     }
 
     public static <T> AloSnsSender<T> from(SnsConfigSource configSource) {
@@ -146,25 +146,25 @@ public class AloSnsSender<T> implements Closeable {
         closeSink.tryEmitNext(System.currentTimeMillis());
     }
 
-    private static final class Resources<T> {
+    private static final class SendResources<T> {
 
         private final SnsSender sender;
 
         private final BodySerializer<T> bodySerializer;
 
-        private Resources(SnsSender sender, BodySerializer<T> bodySerializer) {
+        private SendResources(SnsSender sender, BodySerializer<T> bodySerializer) {
             this.sender = sender;
             this.bodySerializer = bodySerializer;
         }
 
-        public static <T> Resources<T> fromConfig(SnsConfig config) {
+        public static <T> SendResources<T> fromConfig(SnsConfig config) {
             SnsSenderOptions options = SnsSenderOptions.newBuilder(config::buildClient)
                 .batchSize(config.loadInt(BATCH_SIZE_CONFIG).orElse(SnsSenderOptions.DEFAULT_BATCH_SIZE))
                 .batchDuration(config.loadDuration(BATCH_DURATION_CONFIG).orElse(SnsSenderOptions.DEFAULT_BATCH_DURATION))
                 .batchPrefetch(config.loadInt(BATCH_PREFETCH_CONFIG).orElse(SnsSenderOptions.DEFAULT_BATCH_PREFETCH))
                 .maxRequestsInFlight(config.loadInt(MAX_REQUESTS_IN_FLIGHT_CONFIG).orElse(SnsSenderOptions.DEFAULT_MAX_REQUESTS_IN_FLIGHT))
                 .build();
-            return new Resources<T>(
+            return new SendResources<T>(
                 SnsSender.create(options),
                 config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG, BodySerializer.class)
             );

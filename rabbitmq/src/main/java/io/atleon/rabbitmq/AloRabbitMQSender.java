@@ -209,7 +209,6 @@ public class AloRabbitMQSender<T> implements Closeable {
         public static <T> SendResources<T> fromConfig(RabbitMQConfig config) {
             SenderOptions senderOptions = new SenderOptions()
                 .connectionFactory(config.getConnectionFactory());
-
             return new SendResources<T>(
                 new Sender(senderOptions),
                 config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG, BodySerializer.class)

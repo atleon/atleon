@@ -211,16 +211,16 @@ public class AloKafkaReceiver<K, V> {
      */
     public AloFlux<ConsumerRecord<K, V>> receiveAloRecords(Collection<String> topics) {
         return configSource.create()
-            .map(Resources<K, V>::new)
+            .map(ReceiveResources<K, V>::new)
             .flatMapMany(resources -> resources.receive(topics))
             .as(AloFlux::wrap);
     }
 
-    private static final class Resources<K, V> {
+    private static final class ReceiveResources<K, V> {
 
         private final Map<String, Object> config;
 
-        public Resources(Map<String, Object> config) {
+        public ReceiveResources(Map<String, Object> config) {
             this.config = config;
         }
 

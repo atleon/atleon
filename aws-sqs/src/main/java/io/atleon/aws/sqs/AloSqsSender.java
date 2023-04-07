@@ -66,14 +66,14 @@ public class AloSqsSender<T> implements Closeable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloSqsSender.class);
 
-    private final Mono<Resources<T>> futureResources;
+    private final Mono<SendResources<T>> futureResources;
 
     private final Sinks.Many<Long> closeSink = Sinks.many().multicast().directBestEffort();
 
     private AloSqsSender(SqsConfigSource configSource) {
         this.futureResources = configSource.create()
-            .map(Resources::<T>fromConfig)
-            .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), Resources::close);
+            .map(SendResources::<T>fromConfig)
+            .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SendResources::close);
     }
 
     public static <T> AloSqsSender<T> from(SqsConfigSource configSource) {
@@ -139,25 +139,25 @@ public class AloSqsSender<T> implements Closeable {
         closeSink.tryEmitNext(System.currentTimeMillis());
     }
 
-    private static final class Resources<T> {
+    private static final class SendResources<T> {
 
         private final SqsSender sender;
 
         private final BodySerializer<T> bodySerializer;
 
-        private Resources(SqsSender sender, BodySerializer<T> bodySerializer) {
+        private SendResources(SqsSender sender, BodySerializer<T> bodySerializer) {
             this.sender = sender;
             this.bodySerializer = bodySerializer;
         }
 
-        public static <T> Resources<T> fromConfig(SqsConfig config) {
+        public static <T> SendResources<T> fromConfig(SqsConfig config) {
             SqsSenderOptions options = SqsSenderOptions.newBuilder(config::buildClient)
                 .batchSize(config.loadInt(BATCH_SIZE_CONFIG).orElse(SqsSenderOptions.DEFAULT_BATCH_SIZE))
                 .batchDuration(config.loadDuration(BATCH_DURATION_CONFIG).orElse(SqsSenderOptions.DEFAULT_BATCH_DURATION))
                 .batchPrefetch(config.loadInt(BATCH_PREFETCH_CONFIG).orElse(SqsSenderOptions.DEFAULT_BATCH_PREFETCH))
                 .maxRequestsInFlight(config.loadInt(MAX_REQUESTS_IN_FLIGHT_CONFIG).orElse(SqsSenderOptions.DEFAULT_MAX_REQUESTS_IN_FLIGHT))
                 .build();
-            return new Resources<T>(
+            return new SendResources<T>(
                 SqsSender.create(options),
                 config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG, BodySerializer.class)
             );

@@ -159,12 +159,12 @@ public class AloSqsReceiver<T> {
      */
     public AloFlux<ReceivedSqsMessage<T>> receiveAloMessages(String queueUrl) {
         return configSource.create()
-            .map(Resources<T>::new)
+            .map(ReceiveResources<T>::new)
             .flatMapMany(resources -> resources.receive(queueUrl))
             .as(AloFlux::wrap);
     }
 
-    private static final class Resources<T> {
+    private static final class ReceiveResources<T> {
 
         private final SqsConfig config;
 
@@ -172,7 +172,7 @@ public class AloSqsReceiver<T> {
 
         private final NacknowledgerFactory<T> nacknowledgerFactory;
 
-        public Resources(SqsConfig config) {
+        public ReceiveResources(SqsConfig config) {
             this.config = config;
             this.bodyDeserializer = config.loadConfiguredOrThrow(BODY_DESERIALIZER_CONFIG, BodyDeserializer.class);
             this.nacknowledgerFactory = createNacknowledgerFactory(config);
@@ -237,10 +237,10 @@ public class AloSqsReceiver<T> {
 
         private static <T, N extends NacknowledgerFactory<T>> Optional<NacknowledgerFactory<T>>
         loadNacknowledgerFactory(SqsConfig config, String key, Class<N> type) {
-            return config.loadConfiguredWithPredefinedTypes(key, type, Resources::instantiatePredefinedNacknowledgerFactory);
+            return config.loadConfiguredWithPredefinedTypes(key, type, ReceiveResources::newPredefinedNacknowledgerFactory);
         }
 
-        private static <T> Optional<NacknowledgerFactory<T>> instantiatePredefinedNacknowledgerFactory(String typeName) {
+        private static <T> Optional<NacknowledgerFactory<T>> newPredefinedNacknowledgerFactory(String typeName) {
             if (typeName.equalsIgnoreCase(NACKNOWLEDGER_TYPE_EMIT)) {
                 return Optional.of(new NacknowledgerFactory.Emit<>());
             } else if (typeName.equalsIgnoreCase(NACKNOWLEDGER_TYPE_VISIBILITY_RESET)) {

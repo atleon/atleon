@@ -117,12 +117,12 @@ public class AloRabbitMQReceiver<T> {
      */
     public AloFlux<ReceivedRabbitMQMessage<T>> receiveAloMessages(String queue) {
         return configSource.create()
-            .map(Resources<T>::new)
+            .map(ReceiveResources<T>::new)
             .flatMapMany(resources -> resources.receive(queue))
             .as(AloFlux::wrap);
     }
 
-    private static final class Resources<T> {
+    private static final class ReceiveResources<T> {
 
         private final RabbitMQConfig config;
 
@@ -130,7 +130,7 @@ public class AloRabbitMQReceiver<T> {
 
         private final NacknowledgerFactory<T> nacknowledgerFactory;
 
-        public Resources(RabbitMQConfig config) {
+        public ReceiveResources(RabbitMQConfig config) {
             this.config = config;
             this.bodyDeserializer = config.loadConfiguredOrThrow(BODY_DESERIALIZER_CONFIG, BodyDeserializer.class);
             this.nacknowledgerFactory = createNacknowledgerFactory(config);
@@ -202,7 +202,7 @@ public class AloRabbitMQReceiver<T> {
             if (deprecatedNackStrategy.isPresent()) {
                 LOGGER.warn("The configuration " + NACK_STRATEGY_CONFIG + " is deprecated. Use " + NACKNOWLEDGER_TYPE_CONFIG);
                 return deprecatedNackStrategy.map(Enum::name)
-                    .<NacknowledgerFactory<T>>flatMap(Resources::instantiatePredefinedNacknowledgerFactory)
+                    .<NacknowledgerFactory<T>>flatMap(ReceiveResources::newPredefinedNacknowledgerFactory)
                     .orElseThrow(() -> new IllegalStateException("Failed to convert NackStrategy to NacknowledgerFactory"));
             }
 
@@ -211,10 +211,10 @@ public class AloRabbitMQReceiver<T> {
 
         private static <T, N extends NacknowledgerFactory<T>> Optional<NacknowledgerFactory<T>>
         loadNacknowledgerFactory(RabbitMQConfig config, String key, Class<N> type) {
-            return config.loadConfiguredWithPredefinedTypes(key, type, Resources::instantiatePredefinedNacknowledgerFactory);
+            return config.loadConfiguredWithPredefinedTypes(key, type, ReceiveResources::newPredefinedNacknowledgerFactory);
         }
 
-        private static <T> Optional<NacknowledgerFactory<T>> instantiatePredefinedNacknowledgerFactory(String typeName) {
+        private static <T> Optional<NacknowledgerFactory<T>> newPredefinedNacknowledgerFactory(String typeName) {
             if (typeName.equalsIgnoreCase(NACKNOWLEDGER_TYPE_EMIT)) {
                 return Optional.of(new NacknowledgerFactory.Emit<>());
             } else if (typeName.equalsIgnoreCase(NACKNOWLEDGER_TYPE_REQUEUE)) {
