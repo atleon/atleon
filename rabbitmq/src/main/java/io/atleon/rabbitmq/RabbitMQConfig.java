@@ -1,14 +1,13 @@
 package io.atleon.rabbitmq;
 
 import com.rabbitmq.client.ConnectionFactory;
-import io.atleon.core.AloFactory;
-import io.atleon.core.AloFactoryConfig;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class RabbitMQConfig {
@@ -26,10 +25,10 @@ public class RabbitMQConfig {
         return connectionFactory;
     }
 
-    public <T> AloFactory<T> loadAloFactory(String queue) {
-        Map<String, Object> propertiesWithQueue = new HashMap<>(properties);
-        propertiesWithQueue.put(AloReceivedRabbitMQMessageDecorator.QUEUE_CONFIG, queue);
-        return AloFactoryConfig.loadDecorated(propertiesWithQueue, AloReceivedRabbitMQMessageDecorator.class);
+    public Map<String, Object> modifyAndGetProperties(Consumer<Map<String, Object>> modifier) {
+        Map<String, Object> modifiedProperties = new HashMap<>(properties);
+        modifier.accept(modifiedProperties);
+        return modifiedProperties;
     }
 
     public <T extends Configurable> T loadConfiguredOrThrow(String property, Class<? extends T> type) {

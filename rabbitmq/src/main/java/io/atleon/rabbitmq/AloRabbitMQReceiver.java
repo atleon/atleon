@@ -2,6 +2,7 @@ package io.atleon.rabbitmq;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
+import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
 import io.atleon.util.Defaults;
 import org.slf4j.Logger;
@@ -13,6 +14,7 @@ import reactor.rabbitmq.ConsumeOptions;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.ReceiverOptions;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -134,12 +136,18 @@ public class AloRabbitMQReceiver<T> {
         }
 
         public Flux<Alo<ReceivedRabbitMQMessage<T>>> receive(String queue) {
-            AloFactory<ReceivedRabbitMQMessage<T>> aloFactory = config.loadAloFactory(queue);
+            AloFactory<ReceivedRabbitMQMessage<T>> aloFactory = loadAloFactory(queue);
             Sinks.Empty<Alo<ReceivedRabbitMQMessage<T>>> sink = Sinks.empty();
-            return newReceiver()
-                .consumeManualAck(queue, newConsumeOptions())
+            return newReceiver().consumeManualAck(queue, newConsumeOptions())
                 .map(delivery -> deserialize(delivery, aloFactory, sink::tryEmitError))
                 .mergeWith(sink.asMono());
+        }
+
+        private AloFactory<ReceivedRabbitMQMessage<T>> loadAloFactory(String queue) {
+            return AloFactoryConfig.loadDecorated(
+                config.modifyAndGetProperties(it -> it.put(AloReceivedRabbitMQMessageDecorator.QUEUE_CONFIG, queue)),
+                AloReceivedRabbitMQMessageDecorator.class
+            );
         }
 
         private Receiver newReceiver() {

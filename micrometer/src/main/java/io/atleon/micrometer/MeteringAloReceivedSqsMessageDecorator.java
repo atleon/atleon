@@ -8,6 +8,7 @@ import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * An {@link AloReceivedSqsMessageDecorator} that decorates {@link Alo} elements with metering
@@ -30,7 +31,7 @@ public class MeteringAloReceivedSqsMessageDecorator<T>
     protected Tags extractTags(ReceivedSqsMessage<T> receivedSqsMessage) {
         return Tags.of(
             Tag.of("type", "sqs"),
-            Tag.of("queueUrl", queueUrl)
+            Tag.of("queueUrl", Objects.toString(queueUrl))
         );
     }
 }
