@@ -26,6 +26,14 @@ public final class MeterKey {
         this.tags = tags;
     }
 
+    public MeterKey withNameQualifier(String qualifier) {
+        return new MeterKey(name + "." + qualifier, tags);
+    }
+
+    public MeterKey withNameQualifierAndTag(String qualifier, String tagKey, String tagValue) {
+        return new MeterKey(name + "." + qualifier, tags.and(tagKey, tagValue));
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

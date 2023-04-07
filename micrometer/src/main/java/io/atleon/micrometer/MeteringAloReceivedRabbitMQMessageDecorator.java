@@ -4,7 +4,6 @@ import io.atleon.core.Alo;
 import io.atleon.rabbitmq.AloReceivedRabbitMQMessageDecorator;
 import io.atleon.rabbitmq.ReceivedRabbitMQMessage;
 import io.atleon.util.ConfigLoading;
-import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 
 import java.util.Map;
@@ -21,6 +20,10 @@ public class MeteringAloReceivedRabbitMQMessageDecorator<T>
 
     private String queue = null;
 
+    public MeteringAloReceivedRabbitMQMessageDecorator() {
+        super("atleon.alo.rabbitmq.receive");
+    }
+
     @Override
     public void configure(Map<String, ?> properties) {
         super.configure(properties);
@@ -29,9 +32,6 @@ public class MeteringAloReceivedRabbitMQMessageDecorator<T>
 
     @Override
     protected Tags extractTags(ReceivedRabbitMQMessage<T> receivedRabbitMQMessage) {
-        return Tags.of(
-            Tag.of("type", "rabbitmq"),
-            Tag.of("queue", Objects.toString(queue))
-        );
+        return Tags.of("queue", Objects.toString(queue));
     }
 }

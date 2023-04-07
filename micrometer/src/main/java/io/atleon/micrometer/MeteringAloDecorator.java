@@ -2,6 +2,8 @@ package io.atleon.micrometer;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloDecorator;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tags;
 
 /**
@@ -11,12 +13,23 @@ import io.micrometer.core.instrument.Tags;
  */
 public abstract class MeteringAloDecorator<T> implements AloDecorator<T> {
 
-    private final MeterFacade meterFacade = MeterFacade.global();
+    private final MeterFacade meterFacade;
+
+    private final String name;
+
+    protected MeteringAloDecorator(String name) {
+        this(Metrics.globalRegistry, name);
+    }
+
+    protected MeteringAloDecorator(MeterRegistry meterRegistry, String name) {
+        this.meterFacade = MeterFacade.wrap(meterRegistry);
+        this.name = name;
+    }
 
     @Override
     public final Alo<T> decorate(Alo<T> alo) {
-        Tags tags = extractTags(alo.get());
-        return MeteringAlo.start(alo, meterFacade, tags);
+        MeterKey baseMeterKey = new MeterKey(name, extractTags(alo.get()));
+        return MeteringAlo.start(alo, meterFacade, baseMeterKey);
     }
 
     /**

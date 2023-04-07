@@ -6,7 +6,7 @@ import io.micrometer.core.instrument.Tag;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
@@ -24,6 +24,10 @@ public class MeteringAloKafkaConsumerRecordSignalListener<K, V>
 
     private String clientId = null;
 
+    public MeteringAloKafkaConsumerRecordSignalListener() {
+        super("atleon.alo.publisher.signal.kafka.receive");
+    }
+
     @Override
     public void configure(Map<String, ?> properties) {
         super.configure(properties);
@@ -32,9 +36,6 @@ public class MeteringAloKafkaConsumerRecordSignalListener<K, V>
 
     @Override
     protected Iterable<Tag> baseTags() {
-        return Arrays.asList(
-            Tag.of("type", "kafka-receive"),
-            Tag.of("client", Objects.toString(clientId))
-        );
+        return Collections.singleton(Tag.of("client", Objects.toString(clientId)));
     }
 }

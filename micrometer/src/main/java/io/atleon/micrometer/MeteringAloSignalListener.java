@@ -23,10 +23,6 @@ public abstract class MeteringAloSignalListener<T> implements AloSignalListener<
 
     private final String name;
 
-    protected MeteringAloSignalListener() {
-        this("atleon.alo.publisher.signal");
-    }
-
     protected MeteringAloSignalListener(String name) {
         this(Metrics.globalRegistry, name);
     }

@@ -23,6 +23,10 @@ public class MeteringAloKafkaConsumerRecordDecorator<K, V>
 
     private String clientId = null;
 
+    public MeteringAloKafkaConsumerRecordDecorator() {
+        super("atleon.alo.kafka.receive");
+    }
+
     @Override
     public void configure(Map<String, ?> properties) {
         super.configure(properties);
@@ -32,7 +36,6 @@ public class MeteringAloKafkaConsumerRecordDecorator<K, V>
     @Override
     protected Tags extractTags(ConsumerRecord<K, V> consumerRecord) {
         return Tags.of(
-            Tag.of("type", "kafka"),
             Tag.of("client", Objects.toString(clientId)),
             Tag.of("topic", consumerRecord.topic())
         );
