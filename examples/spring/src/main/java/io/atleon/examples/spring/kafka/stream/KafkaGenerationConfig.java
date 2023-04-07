@@ -7,31 +7,33 @@ import io.atleon.micrometer.AloKafkaMetricsReporter;
 import io.atleon.spring.AutoConfigureStream;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.LongSerializer;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+
+import java.util.Map;
 
 @AutoConfigureStream(KafkaGeneration.class)
 public class KafkaGenerationConfig implements AloStreamConfig {
 
-    private final KafkaConfigSource baseKafkaConfig;
+    private final Map<String, ?> kafkaProperties;
 
     private final String topic;
 
     public KafkaGenerationConfig(
-        @Qualifier("local") KafkaConfigSource localKafkaConfig,
+        @Value("#{localKafka}") Map<String, ?> kafkaProperties,
         @Value("${example.kafka.topic}") String topic
     ) {
-        this.baseKafkaConfig = localKafkaConfig;
+        this.kafkaProperties = kafkaProperties;
         this.topic = topic;
     }
 
     public AloKafkaSender<Long, Long> buildKafkaLongSender() {
-        KafkaConfigSource config = baseKafkaConfig.withClientId(name())
+        KafkaConfigSource configSource = KafkaConfigSource.useClientIdAsName()
+            .withClientId(name())
             .withProducerOrderingAndResiliencyConfigs()
             .withKeySerializer(LongSerializer.class)
             .withValueSerializer(LongSerializer.class)
             .with(ProducerConfig.METRIC_REPORTER_CLASSES_CONFIG, AloKafkaMetricsReporter.class.getName());
-        return AloKafkaSender.from(config);
+        return AloKafkaSender.from(configSource);
     }
 
     public String getTopic() {

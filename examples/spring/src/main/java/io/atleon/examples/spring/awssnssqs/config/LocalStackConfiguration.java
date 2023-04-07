@@ -1,38 +1,36 @@
 package io.atleon.examples.spring.awssnssqs.config;
 
 import io.atleon.aws.testcontainers.AtleonLocalStackContainer;
+import io.atleon.aws.util.AwsConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
 public class LocalStackConfiguration {
 
     private static final AtleonLocalStackContainer CONTAINER = startContainer();
 
-    @Bean("awsRegion")
-    public String awsRegion() {
-        return CONTAINER.getRegion();
+    @Bean("localAws")
+    public Map<String, Object> localAws() {
+        Map<String, Object> localAwsProperties = new HashMap<>();
+        localAwsProperties.put(AwsConfig.REGION_CONFIG, CONTAINER.getRegion());
+        localAwsProperties.put(AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC);
+        localAwsProperties.put(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, CONTAINER.getAccessKey());
+        localAwsProperties.put(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, CONTAINER.getSecretKey());
+        return localAwsProperties;
     }
 
-    @Bean("awsAccessKeyId")
-    public String awsAccessKeyId() {
-        return CONTAINER.getAccessKey();
-    }
-
-    @Bean("awsSecretAccessKey")
-    public String awsSecretAccessKey() {
-        return CONTAINER.getSecretKey();
-    }
-
-    @Bean("snsEndpointOverride")
-    public URI snsEndpointOverride() {
+    @Bean("localSnsEndpoint")
+    public URI snsEndpoint() {
         return CONTAINER.getSnsEndpointOverride();
     }
 
-    @Bean("sqsEndpointOverride")
-    public URI sqsEndpointOverride() {
+    @Bean("localSqsEndpoint")
+    public URI sqsEndpoint() {
         return CONTAINER.getSqsEndpointOverride();
     }
 

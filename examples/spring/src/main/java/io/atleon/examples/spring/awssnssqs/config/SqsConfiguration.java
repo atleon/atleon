@@ -1,31 +1,28 @@
 package io.atleon.examples.spring.awssnssqs.config;
 
+import io.atleon.aws.util.AwsConfig;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.CreateQueueRequest;
 
 import java.net.URI;
+import java.util.Map;
 
 @Component
 public class SqsConfiguration {
 
     @Bean
     public SqsAsyncClient sqsClient(
-        @Qualifier("sqsEndpointOverride") URI endpointOverride,
-        @Qualifier("awsRegion") String region,
-        @Qualifier("awsAccessKeyId") String accessKeyId,
-        @Qualifier("awsSecretAccessKey") String secretAccessKey
+        @Qualifier("localSqsEndpoint") URI endpointOverride,
+        @Value("#{localAws}") Map<String, ?> awsProperties
     ) {
         return SqsAsyncClient.builder()
             .endpointOverride(endpointOverride)
-            .region(Region.of(region))
-            .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, secretAccessKey)))
+            .region(AwsConfig.loadRegion(awsProperties).orElse(null))
+            .credentialsProvider(AwsConfig.loadCredentialsProvider(awsProperties))
             .build();
     }
 

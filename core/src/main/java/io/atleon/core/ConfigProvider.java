@@ -101,7 +101,7 @@ public abstract class ConfigProvider<T, P extends ConfigProvider<T, P>> {
                 return;
             }
         }
-        throw new IllegalArgumentException("At least one of " + keys + " must be configured");
+        throw new IllegalArgumentException("At least one of " + Arrays.toString(keys) + " must be configured");
     }
 
     protected static <T extends Enum<T>> void

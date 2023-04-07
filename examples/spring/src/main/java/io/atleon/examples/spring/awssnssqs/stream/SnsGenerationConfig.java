@@ -4,47 +4,37 @@ import io.atleon.aws.sns.AloSnsSender;
 import io.atleon.aws.sns.SnsConfig;
 import io.atleon.aws.sns.SnsConfigSource;
 import io.atleon.aws.sns.StringBodySerializer;
-import io.atleon.aws.util.AwsConfig;
 import io.atleon.core.AloStreamConfig;
 import io.atleon.spring.AutoConfigureStream;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.net.URI;
+import java.util.Map;
 
 @AutoConfigureStream(SnsGeneration.class)
 public class SnsGenerationConfig implements AloStreamConfig {
 
+    private final Map<String, ?> localAwsProperties;
+
     private final URI endpointOverride;
-
-    private final String region;
-
-    private final String accessKeyId;
-
-    private final String secretAccessKey;
 
     private final String topicArn;
 
     public SnsGenerationConfig(
-        @Qualifier("snsEndpointOverride") URI endpointOverride,
-        @Qualifier("awsRegion") String region,
-        @Qualifier("awsAccessKeyId") String accessKeyId,
-        @Qualifier("awsSecretAccessKey") String secretAccessKey,
+        @Value("#{localAws}") Map<String, ?> localAwsProperties,
+        @Qualifier("localSnsEndpoint") URI endpointOverride,
         @Qualifier("snsTopicArn") String topicArn
     ) {
+        this.localAwsProperties = localAwsProperties;
         this.endpointOverride = endpointOverride;
-        this.region = region;
-        this.accessKeyId = accessKeyId;
-        this.secretAccessKey = secretAccessKey;
         this.topicArn = topicArn;
     }
 
     public AloSnsSender<Long> buildSender() {
         SnsConfigSource configSource = SnsConfigSource.unnamed()
+            .withAll(localAwsProperties)
             .with(SnsConfig.ENDPOINT_OVERRIDE_CONFIG, endpointOverride)
-            .with(AwsConfig.REGION_CONFIG, region)
-            .with(AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC)
-            .with(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, accessKeyId)
-            .with(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, secretAccessKey)
             .with(AloSnsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName())
             .with(AloSnsSender.BATCH_SIZE_CONFIG, 10)
             .with(AloSnsSender.BATCH_DURATION_CONFIG, "PT0.1S");

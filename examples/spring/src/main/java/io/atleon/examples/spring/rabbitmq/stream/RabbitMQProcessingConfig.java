@@ -5,30 +5,31 @@ import io.atleon.rabbitmq.AloRabbitMQReceiver;
 import io.atleon.rabbitmq.LongBodyDeserializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
 import io.atleon.spring.AutoConfigureStream;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 
+import java.util.Map;
 import java.util.function.Consumer;
 
 @AutoConfigureStream(RabbitMQProcessing.class)
 public class RabbitMQProcessingConfig implements AloStreamConfig {
 
-    private final RabbitMQConfigSource rabbitMQConfig;
+    private final Map<String, ?> rabbitMQProperties;
 
     private final String queue;
 
     public RabbitMQProcessingConfig(
-        @Qualifier("local") RabbitMQConfigSource rabbitMQConfig,
+        @Value("#{localRabbitMQ}") Map<String, ?> rabbitMQProperties,
         @Value("${example.rabbitmq.queue}") String queue
     ) {
-        this.rabbitMQConfig = rabbitMQConfig;
+        this.rabbitMQProperties = rabbitMQProperties;
         this.queue = queue;
     }
 
     public AloRabbitMQReceiver<Long> buildRabbitMQLongReceiver() {
-        RabbitMQConfigSource config = rabbitMQConfig.rename(name())
+        RabbitMQConfigSource configSource = RabbitMQConfigSource.named(name())
+            .withAll(rabbitMQProperties)
             .with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName());
-        return AloRabbitMQReceiver.from(config);
+        return AloRabbitMQReceiver.from(configSource);
     }
 
     public String getQueue() {

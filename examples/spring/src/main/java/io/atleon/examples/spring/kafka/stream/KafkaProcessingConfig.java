@@ -8,34 +8,35 @@ import io.atleon.spring.AutoConfigureStream;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.LongDeserializer;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 
+import java.util.Map;
 import java.util.function.Consumer;
 
 @AutoConfigureStream(KafkaProcessing.class)
 public class KafkaProcessingConfig implements AloStreamConfig {
 
-    private final KafkaConfigSource baseKafkaConfig;
+    private final Map<String, ?> kafkaProperties;
 
     private final String topic;
 
     public KafkaProcessingConfig(
-        @Qualifier("local") KafkaConfigSource localKafkaConfig,
+        @Value("#{localKafka}") Map<String, ?> kafkaProperties,
         @Value("${example.kafka.topic}") String topic
     ) {
-        this.baseKafkaConfig = localKafkaConfig;
+        this.kafkaProperties = kafkaProperties;
         this.topic = topic;
     }
 
     public AloKafkaReceiver<Long, Long> buildKafkaLongReceiver() {
-        KafkaConfigSource config = baseKafkaConfig.withClientId(name())
+        KafkaConfigSource configSource = KafkaConfigSource.useClientIdAsName()
+            .withClientId(name())
             .withConsumerGroupId(KafkaProcessing.class.getSimpleName())
             .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             .withKeyDeserializer(LongDeserializer.class)
             .withValueDeserializer(LongDeserializer.class)
             .with(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, AloKafkaMetricsReporter.class.getName());
-        return AloKafkaReceiver.from(config);
+        return AloKafkaReceiver.from(configSource);
     }
 
     public String getTopic() {
