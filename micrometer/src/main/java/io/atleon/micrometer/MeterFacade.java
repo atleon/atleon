@@ -33,11 +33,19 @@ public final class MeterFacade {
     }
 
     public Counter counter(String name, Tags tags) {
-        return counters.computeIfAbsent(new MeterKey(name, tags), this::newCounter);
+        return counter(new MeterKey(name, tags));
+    }
+
+    public Counter counter(MeterKey meterKey) {
+        return counters.computeIfAbsent(meterKey, this::newCounter);
     }
 
     public Timer timer(String name, Tags tags) {
-        return timers.computeIfAbsent(new MeterKey(name, tags), this::newTimer);
+        return timer(new MeterKey(name, tags));
+    }
+
+    public Timer timer(MeterKey meterKey) {
+        return timers.computeIfAbsent(meterKey, this::newTimer);
     }
 
     private Counter newCounter(MeterKey meterKey) {

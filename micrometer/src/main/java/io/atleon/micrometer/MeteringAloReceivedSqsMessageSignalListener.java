@@ -5,7 +5,7 @@ import io.atleon.aws.sqs.ReceivedSqsMessage;
 import io.atleon.util.ConfigLoading;
 import io.micrometer.core.instrument.Tag;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
@@ -22,6 +22,10 @@ public class MeteringAloReceivedSqsMessageSignalListener<T>
 
     private String queueUrl = null;
 
+    public MeteringAloReceivedSqsMessageSignalListener() {
+        super("atleon.alo.publisher.signal.sqs.receive");
+    }
+
     @Override
     public void configure(Map<String, ?> properties) {
         super.configure(properties);
@@ -30,9 +34,6 @@ public class MeteringAloReceivedSqsMessageSignalListener<T>
 
     @Override
     protected Iterable<Tag> baseTags() {
-        return Arrays.asList(
-            Tag.of("type", "sqs-receive"),
-            Tag.of("queue_url", Objects.toString(queueUrl))
-        );
+        return Collections.singletonList(Tag.of("queue_url", Objects.toString(queueUrl)));
     }
 }

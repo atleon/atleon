@@ -4,7 +4,6 @@ import io.atleon.aws.sqs.AloReceivedSqsMessageDecorator;
 import io.atleon.aws.sqs.ReceivedSqsMessage;
 import io.atleon.core.Alo;
 import io.atleon.util.ConfigLoading;
-import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 
 import java.util.Map;
@@ -21,6 +20,10 @@ public class MeteringAloReceivedSqsMessageDecorator<T>
 
     private String queueUrl = null;
 
+    public MeteringAloReceivedSqsMessageDecorator() {
+        super("atleon.alo.sqs.receive");
+    }
+
     @Override
     public void configure(Map<String, ?> properties) {
         super.configure(properties);
@@ -29,9 +32,6 @@ public class MeteringAloReceivedSqsMessageDecorator<T>
 
     @Override
     protected Tags extractTags(ReceivedSqsMessage<T> receivedSqsMessage) {
-        return Tags.of(
-            Tag.of("type", "sqs"),
-            Tag.of("queue_url", Objects.toString(queueUrl))
-        );
+        return Tags.of("queue_url", Objects.toString(queueUrl));
     }
 }
