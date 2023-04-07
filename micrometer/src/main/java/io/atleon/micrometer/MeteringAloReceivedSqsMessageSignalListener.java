@@ -32,7 +32,7 @@ public class MeteringAloReceivedSqsMessageSignalListener<T>
     protected Iterable<Tag> baseTags() {
         return Arrays.asList(
             Tag.of("type", "sqs-receive"),
-            Tag.of("queueUrl", Objects.toString(queueUrl))
+            Tag.of("queue_url", Objects.toString(queueUrl))
         );
     }
 }

@@ -31,7 +31,7 @@ public class MeteringAloReceivedSqsMessageDecorator<T>
     protected Tags extractTags(ReceivedSqsMessage<T> receivedSqsMessage) {
         return Tags.of(
             Tag.of("type", "sqs"),
-            Tag.of("queueUrl", Objects.toString(queueUrl))
+            Tag.of("queue_url", Objects.toString(queueUrl))
         );
     }
 }

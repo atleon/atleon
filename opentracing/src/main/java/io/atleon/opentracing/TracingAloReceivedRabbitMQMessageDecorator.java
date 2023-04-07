@@ -35,7 +35,7 @@ public class TracingAloReceivedRabbitMQMessageDecorator<T>
         return spanBuilderFactory.newSpanBuilder("atleon.rabbitmq.consume")
             .withTag("queue", queue)
             .withTag("exchange", message.getExchange())
-            .withTag("routingKey", message.getRoutingKey());
+            .withTag("routing_key", message.getRoutingKey());
     }
 
     @Override

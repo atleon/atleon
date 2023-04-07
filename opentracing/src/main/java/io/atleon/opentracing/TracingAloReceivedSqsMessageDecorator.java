@@ -30,9 +30,9 @@ public class TracingAloReceivedSqsMessageDecorator<T>
     @Override
     protected Tracer.SpanBuilder newSpanBuilder(SpanBuilderFactory spanBuilderFactory, ReceivedSqsMessage<T> message) {
         return spanBuilderFactory.newSpanBuilder("atleon.aws.sqs.consume")
-            .withTag("queueUrl", queueUrl)
-            .withTag("receiptHandle", message.receiptHandle())
-            .withTag("messageId", message.messageId());
+            .withTag("queue_url", queueUrl)
+            .withTag("receipt_handle", message.receiptHandle())
+            .withTag("message_id", message.messageId());
     }
 
     @Override
