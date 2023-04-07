@@ -4,6 +4,8 @@ import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
+import io.atleon.core.AloSignalListener;
+import io.atleon.core.AloSignalListenerConfig;
 import io.atleon.core.OrderManagingAcknowledgementOperator;
 import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -23,6 +25,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -229,7 +232,8 @@ public class AloKafkaReceiver<K, V> {
                 .transform(records -> maybeBlockRequestOnPartitionPositioning(records, assignment))
                 .map(record -> aloFactory.create(record, record.receiverOffset()::acknowledge, sink::tryEmitError))
                 .mergeWith(sink.asMono())
-                .transform(this::newOrderManagingAcknowledgementOperator);
+                .transform(this::newOrderManagingAcknowledgementOperator)
+                .transform(aloRecords -> loadAloSignalListener().map(aloRecords::doOnEach).orElse(aloRecords));
         }
 
         private AloFactory<ConsumerRecord<K, V>> loadAloFactory() {
@@ -280,6 +284,10 @@ public class AloKafkaReceiver<K, V> {
             long maxInFlight = ConfigLoading.loadLong(config, MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG)
                 .orElse(DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION);
             return new OrderManagingAcknowledgementOperator<>(alos, ConsumerRecordExtraction::topicPartition, maxInFlight);
+        }
+
+        private Optional<AloSignalListener<ConsumerRecord<K, V>>> loadAloSignalListener() {
+            return AloSignalListenerConfig.load(config, AloKafkaConsumerRecordSignalListener.class);
         }
 
         private static long nextClientIdCount(String clientId) {

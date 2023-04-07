@@ -25,10 +25,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * This example shows Atleon's integration with Micrometer. Under the hood, Project Reactor
- * provides most of the desirable metrics on Fluxes concerning subscription, requests, and data
- * emissions. This example includes Atleon's Kafka-specific integration with Micrometer in order to
- * surface metrics such as consumer lag, fetch, and request metrics.
+ * This example shows Atleon's integration with Micrometer. Atleon implements automatic meter
+ * instrumentation for Alo items as well as receiver streams. In addition, Atleon provides a bridge
+ * for native Kafka metrics to Micrometer such that metrics like lag, request rate, and throughput
+ * are exported alongside Atleon metrics.
  */
 public class KafkaMicrometer {
 
