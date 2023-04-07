@@ -398,6 +398,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * {@link AloSignalListener} (i.e. from atleon-micrometer), or using auto-listening (see Atleon
      * documentation for details)
      */
+    @Deprecated
     public AloFlux<T> metrics(String name, Map<String, String> tags) {
         Flux<Alo<T>> toWrap = wrapped.name(name);
         for (Map.Entry<String, String> entry : tags.entrySet()) {
