@@ -33,7 +33,7 @@ public class MeteringAloKafkaConsumerRecordSignalListener<K, V>
     @Override
     protected Iterable<Tag> baseTags() {
         return Arrays.asList(
-            Tag.of("source", "kafka-receive"),
+            Tag.of("type", "kafka-receive"),
             Tag.of("client", Objects.toString(clientId))
         );
     }

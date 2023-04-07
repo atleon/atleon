@@ -31,7 +31,7 @@ public class MeteringAloReceivedRabbitMQMessageSignalListener<T>
     @Override
     protected Iterable<Tag> baseTags() {
         return Arrays.asList(
-            Tag.of("source", "rabbitmq-receive"),
+            Tag.of("type", "rabbitmq-receive"),
             Tag.of("queue", Objects.toString(queue))
         );
     }

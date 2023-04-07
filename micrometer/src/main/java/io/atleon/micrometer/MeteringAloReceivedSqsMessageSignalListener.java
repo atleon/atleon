@@ -31,7 +31,7 @@ public class MeteringAloReceivedSqsMessageSignalListener<T>
     @Override
     protected Iterable<Tag> baseTags() {
         return Arrays.asList(
-            Tag.of("source", "sqs-receive"),
+            Tag.of("type", "sqs-receive"),
             Tag.of("queueUrl", Objects.toString(queueUrl))
         );
     }
