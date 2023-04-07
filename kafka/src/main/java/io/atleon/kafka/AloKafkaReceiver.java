@@ -223,14 +223,17 @@ public class AloKafkaReceiver<K, V> {
 
         public Flux<Alo<ConsumerRecord<K, V>>> receive(Collection<String> topics) {
             CompletableFuture<Collection<ReceiverPartition>> assignment = new CompletableFuture<>();
-            AloFactory<ConsumerRecord<K, V>> aloFactory = AloFactoryConfig.loadDecorated(config, AloKafkaConsumerRecordDecorator.class);
+            AloFactory<ConsumerRecord<K, V>> aloFactory = loadAloFactory();
             Sinks.Empty<Alo<ConsumerRecord<K, V>>> sink = Sinks.empty();
-            return newReceiver(topics, assignment::complete)
-                .receive()
+            return newReceiver(topics, assignment::complete).receive()
                 .transform(records -> maybeBlockRequestOnPartitionPositioning(records, assignment))
                 .map(record -> aloFactory.create(record, record.receiverOffset()::acknowledge, sink::tryEmitError))
                 .mergeWith(sink.asMono())
                 .transform(this::newOrderManagingAcknowledgementOperator);
+        }
+
+        private AloFactory<ConsumerRecord<K, V>> loadAloFactory() {
+            return AloFactoryConfig.loadDecorated(config, AloKafkaConsumerRecordDecorator.class);
         }
 
         private KafkaReceiver<K, V> newReceiver(

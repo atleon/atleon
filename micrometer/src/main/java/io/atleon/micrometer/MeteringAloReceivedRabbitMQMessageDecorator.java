@@ -8,6 +8,7 @@ import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * An {@link AloReceivedRabbitMQMessageDecorator} that decorates {@link Alo} elements with metering
@@ -30,7 +31,7 @@ public class MeteringAloReceivedRabbitMQMessageDecorator<T>
     protected Tags extractTags(ReceivedRabbitMQMessage<T> receivedRabbitMQMessage) {
         return Tags.of(
             Tag.of("type", "rabbitmq"),
-            Tag.of("queue", queue)
+            Tag.of("queue", Objects.toString(queue))
         );
     }
 }

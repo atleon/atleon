@@ -2,6 +2,7 @@ package io.atleon.aws.sqs;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
+import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -176,12 +177,18 @@ public class AloSqsReceiver<T> {
         }
 
         public Flux<Alo<ReceivedSqsMessage<T>>> receive(String queueUrl) {
-            AloFactory<ReceivedSqsMessage<T>> aloFactory = config.loadAloFactory(queueUrl);
+            AloFactory<ReceivedSqsMessage<T>> aloFactory = loadAloFactory(queueUrl);
             Sinks.Empty<Alo<ReceivedSqsMessage<T>>> sink = Sinks.empty();
-            return newReceiver()
-                .receiveManual(queueUrl)
+            return newReceiver().receiveManual(queueUrl)
                 .map(message -> deserialize(message, aloFactory, sink::tryEmitError))
                 .mergeWith(sink.asMono());
+        }
+
+        private AloFactory<ReceivedSqsMessage<T>> loadAloFactory(String queueUrl) {
+            return AloFactoryConfig.loadDecorated(
+                config.modifyAndGetProperties(it -> it.put(AloReceivedSqsMessageDecorator.QUEUE_URL_CONFIG, queueUrl)),
+                AloReceivedSqsMessageDecorator.class
+            );
         }
 
         private SqsReceiver newReceiver() {

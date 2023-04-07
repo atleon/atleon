@@ -1,8 +1,6 @@
 package io.atleon.aws.sqs;
 
 import io.atleon.aws.util.AwsConfig;
-import io.atleon.core.AloFactory;
-import io.atleon.core.AloFactoryConfig;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
@@ -13,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -40,10 +39,10 @@ public class SqsConfig {
             .build();
     }
 
-    public <T> AloFactory<ReceivedSqsMessage<T>> loadAloFactory(String queueUrl) {
-        Map<String, Object> propertiesWithQueue = new HashMap<>(properties);
-        propertiesWithQueue.put(AloReceivedSqsMessageDecorator.QUEUE_URL_CONFIG, queueUrl);
-        return AloFactoryConfig.loadDecorated(propertiesWithQueue, AloReceivedSqsMessageDecorator.class);
+    public Map<String, Object> modifyAndGetProperties(Consumer<Map<String, Object>> modifier) {
+        Map<String, Object> modifiedProperties = new HashMap<>(properties);
+        modifier.accept(modifiedProperties);
+        return modifiedProperties;
     }
 
     public <T extends Configurable> T loadConfiguredOrThrow(String property, Class<? extends T> type) {
