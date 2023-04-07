@@ -4,6 +4,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Signal;
 import reactor.core.publisher.SignalType;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -67,6 +68,15 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public AloFlux<T> doOnCancel(Runnable onCancel) {
         return new AloFlux<>(wrapped.doOnCancel(onCancel));
+    }
+
+    /**
+     * Add side effect behavior on each underlying emitted {@link Alo} item
+     *
+     * @see Flux#doOnEach(Consumer)
+     */
+    public AloFlux<T> doOnEachAlo(Consumer<? super Signal<Alo<T>>> signalConsumer) {
+        return new AloFlux<>(wrapped.doOnEach(signalConsumer));
     }
 
     /**
@@ -361,7 +371,12 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      *
      * @param name The name to be assigned to this sequence and used for Meter names
      * @param tags Tuples of tags used to create Meters
+     * @deprecated The backing method for this call is being deprecated by Reactor. It can be
+     * replaced with explicit listening using {@link #doOnEachAlo(Consumer)} and an
+     * {@link AloSignalListener} (i.e. from atleon-micrometer), or using auto-listening (see Atleon
+     * documentation for details)
      */
+    @Deprecated
     public AloFlux<T> metrics(String name, String... tags) {
         if (tags.length % 2 != 0) {
             throw new IllegalArgumentException("Tags must be key-value tuples");
@@ -378,6 +393,10 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      *
      * @param name The name to be assigned to this sequence and used for Meter names
      * @param tags Tags used during metric identification and creation
+     * @deprecated The backing method for this call is being deprecated by Reactor. It can be
+     * replaced with explicit listening using {@link #doOnEachAlo(Consumer)} and an
+     * {@link AloSignalListener} (i.e. from atleon-micrometer), or using auto-listening (see Atleon
+     * documentation for details)
      */
     public AloFlux<T> metrics(String name, Map<String, String> tags) {
         Flux<Alo<T>> toWrap = wrapped.name(name);

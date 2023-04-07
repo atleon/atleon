@@ -4,6 +4,8 @@ import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
+import io.atleon.core.AloSignalListener;
+import io.atleon.core.AloSignalListenerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
@@ -181,7 +183,8 @@ public class AloSqsReceiver<T> {
             Sinks.Empty<Alo<ReceivedSqsMessage<T>>> sink = Sinks.empty();
             return newReceiver().receiveManual(queueUrl)
                 .map(message -> deserialize(message, aloFactory, sink::tryEmitError))
-                .mergeWith(sink.asMono());
+                .mergeWith(sink.asMono())
+                .transform(aloMessages -> loadAloSignalListener(queueUrl).map(aloMessages::doOnEach).orElse(aloMessages));
         }
 
         private AloFactory<ReceivedSqsMessage<T>> loadAloFactory(String queueUrl) {
@@ -204,6 +207,13 @@ public class AloSqsReceiver<T> {
                 .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(SqsReceiverOptions.DEFAULT_CLOSE_TIMEOUT))
                 .build();
             return SqsReceiver.create(receiverOptions);
+        }
+
+        private Optional<AloSignalListener<ReceivedSqsMessage<T>>> loadAloSignalListener(String queueUrl) {
+            return AloSignalListenerConfig.load(
+                config.modifyAndGetProperties(it -> it.put(AloReceivedSqsMessageSignalListener.QUEUE_URL_CONFIG, queueUrl)),
+                AloReceivedSqsMessageSignalListener.class
+            );
         }
 
         private Alo<ReceivedSqsMessage<T>> deserialize(

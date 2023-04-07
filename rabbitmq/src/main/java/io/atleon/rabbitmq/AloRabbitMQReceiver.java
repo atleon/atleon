@@ -4,6 +4,8 @@ import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
+import io.atleon.core.AloSignalListener;
+import io.atleon.core.AloSignalListenerConfig;
 import io.atleon.util.Defaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +16,6 @@ import reactor.rabbitmq.ConsumeOptions;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.ReceiverOptions;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -140,7 +141,8 @@ public class AloRabbitMQReceiver<T> {
             Sinks.Empty<Alo<ReceivedRabbitMQMessage<T>>> sink = Sinks.empty();
             return newReceiver().consumeManualAck(queue, newConsumeOptions())
                 .map(delivery -> deserialize(delivery, aloFactory, sink::tryEmitError))
-                .mergeWith(sink.asMono());
+                .mergeWith(sink.asMono())
+                .transform(aloMessages -> loadAloSignalListener(queue).map(aloMessages::doOnEach).orElse(aloMessages));
         }
 
         private AloFactory<ReceivedRabbitMQMessage<T>> loadAloFactory(String queue) {
@@ -159,6 +161,13 @@ public class AloRabbitMQReceiver<T> {
         private ConsumeOptions newConsumeOptions() {
             return new ConsumeOptions()
                 .qos(config.loadInt(QOS_CONFIG).orElse(Defaults.PREFETCH));
+        }
+
+        private Optional<AloSignalListener<ReceivedRabbitMQMessage<T>>> loadAloSignalListener(String queue) {
+            return AloSignalListenerConfig.load(
+                config.modifyAndGetProperties(it -> it.put(AloReceivedRabbitMQMessageSignalListener.QUEUE_CONFIG, queue)),
+                AloReceivedRabbitMQMessageSignalListener.class
+            );
         }
 
         private Alo<ReceivedRabbitMQMessage<T>> deserialize(
