@@ -373,8 +373,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param tags Tuples of tags used to create Meters
      * @deprecated The backing method for this call is being deprecated by Reactor. It can be
      * replaced with explicit listening using {@link #doOnEachAlo(Consumer)} and an
-     * {@link AloSignalListener} (i.e. from atleon-micrometer), or using auto-listening (see Atleon
-     * documentation for details)
+     * {@link AloSignalObserver} (i.e. from atleon-micrometer), or using auto-observation (see
+     * Atleon documentation for details)
      */
     @Deprecated
     public AloFlux<T> metrics(String name, String... tags) {
@@ -395,8 +395,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param tags Tags used during metric identification and creation
      * @deprecated The backing method for this call is being deprecated by Reactor. It can be
      * replaced with explicit listening using {@link #doOnEachAlo(Consumer)} and an
-     * {@link AloSignalListener} (i.e. from atleon-micrometer), or using auto-listening (see Atleon
-     * documentation for details)
+     * {@link AloSignalObserver} (i.e. from atleon-micrometer), or using auto-observation (see
+     * Atleon documentation for details)
      */
     @Deprecated
     public AloFlux<T> metrics(String name, Map<String, String> tags) {

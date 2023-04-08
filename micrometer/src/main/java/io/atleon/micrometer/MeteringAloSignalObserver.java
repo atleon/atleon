@@ -1,7 +1,7 @@
 package io.atleon.micrometer;
 
 import io.atleon.core.Alo;
-import io.atleon.core.AloSignalListener;
+import io.atleon.core.AloSignalObserver;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tag;
@@ -17,30 +17,30 @@ import java.util.function.Function;
  *
  * @param <T> The type of data exposed by Alo items in emitted Signal values
  */
-public abstract class MeteringAloSignalListener<T> implements AloSignalListener<T> {
+public abstract class MeteringAloSignalObserver<T> implements AloSignalObserver<T> {
 
     private final MeterFacade meterFacade;
 
     private final String name;
 
-    protected MeteringAloSignalListener(String name) {
+    protected MeteringAloSignalObserver(String name) {
         this(Metrics.globalRegistry, name);
     }
 
-    protected MeteringAloSignalListener(MeterRegistry meterRegistry, String name) {
+    protected MeteringAloSignalObserver(MeterRegistry meterRegistry, String name) {
         this.meterFacade = MeterFacade.wrap(meterRegistry);
         this.name = name;
     }
 
-    public static <T> AloSignalListener<T> composed(String name, String... tagKeyValues) {
+    public static <T> AloSignalObserver<T> composed(String name, String... tagKeyValues) {
         return new Composed<>(name, Tags.of(tagKeyValues), value -> Tags.empty());
     }
 
-    public static <T> AloSignalListener<T> composed(String name, Function<? super T, Iterable<Tag>> valueTagsExtractor) {
+    public static <T> AloSignalObserver<T> composed(String name, Function<? super T, Iterable<Tag>> valueTagsExtractor) {
         return new Composed(name, Tags.empty(), valueTagsExtractor);
     }
 
-    public static <T> AloSignalListener<T>
+    public static <T> AloSignalObserver<T>
     composed(String name, Iterable<Tag> baseTags, Function<? super T, Iterable<Tag>> valueTagsExtractor) {
         return new Composed<>(name, Tags.of(baseTags), valueTagsExtractor);
     }
@@ -71,7 +71,7 @@ public abstract class MeteringAloSignalListener<T> implements AloSignalListener<
         return Tags.empty();
     }
 
-    private static final class Composed<T> extends MeteringAloSignalListener<T> {
+    private static final class Composed<T> extends MeteringAloSignalObserver<T> {
 
         private final Tags baseTags;
 

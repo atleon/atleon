@@ -1,6 +1,6 @@
 package io.atleon.micrometer;
 
-import io.atleon.kafka.AloKafkaConsumerRecordSignalListener;
+import io.atleon.kafka.AloKafkaConsumerRecordSignalObserver;
 import io.atleon.util.ConfigLoading;
 import io.micrometer.core.instrument.Tag;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -11,20 +11,20 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * An {@link AloKafkaConsumerRecordSignalListener} that applies metering to emitted
+ * An {@link AloKafkaConsumerRecordSignalObserver} that applies metering to emitted
  * {@link reactor.core.publisher.Signal}s referencing {@link io.atleon.core.Alo} of Kafka
  * {@link ConsumerRecord}.
  *
  * @param <K> The types of keys in records consumed by this listener
  * @param <V> The types of values in records consumed by this listener
  */
-public class MeteringAloKafkaConsumerRecordSignalListener<K, V>
-    extends MeteringAloSignalListener<ConsumerRecord<K, V>>
-    implements AloKafkaConsumerRecordSignalListener<K, V> {
+public class MeteringAloKafkaConsumerRecordSignalObserver<K, V>
+    extends MeteringAloSignalObserver<ConsumerRecord<K, V>>
+    implements AloKafkaConsumerRecordSignalObserver<K, V> {
 
     private String clientId = null;
 
-    public MeteringAloKafkaConsumerRecordSignalListener() {
+    public MeteringAloKafkaConsumerRecordSignalObserver() {
         super("atleon.alo.publisher.signal.kafka.receive");
     }
 

@@ -1,6 +1,6 @@
 package io.atleon.micrometer;
 
-import io.atleon.aws.sqs.AloReceivedSqsMessageSignalListener;
+import io.atleon.aws.sqs.AloReceivedSqsMessageSignalObserver;
 import io.atleon.aws.sqs.ReceivedSqsMessage;
 import io.atleon.util.ConfigLoading;
 import io.micrometer.core.instrument.Tag;
@@ -10,19 +10,19 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * An {@link AloReceivedSqsMessageSignalListener} that applies metering to emitted
+ * An {@link AloReceivedSqsMessageSignalObserver} that applies metering to emitted
  * {@link reactor.core.publisher.Signal}s referencing {@link io.atleon.core.Alo} of
  * {@link ReceivedSqsMessage}.
  *
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedSqsMessage}s
  */
-public class MeteringAloReceivedSqsMessageSignalListener<T>
-    extends MeteringAloSignalListener<ReceivedSqsMessage<T>>
-    implements AloReceivedSqsMessageSignalListener<T> {
+public class MeteringAloReceivedSqsMessageSignalObserver<T>
+    extends MeteringAloSignalObserver<ReceivedSqsMessage<T>>
+    implements AloReceivedSqsMessageSignalObserver<T> {
 
     private String queueUrl = null;
 
-    public MeteringAloReceivedSqsMessageSignalListener() {
+    public MeteringAloReceivedSqsMessageSignalObserver() {
         super("atleon.alo.publisher.signal.sqs.receive");
     }
 

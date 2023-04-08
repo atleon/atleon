@@ -4,8 +4,8 @@ import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
-import io.atleon.core.AloSignalListener;
-import io.atleon.core.AloSignalListenerConfig;
+import io.atleon.core.AloSignalObserver;
+import io.atleon.core.AloSignalObserverConfig;
 import io.atleon.core.OrderManagingAcknowledgementOperator;
 import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -233,7 +233,7 @@ public class AloKafkaReceiver<K, V> {
                 .map(record -> aloFactory.create(record, record.receiverOffset()::acknowledge, sink::tryEmitError))
                 .mergeWith(sink.asMono())
                 .transform(this::newOrderManagingAcknowledgementOperator)
-                .transform(aloRecords -> loadAloSignalListener().map(aloRecords::doOnEach).orElse(aloRecords));
+                .transform(aloRecords -> loadAloSignalObserver().map(aloRecords::doOnEach).orElse(aloRecords));
         }
 
         private AloFactory<ConsumerRecord<K, V>> loadAloFactory() {
@@ -286,8 +286,8 @@ public class AloKafkaReceiver<K, V> {
             return new OrderManagingAcknowledgementOperator<>(alos, ConsumerRecordExtraction::topicPartition, maxInFlight);
         }
 
-        private Optional<AloSignalListener<ConsumerRecord<K, V>>> loadAloSignalListener() {
-            return AloSignalListenerConfig.load(config, AloKafkaConsumerRecordSignalListener.class);
+        private Optional<AloSignalObserver<ConsumerRecord<K, V>>> loadAloSignalObserver() {
+            return AloSignalObserverConfig.load(config, AloKafkaConsumerRecordSignalObserver.class);
         }
 
         private static long nextClientIdCount(String clientId) {

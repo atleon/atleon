@@ -13,8 +13,8 @@ import java.util.List;
 public class AtleonManagementAutoConfiguration {
 
     @Bean
-    public AloStreamStatusService aloStreamStatusService(List<ConfiguredAloStream> listeners) {
-        return new ConfiguredAloStreamStatusService(listeners);
+    public AloStreamStatusService aloStreamStatusService(List<ConfiguredAloStream> streams) {
+        return new ConfiguredAloStreamStatusService(streams);
     }
 
     @Configuration(proxyBeanMethods = false)

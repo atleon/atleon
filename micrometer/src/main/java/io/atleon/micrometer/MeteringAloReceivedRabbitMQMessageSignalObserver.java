@@ -1,6 +1,6 @@
 package io.atleon.micrometer;
 
-import io.atleon.rabbitmq.AloReceivedRabbitMQMessageSignalListener;
+import io.atleon.rabbitmq.AloReceivedRabbitMQMessageSignalObserver;
 import io.atleon.rabbitmq.ReceivedRabbitMQMessage;
 import io.atleon.util.ConfigLoading;
 import io.micrometer.core.instrument.Tag;
@@ -10,19 +10,19 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * An {@link AloReceivedRabbitMQMessageSignalListener} that applies metering to emitted
+ * An {@link AloReceivedRabbitMQMessageSignalObserver} that applies metering to emitted
  * {@link reactor.core.publisher.Signal}s referencing {@link io.atleon.core.Alo} of
  * {@link ReceivedRabbitMQMessage}.
  *
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedRabbitMQMessage}s
  */
-public class MeteringAloReceivedRabbitMQMessageSignalListener<T>
-    extends MeteringAloSignalListener<ReceivedRabbitMQMessage<T>>
-    implements AloReceivedRabbitMQMessageSignalListener<T> {
+public class MeteringAloReceivedRabbitMQMessageSignalObserver<T>
+    extends MeteringAloSignalObserver<ReceivedRabbitMQMessage<T>>
+    implements AloReceivedRabbitMQMessageSignalObserver<T> {
 
     private String queue = null;
 
-    public MeteringAloReceivedRabbitMQMessageSignalListener() {
+    public MeteringAloReceivedRabbitMQMessageSignalObserver() {
         super("atleon.alo.publisher.signal.rabbitmq.receive");
     }
 

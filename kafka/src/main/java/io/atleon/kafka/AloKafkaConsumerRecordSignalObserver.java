@@ -1,6 +1,6 @@
 package io.atleon.kafka;
 
-import io.atleon.core.AloSignalListener;
+import io.atleon.core.AloSignalObserver;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 /**
@@ -10,12 +10,12 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * <p>
  * In order to have implementations automatically applied, you can use the
  * {@link java.util.ServiceLoader} SPI and add the class names to
- * {@code META-INF/services/io.atleon.aws.sqs.AloKafkaConsumerRecordSignalListener} in your
+ * {@code META-INF/services/io.atleon.aws.sqs.AloKafkaConsumerRecordSignalObserver} in your
  * project's resources directory.
  *
  * @param <K> The types of keys in records consumed by this listener
  * @param <V> The types of values in records consumed by this listener
  */
-public interface AloKafkaConsumerRecordSignalListener<K, V> extends AloSignalListener<ConsumerRecord<K, V>> {
+public interface AloKafkaConsumerRecordSignalObserver<K, V> extends AloSignalObserver<ConsumerRecord<K, V>> {
 
 }
