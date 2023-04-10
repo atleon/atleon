@@ -46,21 +46,12 @@ public final class AloDecoratorConfig {
         );
     }
 
-    private static <T> Optional<AloDecorator<T>>
+    private static <T> Optional<List<AloDecorator<T>>>
     instantiatePredefined(Map<String, ?> properties, Class<? extends AloDecorator<T>> superType, String typeName) {
         if (typeName.equalsIgnoreCase(DECORATOR_TYPE_AUTO)) {
-            List<AloDecorator<T>> decorators = ConfigLoading.loadListOfConfiguredServices(superType, properties);
-            return Optional.of(decorators.isEmpty() ? new NoOp<>() : AloDecorator.combine(decorators));
+            return Optional.of(ConfigLoading.loadListOfConfiguredServices(superType, properties));
         } else {
             return Optional.empty();
-        }
-    }
-
-    private static final class NoOp<T> implements AloDecorator<T> {
-
-        @Override
-        public Alo<T> decorate(Alo<T> alo) {
-            return alo;
         }
     }
 }
