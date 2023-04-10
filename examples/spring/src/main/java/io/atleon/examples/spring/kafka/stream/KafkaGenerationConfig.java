@@ -28,6 +28,7 @@ public class KafkaGenerationConfig implements AloStreamConfig {
 
     public AloKafkaSender<Long, Long> buildKafkaLongSender() {
         KafkaConfigSource configSource = KafkaConfigSource.useClientIdAsName()
+            .withAll(kafkaProperties)
             .withClientId(name())
             .withProducerOrderingAndResiliencyConfigs()
             .withKeySerializer(LongSerializer.class)

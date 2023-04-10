@@ -13,8 +13,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * {@code META-INF/services/io.atleon.aws.sqs.AloKafkaConsumerRecordSignalObserver} in your
  * project's resources directory.
  *
- * @param <K> The types of keys in records consumed by this listener
- * @param <V> The types of values in records consumed by this listener
+ * @param <K> The types of keys in records consumed by this observer
+ * @param <V> The types of values in records consumed by this observer
  */
 public interface AloKafkaConsumerRecordSignalObserver<K, V> extends AloSignalObserver<ConsumerRecord<K, V>> {
 

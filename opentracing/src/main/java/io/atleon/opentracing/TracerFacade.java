@@ -6,7 +6,6 @@ import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
 import io.opentracing.tag.Tags;
-import io.opentracing.util.GlobalTracer;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -23,10 +22,6 @@ public final class TracerFacade {
 
     private TracerFacade(Tracer tracer) {
         this.tracer = tracer;
-    }
-
-    public static TracerFacade global() {
-        return wrap(GlobalTracer.get());
     }
 
     public static TracerFacade wrap(Tracer tracer) {

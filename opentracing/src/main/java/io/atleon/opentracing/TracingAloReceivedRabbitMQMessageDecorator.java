@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  *
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedRabbitMQMessage}s
  */
-public class TracingAloReceivedRabbitMQMessageDecorator<T>
+public final class TracingAloReceivedRabbitMQMessageDecorator<T>
     extends TracingAloConsumptionDecorator<ReceivedRabbitMQMessage<T>>
     implements AloReceivedRabbitMQMessageDecorator<T> {
 
@@ -32,7 +32,7 @@ public class TracingAloReceivedRabbitMQMessageDecorator<T>
 
     @Override
     protected Tracer.SpanBuilder newSpanBuilder(SpanBuilderFactory spanBuilderFactory, ReceivedRabbitMQMessage<T> message) {
-        return spanBuilderFactory.newSpanBuilder("atleon.rabbitmq.consume")
+        return spanBuilderFactory.newSpanBuilder("atleon.receive.rabbitmq")
             .withTag("queue", queue)
             .withTag("exchange", message.getExchange())
             .withTag("routing_key", message.getRoutingKey());

@@ -20,7 +20,7 @@ import java.util.Map;
  * @param <K> The types of keys in records decorated by this decorator
  * @param <V> The types of values in records decorated by this decorator
  */
-public class TracingAloKafkaConsumerRecordDecorator<K, V>
+public final class TracingAloKafkaConsumerRecordDecorator<K, V>
     extends TracingAloConsumptionDecorator<ConsumerRecord<K, V>>
     implements AloKafkaConsumerRecordDecorator<K, V> {
 
@@ -37,9 +37,9 @@ public class TracingAloKafkaConsumerRecordDecorator<K, V>
 
     @Override
     protected Tracer.SpanBuilder newSpanBuilder(SpanBuilderFactory spanBuilderFactory, ConsumerRecord<K, V> record) {
-        return spanBuilderFactory.newSpanBuilder("atleon.kafka.consume")
-            .withTag("client", clientId)
-            .withTag("group", groupId)
+        return spanBuilderFactory.newSpanBuilder("atleon.receive.kafka")
+            .withTag("client_id", clientId)
+            .withTag("group_id", groupId)
             .withTag("topic", record.topic())
             .withTag("partition", record.partition())
             .withTag("offset", record.offset());

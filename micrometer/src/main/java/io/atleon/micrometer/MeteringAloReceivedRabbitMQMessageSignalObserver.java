@@ -4,8 +4,8 @@ import io.atleon.rabbitmq.AloReceivedRabbitMQMessageSignalObserver;
 import io.atleon.rabbitmq.ReceivedRabbitMQMessage;
 import io.atleon.util.ConfigLoading;
 import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Tags;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 
@@ -16,14 +16,14 @@ import java.util.Objects;
  *
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedRabbitMQMessage}s
  */
-public class MeteringAloReceivedRabbitMQMessageSignalObserver<T>
-    extends MeteringAloSignalObserver<ReceivedRabbitMQMessage<T>>
+public final class MeteringAloReceivedRabbitMQMessageSignalObserver<T>
+    extends MeteringAloSignalObserver<ReceivedRabbitMQMessage<T>, Void>
     implements AloReceivedRabbitMQMessageSignalObserver<T> {
 
     private String queue = null;
 
     public MeteringAloReceivedRabbitMQMessageSignalObserver() {
-        super("atleon.alo.publisher.signal.rabbitmq.receive");
+        super("atleon.alo.publisher.signal.receive.rabbitmq");
     }
 
     @Override
@@ -33,7 +33,17 @@ public class MeteringAloReceivedRabbitMQMessageSignalObserver<T>
     }
 
     @Override
+    protected Void extractKey(ReceivedRabbitMQMessage<T> value) {
+        return null;
+    }
+
+    @Override
     protected Iterable<Tag> baseTags() {
-        return Collections.singletonList(Tag.of("queue", Objects.toString(queue)));
+        return Tags.of("queue", Objects.toString(queue));
+    }
+
+    @Override
+    protected Iterable<Tag> extractTags(Void key) {
+        return Tags.empty();
     }
 }

@@ -4,6 +4,7 @@ import io.atleon.aws.sqs.AloReceivedSqsMessageSignalObserver;
 import io.atleon.aws.sqs.ReceivedSqsMessage;
 import io.atleon.util.ConfigLoading;
 import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Tags;
 
 import java.util.Collections;
 import java.util.Map;
@@ -16,14 +17,14 @@ import java.util.Objects;
  *
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedSqsMessage}s
  */
-public class MeteringAloReceivedSqsMessageSignalObserver<T>
-    extends MeteringAloSignalObserver<ReceivedSqsMessage<T>>
+public final class MeteringAloReceivedSqsMessageSignalObserver<T>
+    extends MeteringAloSignalObserver<ReceivedSqsMessage<T>, Void>
     implements AloReceivedSqsMessageSignalObserver<T> {
 
     private String queueUrl = null;
 
     public MeteringAloReceivedSqsMessageSignalObserver() {
-        super("atleon.alo.publisher.signal.sqs.receive");
+        super("atleon.alo.publisher.signal.receive.aws.sqs");
     }
 
     @Override
@@ -33,7 +34,17 @@ public class MeteringAloReceivedSqsMessageSignalObserver<T>
     }
 
     @Override
+    protected Void extractKey(ReceivedSqsMessage<T> value) {
+        return null;
+    }
+
+    @Override
     protected Iterable<Tag> baseTags() {
         return Collections.singletonList(Tag.of("queue_url", Objects.toString(queueUrl)));
+    }
+
+    @Override
+    protected Iterable<Tag> extractTags(Void key) {
+        return Tags.empty();
     }
 }

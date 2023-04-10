@@ -33,7 +33,7 @@ public class SqsProcessingConfig implements AloStreamConfig {
     }
 
     public AloSqsReceiver<Long> buildReceiver() {
-        SqsConfigSource configSource = SqsConfigSource.unnamed()
+        SqsConfigSource configSource = SqsConfigSource.named(name())
             .withAll(localAwsProperties)
             .with(SqsConfig.ENDPOINT_OVERRIDE_CONFIG, endpointOverride)
             .with(AloSqsReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName());

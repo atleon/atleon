@@ -17,14 +17,14 @@ import java.util.Objects;
  * @param <K> The types of keys in records decorated by this decorator
  * @param <V> The types of values in records decorated by this decorator
  */
-public class MeteringAloKafkaConsumerRecordDecorator<K, V>
-    extends MeteringAloDecorator<ConsumerRecord<K, V>>
+public final class MeteringAloKafkaConsumerRecordDecorator<K, V>
+    extends MeteringAloDecorator<ConsumerRecord<K, V>, String>
     implements AloKafkaConsumerRecordDecorator<K, V> {
 
     private String clientId = null;
 
     public MeteringAloKafkaConsumerRecordDecorator() {
-        super("atleon.alo.kafka.receive");
+        super("atleon.alo.receive.kafka");
     }
 
     @Override
@@ -34,10 +34,15 @@ public class MeteringAloKafkaConsumerRecordDecorator<K, V>
     }
 
     @Override
-    protected Tags extractTags(ConsumerRecord<K, V> consumerRecord) {
+    protected String extractKey(ConsumerRecord<K, V> consumerRecord) {
+        return consumerRecord.topic();
+    }
+
+    @Override
+    protected Iterable<Tag> extractTags(String topic) {
         return Tags.of(
-            Tag.of("client", Objects.toString(clientId)),
-            Tag.of("topic", consumerRecord.topic())
+            Tag.of("client_id", Objects.toString(clientId)),
+            Tag.of("topic", topic)
         );
     }
 }

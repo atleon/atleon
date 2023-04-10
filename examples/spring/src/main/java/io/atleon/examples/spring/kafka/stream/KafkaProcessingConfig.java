@@ -30,6 +30,7 @@ public class KafkaProcessingConfig implements AloStreamConfig {
 
     public AloKafkaReceiver<Long, Long> buildKafkaLongReceiver() {
         KafkaConfigSource configSource = KafkaConfigSource.useClientIdAsName()
+            .withAll(kafkaProperties)
             .withClientId(name())
             .withConsumerGroupId(KafkaProcessing.class.getSimpleName())
             .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
