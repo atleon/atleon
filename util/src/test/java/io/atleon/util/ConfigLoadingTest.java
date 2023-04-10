@@ -109,7 +109,9 @@ class ConfigLoadingTest {
             configs,
             "configurable",
             TestConfigurable.class,
-            typeName -> typeName.equalsIgnoreCase("test") ? Optional.of(new TestConfigurable()) : Optional.empty()
+            typeName -> typeName.equalsIgnoreCase("test")
+                ? Optional.of(Collections.singletonList(new TestConfigurable()))
+                : Optional.empty()
         );
 
         assertTrue(result.isPresent());

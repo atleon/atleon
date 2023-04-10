@@ -1,7 +1,6 @@
 package io.atleon.core;
 
 import io.atleon.util.ConfigLoading;
-import reactor.core.publisher.Signal;
 
 import java.util.List;
 import java.util.Map;
@@ -47,24 +46,15 @@ public final class AloSignalObserverConfig {
         );
     }
 
-    private static <T> Optional<AloSignalObserver<T>> instantiatePredefined(
+    private static <T> Optional<List<AloSignalObserver<T>>> instantiatePredefined(
         Map<String, ?> properties,
         Class<? extends AloSignalObserver<T>> superType,
         String typeName
     ) {
         if (typeName.equalsIgnoreCase(SIGNAL_OBSERVER_TYPE_AUTO)) {
-            List<AloSignalObserver<T>> observers = ConfigLoading.loadListOfConfiguredServices(superType, properties);
-            return Optional.of(observers.isEmpty() ? new NoOp<>() : AloSignalObserver.combine(observers));
+            return Optional.of(ConfigLoading.loadListOfConfiguredServices(superType, properties));
         } else {
             return Optional.empty();
-        }
-    }
-
-    private static final class NoOp<T> implements AloSignalObserver<T> {
-
-        @Override
-        public void accept(Signal<Alo<T>> signal) {
-
         }
     }
 }

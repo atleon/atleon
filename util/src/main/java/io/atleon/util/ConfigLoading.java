@@ -58,8 +58,9 @@ public final class ConfigLoading {
         Class<? extends T> type,
         Function<String, Optional<T>> predefinedTypeInstantiator
     ) {
-        Function<String, T> instantiator = newInstantiatorWithPredefinedTypes(type, predefinedTypeInstantiator);
-        Optional<T> result = load(configs, property, value -> coerce(type, value, instantiator));
+        Function<String, T> instantiator = typeName ->
+            predefinedTypeInstantiator.apply(typeName).orElseGet(() -> Instantiation.oneTyped(type, typeName));
+        Optional<T> result = load(configs, property, value -> coerce(value, type, instantiator));
         result.ifPresent(configurable -> configurable.configure(configs));
         return result;
     }
@@ -90,7 +91,7 @@ public final class ConfigLoading {
 
     public static <T> Optional<T>
     loadParseable(Map<String, ?> configs, String property, Class<T> type, Function<? super String, T> parser) {
-        return load(configs, property, value -> coerce(type, value, parser));
+        return load(configs, property, value -> coerce(value, type, parser));
     }
 
     public static <T extends Configurable> List<T>
@@ -113,7 +114,7 @@ public final class ConfigLoading {
         Map<String, ?> configs,
         String property,
         Class<? extends T> type,
-        Function<String, Optional<T>> predefinedTypeInstantiator
+        Function<String, Optional<List<T>>> predefinedTypeInstantiator
     ) {
         Optional<List<T>> result =
             loadListOfInstancesWithPredefinedTypes(configs, property, type, predefinedTypeInstantiator);
@@ -129,11 +130,10 @@ public final class ConfigLoading {
         Map<String, ?> configs,
         String property,
         Class<? extends T> type,
-        Function<String, Optional<T>> predefinedTypeInstantiator
+        Function<String, Optional<List<T>>> predefinedTypeInstantiator
     ) {
-        Function<String, T> instantiator = newInstantiatorWithPredefinedTypes(type, predefinedTypeInstantiator);
-        return ConfigLoading.loadStream(configs, property, value -> coerce(type, value, instantiator))
-            .map(stream -> stream.collect(Collectors.toList()));
+        return ConfigLoading.loadStream(configs, property, Function.identity())
+            .map(stream -> coerceToList(stream, type, predefinedTypeInstantiator));
     }
 
     public static Optional<Set<String>> loadSetOfString(Map<String, ?> configs, String property) {
@@ -160,12 +160,29 @@ public final class ConfigLoading {
         }
     }
 
-    private static <T> Function<String, T>
-    newInstantiatorWithPredefinedTypes(Class<? extends T> type, Function<String, Optional<T>> predefinedTypeInstantiator) {
-        return typeName -> predefinedTypeInstantiator.apply(typeName).orElseGet(() -> Instantiation.oneTyped(type, typeName));
+    private static <T> List<T> coerceToList(
+        Stream<Object> stream,
+        Class<? extends T> type,
+        Function<String, Optional<List<T>>> predefinedTypeInstantiator
+    ) {
+        Function<String, T> instantiator = typeName -> Instantiation.oneTyped(type, typeName);
+        return stream.flatMap(object -> coerceToList(object, type, instantiator, predefinedTypeInstantiator).stream())
+            .collect(Collectors.toList());
     }
 
-    private static <T> T coerce(Class<? extends T> toType, Object value, Function<? super String, T> parser) {
+    private static <T> List<T> coerceToList(
+        Object value,
+        Class<? extends T> toType,
+        Function<? super String, T> parser,
+        Function<String, Optional<List<T>>> predefinedTypeInstantiator
+    ) {
+        Optional<List<T>> instantiated = value instanceof CharSequence
+            ? predefinedTypeInstantiator.apply(value.toString())
+            : Optional.empty();
+        return instantiated.orElseGet(() -> Collections.singletonList(coerce(value, toType, parser)));
+    }
+
+    private static <T> T coerce(Object value, Class<? extends T> toType, Function<? super String, T> parser) {
         if (toType.isInstance(value)) {
             return toType.cast(value);
         } else if (value instanceof Class) {
