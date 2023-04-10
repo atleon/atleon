@@ -20,5 +20,5 @@ public interface AloReceivedRabbitMQMessageSignalObserver<T> extends AloSignalOb
      * This parameter will be populated during configuration to let the decorator know the name of
      * the queue that is being consumed from.
      */
-    String QUEUE_CONFIG = "alo.signal.listener.rabbitmq.queue";
+    String QUEUE_CONFIG = "alo.signal.observer.rabbitmq.queue";
 }

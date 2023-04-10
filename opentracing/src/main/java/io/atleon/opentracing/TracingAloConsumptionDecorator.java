@@ -8,6 +8,7 @@ import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
 import io.opentracing.propagation.TextMapAdapter;
 import io.opentracing.tag.Tags;
+import io.opentracing.util.GlobalTracer;
 
 import java.util.Map;
 import java.util.Objects;
@@ -20,7 +21,15 @@ import java.util.Optional;
  */
 public abstract class TracingAloConsumptionDecorator<T> implements AloDecorator<T> {
 
-    private final TracerFacade tracerFacade = TracerFacade.global();
+    private final TracerFacade tracerFacade;
+
+    protected TracingAloConsumptionDecorator() {
+        this(GlobalTracer.get());
+    }
+
+    protected TracingAloConsumptionDecorator(Tracer tracer) {
+        this.tracerFacade = TracerFacade.wrap(tracer);
+    }
 
     @Override
     public final Alo<T> decorate(Alo<T> alo) {

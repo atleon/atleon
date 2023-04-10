@@ -4,78 +4,62 @@ import io.atleon.core.AbstractDecoratingAlo;
 import io.atleon.core.Alo;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Decorates {@link Alo} elements with metering, e.g. start counts, processing duration, etc.
+ * Decorates {@link Alo} elements with metering, e.g. processing duration
  *
  * @param <T> The type of data item exposed by the decorated {@link Alo}
  */
 public class MeteringAlo<T> extends AbstractDecoratingAlo<T> {
 
-    protected final MeterFacade meterFacade;
+    protected final AloMeters meters;
 
-    protected final MeterKey baseMeterKey;
+    protected final long startedAtNano;
 
-    protected final Instant startedAt;
-
-    private MeteringAlo(Alo<T> delegate, MeterFacade meterFacade, MeterKey baseMeterKey, Instant startedAt) {
+    private MeteringAlo(Alo<T> delegate, AloMeters meters, long startedAtNano) {
         super(delegate);
-        this.meterFacade = meterFacade;
-        this.baseMeterKey = baseMeterKey;
-        this.startedAt = startedAt;
+        this.meters = meters;
+        this.startedAtNano = startedAtNano;
     }
 
-    public static <T> MeteringAlo<T> start(Alo<T> delegate, MeterFacade meterFacade, MeterKey baseMeterKey) {
-        meterFacade.counter(baseMeterKey.withNameQualifier("start")).increment();
-        return new MeteringAlo<>(delegate, meterFacade, baseMeterKey, Instant.now());
+    public static <T> MeteringAlo<T> start(Alo<T> delegate, AloMeters meters) {
+        return new MeteringAlo<>(delegate, meters, System.nanoTime());
     }
 
     @Override
     public <R> Alo<R> map(Function<? super T, ? extends R> mapper) {
-        return new MeteringAlo<>(delegate.map(mapper), meterFacade, baseMeterKey, startedAt);
+        return new MeteringAlo<>(delegate.map(mapper), meters, startedAtNano);
     }
 
     @Override
     public Runnable getAcknowledger() {
-        return applyMetering(delegate.getAcknowledger(), meterFacade, baseMeterKey, startedAt);
+        return applyMetering(delegate.getAcknowledger(), meters, startedAtNano);
     }
 
     @Override
     public Consumer<? super Throwable> getNacknowledger() {
-        return applyMetering(delegate.getNacknowledger(), meterFacade, baseMeterKey, startedAt);
+        return applyMetering(delegate.getNacknowledger(), meters, startedAtNano);
     }
 
-    private static Runnable applyMetering(
-        Runnable acknowledger,
-        MeterFacade meterFacade,
-        MeterKey baseMeterKey,
-        Instant startedAt
-    ) {
+    private static Runnable applyMetering(Runnable acknowledger, AloMeters meters, long startedAtNano) {
         return () -> {
             try {
                 acknowledger.run();
             } finally {
-                meterFacade.timer(baseMeterKey.withNameQualifierAndTag("duration", "result", "success"))
-                    .record(Duration.between(startedAt, Instant.now()));
+                meters.success(Duration.ofNanos(System.nanoTime() - startedAtNano));
             }
         };
     }
 
-    private static Consumer<Throwable> applyMetering(
-        Consumer<? super Throwable> nacknowledger,
-        MeterFacade meterFacade,
-        MeterKey baseMeterKey,
-        Instant startedAt
-    ) {
+    private static Consumer<Throwable>
+    applyMetering(Consumer<? super Throwable> nacknowledger, AloMeters meters, long startedAtNano) {
         return error -> {
             try {
                 nacknowledger.accept(error);
             } finally {
-                meterFacade.timer(baseMeterKey.withNameQualifierAndTag("duration", "result", "failure"))
-                    .record(Duration.between(startedAt, Instant.now()));
+                meters.failure(Duration.ofNanos(System.nanoTime() - startedAtNano));
             }
         };
     }

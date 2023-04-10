@@ -32,7 +32,7 @@ public class SnsGenerationConfig implements AloStreamConfig {
     }
 
     public AloSnsSender<Long> buildSender() {
-        SnsConfigSource configSource = SnsConfigSource.unnamed()
+        SnsConfigSource configSource = SnsConfigSource.named(name())
             .withAll(localAwsProperties)
             .with(SnsConfig.ENDPOINT_OVERRIDE_CONFIG, endpointOverride)
             .with(AloSnsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName())

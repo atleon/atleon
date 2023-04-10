@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  *
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedSqsMessage}s
  */
-public class TracingAloReceivedSqsMessageDecorator<T>
+public final class TracingAloReceivedSqsMessageDecorator<T>
     extends TracingAloConsumptionDecorator<ReceivedSqsMessage<T>>
     implements AloReceivedSqsMessageDecorator<T> {
 
@@ -29,7 +29,7 @@ public class TracingAloReceivedSqsMessageDecorator<T>
 
     @Override
     protected Tracer.SpanBuilder newSpanBuilder(SpanBuilderFactory spanBuilderFactory, ReceivedSqsMessage<T> message) {
-        return spanBuilderFactory.newSpanBuilder("atleon.aws.sqs.consume")
+        return spanBuilderFactory.newSpanBuilder("atleon.receive.aws.sqs")
             .withTag("queue_url", queueUrl)
             .withTag("receipt_handle", message.receiptHandle())
             .withTag("message_id", message.messageId());
