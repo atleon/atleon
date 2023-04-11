@@ -24,8 +24,8 @@
         <micrometer.version>1.0.7</micrometer.version>
         <opentracing.verion>0.32.0</opentracing.verion>
         <rabbitmq-amqp-client.version>5.13.1</rabbitmq-amqp-client.version>
-        <reactive-streams.version>1.0.3</reactive-streams.version>
-        <reactor.version>3.4.12</reactor.version>
+        <reactive-streams.version>1.0.4</reactive-streams.version>
+        <reactor.version>3.5.3</reactor.version>
         <reactor-kafka.version>1.3.7</reactor-kafka.version>
         <reactor-rabbitmq.version>1.5.4</reactor-rabbitmq.version>
         <scala.version>2.13.6</scala.version>
