@@ -6,6 +6,7 @@ import io.atleon.kafka.AloKafkaSender;
 import io.atleon.kafka.KafkaConfigSource;
 import io.atleon.kafka.embedded.EmbeddedKafka;
 import io.atleon.micrometer.AloKafkaMetricsReporter;
+import io.atleon.micrometer.AloMicrometer;
 import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -76,6 +77,7 @@ public class KafkaMicrometer {
             .receiveAloValues(Collections.singletonList(TOPIC_1))
             .map(String::toUpperCase)
             .transform(AloKafkaSender.<String, String>from(kafkaSenderConfig).sendAloValues(TOPIC_2, Function.identity()))
+            .tap(AloMicrometer.metrics("atleon.kafka.micrometer.sent"))
             .consumeAloAndGet(Alo::acknowledge)
             .publish()
             .autoConnect(0)

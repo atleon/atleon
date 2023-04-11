@@ -24,7 +24,7 @@ class AloDecoratorConfigTest {
     public void decoratorsArePassedThroughIfExplicitlySpecified() {
         AloDecorator<Object> aloDecorator = new ExplicitAloDecorator<>();
 
-        Map<String, ?> properties = Collections.singletonMap(AloDecoratorConfig.ALO_DECORATOR_TYPES_CONFIG, aloDecorator);
+        Map<String, ?> properties = Collections.singletonMap(AloDecoratorConfig.DECORATOR_TYPES_CONFIG, aloDecorator);
 
         Optional<AloDecorator<Object>> loadedDecorator = AloDecoratorConfig.load(properties, AloDecorator.class);
 
@@ -34,7 +34,7 @@ class AloDecoratorConfigTest {
     @Test
     public void decoratorsAreInstantiatedFromClassWhenExplicitlySpecified() {
         Map<String, ?> properties = Collections.singletonMap(
-            AloDecoratorConfig.ALO_DECORATOR_TYPES_CONFIG,
+            AloDecoratorConfig.DECORATOR_TYPES_CONFIG,
             ExplicitAloDecorator.class
         );
 
@@ -46,7 +46,7 @@ class AloDecoratorConfigTest {
     @Test
     public void decoratorsAreInstantiatedFromClassNameWhenExplicitlySpecified() {
         Map<String, ?> properties = Collections.singletonMap(
-            AloDecoratorConfig.ALO_DECORATOR_TYPES_CONFIG,
+            AloDecoratorConfig.DECORATOR_TYPES_CONFIG,
             ExplicitAloDecorator.class.getName()
         );
 
@@ -58,7 +58,7 @@ class AloDecoratorConfigTest {
     @Test
     public void decoratorsAreLoadedWithAutoDecoratorsWhenExplicitlySpecified() {
         Map<String, ?> properties = Collections.singletonMap(
-            AloDecoratorConfig.ALO_DECORATOR_TYPES_CONFIG,
+            AloDecoratorConfig.DECORATOR_TYPES_CONFIG,
             Arrays.asList(ExplicitAloDecorator.class, AloDecoratorConfig.DECORATOR_TYPE_AUTO)
         );
 

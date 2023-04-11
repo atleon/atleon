@@ -4,13 +4,15 @@ import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
-import io.atleon.core.AloSignalObserver;
-import io.atleon.core.AloSignalObserverConfig;
+import io.atleon.core.AloSignalListenerFactory;
+import io.atleon.core.AloSignalListenerFactoryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -22,7 +24,7 @@ import java.util.function.Consumer;
  * is terminated for any reason, the client is closed.
  * <p>
  * Note that {@link io.atleon.core.AloDecorator AloDecorators} applied via
- * {@link io.atleon.core.AloDecoratorConfig#ALO_DECORATOR_TYPES_CONFIG} must be
+ * {@link io.atleon.core.AloDecoratorConfig#DECORATOR_TYPES_CONFIG} must be
  * implementations of {@link AloReceivedSqsMessageDecorator}.
  *
  * @param <T> The deserialized type of SQS Message bodies
@@ -184,7 +186,7 @@ public class AloSqsReceiver<T> {
             return newReceiver().receiveManual(queueUrl)
                 .map(message -> deserialize(message, aloFactory, sink::tryEmitError))
                 .mergeWith(sink.asMono())
-                .transform(aloMessages -> loadAloSignalObserver(queueUrl).map(aloMessages::doOnEach).orElse(aloMessages));
+                .transform(aloMessages -> applySignalListenerFactories(aloMessages, queueUrl));
         }
 
         private AloFactory<ReceivedSqsMessage<T>> loadAloFactory(String queueUrl) {
@@ -209,11 +211,17 @@ public class AloSqsReceiver<T> {
             return SqsReceiver.create(receiverOptions);
         }
 
-        private Optional<AloSignalObserver<ReceivedSqsMessage<T>>> loadAloSignalObserver(String queueUrl) {
-            return AloSignalObserverConfig.load(
-                config.modifyAndGetProperties(it -> it.put(AloReceivedSqsMessageSignalObserver.QUEUE_URL_CONFIG, queueUrl)),
-                AloReceivedSqsMessageSignalObserver.class
+        private Flux<Alo<ReceivedSqsMessage<T>>>
+        applySignalListenerFactories(Flux<Alo<ReceivedSqsMessage<T>>> aloMessages, String queueUrl) {
+            Map<String, Object> factoryConfig = config.modifyAndGetProperties(properties ->
+                properties.put(AloReceivedSqsMessageSignalListenerFactory.QUEUE_URL_CONFIG, queueUrl)
             );
+            List<AloSignalListenerFactory<ReceivedSqsMessage<T>, ?>> factories =
+                AloSignalListenerFactoryConfig.loadList(factoryConfig, AloReceivedSqsMessageSignalListenerFactory.class);
+            for (AloSignalListenerFactory<ReceivedSqsMessage<T>, ?> factory : factories) {
+                aloMessages = aloMessages.tap(factory);
+            }
+            return aloMessages;
         }
 
         private Alo<ReceivedSqsMessage<T>> deserialize(
