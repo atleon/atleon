@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.14.0]
+atleon `0.14.0` is a beta release containing updates outlined below
+
+### Fixes
+* [#134] - Parameters used only by decorators have moved from consumed messages to configuration
+* [#138] - Standardized observation (metrics, tracing) naming
+* [#142] - No longer load `noOp` decorators when auto decorators explicitly configured, but none available
+* [#144] - Upgrade Reactor to v3.5.3
+
+### Additions
+* [#136], [#146] - Added `AloSignalListenerFactory` and Micrometer instrumentation for Alo pipeline throughput metering
+
 # [0.13.0]
 atleon `0.13.0` is a beta release containing updates outlined below
 
