@@ -17,7 +17,7 @@ public final class AloDecoratorConfig {
      * {@link AloDecorator}. Defaults to {@link #DECORATOR_TYPE_AUTO}, which results in automatic
      * loading of decorators through the {@link java.util.ServiceLoader} SPI.
      */
-    public static final String ALO_DECORATOR_TYPES_CONFIG = "alo.decorator.types";
+    public static final String DECORATOR_TYPES_CONFIG = "alo.decorator.types";
 
     /**
      * Type name used to activate automatic loading of {@link AloDecorator}s through
@@ -40,7 +40,7 @@ public final class AloDecoratorConfig {
     loadExplicit(Map<String, ?> properties, Class<D> superType) {
         return ConfigLoading.loadListOfConfiguredWithPredefinedTypes(
             properties,
-            ALO_DECORATOR_TYPES_CONFIG,
+            DECORATOR_TYPES_CONFIG,
             superType,
             typeName -> instantiatePredefined(properties, superType, typeName)
         );

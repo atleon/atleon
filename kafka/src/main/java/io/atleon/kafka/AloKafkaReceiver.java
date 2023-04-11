@@ -4,8 +4,8 @@ import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
-import io.atleon.core.AloSignalObserver;
-import io.atleon.core.AloSignalObserverConfig;
+import io.atleon.core.AloSignalListenerFactory;
+import io.atleon.core.AloSignalListenerFactoryConfig;
 import io.atleon.core.OrderManagingAcknowledgementOperator;
 import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -24,8 +24,8 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -54,7 +54,7 @@ import java.util.function.Consumer;
  * have been acknowledged.
  * <p>
  * Note that {@link io.atleon.core.AloDecorator AloDecorators} applied via
- * {@link io.atleon.core.AloDecoratorConfig#ALO_DECORATOR_TYPES_CONFIG} must be
+ * {@link io.atleon.core.AloDecoratorConfig#DECORATOR_TYPES_CONFIG} must be
  * implementations of {@link AloKafkaConsumerRecordDecorator}.
  *
  * @param <K> inbound record key type
@@ -233,7 +233,7 @@ public class AloKafkaReceiver<K, V> {
                 .map(record -> aloFactory.create(record, record.receiverOffset()::acknowledge, sink::tryEmitError))
                 .mergeWith(sink.asMono())
                 .transform(this::newOrderManagingAcknowledgementOperator)
-                .transform(aloRecords -> loadAloSignalObserver().map(aloRecords::doOnEach).orElse(aloRecords));
+                .transform(this::applySignalListenerFactories);
         }
 
         private AloFactory<ConsumerRecord<K, V>> loadAloFactory() {
@@ -286,8 +286,13 @@ public class AloKafkaReceiver<K, V> {
             return new OrderManagingAcknowledgementOperator<>(alos, ConsumerRecordExtraction::topicPartition, maxInFlight);
         }
 
-        private Optional<AloSignalObserver<ConsumerRecord<K, V>>> loadAloSignalObserver() {
-            return AloSignalObserverConfig.load(config, AloKafkaConsumerRecordSignalObserver.class);
+        private Flux<Alo<ConsumerRecord<K, V>>> applySignalListenerFactories(Flux<Alo<ConsumerRecord<K, V>>> aloRecords) {
+            List<AloSignalListenerFactory<ConsumerRecord<K, V>, ?>> factories =
+                AloSignalListenerFactoryConfig.loadList(config, AloKafkaConsumerRecordSignalListenerFactory.class);
+            for (AloSignalListenerFactory<ConsumerRecord<K, V>, ?> factory : factories) {
+                aloRecords = aloRecords.tap(factory);
+            }
+            return aloRecords;
         }
 
         private static long nextClientIdCount(String clientId) {

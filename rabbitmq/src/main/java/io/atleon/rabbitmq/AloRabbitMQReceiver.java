@@ -4,8 +4,8 @@ import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
-import io.atleon.core.AloSignalObserver;
-import io.atleon.core.AloSignalObserverConfig;
+import io.atleon.core.AloSignalListenerFactory;
+import io.atleon.core.AloSignalListenerFactoryConfig;
 import io.atleon.util.Defaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +16,8 @@ import reactor.rabbitmq.ConsumeOptions;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.ReceiverOptions;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
@@ -24,7 +26,7 @@ import java.util.function.Consumer;
  * a RabbitMQ cluster.
  * <p>
  * Note that {@link io.atleon.core.AloDecorator AloDecorators} applied via
- * {@link io.atleon.core.AloDecoratorConfig#ALO_DECORATOR_TYPES_CONFIG} must be
+ * {@link io.atleon.core.AloDecoratorConfig#DECORATOR_TYPES_CONFIG} must be
  * implementations of {@link AloReceivedRabbitMQMessageDecorator}.
  *
  * @param <T> Inbound message deserialized body type
@@ -142,7 +144,7 @@ public class AloRabbitMQReceiver<T> {
             return newReceiver().consumeManualAck(queue, newConsumeOptions())
                 .map(delivery -> deserialize(delivery, aloFactory, sink::tryEmitError))
                 .mergeWith(sink.asMono())
-                .transform(aloMessages -> loadAloSignalObserver(queue).map(aloMessages::doOnEach).orElse(aloMessages));
+                .transform(aloMessages -> applySignalListenerFactories(aloMessages, queue));
         }
 
         private AloFactory<ReceivedRabbitMQMessage<T>> loadAloFactory(String queue) {
@@ -163,11 +165,17 @@ public class AloRabbitMQReceiver<T> {
                 .qos(config.loadInt(QOS_CONFIG).orElse(Defaults.PREFETCH));
         }
 
-        private Optional<AloSignalObserver<ReceivedRabbitMQMessage<T>>> loadAloSignalObserver(String queue) {
-            return AloSignalObserverConfig.load(
-                config.modifyAndGetProperties(it -> it.put(AloReceivedRabbitMQMessageSignalObserver.QUEUE_CONFIG, queue)),
-                AloReceivedRabbitMQMessageSignalObserver.class
+        private Flux<Alo<ReceivedRabbitMQMessage<T>>>
+        applySignalListenerFactories(Flux<Alo<ReceivedRabbitMQMessage<T>>> aloMessages, String queue) {
+            Map<String, Object> factoryConfig = config.modifyAndGetProperties(properties ->
+                properties.put(AloReceivedRabbitMQMessageSignalListenerFactory.QUEUE_CONFIG, queue)
             );
+            List<AloSignalListenerFactory<ReceivedRabbitMQMessage<T>, ?>> factories =
+                AloSignalListenerFactoryConfig.loadList(factoryConfig, AloReceivedRabbitMQMessageSignalListenerFactory.class);
+            for (AloSignalListenerFactory<ReceivedRabbitMQMessage<T>, ?> factory : factories) {
+                aloMessages = aloMessages.tap(factory);
+            }
+            return aloMessages;
         }
 
         private Alo<ReceivedRabbitMQMessage<T>> deserialize(

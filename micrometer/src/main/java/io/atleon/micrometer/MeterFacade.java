@@ -34,17 +34,17 @@ public final class MeterFacade<K> {
         return new MeterFacade<>(registry, keyToMeterKey);
     }
 
-    public void clear() {
-        counters.clear();
-        timers.clear();
-    }
-
     public Counter counter(K key) {
         return counters.computeIfAbsent(key, this::newCounter);
     }
 
     public Timer timer(K key) {
         return timers.computeIfAbsent(key, this::newTimer);
+    }
+
+    public void clear() {
+        counters.clear();
+        timers.clear();
     }
 
     private Counter newCounter(K key) {
