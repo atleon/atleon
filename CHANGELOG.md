@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 atleon `0.14.1` is a beta release containing updates outlined below
 
 ### Fixes
+* [#149] - Extract raw type from parameterized stream config type
+
+# [0.14.1]
+atleon `0.14.1` is a beta release containing updates outlined below
+
+### Fixes
 * [#149] - Stream auto configuration now works with parameterized stream configs
 
 # [0.14.0]

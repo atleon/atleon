@@ -91,7 +91,7 @@ public class AloStreamAutoConfiguration {
         if (type instanceof Class) {
             return Class.class.cast(type);
         } else if (type instanceof ParameterizedType) {
-            return extractRawType(ParameterizedType.class.cast(type));
+            return extractRawType(ParameterizedType.class.cast(type).getRawType());
         } else {
             throw new IllegalArgumentException("Cannot extract raw type from type=" + type);
         }
