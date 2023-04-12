@@ -81,11 +81,20 @@ public class AloStreamAutoConfiguration {
         for (Class<?> type = streamType; type != null; type = type.getSuperclass()) {
             if (type.getSuperclass().equals(AloStream.class)) {
                 ParameterizedType aloStreamType = ParameterizedType.class.cast(type.getGenericSuperclass());
-                Type configType = aloStreamType.getActualTypeArguments()[0];
-                return Class.class.cast(configType);
+                return extractRawType(aloStreamType.getActualTypeArguments()[0]);
             }
         }
         throw new IllegalStateException("Failed to deduce configType for streamType=" + streamType);
+    }
+
+    private static Class<?> extractRawType(Type type) {
+        if (type instanceof Class) {
+            return Class.class.cast(type);
+        } else if (type instanceof ParameterizedType) {
+            return extractRawType(ParameterizedType.class.cast(type));
+        } else {
+            throw new IllegalArgumentException("Cannot extract raw type from type=" + type);
+        }
     }
 
     public static final class AutoConfigureStreamEnabled implements Condition {
