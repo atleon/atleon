@@ -1,6 +1,9 @@
 package io.atleon.core;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
+
+import java.util.function.Function;
 
 /**
  * A wrapper around Project Reactor's {@link GroupedFlux} for keys of type K and for Alo elements
@@ -14,9 +17,18 @@ public class AloGroupedFlux<K, T> extends AloFlux<T> {
 
     private final K key;
 
-    AloGroupedFlux(GroupedFlux<? extends K, Alo<T>> groupedFlux) {
-        super(groupedFlux);
-        this.key = groupedFlux.key();
+    private AloGroupedFlux(Flux<Alo<T>> flux, K key) {
+        super(flux);
+        this.key = key;
+    }
+
+    static <K, T> AloGroupedFlux<K, T> create(GroupedFlux<? extends K, Alo<T>> groupedFlux) {
+        return new AloGroupedFlux<>(groupedFlux, groupedFlux.key());
+    }
+
+    static <K, T, R> AloGroupedFlux<K, R>
+    create(GroupedFlux<? extends K, Alo<T>> groupedFlux, Function<Alo<T>, Alo<R>> mapper) {
+        return new AloGroupedFlux<>(groupedFlux.map(mapper), groupedFlux.key());
     }
 
     public K key() {
