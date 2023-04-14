@@ -1,5 +1,6 @@
 package io.atleon.polling;
 
+import io.atleon.core.Alo;
 import io.atleon.polling.reactive.PollingSourceConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,15 +40,13 @@ public class AloPollingReceiverTest {
         messages.add(buildSuccessMessages("Batch - 3", 3));
         pollable = new TestPollable(messages, acks, nacks);
         AloPollingReceiver<TestMessage, TestMessage> receiver = AloPollingReceiver.from(pollable, config);
-        receiver.receivePayloads()
-                .resubscribeOnError(AloPollingReceiverTest.class.getSimpleName(), Duration.ofMillis(1000))
-                .subscribe();
+        receiver.receivePayloads().subscribe();
 
         while (acks.size() < 10) {
             Thread.sleep(1000L);
         }
-        assertEquals(0, nacks.size());
         assertEquals(10, acks.size());
+        assertEquals(0, nacks.size());
     }
 
     @Test
@@ -59,16 +58,20 @@ public class AloPollingReceiverTest {
         messages.add(buildFailureMessages("Batch - 2",5, 1));
         pollable = new TestPollable(messages, acks, nacks);
         AloPollingReceiver<TestMessage, TestMessage> receiver = AloPollingReceiver.from(pollable, config);
-        receiver.receivePayloads()
-                .map(TestMessage::getMessage)
-                .resubscribeOnError(AloPollingReceiverTest.class.getSimpleName(), Duration.ofSeconds(1))
-                .subscribe();
+        receiver.receivePayloads().subscribe(alo -> {
+            try {
+                alo.get().getMessage();
+                Alo.acknowledge(alo);
+            } catch (Throwable error) {
+                Alo.nacknowledge(alo, error);
+            }
+        });
 
-        while (acks.size() < 10) {
+        while (acks.size() < 5 || nacks.size() < 1) {
             Thread.sleep(1000L);
         }
-        assertEquals(10, acks.size());
-        assertEquals(5, nacks.size());
+        assertEquals(5, acks.size());
+        assertEquals(1, nacks.size());
     }
 
     private Set<TestMessage> buildSuccessMessages(final String message,

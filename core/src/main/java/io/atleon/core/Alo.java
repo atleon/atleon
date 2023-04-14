@@ -20,8 +20,8 @@ import java.util.function.Function;
  * execute acknowledgement. Note that Alo extends {@link Contextual}, and implementations may
  * therefore propagate contextual information in addition to acknowledgement resources.
  *
- * <p>Acknowledgers and Nacknowledgers referenced by Alo implementations must be
- * <strong>safe</strong>. They <i>must not throw Exceptions.</i>
+ * <p>Acknowledgers and nacknowledgers referenced by Alo implementations <strong>must be safe</strong>.
+ * In other words, acknowledgers and nacknowledgers <i>must not throw Exceptions</i>.
  *
  * @param <T> The type of data item exposed by this Alo
  */

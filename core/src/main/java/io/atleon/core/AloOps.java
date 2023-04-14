@@ -1,11 +1,14 @@
 package io.atleon.core;
 
 import io.atleon.util.Throwing;
-import org.reactivestreams.Publisher;
+import reactor.core.publisher.SynchronousSink;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -20,62 +23,66 @@ final class AloOps {
 
     }
 
-    public static <T, A extends Alo<T>> Predicate<A> filtering(
-        Predicate<? super T> predicate,
-        Consumer<? super A> negativeConsumer
-    ) {
+    public static <T, A extends Alo<T>> Predicate<A>
+    filtering(Predicate<? super T> predicate, Consumer<? super A> negativeConsumer) {
+        return alo -> {
+            boolean result;
+            try {
+                result = predicate.test(alo.get());
+            } catch (Throwable error) {
+                throw Throwing.propagate(error);
+            }
+
+            if (!result) {
+                negativeConsumer.accept(alo);
+            }
+            return result;
+        };
+    }
+
+    public static <T, R> Function<Alo<T>, Alo<R>>
+    mapping(Function<? super T, ? extends R> mapper) {
         return alo -> {
             try {
-                boolean result = predicate.test(alo.get());
-                if (!result) {
-                    negativeConsumer.accept(alo);
-                }
-                return result;
+                return Objects.requireNonNull(alo.map(mapper), "Alo implementation returned null mapping");
             } catch (Throwable error) {
-                Alo.nacknowledge(alo, error);
                 throw Throwing.propagate(error);
             }
         };
     }
 
-    public static <T, R> Function<Alo<T>, Alo<R>> mapping(Function<? super T, ? extends R> mapper) {
-        return alo -> {
+    public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<R>>>
+    mappingPresentHandler(Function<? super T, Optional<? extends R>> mapper, Consumer<? super Alo<T>> absentConsumer) {
+        return (alo, sink) -> {
+            Alo<Optional<? extends R>> result;
             try {
-                return alo.map(mapper);
+                result = Objects.requireNonNull(alo.map(mapper), "Alo implementation returned null mapping");
             } catch (Throwable error) {
-                Alo.nacknowledge(alo, error);
                 throw Throwing.propagate(error);
+            }
+
+            if (result.get().isPresent()) {
+                sink.next(PresentAlo.wrap(result));
+            } else {
+                absentConsumer.accept(alo);
             }
         };
     }
 
-    public static <T, R> Function<Alo<T>, Collection<Alo<R>>> mappingToMany(
-        Function<? super T, ? extends Collection<R>> mapper,
-        Consumer<? super Alo<T>> emptyMappingConsumer
-    ) {
-        return alo -> {
+    public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<Collection<R>>>>
+    mappingToManyHandler(Function<? super T, ? extends Collection<R>> mapper, Consumer<? super Alo<T>> emptyMappingConsumer) {
+        return (alo, sink) -> {
+            Alo<Collection<R>> result;
             try {
-                Alo<Collection<R>> result = alo.map(mapper);
-                if (result.get().isEmpty()) {
-                    emptyMappingConsumer.accept(alo);
-                    return Collections.emptyList();
-                } else {
-                    return AcknowledgingCollection.fromNonEmptyAloCollection(result);
-                }
+                result = Objects.requireNonNull(alo.map(mapper), "Alo implementation returned null mapping");
             } catch (Throwable error) {
-                Alo.nacknowledge(alo, error);
                 throw Throwing.propagate(error);
             }
-        };
-    }
 
-    public static <T, R> Function<Alo<T>, Publisher<Alo<R>>> publishing(Function<? super T, ? extends Publisher<R>> mapper) {
-        return alo -> {
-            try {
-                return AcknowledgingPublisher.fromAloPublisher(alo.map(mapper));
-            } catch (Throwable error) {
-                Alo.nacknowledge(alo, error);
-                throw Throwing.propagate(error);
+            if (result.get().isEmpty()) {
+                emptyMappingConsumer.accept(alo);
+            } else {
+                sink.next(result);
             }
         };
     }
@@ -97,9 +104,8 @@ final class AloOps {
         return () -> acknowledgers.forEach(Runnable::run);
     }
 
-    private static Consumer<? super Throwable> combineNacknowledgers(
-        Iterable<? extends Consumer<? super Throwable>> nacknowledgers
-    ) {
+    private static Consumer<? super Throwable>
+    combineNacknowledgers(Iterable<? extends Consumer<? super Throwable>> nacknowledgers) {
         return error -> nacknowledgers.forEach(nacknowledger -> nacknowledger.accept(error));
     }
 }

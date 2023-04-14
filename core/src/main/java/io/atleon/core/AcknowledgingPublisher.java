@@ -105,7 +105,6 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
         @Override
         public void onError(Throwable error) {
-            maybeExecuteNacknowledger(error);
             subscriber.onError(error);
         }
 

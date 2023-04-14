@@ -36,7 +36,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     /**
      * Wraps a Publisher of Alo elements as an AloFlux
      */
-    public static <T> AloFlux<T> wrap(Publisher<Alo<T>> publisher) {
+    public static <T> AloFlux<T> wrap(Publisher<? extends Alo<T>> publisher) {
         return publisher instanceof AloFlux ? AloFlux.class.cast(publisher) : new AloFlux<>(Flux.from(publisher));
     }
 
@@ -45,7 +45,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * is already an AloFlux such that no unnecessary wrapping occurs since an AloFlux can be
      * unwrapped
      */
-    public static <T> Flux<Alo<T>> toFlux(Publisher<Alo<T>> publisher) {
+    public static <T> Flux<Alo<T>> toFlux(Publisher<? extends Alo<T>> publisher) {
         return publisher instanceof AloFlux ? AloFlux.class.cast(publisher).unwrap() : Flux.from(publisher);
     }
 
@@ -99,13 +99,6 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
-     * @see Flux#tap(SignalListenerFactory)
-     */
-    public AloFlux<T> tap(SignalListenerFactory<Alo<T>, ?> signalListenerFactory) {
-        return new AloFlux<>(wrapped.tap(signalListenerFactory));
-    }
-
-    /**
      * Alias for {@code .map(clazz::cast)}
      */
     public <V> AloFlux<V> cast(Class<V> clazz) {
@@ -145,49 +138,52 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @return a transformed {@link AloFlux}
      */
     public <V> AloFlux<V> mapPresent(Function<? super T, Optional<? extends V>> mapper) {
-        return new AloFlux<>(wrapped.handle((alo, sink) -> {
-            Alo<Optional<? extends V>> result = alo.map(mapper);
-            if (result.get().isPresent()) {
-                sink.next(PresentAlo.wrap(result));
-            } else {
-                Alo.acknowledge(alo);
-            }
-        }));
+        return new AloFlux<>(wrapped.handle(AloOps.mappingPresentHandler(mapper, Alo::acknowledge)));
     }
 
     /**
      * @see Flux#concatMap(Function)
      */
     public <V> AloFlux<V> concatMap(Function<? super T, ? extends Publisher<V>> mapper) {
-        return new AloFlux<>(wrapped.concatMap(AloOps.publishing(mapper)));
+        return wrapped.<Alo<Publisher<V>>>map(AloOps.mapping(mapper))
+            .concatMap(AcknowledgingPublisher::fromAloPublisher)
+            .as(AloFlux::new);
     }
 
     /**
      * @see Flux#concatMap(Function, int)
      */
     public <V> AloFlux<V> concatMap(Function<? super T, ? extends Publisher<V>> mapper, int prefetch) {
-        return new AloFlux<>(wrapped.concatMap(AloOps.publishing(mapper), prefetch));
+        return wrapped.<Alo<Publisher<V>>>map(AloOps.mapping(mapper))
+            .concatMap(AcknowledgingPublisher::fromAloPublisher, prefetch)
+            .as(AloFlux::new);
     }
 
     /**
      * @see Flux#flatMap(Function)
      */
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper) {
-        return new AloFlux<>(wrapped.flatMap(AloOps.publishing(mapper)));
+        return wrapped.<Alo<Publisher<V>>>map(AloOps.mapping(mapper))
+            .flatMap(AcknowledgingPublisher::fromAloPublisher)
+            .as(AloFlux::new);
     }
 
     /**
      * @see Flux#flatMap(Function, int)
      */
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper, int concurrency) {
-        return new AloFlux<>(wrapped.flatMap(AloOps.publishing(mapper), concurrency));
+        return wrapped.<Alo<Publisher<V>>>map(AloOps.mapping(mapper))
+            .flatMap(AcknowledgingPublisher::fromAloPublisher, concurrency)
+            .as(AloFlux::new);
     }
 
     /**
      * @see Flux#flatMap(Function, int, int)
      */
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper, int concurrency, int prefetch) {
-        return new AloFlux<>(wrapped.flatMap(AloOps.publishing(mapper), concurrency, prefetch));
+        return wrapped.<Alo<Publisher<V>>>map(AloOps.mapping(mapper))
+            .flatMap(AcknowledgingPublisher::fromAloPublisher, concurrency, prefetch)
+            .as(AloFlux::new);
     }
 
     /**
@@ -198,7 +194,9 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param mapper Function that maps each data item to a Collection of results
      */
     public <R, C extends Collection<R>> AloFlux<R> flatMapCollection(Function<? super T, ? extends C> mapper) {
-        return new AloFlux<>(wrapped.flatMapIterable(AloOps.mappingToMany(mapper, Alo::acknowledge)));
+        return wrapped.handle(AloOps.mappingToManyHandler(mapper, Alo::acknowledge))
+            .flatMapIterable(AcknowledgingCollection::fromNonEmptyAloCollection)
+            .as(AloFlux::new);
     }
 
     /**
@@ -275,7 +273,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     public <V> GroupFlux<AloGroupedFlux<Integer, V>> groupByNumberHash(
         Function<? super T, ? extends Number> numberExtractor,
         int numGroups,
-        Function<? super T, V> valueMapper) {
+        Function<? super T, V> valueMapper
+    ) {
         return groupBy(NumberHashGroupExtractor.composed(numberExtractor, numGroups), valueMapper);
     }
 
@@ -328,7 +327,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     public <K> GroupFlux<AloGroupedFlux<K, T>>
     groupBy(Function<? super T, ? extends K> groupExtractor, int cardinality) {
         return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()))
-            .<AloGroupedFlux<K, T>>map(AloGroupedFlux::new)
+            .<AloGroupedFlux<K, T>>map(AloGroupedFlux::create)
             .as(flux -> new GroupFlux<>(flux, cardinality));
     }
 
@@ -337,8 +336,9 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <K, V> GroupFlux<AloGroupedFlux<K, V>>
     groupBy(Function<? super T, ? extends K> groupExtractor, int cardinality, Function<? super T, V> valueMapper) {
-        return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()), AloOps.mapping(valueMapper))
-            .<AloGroupedFlux<K, V>>map(AloGroupedFlux::new)
+        Function<Alo<T>, Alo<V>> aloValueMapper = AloOps.mapping(valueMapper);
+        return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()))
+            .<AloGroupedFlux<K, V>>map(groupedFlux -> AloGroupedFlux.create(groupedFlux, aloValueMapper))
             .as(flux -> new GroupFlux<>(flux, cardinality));
     }
 
@@ -403,6 +403,13 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
             toWrap = toWrap.tag(entry.getKey(), entry.getValue());
         }
         return new AloFlux<>(toWrap.metrics());
+    }
+
+    /**
+     * @see Flux#tap(SignalListenerFactory)
+     */
+    public AloFlux<T> tap(SignalListenerFactory<Alo<T>, ?> signalListenerFactory) {
+        return new AloFlux<>(wrapped.tap(signalListenerFactory));
     }
 
     /**
