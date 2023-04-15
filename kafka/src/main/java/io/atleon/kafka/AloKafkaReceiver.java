@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -66,6 +67,18 @@ public class AloKafkaReceiver<K, V> {
      * Prefix used on all AloKafkaReceiver-specific configurations
      */
     public static final String CONFIG_PREFIX = "kafka.receiver.";
+
+    /**
+     * Configures the behavior of negatively acknowledging received records. Some simple types are
+     * available, including {@value #NACKNOWLEDGER_TYPE_EMIT}, where the associated error is
+     * emitted in to the pipeline. Any other non-predefined value is treated as a qualified class
+     * name of an implementation of {@link NacknowledgerFactory} which allows more fine-grained
+     * control over what happens when an SQS Message is negatively acknowledged. Defaults to
+     * "emit".
+     */
+    public static final String NACKNOWLEDGER_TYPE_CONFIG = CONFIG_PREFIX + "nacknowledger.type";
+
+    public static final String NACKNOWLEDGER_TYPE_EMIT = "emit";
 
     /**
      * Subscribers may want to block request Threads on assignment of partitions AND subsequent
@@ -220,8 +233,11 @@ public class AloKafkaReceiver<K, V> {
 
         private final Map<String, Object> config;
 
+        private final NacknowledgerFactory<K, V> nacknowledgerFactory;
+
         public ReceiveResources(Map<String, Object> config) {
             this.config = config;
+            this.nacknowledgerFactory = createNacknowledgerFactory(config);
         }
 
         public Flux<Alo<ConsumerRecord<K, V>>> receive(Collection<String> topics) {
@@ -230,7 +246,7 @@ public class AloKafkaReceiver<K, V> {
             Sinks.Empty<Alo<ConsumerRecord<K, V>>> sink = Sinks.empty();
             return newReceiver(topics, assignment::complete).receive()
                 .transform(records -> maybeBlockRequestOnPartitionPositioning(records, assignment))
-                .map(record -> aloFactory.create(record, record.receiverOffset()::acknowledge, sink::tryEmitError))
+                .map(record -> toAlo(record, aloFactory, sink::tryEmitError))
                 .mergeWith(sink.asMono())
                 .transform(this::newOrderManagingAcknowledgementOperator)
                 .transform(this::applySignalListenerFactories);
@@ -293,6 +309,38 @@ public class AloKafkaReceiver<K, V> {
                 aloRecords = aloRecords.tap(factory);
             }
             return aloRecords;
+        }
+
+        private Alo<ConsumerRecord<K, V>> toAlo(
+            ReceiverRecord<K, V> record,
+            AloFactory<ConsumerRecord<K, V>> aloFactory,
+            Consumer<Throwable> errorEmitter
+        ) {
+            return aloFactory.create(
+                record,
+                record.receiverOffset()::acknowledge,
+                nacknowledgerFactory.create(record, errorEmitter)
+            );
+        }
+
+        private static <K, V> NacknowledgerFactory<K, V> createNacknowledgerFactory(Map<String, ?> config) {
+            Optional<NacknowledgerFactory<K, V>> nacknowledgerFactory =
+                loadNacknowledgerFactory(config, NACKNOWLEDGER_TYPE_CONFIG, NacknowledgerFactory.class);
+            return nacknowledgerFactory.orElseGet(NacknowledgerFactory.Emit::new);
+        }
+
+        private static <K, V, N extends NacknowledgerFactory<K, V>> Optional<NacknowledgerFactory<K, V>>
+        loadNacknowledgerFactory(Map<String, ?> config, String key, Class<N> type) {
+            return ConfigLoading
+                .loadConfiguredWithPredefinedTypes(config, key, type, ReceiveResources::newPredefinedNacknowledgerFactory);
+        }
+
+        private static <K, V> Optional<NacknowledgerFactory<K, V>> newPredefinedNacknowledgerFactory(String typeName) {
+            if (typeName.equalsIgnoreCase(NACKNOWLEDGER_TYPE_EMIT)) {
+                return Optional.of(new NacknowledgerFactory.Emit<>());
+            } else {
+                return Optional.empty();
+            }
         }
 
         private static long nextClientIdCount(String clientId) {

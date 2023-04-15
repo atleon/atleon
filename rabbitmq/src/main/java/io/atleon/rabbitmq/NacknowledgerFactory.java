@@ -6,6 +6,12 @@ import org.slf4j.Logger;
 import java.util.Map;
 import java.util.function.Consumer;
 
+/**
+ * An interface for creating a "nacknowledger" ({@link Consumer} of Throwable) that is executed
+ * if/when processing of the associated {@link RabbitMQMessage} is exceptionally terminated.
+ *
+ * @param <T> The deserialized type of received Message bodies
+ */
 public interface NacknowledgerFactory<T> extends Configurable {
 
     default void configure(Map<String, ?> properties) {
