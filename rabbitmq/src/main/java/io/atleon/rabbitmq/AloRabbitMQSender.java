@@ -44,9 +44,6 @@ public class AloRabbitMQSender<T> implements Closeable {
 
     private static final SendOptions SEND_OPTIONS = new SendOptions();
 
-    private static final SendOptions ALO_SEND_OPTIONS = new SendOptions()
-        .exceptionHandler(AloRabbitMQSender::handleAloSendException);
-
     private final Mono<SendResources<T>> futureResources;
 
     private final Sinks.Many<Long> closeSink = Sinks.many().multicast().directBestEffort();
@@ -189,12 +186,6 @@ public class AloRabbitMQSender<T> implements Closeable {
         closeSink.tryEmitNext(System.currentTimeMillis());
     }
 
-    //TODO This is an ugly result of SendContext not being parameterized on `sendWithTypedPublishConfirms`
-    private static void handleAloSendException(Sender.SendContext sendContext, Exception error) {
-        CorrelableOutboundMessage message = CorrelableOutboundMessage.class.cast(sendContext.getMessage());
-        Alo.nacknowledge(Alo.class.cast(message.getCorrelationMetadata()), error);
-    }
-
     private static final class SendResources<T> {
 
         private final Sender sender;
@@ -231,7 +222,7 @@ public class AloRabbitMQSender<T> implements Closeable {
         ) {
             return AloFlux.toFlux(alos)
                 .handle(newAloEmitter(messageCreator.compose(Alo::get)))
-                .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, ALO_SEND_OPTIONS))
+                .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, SEND_OPTIONS))
                 .map(RabbitMQSenderResult::fromMessageResultOfAlo);
         }
 
