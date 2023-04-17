@@ -142,6 +142,17 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * Apply a terminal consumption to the pipeline, acknowledging the corresponding {@link Alo}
+     * upon successful consumer invocation. Resulting AloFlux will emit no values.
+     *
+     * @param consumer Terminal consumption to be applied to each {@link Alo}'s data item
+     * @return A new AloFlux that emits no values
+     */
+    public AloFlux<Void> consume(Consumer<? super T> consumer) {
+        return new AloFlux<>(wrapped.handle(AloOps.consumingHandler(consumer, Alo::acknowledge)));
+    }
+
+    /**
      * @see Flux#concatMap(Function)
      */
     public <V> AloFlux<V> concatMap(Function<? super T, ? extends Publisher<V>> mapper) {

@@ -87,6 +87,19 @@ final class AloOps {
         };
     }
 
+    public static <T> BiConsumer<Alo<T>, SynchronousSink<Alo<Void>>>
+    consumingHandler(Consumer<? super T> consumer, Consumer<? super Alo<T>> afterSuccessConsumer) {
+        return (alo, sink) -> {
+            try {
+                consumer.accept(alo.get());
+            } catch (Throwable error) {
+                throw Throwing.propagate(error);
+            }
+
+            afterSuccessConsumer.accept(alo);
+        };
+    }
+
     public static <T> Alo<List<T>> fanIn(List<Alo<T>> alos) {
         Alo<T> firstAlo = alos.get(0);
         if (alos.size() == 1) {
