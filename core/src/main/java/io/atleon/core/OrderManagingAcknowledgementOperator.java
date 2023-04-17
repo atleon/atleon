@@ -34,6 +34,6 @@ public class OrderManagingAcknowledgementOperator<T, A extends Alo<T>> implement
     }
 
     private static Supplier<AcknowledgementQueue> newQueueSupplier() {
-        return OrderManagingAcknowledgementQueue::newWithImmediateErrors;
+        return OrderManagingAcknowledgementQueue::create;
     }
 }

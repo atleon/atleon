@@ -14,7 +14,7 @@ public class MultipleAcknowledgementQueueTest {
 
     @Test
     public void acknowledgementAppliesUpToAndIncludingAllPreviousInFlightAcknowledgements() {
-        AcknowledgementQueue queue = new MultipleAcknowledgementQueue();
+        AcknowledgementQueue queue = MultipleAcknowledgementQueue.create();
 
         AtomicBoolean firstAcknowledged = new AtomicBoolean();
         AtomicReference<Throwable> firstNacknowledged = new AtomicReference<>();

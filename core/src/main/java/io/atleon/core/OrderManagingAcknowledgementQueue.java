@@ -4,16 +4,12 @@ import java.util.function.Function;
 
 final class OrderManagingAcknowledgementQueue extends AcknowledgementQueue {
 
-    private OrderManagingAcknowledgementQueue(boolean executeErrorsImmediately) {
-        super(executeErrorsImmediately);
+    private OrderManagingAcknowledgementQueue() {
+
     }
 
-    public static OrderManagingAcknowledgementQueue newWithImmediateErrors() {
-        return new OrderManagingAcknowledgementQueue(true);
-    }
-
-    public static OrderManagingAcknowledgementQueue newWithInOrderErrors() {
-        return new OrderManagingAcknowledgementQueue(false);
+    public static AcknowledgementQueue create() {
+        return new OrderManagingAcknowledgementQueue();
     }
 
     @Override

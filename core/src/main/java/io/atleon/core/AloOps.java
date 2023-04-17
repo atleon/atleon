@@ -43,11 +43,14 @@ final class AloOps {
     public static <T, R> Function<Alo<T>, Alo<R>>
     mapping(Function<? super T, ? extends R> mapper) {
         return alo -> {
+            Alo<R> result;
             try {
-                return Objects.requireNonNull(alo.map(mapper), "Alo implementation returned null mapping");
+                result = Objects.requireNonNull(alo.map(mapper), "Alo implementation returned null mapping");
             } catch (Throwable error) {
                 throw Throwing.propagate(error);
             }
+
+            return result;
         };
     }
 
