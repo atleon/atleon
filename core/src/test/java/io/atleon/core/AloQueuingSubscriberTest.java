@@ -56,7 +56,9 @@ public class AloQueuingSubscriberTest {
         Subscriber<Alo<String>> subscriber = Adapters.toSubscriber(emitted::add);
 
         Sinks.Many<TestAlo> sink = Sinks.many().multicast().onBackpressureBuffer();
-        sink.asFlux().subscribe(new AloQueueingSubscriber<>(subscriber, String::length, OrderManagingAcknowledgementQueue::newWithImmediateErrors, 2));
+        sink.asFlux().subscribe(
+            new AloQueueingSubscriber<>(subscriber, String::length, OrderManagingAcknowledgementQueue::create, 2)
+        );
 
         sink.tryEmitNext(firstAcknowledgeable);
         sink.tryEmitNext(secondAcknowledgeable);
@@ -99,7 +101,9 @@ public class AloQueuingSubscriberTest {
         Subscriber<Alo<String>> subscriber = Adapters.toSubscriber(emitted::add);
 
         Sinks.Many<TestAlo> sink = Sinks.many().multicast().onBackpressureBuffer();
-        sink.asFlux().subscribe(new AloQueueingSubscriber<>(subscriber, String::length, OrderManagingAcknowledgementQueue::newWithImmediateErrors, 2));
+        sink.asFlux().subscribe(
+            new AloQueueingSubscriber<>(subscriber, String::length, OrderManagingAcknowledgementQueue::create, 2)
+        );
 
         sink.tryEmitNext(mom);
         sink.tryEmitNext(dad);
@@ -159,7 +163,9 @@ public class AloQueuingSubscriberTest {
         List<Alo<String>> emitted = new ArrayList<>();
         Subscriber<Alo<String>> subscriber = Adapters.toSubscriber(emitted::add);
 
-        sink.asFlux().subscribe(new AloQueueingSubscriber<>(subscriber, String::length, OrderManagingAcknowledgementQueue::newWithImmediateErrors, 3));
+        sink.asFlux().subscribe(
+            new AloQueueingSubscriber<>(subscriber, String::length, OrderManagingAcknowledgementQueue::create, 3)
+        );
 
         all.forEach(sink::tryEmitNext);
 

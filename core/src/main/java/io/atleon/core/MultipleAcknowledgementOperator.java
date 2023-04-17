@@ -21,6 +21,8 @@ public class MultipleAcknowledgementOperator<T, A extends Alo<T>> implements Pub
 
     @Override
     public void subscribe(Subscriber<? super Alo<T>> actual) {
-        source.subscribe(new AloQueueingSubscriber<>(actual, groupExtractor, MultipleAcknowledgementQueue::new, maxInFlight));
+        source.subscribe(
+            new AloQueueingSubscriber<>(actual, groupExtractor, MultipleAcknowledgementQueue::create, maxInFlight)
+        );
     }
 }

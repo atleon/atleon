@@ -5,8 +5,12 @@ import java.util.function.Function;
 
 final class MultipleAcknowledgementQueue extends AcknowledgementQueue {
 
-    public MultipleAcknowledgementQueue() {
-        super(false);
+    private MultipleAcknowledgementQueue() {
+
+    }
+
+    public static AcknowledgementQueue create() {
+        return new MultipleAcknowledgementQueue();
     }
 
     //TODO This method may possibly be made more performant, but would be non-trivial to do so. At

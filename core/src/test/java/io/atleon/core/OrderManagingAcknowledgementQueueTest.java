@@ -19,7 +19,7 @@ public class OrderManagingAcknowledgementQueueTest {
 
     @Test
     public void acknowledgementsAreExecutedInOrderOfCreationAfterCompletion() {
-        AcknowledgementQueue queue = OrderManagingAcknowledgementQueue.newWithInOrderErrors();
+        AcknowledgementQueue queue = OrderManagingAcknowledgementQueue.create();
 
         AtomicBoolean firstAcknowledged = new AtomicBoolean();
         AtomicBoolean secondAcknowledged = new AtomicBoolean();
@@ -46,7 +46,7 @@ public class OrderManagingAcknowledgementQueueTest {
 
     @Test
     public void nacknowledgementCanBeCompletedInOrder() {
-        AcknowledgementQueue queue = OrderManagingAcknowledgementQueue.newWithInOrderErrors();
+        AcknowledgementQueue queue = OrderManagingAcknowledgementQueue.create();
 
         AtomicBoolean firstAcknowledged = new AtomicBoolean();
         AtomicReference<Throwable> firstNacknowledged = new AtomicReference<>();
@@ -74,45 +74,8 @@ public class OrderManagingAcknowledgementQueueTest {
     }
 
     @Test
-    public void nacknowledgementCanBeExecutedImmediately() {
-        AcknowledgementQueue queue = OrderManagingAcknowledgementQueue.newWithImmediateErrors();
-
-        AtomicBoolean firstAcknowledged = new AtomicBoolean();
-        AtomicReference<Throwable> firstNacknowledged = new AtomicReference<>();
-        AtomicBoolean secondAcknowledged = new AtomicBoolean();
-        AtomicReference<Throwable> secondNacknowledged = new AtomicReference<>();
-
-        AcknowledgementQueue.InFlight firstInFlight = queue.add(() -> firstAcknowledged.set(true), firstNacknowledged::set);
-        AcknowledgementQueue.InFlight secondInFlight = queue.add(() -> secondAcknowledged.set(true), secondNacknowledged::set);
-
-        long drained = queue.completeExceptionally(secondInFlight, new IllegalStateException());
-
-        assertEquals(0L, drained);
-        assertFalse(firstAcknowledged.get());
-        assertNull(firstNacknowledged.get());
-        assertFalse(secondAcknowledged.get());
-        assertTrue(secondNacknowledged.get() instanceof IllegalStateException);
-
-        drained = queue.complete(secondInFlight);
-
-        assertEquals(0L, drained);
-        assertFalse(firstAcknowledged.get());
-        assertNull(firstNacknowledged.get());
-        assertFalse(secondAcknowledged.get());
-        assertTrue(secondNacknowledged.get() instanceof IllegalStateException);
-
-        drained = queue.complete(firstInFlight);
-
-        assertEquals(2L, drained);
-        assertTrue(firstAcknowledged.get());
-        assertNull(firstNacknowledged.get());
-        assertFalse(secondAcknowledged.get());
-        assertTrue(secondNacknowledged.get() instanceof IllegalStateException);
-    }
-
-    @Test
     public void recompletionOfInFlightsIsIgnored() {
-        AcknowledgementQueue queue = OrderManagingAcknowledgementQueue.newWithInOrderErrors();
+        AcknowledgementQueue queue = OrderManagingAcknowledgementQueue.create();
 
         AtomicInteger firstAcknowledgements = new AtomicInteger();
         AtomicReference<Throwable> firstNacknowledged = new AtomicReference<>();
@@ -174,7 +137,7 @@ public class OrderManagingAcknowledgementQueueTest {
         CompletableFuture<Boolean> secondAcknowledgementStarted = new CompletableFuture<>();
         Runnable secondAcknowledger = () -> secondAcknowledgementStarted.complete(true);
 
-        AcknowledgementQueue queue = OrderManagingAcknowledgementQueue.newWithInOrderErrors();
+        AcknowledgementQueue queue = OrderManagingAcknowledgementQueue.create();
 
         AcknowledgementQueue.InFlight firstInFlight = queue.add(firstAcknowledger, error -> {});
         AcknowledgementQueue.InFlight secondInFlight = queue.add(secondAcknowledger, error -> {});

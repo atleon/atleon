@@ -18,16 +18,7 @@ abstract class AcknowledgementQueue {
 
     protected final Queue<InFlight> queue = new ConcurrentLinkedQueue<>();
 
-    private final boolean executeErrorsImmediately;
-
     private volatile int drainsInProgress;
-
-    /**
-     * @param executeErrorsImmediately Whether or not errored Acknowledgements are immediately executed
-     */
-    public AcknowledgementQueue(boolean executeErrorsImmediately) {
-        this.executeErrorsImmediately = executeErrorsImmediately;
-    }
 
     /**
      * Append an In-Flight Acknowledgement to the Queue backed by the following Acknowledger and
@@ -53,11 +44,7 @@ abstract class AcknowledgementQueue {
      * @return The number of elements drained from this Queue due to completion of Acknowledgement
      */
     public long completeExceptionally(InFlight toComplete, Throwable error) {
-        boolean completed = complete(toComplete, inFlight -> inFlight.completeExceptionally(error));
-        if (completed && executeErrorsImmediately) {
-            toComplete.execute();
-        }
-        return completed ? drain() : 0L;
+        return complete(toComplete, inFlight -> inFlight.completeExceptionally(error)) ? drain() : 0L;
     }
 
     protected abstract boolean complete(InFlight inFlight, Function<InFlight, Boolean> completer);
