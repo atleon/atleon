@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 /**
  * A reactive Kafka receiver with at-least-once semantics for consuming records from topics of a
@@ -208,6 +209,18 @@ public class AloKafkaReceiver<K, V> {
      * Creates a Publisher of {@link Alo} items referencing values extracted from Kafka
      * {@link ConsumerRecord}s wrapped as an {@link AloFlux}.
      *
+     * @param topicsPattern The {@link Pattern} of topics to subscribe to
+     * @return A Publisher of Alo items referencing values extracted from Kafka ConsumerRecords
+     */
+    public AloFlux<V> receiveAloValues(Pattern topicsPattern) {
+        return receiveAloRecords(topicsPattern)
+            .mapNotNull(ConsumerRecord::value);
+    }
+
+    /**
+     * Creates a Publisher of {@link Alo} items referencing values extracted from Kafka
+     * {@link ConsumerRecord}s wrapped as an {@link AloFlux}.
+     *
      * @param topic The topic to subscribe to
      * @return A Publisher of Alo items referencing Kafka ConsumerRecords
      */
@@ -223,10 +236,30 @@ public class AloKafkaReceiver<K, V> {
      * @return A Publisher of Alo items referencing Kafka ConsumerRecords
      */
     public AloFlux<ConsumerRecord<K, V>> receiveAloRecords(Collection<String> topics) {
+        return receiveAloRecords(consumerConfig -> ReceiverOptions.<K, V>create(consumerConfig).subscription(topics));
+    }
+
+    /**
+     * Creates a Publisher of {@link Alo} items referencing values extracted from Kafka
+     * {@link ConsumerRecord}s wrapped as an {@link AloFlux}.
+     *
+     * @param topicsPattern The {@link Pattern} of topics to subscribe to
+     * @return A Publisher of Alo items referencing Kafka ConsumerRecords
+     */
+    public AloFlux<ConsumerRecord<K, V>> receiveAloRecords(Pattern topicsPattern) {
+        return receiveAloRecords(consumerConfig -> ReceiverOptions.<K, V>create(consumerConfig).subscription(topicsPattern));
+    }
+
+    private AloFlux<ConsumerRecord<K, V>> receiveAloRecords(ReceiverOptionsInitializer<K, V> optionsInitializer) {
         return configSource.create()
             .map(ReceiveResources<K, V>::new)
-            .flatMapMany(resources -> resources.receive(topics))
+            .flatMapMany(resources -> resources.receive(optionsInitializer))
             .as(AloFlux::wrap);
+    }
+
+    private interface ReceiverOptionsInitializer<K, V> {
+
+        ReceiverOptions<K, V> initialize(Map<String, Object> consumerConfig);
     }
 
     private static final class ReceiveResources<K, V> {
@@ -240,11 +273,11 @@ public class AloKafkaReceiver<K, V> {
             this.nacknowledgerFactory = createNacknowledgerFactory(config);
         }
 
-        public Flux<Alo<ConsumerRecord<K, V>>> receive(Collection<String> topics) {
+        public Flux<Alo<ConsumerRecord<K, V>>> receive(ReceiverOptionsInitializer<K, V> optionsInitializer) {
             CompletableFuture<Collection<ReceiverPartition>> assignment = new CompletableFuture<>();
             AloFactory<ConsumerRecord<K, V>> aloFactory = loadAloFactory();
             Sinks.Empty<Alo<ConsumerRecord<K, V>>> sink = Sinks.empty();
-            return newReceiver(topics, assignment::complete).receive()
+            return newReceiver(optionsInitializer, assignment::complete).receive()
                 .transform(records -> maybeBlockRequestOnPartitionPositioning(records, assignment))
                 .map(record -> toAlo(record, aloFactory, sink::tryEmitError))
                 .mergeWith(sink.asMono())
@@ -257,11 +290,10 @@ public class AloKafkaReceiver<K, V> {
         }
 
         private KafkaReceiver<K, V> newReceiver(
-            Collection<String> topics,
+            ReceiverOptionsInitializer<K, V> optionsInitializer,
             Consumer<Collection<ReceiverPartition>> onAssign
         ) {
-            ReceiverOptions<K, V> receiverOptions = ReceiverOptions.<K, V>create(newConsumerConfig())
-                .subscription(topics)
+            ReceiverOptions<K, V> receiverOptions = optionsInitializer.initialize(newConsumerConfig())
                 .pollTimeout(ConfigLoading.loadDuration(config, POLL_TIMEOUT_CONFIG).orElse(DEFAULT_POLL_TIMEOUT))
                 .commitInterval(ConfigLoading.loadDuration(config, COMMIT_INTERVAL_CONFIG).orElse(DEFAULT_COMMIT_INTERVAL))
                 .maxCommitAttempts(ConfigLoading.loadInt(config, MAX_COMMIT_ATTEMPTS_CONFIG).orElse(DEFAULT_MAX_COMMIT_ATTEMPTS))
