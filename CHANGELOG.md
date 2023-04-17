@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.15.0]
+atleon `0.15.0` is a beta release containing updates outlined below
+
+### Fixes
+* [#153] - Avoid nacknowledging if error will be emitted anyway
+* [#158] - Close RabbitMQ Receiver after every `AloFlux` termination
+* [#162] - Always execute queued acknowledgements in order, regardless of positive vs. negative
+* [#164] - Remove custom error handling in `AloRabbitMQSender`
+
+### Additions
+* [#152] - Allow subscribing to Kafka topics that match a `Pattern`
+* [#154] - Provide terminal `consume` operator on `AloFlux`
+* [#156] - Nacknowledger behavior now configurable for Kafka
+
 # [0.14.2]
 atleon `0.14.2` is a beta release containing updates outlined below
 
