@@ -48,6 +48,16 @@ class AloFluxTest {
     }
 
     @Test
+    public void alosCanBeConsumed() {
+        TestAlo alo = new TestAlo("DATA");
+
+        Flux.just(alo).as(AloFlux::wrap).consume(System.out::println)
+            .subscribe(__ -> { throw new IllegalStateException("Should not emit anything"); });
+
+        assertTrue(alo.isAcknowledged());
+    }
+
+    @Test
     public void emptyManyMappingHasConsumerExecuted() {
         TestAlo empty = new TestAlo("");
         Flux.just(empty).as(AloFlux::wrap).flatMapCollection(this::extractCharacters).unwrap().then().block();
