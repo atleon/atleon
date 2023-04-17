@@ -141,7 +141,7 @@ public class AloRabbitMQReceiver<T> {
         public Flux<Alo<ReceivedRabbitMQMessage<T>>> receive(String queue) {
             AloFactory<ReceivedRabbitMQMessage<T>> aloFactory = loadAloFactory(queue);
             Sinks.Empty<Alo<ReceivedRabbitMQMessage<T>>> sink = Sinks.empty();
-            return newReceiver().consumeManualAck(queue, newConsumeOptions())
+            return Flux.using(this::newReceiver, it -> it.consumeManualAck(queue, newConsumeOptions()), Receiver::close)
                 .map(delivery -> deserialize(delivery, aloFactory, sink::tryEmitError))
                 .mergeWith(sink.asMono())
                 .transform(aloMessages -> applySignalListenerFactories(aloMessages, queue));
