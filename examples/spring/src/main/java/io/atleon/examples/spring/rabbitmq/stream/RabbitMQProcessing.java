@@ -1,6 +1,5 @@
 package io.atleon.examples.spring.rabbitmq.stream;
 
-import io.atleon.core.Alo;
 import io.atleon.core.AloStream;
 import reactor.core.Disposable;
 
@@ -12,9 +11,9 @@ public class RabbitMQProcessing extends AloStream<RabbitMQProcessingConfig> {
             .receiveAloBodies(config.getQueue())
             .filter(this::isPrime)
             .map(primeNumber -> "Found a prime number: " + primeNumber)
-            .doOnNext(config.getConsumer())
+            .consume(config.getConsumer())
             .resubscribeOnError(config.name())
-            .subscribe(Alo::acknowledge);
+            .subscribe();
     }
 
     private boolean isPrime(Number number) {
