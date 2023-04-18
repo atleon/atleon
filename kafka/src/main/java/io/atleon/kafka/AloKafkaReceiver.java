@@ -6,6 +6,7 @@ import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
 import io.atleon.core.AloSignalListenerFactory;
 import io.atleon.core.AloSignalListenerFactoryConfig;
+import io.atleon.core.ErrorEmitter;
 import io.atleon.core.OrderManagingAcknowledgementOperator;
 import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -14,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.Sinks;
 import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.receiver.ReceiverPartition;
@@ -82,6 +82,12 @@ public class AloKafkaReceiver<K, V> {
     public static final String NACKNOWLEDGER_TYPE_EMIT = "emit";
 
     /**
+     * When negative acknowledgement results in emitting the corresponding error, this configures
+     * the timeout on successfully emitting that error.
+     */
+    public static final String ERROR_EMISSION_TIMEOUT_CONFIG = CONFIG_PREFIX + "error.emission.timeout";
+
+    /**
      * Subscribers may want to block request Threads on assignment of partitions AND subsequent
      * fetching/updating of offset positions on those partitions such that all imminently
      * produced Records to the subscribed Topics will be received by the associated Consumer
@@ -129,6 +135,8 @@ public class AloKafkaReceiver<K, V> {
      * partitions), we use a default equal to what's used in KafkaConsumer::close
      */
     public static final String CLOSE_TIMEOUT_CONFIG = CONFIG_PREFIX + "close.timeout";
+
+    private static final Duration DEFAULT_ERROR_EMISSION_TIMEOUT = Duration.ofSeconds(10);
 
     private static final boolean DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS = false;
 
@@ -276,17 +284,23 @@ public class AloKafkaReceiver<K, V> {
         public Flux<Alo<ConsumerRecord<K, V>>> receive(ReceiverOptionsInitializer<K, V> optionsInitializer) {
             CompletableFuture<Collection<ReceiverPartition>> assignment = new CompletableFuture<>();
             AloFactory<ConsumerRecord<K, V>> aloFactory = loadAloFactory();
-            Sinks.Empty<Alo<ConsumerRecord<K, V>>> sink = Sinks.empty();
+            ErrorEmitter<Alo<ConsumerRecord<K, V>>> errorEmitter = loadErrorEmitter();
             return newReceiver(optionsInitializer, assignment::complete).receive()
                 .transform(records -> maybeBlockRequestOnPartitionPositioning(records, assignment))
-                .map(record -> toAlo(record, aloFactory, sink::tryEmitError))
-                .mergeWith(sink.asMono())
+                .map(record -> toAlo(record, aloFactory, errorEmitter::safelyEmit))
+                .transform(errorEmitter::applyTo)
                 .transform(this::newOrderManagingAcknowledgementOperator)
                 .transform(this::applySignalListenerFactories);
         }
 
         private AloFactory<ConsumerRecord<K, V>> loadAloFactory() {
             return AloFactoryConfig.loadDecorated(config, AloKafkaConsumerRecordDecorator.class);
+        }
+
+        private ErrorEmitter<Alo<ConsumerRecord<K, V>>> loadErrorEmitter() {
+            Duration timeout = ConfigLoading.loadDuration(config, ERROR_EMISSION_TIMEOUT_CONFIG)
+                .orElse(DEFAULT_ERROR_EMISSION_TIMEOUT);
+            return ErrorEmitter.create(timeout);
         }
 
         private KafkaReceiver<K, V> newReceiver(

@@ -6,16 +6,17 @@ import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
 import io.atleon.core.AloSignalListenerFactory;
 import io.atleon.core.AloSignalListenerFactoryConfig;
+import io.atleon.core.ErrorEmitter;
 import io.atleon.util.Defaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Sinks;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.rabbitmq.ConsumeOptions;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.ReceiverOptions;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -79,6 +80,14 @@ public class AloRabbitMQReceiver<T> {
 
     public static final String NACKNOWLEDGER_TYPE_DISCARD = "discard";
 
+    /**
+     * When negative acknowledgement results in emitting the corresponding error, this configures
+     * the timeout on successfully emitting that error.
+     */
+    public static final String ERROR_EMISSION_TIMEOUT_CONFIG = CONFIG_PREFIX + "error.emission.timeout";
+
+    private static final Duration DEFAULT_ERROR_EMISSION_TIMEOUT = Duration.ofSeconds(10);
+
     private static final Logger LOGGER = LoggerFactory.getLogger(AloRabbitMQReceiver.class);
 
     private final RabbitMQConfigSource configSource;
@@ -140,10 +149,10 @@ public class AloRabbitMQReceiver<T> {
 
         public Flux<Alo<ReceivedRabbitMQMessage<T>>> receive(String queue) {
             AloFactory<ReceivedRabbitMQMessage<T>> aloFactory = loadAloFactory(queue);
-            Sinks.Empty<Alo<ReceivedRabbitMQMessage<T>>> sink = Sinks.empty();
+            ErrorEmitter<Alo<ReceivedRabbitMQMessage<T>>> errorEmitter = loadErrorEmitter();
             return Flux.using(this::newReceiver, it -> it.consumeManualAck(queue, newConsumeOptions()), Receiver::close)
-                .map(delivery -> deserialize(delivery, aloFactory, sink::tryEmitError))
-                .mergeWith(sink.asMono())
+                .map(delivery -> deserialize(delivery, aloFactory, errorEmitter::safelyEmit))
+                .transform(errorEmitter::applyTo)
                 .transform(aloMessages -> applySignalListenerFactories(aloMessages, queue));
         }
 
@@ -152,6 +161,11 @@ public class AloRabbitMQReceiver<T> {
                 config.modifyAndGetProperties(it -> it.put(AloReceivedRabbitMQMessageDecorator.QUEUE_CONFIG, queue)),
                 AloReceivedRabbitMQMessageDecorator.class
             );
+        }
+
+        private ErrorEmitter<Alo<ReceivedRabbitMQMessage<T>>> loadErrorEmitter() {
+            Duration timeout = config.loadDuration(ERROR_EMISSION_TIMEOUT_CONFIG).orElse(DEFAULT_ERROR_EMISSION_TIMEOUT);
+            return ErrorEmitter.create(timeout);
         }
 
         private Receiver newReceiver() {

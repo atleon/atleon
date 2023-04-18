@@ -4,6 +4,7 @@ import com.rabbitmq.client.ConnectionFactory;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -41,6 +42,10 @@ public class RabbitMQConfig {
         Function<String, Optional<T>> predefinedTypeInstantiator
     ) {
         return ConfigLoading.loadConfiguredWithPredefinedTypes(properties, key, type, predefinedTypeInstantiator);
+    }
+
+    public Optional<Duration> loadDuration(String property) {
+        return ConfigLoading.loadDuration(properties, property);
     }
 
     public Optional<Integer> loadInt(String property) {
