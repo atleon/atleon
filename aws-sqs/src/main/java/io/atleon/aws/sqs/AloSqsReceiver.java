@@ -6,11 +6,12 @@ import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
 import io.atleon.core.AloSignalListenerFactory;
 import io.atleon.core.AloSignalListenerFactoryConfig;
+import io.atleon.core.ErrorEmitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Sinks;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -61,6 +62,12 @@ public class AloSqsReceiver<T> {
     public static final String NACKNOWLEDGER_TYPE_EMIT = "emit";
 
     public static final String NACKNOWLEDGER_TYPE_VISIBILITY_RESET = "visibility_reset";
+
+    /**
+     * When negative acknowledgement results in emitting the corresponding error, this configures
+     * the timeout on successfully emitting that error.
+     */
+    public static final String ERROR_EMISSION_TIMEOUT_CONFIG = CONFIG_PREFIX + "error.emission.timeout";
 
     /**
      * Configures the maximum number of messages returned by each Receive Message Request to SQS.
@@ -120,6 +127,8 @@ public class AloSqsReceiver<T> {
      * the termination signal downstream. Specified as ISO-8601 Duration, e.g. PT10S
      */
     public static final String CLOSE_TIMEOUT_CONFIG = CONFIG_PREFIX + "close.timeout";
+
+    private static final Duration DEFAULT_ERROR_EMISSION_TIMEOUT = Duration.ofSeconds(10);
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloSqsReceiver.class);
 
@@ -182,10 +191,10 @@ public class AloSqsReceiver<T> {
 
         public Flux<Alo<ReceivedSqsMessage<T>>> receive(String queueUrl) {
             AloFactory<ReceivedSqsMessage<T>> aloFactory = loadAloFactory(queueUrl);
-            Sinks.Empty<Alo<ReceivedSqsMessage<T>>> sink = Sinks.empty();
+            ErrorEmitter<Alo<ReceivedSqsMessage<T>>> errorEmitter = loadErrorEmitter();
             return newReceiver().receiveManual(queueUrl)
-                .map(message -> deserialize(message, aloFactory, sink::tryEmitError))
-                .mergeWith(sink.asMono())
+                .map(message -> deserialize(message, aloFactory, errorEmitter::safelyEmit))
+                .transform(errorEmitter::applyTo)
                 .transform(aloMessages -> applySignalListenerFactories(aloMessages, queueUrl));
         }
 
@@ -194,6 +203,11 @@ public class AloSqsReceiver<T> {
                 config.modifyAndGetProperties(it -> it.put(AloReceivedSqsMessageDecorator.QUEUE_URL_CONFIG, queueUrl)),
                 AloReceivedSqsMessageDecorator.class
             );
+        }
+
+        private ErrorEmitter<Alo<ReceivedSqsMessage<T>>> loadErrorEmitter() {
+            Duration timeout = config.loadDuration(ERROR_EMISSION_TIMEOUT_CONFIG).orElse(DEFAULT_ERROR_EMISSION_TIMEOUT);
+            return ErrorEmitter.create(timeout);
         }
 
         private SqsReceiver newReceiver() {
