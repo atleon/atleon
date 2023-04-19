@@ -2,6 +2,7 @@ package io.atleon.kafka;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
+import io.atleon.core.SenderResult;
 import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -279,7 +280,9 @@ public class AloKafkaSender<K, V> implements Closeable {
         Function<? super V, ? extends K> valueToKey
     ) {
         Function<V, ProducerRecord<K, V>> recordCreator = newValueBasedRecordCreator(valueToTopic, valueToKey);
-        return futureResources.flatMapMany(resources -> resources.sendAlos(aloValues, recordCreator)).as(AloFlux::wrap);
+        return futureResources.flatMapMany(resources -> resources.sendAlos(aloValues, recordCreator))
+            .as(AloFlux::wrap)
+            .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     /**
@@ -294,9 +297,9 @@ public class AloKafkaSender<K, V> implements Closeable {
      * @return A Publisher of Alo items referencing the result of each sent record
      */
     public AloFlux<KafkaSenderResult<ProducerRecord<K, V>>> sendAloRecords(Publisher<Alo<ProducerRecord<K, V>>> aloRecords) {
-        return futureResources
-            .flatMapMany(resources -> resources.sendAlos(aloRecords, Function.identity()))
-            .as(AloFlux::wrap);
+        return futureResources.flatMapMany(resources -> resources.sendAlos(aloRecords, Function.identity()))
+            .as(AloFlux::wrap)
+            .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     /**

@@ -1,6 +1,5 @@
 package io.atleon.core;
 
-import io.atleon.util.Throwing;
 import reactor.core.publisher.SynchronousSink;
 
 import java.util.Collection;
@@ -23,51 +22,58 @@ final class AloOps {
 
     }
 
-    public static <T, A extends Alo<T>> Predicate<A>
-    filtering(Predicate<? super T> predicate, Consumer<? super A> negativeConsumer) {
-        return alo -> {
-            boolean result;
+    public static <T> BiConsumer<Alo<T>, SynchronousSink<Alo<T>>>
+    filteringHandler(Predicate<? super T> predicate, Consumer<Alo<T>> negativeConsumer) {
+        return (alo, sink) -> {
+            Boolean result = null;
             try {
                 result = predicate.test(alo.get());
             } catch (Throwable error) {
-                throw Throwing.propagate(error);
+                processFailureOrNacknowledge(sink, alo, error);
             }
 
-            if (!result) {
-                negativeConsumer.accept(alo);
+            if (result != null) {
+                if (result) {
+                    sink.next(alo);
+                } else {
+                    negativeConsumer.accept(alo);
+                }
             }
-            return result;
         };
     }
 
-    public static <T, R> Function<Alo<T>, Alo<R>>
-    mapping(Function<? super T, ? extends R> mapper) {
-        return alo -> {
-            Alo<R> result;
+    public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<R>>>
+    mappingHandler(Function<? super T, ? extends R> mapper) {
+        return (alo, sink) -> {
+            Alo<R> result = null;
             try {
                 result = Objects.requireNonNull(alo.map(mapper), "Alo implementation returned null mapping");
             } catch (Throwable error) {
-                throw Throwing.propagate(error);
+                processFailureOrNacknowledge(sink, alo, error);
             }
 
-            return result;
+            if (result != null) {
+                sink.next(result);
+            }
         };
     }
 
     public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<R>>>
     mappingPresentHandler(Function<? super T, Optional<? extends R>> mapper, Consumer<? super Alo<T>> absentConsumer) {
         return (alo, sink) -> {
-            Alo<Optional<? extends R>> result;
+            Alo<Optional<? extends R>> result = null;
             try {
                 result = Objects.requireNonNull(alo.map(mapper), "Alo implementation returned null mapping");
             } catch (Throwable error) {
-                throw Throwing.propagate(error);
+                processFailureOrNacknowledge(sink, alo, error);
             }
 
-            if (result.get().isPresent()) {
-                sink.next(PresentAlo.wrap(result));
-            } else {
-                absentConsumer.accept(alo);
+            if (result != null) {
+                if (result.get().isPresent()) {
+                    sink.next(PresentAlo.wrap(result));
+                } else {
+                    absentConsumer.accept(alo);
+                }
             }
         };
     }
@@ -75,17 +81,19 @@ final class AloOps {
     public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<Collection<R>>>>
     mappingToManyHandler(Function<? super T, ? extends Collection<R>> mapper, Consumer<? super Alo<T>> emptyMappingConsumer) {
         return (alo, sink) -> {
-            Alo<Collection<R>> result;
+            Alo<Collection<R>> result = null;
             try {
                 result = Objects.requireNonNull(alo.map(mapper), "Alo implementation returned null mapping");
             } catch (Throwable error) {
-                throw Throwing.propagate(error);
+                processFailureOrNacknowledge(sink, alo, error);
             }
 
-            if (result.get().isEmpty()) {
-                emptyMappingConsumer.accept(alo);
-            } else {
-                sink.next(result);
+            if (result != null) {
+                if (result.get().isEmpty()) {
+                    emptyMappingConsumer.accept(alo);
+                } else {
+                    sink.next(result);
+                }
             }
         };
     }
@@ -93,13 +101,29 @@ final class AloOps {
     public static <T> BiConsumer<Alo<T>, SynchronousSink<Alo<Void>>>
     consumingHandler(Consumer<? super T> consumer, Consumer<? super Alo<T>> afterSuccessConsumer) {
         return (alo, sink) -> {
+            boolean consumed = false;
             try {
                 consumer.accept(alo.get());
+                consumed = true;
             } catch (Throwable error) {
-                throw Throwing.propagate(error);
+                processFailureOrNacknowledge(sink, alo, error);
             }
 
-            afterSuccessConsumer.accept(alo);
+            if (consumed) {
+                afterSuccessConsumer.accept(alo);
+            }
+        };
+    }
+
+    public static <T> BiConsumer<Alo<T>, SynchronousSink<Alo<T>>>
+    failureProcessingHandler(Predicate<? super T> isFailure, Function<? super T, ? extends Throwable> errorExtractor) {
+        return (alo, sink) -> {
+            T t = alo.get();
+            if (isFailure.test(t)) {
+                processFailure(sink, alo, errorExtractor.apply(t), () -> sink.next(alo));
+            } else {
+                sink.next(alo);
+            }
         };
     }
 
@@ -113,6 +137,17 @@ final class AloOps {
                 combineAcknowledgers(alos.stream().map(Alo::getAcknowledger).collect(Collectors.toList())),
                 combineNacknowledgers(alos.stream().map(Alo::getNacknowledger).collect(Collectors.toList()))
             );
+        }
+    }
+
+    private static void processFailureOrNacknowledge(SynchronousSink<?> sink, Alo<?> alo, Throwable error) {
+        processFailure(sink, alo, error, () -> Alo.nacknowledge(alo, error));
+    }
+
+    private static void processFailure(SynchronousSink<?> sink, Alo<?> alo, Throwable error, Runnable unprocessedFallback) {
+        AloFailureStrategy strategy = sink.contextView().getOrDefault(AloFailureStrategy.class, AloFailureStrategy.emit());
+        if (!strategy.process(sink, alo, error)) {
+            unprocessedFallback.run();
         }
     }
 

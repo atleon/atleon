@@ -85,7 +85,6 @@ public class KafkaErrorHandling {
         AloKafkaSender<String, String> sender = AloKafkaSender.from(faultyKafkaSenderConfig);
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
             .receiveAloValues(Collections.singletonList(TOPIC_1))
-            .resubscribeOnError(KafkaErrorHandling.class.getSimpleName(), Duration.ofSeconds(2L))
             .groupBy(Function.identity())
             .map(groupedFlux -> groupedFlux
                 .publishOn(Schedulers.boundedElastic())
@@ -107,6 +106,7 @@ public class KafkaErrorHandling {
                     successfullyProcessed.add(senderResult.correlationMetadata());
                 }
             })
+            .resubscribeOnError(KafkaErrorHandling.class.getSimpleName(), Duration.ofSeconds(2L))
             .subscribe(new DefaultAloSenderResultSubscriber<>());
 
         //Step 5) Produce the records to be consumed above. Note that we are using the same record

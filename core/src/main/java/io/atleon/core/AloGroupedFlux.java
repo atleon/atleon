@@ -2,8 +2,9 @@ package io.atleon.core;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
+import reactor.core.publisher.SynchronousSink;
 
-import java.util.function.Function;
+import java.util.function.BiConsumer;
 
 /**
  * A wrapper around Project Reactor's {@link GroupedFlux} for keys of type K and for Alo elements
@@ -27,8 +28,8 @@ public class AloGroupedFlux<K, T> extends AloFlux<T> {
     }
 
     static <K, T, R> AloGroupedFlux<K, R>
-    create(GroupedFlux<? extends K, Alo<T>> groupedFlux, Function<Alo<T>, Alo<R>> mapper) {
-        return new AloGroupedFlux<>(groupedFlux.map(mapper), groupedFlux.key());
+    create(GroupedFlux<? extends K, Alo<T>> groupedFlux, BiConsumer<Alo<T>, SynchronousSink<Alo<R>>> mappingHandler) {
+        return new AloGroupedFlux<>(groupedFlux.handle(mappingHandler), groupedFlux.key());
     }
 
     public K key() {

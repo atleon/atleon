@@ -2,6 +2,7 @@ package io.atleon.aws.sqs;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
+import io.atleon.core.SenderResult;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,9 +105,9 @@ public class AloSqsSender<T> implements Closeable {
         SqsMessageCreator<T> messageCreator,
         String queueUrl
     ) {
-        return futureResources
-            .flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator, queueUrl))
-            .as(AloFlux::wrap);
+        return futureResources.flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator, queueUrl))
+            .as(AloFlux::wrap)
+            .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     public Function<Publisher<Alo<SqsMessage<T>>>, AloFlux<SqsSenderResult<SqsMessage<T>>>> sendAloMessages(
@@ -119,9 +120,9 @@ public class AloSqsSender<T> implements Closeable {
         Publisher<Alo<SqsMessage<T>>> aloMessages,
         String queueUrl
     ) {
-        return futureResources
-            .flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity(), queueUrl))
-            .as(AloFlux::wrap);
+        return futureResources.flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity(), queueUrl))
+            .as(AloFlux::wrap)
+            .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     /**

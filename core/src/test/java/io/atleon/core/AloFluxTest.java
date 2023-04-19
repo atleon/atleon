@@ -333,6 +333,74 @@ class AloFluxTest {
         assertFalse(nonEmpty.isAcknowledged());
     }
 
+    @Test
+    public void errorsCanBeEmitted() {
+        TestAlo alo = new TestAlo("data");
+
+        AloFlux<Void> aloFlux = Flux.just(alo)
+            .as(AloFlux::wrap)
+            .consume(data -> {
+                throw new UnsupportedOperationException("Boom");
+            })
+            .onAloErrorEmit();
+
+        StepVerifier.create(aloFlux).expectError().verify();
+
+        assertFalse(alo.isAcknowledged());
+        assertFalse(alo.isNacknowledged());
+    }
+
+    @Test
+    public void errorsCanBeIgnoredRatherThanEmitted() {
+        TestAlo alo = new TestAlo("data");
+
+        AloFlux<Void> aloFlux = Flux.just(alo)
+            .as(AloFlux::wrap)
+            .consume(data -> {
+                throw new UnsupportedOperationException("Boom");
+            })
+            .onAloErrorEmitUnless(UnsupportedOperationException.class::isInstance);
+
+        StepVerifier.create(aloFlux).expectComplete().verify();
+
+        assertTrue(alo.isAcknowledged());
+        assertFalse(alo.isNacknowledged());
+    }
+
+    @Test
+    public void errorHandlingCanBeDelegated() {
+        TestAlo alo = new TestAlo("data");
+
+        AloFlux<Void> aloFlux = Flux.just(alo)
+            .as(AloFlux::wrap)
+            .consume(data -> {
+                throw new UnsupportedOperationException("Boom");
+            })
+            .onAloErrorDelegate();
+
+        StepVerifier.create(aloFlux).expectComplete().verify();
+
+        assertFalse(alo.isAcknowledged());
+        assertTrue(alo.isNacknowledged());
+    }
+
+    @Test
+    public void errorsCanBeIgnoredRatherThanDelegated() {
+        TestAlo alo = new TestAlo("data");
+
+        AloFlux<Void> aloFlux = Flux.just(alo)
+            .as(AloFlux::wrap)
+            .consume(data -> {
+                throw new UnsupportedOperationException("Boom");
+            })
+            .onAloErrorDelegateUnless(UnsupportedOperationException.class::isInstance);
+
+        StepVerifier.create(aloFlux).expectComplete().verify();
+
+        assertTrue(alo.isAcknowledged());
+        assertFalse(alo.isNacknowledged());
+    }
+
     private Collection<String> extractCharacters(String string) {
         return IntStream.range(0, string.length())
             .mapToObj(string::charAt)

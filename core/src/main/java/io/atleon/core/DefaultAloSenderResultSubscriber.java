@@ -20,7 +20,7 @@ public class DefaultAloSenderResultSubscriber<T extends SenderResult> extends Ba
             Alo.acknowledge(value);
         } else {
             hookBeforeNacknowledge(senderResult);
-            Alo.nacknowledge(value, senderResult.failureCause().orElseGet(() -> new SenderFailureException(senderResult)));
+            Alo.nacknowledge(value, SenderResult.toError(senderResult));
         }
     }
 
@@ -44,13 +44,6 @@ public class DefaultAloSenderResultSubscriber<T extends SenderResult> extends Ba
      */
     protected void hookBeforeNacknowledge(T senderResult) {
         Throwable failureCause = senderResult.failureCause().orElse(null);
-        LOGGER.warn("SenderResult of type={} has failureCause={}", senderResult.getClass().getSimpleName(), failureCause);
-    }
-
-    private static final class SenderFailureException extends RuntimeException {
-
-        private SenderFailureException(SenderResult senderResult) {
-            super("SenderResult is a failure: " + senderResult);
-        }
+        LOGGER.warn("SenderResult of type={} is failed", senderResult.getClass().getSimpleName(), failureCause);
     }
 }
