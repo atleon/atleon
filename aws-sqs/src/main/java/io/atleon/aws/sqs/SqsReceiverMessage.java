@@ -90,7 +90,7 @@ public final class SqsReceiverMessage extends AbstractSqsMessage<String> impleme
 
     /**
      * Schedules a change of this Message's visibility by the provided Duration (which should
-     * have a whole number of seconds) and marks the message as no longer in flight.
+     * have a whole number of seconds) and marks the message as no longer in process.
      */
     public void changeVisibility(Duration timeout) {
         changeVisibility(timeout, false);
@@ -98,10 +98,10 @@ public final class SqsReceiverMessage extends AbstractSqsMessage<String> impleme
 
     /**
      * Schedules a change of this Message's visibility by the provided Duration (which should
-     * have a whole number of seconds) and may mark the message as still in flight.
+     * have a whole number of seconds) and may mark the message as still in process.
      */
-    public void changeVisibility(Duration timeout, boolean stillInFlight) {
-        visibilityChanger.execute(timeout, stillInFlight);
+    public void changeVisibility(Duration timeout, boolean stillInProcess) {
+        visibilityChanger.execute(timeout, stillInProcess);
     }
 
     /**
