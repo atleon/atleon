@@ -6,14 +6,17 @@ import reactor.core.Disposable;
 import reactor.core.observability.SignalListenerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.SignalType;
+import reactor.core.publisher.SynchronousSink;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
+import reactor.util.context.Context;
 
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -95,7 +98,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see Flux#filter(Predicate)
      */
     public AloFlux<T> filter(Predicate<? super T> predicate) {
-        return new AloFlux<>(wrapped.filter(AloOps.filtering(predicate, Alo::acknowledge)));
+        return new AloFlux<>(wrapped.handle(AloOps.filteringHandler(predicate, Alo::acknowledge)));
     }
 
     /**
@@ -109,7 +112,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see Flux#map(Function)
      */
     public <V> AloFlux<V> map(Function<? super T, ? extends V> mapper) {
-        return new AloFlux<>(wrapped.map(AloOps.mapping(mapper)));
+        return new AloFlux<>(wrapped.handle(AloOps.mappingHandler(mapper)));
     }
 
     /**
@@ -156,7 +159,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see Flux#concatMap(Function)
      */
     public <V> AloFlux<V> concatMap(Function<? super T, ? extends Publisher<V>> mapper) {
-        return wrapped.<Alo<Publisher<V>>>map(AloOps.mapping(mapper))
+        return wrapped.<Alo<Publisher<V>>>handle(AloOps.mappingHandler(mapper))
             .concatMap(AcknowledgingPublisher::fromAloPublisher)
             .as(AloFlux::new);
     }
@@ -165,7 +168,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see Flux#concatMap(Function, int)
      */
     public <V> AloFlux<V> concatMap(Function<? super T, ? extends Publisher<V>> mapper, int prefetch) {
-        return wrapped.<Alo<Publisher<V>>>map(AloOps.mapping(mapper))
+        return wrapped.<Alo<Publisher<V>>>handle(AloOps.mappingHandler(mapper))
             .concatMap(AcknowledgingPublisher::fromAloPublisher, prefetch)
             .as(AloFlux::new);
     }
@@ -174,7 +177,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see Flux#flatMap(Function)
      */
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper) {
-        return wrapped.<Alo<Publisher<V>>>map(AloOps.mapping(mapper))
+        return wrapped.<Alo<Publisher<V>>>handle(AloOps.mappingHandler(mapper))
             .flatMap(AcknowledgingPublisher::fromAloPublisher)
             .as(AloFlux::new);
     }
@@ -183,7 +186,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see Flux#flatMap(Function, int)
      */
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper, int concurrency) {
-        return wrapped.<Alo<Publisher<V>>>map(AloOps.mapping(mapper))
+        return wrapped.<Alo<Publisher<V>>>handle(AloOps.mappingHandler(mapper))
             .flatMap(AcknowledgingPublisher::fromAloPublisher, concurrency)
             .as(AloFlux::new);
     }
@@ -192,7 +195,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see Flux#flatMap(Function, int, int)
      */
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper, int concurrency, int prefetch) {
-        return wrapped.<Alo<Publisher<V>>>map(AloOps.mapping(mapper))
+        return wrapped.<Alo<Publisher<V>>>handle(AloOps.mappingHandler(mapper))
             .flatMap(AcknowledgingPublisher::fromAloPublisher, concurrency, prefetch)
             .as(AloFlux::new);
     }
@@ -347,9 +350,9 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <K, V> GroupFlux<AloGroupedFlux<K, V>>
     groupBy(Function<? super T, ? extends K> groupExtractor, int cardinality, Function<? super T, V> valueMapper) {
-        Function<Alo<T>, Alo<V>> aloValueMapper = AloOps.mapping(valueMapper);
+        BiConsumer<Alo<T>, SynchronousSink<Alo<V>>> aloValueMappingHandler = AloOps.mappingHandler(valueMapper);
         return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()))
-            .<AloGroupedFlux<K, V>>map(groupedFlux -> AloGroupedFlux.create(groupedFlux, aloValueMapper))
+            .<AloGroupedFlux<K, V>>map(groupedFlux -> AloGroupedFlux.create(groupedFlux, aloValueMappingHandler))
             .as(flux -> new GroupFlux<>(flux, cardinality));
     }
 
@@ -468,6 +471,76 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public AloFlux<T> limitPerSecond(RateLimitingConfig config) {
         return new AloFlux<>(wrapped.transform(new RateLimitingTransformer<>(config, Schedulers.boundedElastic())));
+    }
+
+    /**
+     * Apply {@link AloFailureStrategy} processing to emitted elements that may be error containers
+     * or otherwise indicate an error.
+     *
+     * @param isFailure      Evaluates if an emitted item represents a failure
+     * @param errorExtractor Function used to convert failed item to throwable error
+     * @return A new {@link AloFlux} with failure processing applied
+     */
+    public AloFlux<T>
+    processFailure(Predicate<? super T> isFailure, Function<? super T, ? extends Throwable> errorExtractor) {
+        return new AloFlux<>(wrapped.handle(AloOps.failureProcessingHandler(isFailure, errorExtractor)));
+    }
+
+    /**
+     * If an onAloError operator has been used downstream, reverts to the default 'EMIT' mode where
+     * errors are emitted as terminal events upstream. This can be used for easier scoping of the
+     * {@link AloFailureStrategy} or to override the inherited strategy in a sub-stream (for
+     * example in a flatMap).
+     *
+     * @return A new {@link AloFlux} that terminally emits Alo failure errors
+     */
+    public AloFlux<T> onAloErrorEmit() {
+        return new AloFlux<>(wrapped.contextWrite(Context.of(AloFailureStrategy.class, AloFailureStrategy.emit())));
+    }
+
+    /**
+     * Emit failures on Alo elements as terminal errors in <strong>upstream</strong> operators
+     * where the error does <strong>not</strong> match the provided predicate. When the predicate
+     * <strong>is</strong> matched, recovery is accomplished by acknowledging the incriminating
+     * Alo element and allowing the pipeline to continue.
+     *
+     * @param errorPredicate A {@link Predicate} used to filter which errors are ignored
+     * @return A new {@link AloFlux} that terminally emits Alo failure errors unless filtered
+     */
+    public AloFlux<T> onAloErrorEmitUnless(Predicate<? super Throwable> errorPredicate) {
+        AloFailureStrategy aloFailureStrategy = AloFailureStrategy.emitUnless(errorPredicate);
+        return new AloFlux<>(wrapped.contextWrite(Context.of(AloFailureStrategy.class, aloFailureStrategy)));
+    }
+
+    /**
+     * Delegates Alo failure handling to pipeline operators in <strong>upstream</strong> operators.
+     * <p>
+     * In the case of synchronous mapping operations, error delegation results in Alo elements
+     * being negatively acknowledged. In the case of emitting elements that may contain errors
+     * (like {@link SenderResult}), handling errors is delegated to downstream Subscribers.
+     *
+     * @return A new {@link AloFlux} that delegates failure handling to {@link Alo} or Subscribers
+     */
+    public AloFlux<T> onAloErrorDelegate() {
+        return new AloFlux<>(wrapped.contextWrite(Context.of(AloFailureStrategy.class, AloFailureStrategy.delegate())));
+    }
+
+    /**
+     * Delegates Alo failure handling to pipeline operators in <strong>upstream</strong> operators
+     * where the error does <strong>not</strong> match the provided predicate. When the predicate
+     * <strong>is</strong> matched, recovery is accomplished by acknowledging the incriminating Alo
+     * element and allowing the pipeline to continue.
+     * <p>
+     * In the case of synchronous mapping operations, error delegation results in Alo elements
+     * being negatively acknowledged. In the case of emitting elements that may contain errors
+     * (like {@link SenderResult}), handling errors is delegated to downstream Subscribers.
+     *
+     * @param errorPredicate A {@link Predicate} used to filter which errors are ignored
+     * @return A new {@link AloFlux} that delegates failure handling unless filtered
+     */
+    public AloFlux<T> onAloErrorDelegateUnless(Predicate<? super Throwable> errorPredicate) {
+        AloFailureStrategy aloFailureStrategy = AloFailureStrategy.delegateUnless(errorPredicate);
+        return new AloFlux<>(wrapped.contextWrite(Context.of(AloFailureStrategy.class, aloFailureStrategy)));
     }
 
     /**

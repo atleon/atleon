@@ -2,6 +2,7 @@ package io.atleon.aws.sns;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
+import io.atleon.core.SenderResult;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,9 +112,9 @@ public class AloSnsSender<T> implements Closeable {
         SnsMessageCreator<T> messageCreator,
         String topicArn
     ) {
-        return futureResources
-            .flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator, topicArn))
-            .as(AloFlux::wrap);
+        return futureResources.flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator, topicArn))
+            .as(AloFlux::wrap)
+            .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     public Function<Publisher<Alo<SnsMessage<T>>>, AloFlux<SnsSenderResult<SnsMessage<T>>>> sendAloMessages(
@@ -126,9 +127,9 @@ public class AloSnsSender<T> implements Closeable {
         Publisher<Alo<SnsMessage<T>>> aloMessages,
         String topicArn
     ) {
-        return futureResources
-            .flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity(), topicArn))
-            .as(AloFlux::wrap);
+        return futureResources.flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity(), topicArn))
+            .as(AloFlux::wrap)
+            .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     /**

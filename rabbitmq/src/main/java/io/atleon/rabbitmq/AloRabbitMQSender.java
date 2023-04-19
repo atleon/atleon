@@ -2,6 +2,7 @@ package io.atleon.rabbitmq;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
+import io.atleon.core.SenderResult;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,7 +150,9 @@ public class AloRabbitMQSender<T> implements Closeable {
         Publisher<Alo<T>> aloBodies,
         RabbitMQMessageCreator<T> messageCreator
     ) {
-        return futureResources.flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator)).as(AloFlux::wrap);
+        return futureResources.flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator))
+            .as(AloFlux::wrap)
+            .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     /**
@@ -166,9 +169,9 @@ public class AloRabbitMQSender<T> implements Closeable {
     public AloFlux<RabbitMQSenderResult<RabbitMQMessage<T>>> sendAloMessages(
         Publisher<Alo<RabbitMQMessage<T>>> aloMessages
     ) {
-        return futureResources
-            .flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity()))
-            .as(AloFlux::wrap);
+        return futureResources.flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity()))
+            .as(AloFlux::wrap)
+            .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     /**

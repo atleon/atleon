@@ -9,7 +9,7 @@ import reactor.core.publisher.Sinks;
 import java.time.Duration;
 
 /**
- * Utility class wrapping a {@link reactor.core.publisher.Sinks.Empty} that allows merging and
+ * Utility class wrapping a {@link Sinks.Empty} that allows applying to Publishers and
  * safe, timeout-based error emission.
  *
  * @param <T> The type of elements emitted in merged Publishers
