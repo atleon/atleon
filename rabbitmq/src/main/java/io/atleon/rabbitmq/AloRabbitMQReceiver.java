@@ -155,10 +155,10 @@ public class AloRabbitMQReceiver<T> {
         }
 
         private AloFactory<ReceivedRabbitMQMessage<T>> loadAloFactory(String queue) {
-            return AloFactoryConfig.loadDecorated(
-                config.modifyAndGetProperties(it -> it.put(AloReceivedRabbitMQMessageDecorator.QUEUE_CONFIG, queue)),
-                AloReceivedRabbitMQMessageDecorator.class
+            Map<String, Object> factoryConfig = config.modifyAndGetProperties(it ->
+                it.put(AloReceivedRabbitMQMessageDecorator.QUEUE_CONFIG, queue)
             );
+            return AloFactoryConfig.loadDecorated(factoryConfig, AloReceivedRabbitMQMessageDecorator.class);
         }
 
         private ErrorEmitter<Alo<ReceivedRabbitMQMessage<T>>> newErrorEmitter() {

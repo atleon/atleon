@@ -8,7 +8,6 @@ import io.atleon.core.AloSignalListenerFactory;
 import io.atleon.core.AloSignalListenerFactoryConfig;
 import io.atleon.core.ErrorEmitter;
 import io.atleon.core.OrderManagingAcknowledgementOperator;
-import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
@@ -23,7 +22,6 @@ import reactor.kafka.receiver.ReceiverRecord;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -270,11 +268,11 @@ public class AloKafkaReceiver<K, V> {
 
     private static final class ReceiveResources<K, V> {
 
-        private final Map<String, Object> config;
+        private final KafkaConfig config;
 
         private final NacknowledgerFactory<K, V> nacknowledgerFactory;
 
-        public ReceiveResources(Map<String, Object> config) {
+        public ReceiveResources(KafkaConfig config) {
             this.config = config;
             this.nacknowledgerFactory = createNacknowledgerFactory(config);
         }
@@ -292,12 +290,12 @@ public class AloKafkaReceiver<K, V> {
         }
 
         private AloFactory<ConsumerRecord<K, V>> loadAloFactory() {
-            return AloFactoryConfig.loadDecorated(config, AloKafkaConsumerRecordDecorator.class);
+            Map<String, Object> factoryConfig = config.modifyAndGetProperties(properties -> {});
+            return AloFactoryConfig.loadDecorated(factoryConfig, AloKafkaConsumerRecordDecorator.class);
         }
 
         private ErrorEmitter<Alo<ConsumerRecord<K, V>>> newErrorEmitter() {
-            Duration timeout = ConfigLoading.loadDuration(config, ERROR_EMISSION_TIMEOUT_CONFIG)
-                .orElse(ErrorEmitter.DEFAULT_TIMEOUT);
+            Duration timeout = config.loadDuration(ERROR_EMISSION_TIMEOUT_CONFIG).orElse(ErrorEmitter.DEFAULT_TIMEOUT);
             return ErrorEmitter.create(timeout);
         }
 
@@ -306,49 +304,47 @@ public class AloKafkaReceiver<K, V> {
             Consumer<Collection<ReceiverPartition>> onAssign
         ) {
             ReceiverOptions<K, V> receiverOptions = optionsInitializer.initialize(newConsumerConfig())
-                .pollTimeout(ConfigLoading.loadDuration(config, POLL_TIMEOUT_CONFIG).orElse(DEFAULT_POLL_TIMEOUT))
-                .commitInterval(ConfigLoading.loadDuration(config, COMMIT_INTERVAL_CONFIG).orElse(DEFAULT_COMMIT_INTERVAL))
-                .maxCommitAttempts(ConfigLoading.loadInt(config, MAX_COMMIT_ATTEMPTS_CONFIG).orElse(DEFAULT_MAX_COMMIT_ATTEMPTS))
-                .closeTimeout(ConfigLoading.loadDuration(config, CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
+                .pollTimeout(config.loadDuration(POLL_TIMEOUT_CONFIG).orElse(DEFAULT_POLL_TIMEOUT))
+                .commitInterval(config.loadDuration(COMMIT_INTERVAL_CONFIG).orElse(DEFAULT_COMMIT_INTERVAL))
+                .maxCommitAttempts(config.loadInt(MAX_COMMIT_ATTEMPTS_CONFIG).orElse(DEFAULT_MAX_COMMIT_ATTEMPTS))
+                .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
                 .addAssignListener(onAssign);
             return KafkaReceiver.create(receiverOptions);
         }
 
         private Map<String, Object> newConsumerConfig() {
-            // Initialize Consumer config from full config
-            Map<String, Object> consumerConfig = new HashMap<>(config);
+            return config.modifyAndGetProperties(consumerConfig -> {
+                // Remove any Atleon-specific config (helps avoid warning logs about unused config)
+                consumerConfig.keySet().removeIf(key -> key.startsWith(CONFIG_PREFIX));
 
-            // Remove any Atleon-specific config (helps avoid warning logs about unused config)
-            consumerConfig.keySet().removeIf(key -> key.startsWith(CONFIG_PREFIX));
-
-            // If enabled, increment Client ID
-            String clientId = ConfigLoading.loadStringOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG);
-            if (ConfigLoading.loadBoolean(config, AUTO_INCREMENT_CLIENT_ID_CONFIG).orElse(DEFAULT_AUTO_INCREMENT_CLIENT_ID)) {
-                consumerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
-            }
-
-            return consumerConfig;
+                // If enabled, increment Client ID
+                String clientId = config.loadClientId();
+                if (config.loadBoolean(AUTO_INCREMENT_CLIENT_ID_CONFIG).orElse(DEFAULT_AUTO_INCREMENT_CLIENT_ID)) {
+                    consumerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
+                }
+            });
         }
 
         private Flux<ReceiverRecord<K, V>> maybeBlockRequestOnPartitionPositioning(
             Flux<ReceiverRecord<K, V>> records,
             CompletableFuture<Collection<ReceiverPartition>> assignment
         ) {
-            boolean shouldApplyBlocking = ConfigLoading.loadBoolean(config, BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG)
+            boolean shouldApplyBlocking = config.loadBoolean(BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG)
                 .orElse(DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS);
             return shouldApplyBlocking ? records.mergeWith(blockRequestOnPartitionPositioning(assignment)) : records;
         }
 
         private OrderManagingAcknowledgementOperator<ConsumerRecord<K, V>, Alo<ConsumerRecord<K, V>>>
         newOrderManagingAcknowledgementOperator(Flux<Alo<ConsumerRecord<K, V>>> alos) {
-            long maxInFlight = ConfigLoading.loadLong(config, MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG)
+            long maxInFlight = config.loadLong(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG)
                 .orElse(DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION);
             return new OrderManagingAcknowledgementOperator<>(alos, ConsumerRecordExtraction::topicPartition, maxInFlight);
         }
 
         private Flux<Alo<ConsumerRecord<K, V>>> applySignalListenerFactories(Flux<Alo<ConsumerRecord<K, V>>> aloRecords) {
+            Map<String, Object> factoryConfig = config.modifyAndGetProperties(properties -> {});
             List<AloSignalListenerFactory<ConsumerRecord<K, V>, ?>> factories =
-                AloSignalListenerFactoryConfig.loadList(config, AloKafkaConsumerRecordSignalListenerFactory.class);
+                AloSignalListenerFactoryConfig.loadList(factoryConfig, AloKafkaConsumerRecordSignalListenerFactory.class);
             for (AloSignalListenerFactory<ConsumerRecord<K, V>, ?> factory : factories) {
                 aloRecords = aloRecords.tap(factory);
             }
@@ -367,16 +363,15 @@ public class AloKafkaReceiver<K, V> {
             );
         }
 
-        private static <K, V> NacknowledgerFactory<K, V> createNacknowledgerFactory(Map<String, ?> config) {
+        private static <K, V> NacknowledgerFactory<K, V> createNacknowledgerFactory(KafkaConfig config) {
             Optional<NacknowledgerFactory<K, V>> nacknowledgerFactory =
                 loadNacknowledgerFactory(config, NACKNOWLEDGER_TYPE_CONFIG, NacknowledgerFactory.class);
             return nacknowledgerFactory.orElseGet(NacknowledgerFactory.Emit::new);
         }
 
         private static <K, V, N extends NacknowledgerFactory<K, V>> Optional<NacknowledgerFactory<K, V>>
-        loadNacknowledgerFactory(Map<String, ?> config, String key, Class<N> type) {
-            return ConfigLoading
-                .loadConfiguredWithPredefinedTypes(config, key, type, ReceiveResources::newPredefinedNacknowledgerFactory);
+        loadNacknowledgerFactory(KafkaConfig config, String key, Class<N> type) {
+            return config.loadConfiguredWithPredefinedTypes(key, type, ReceiveResources::newPredefinedNacknowledgerFactory);
         }
 
         private static <K, V> Optional<NacknowledgerFactory<K, V>> newPredefinedNacknowledgerFactory(String typeName) {

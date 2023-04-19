@@ -197,10 +197,10 @@ public class AloSqsReceiver<T> {
         }
 
         private AloFactory<ReceivedSqsMessage<T>> loadAloFactory(String queueUrl) {
-            return AloFactoryConfig.loadDecorated(
-                config.modifyAndGetProperties(it -> it.put(AloReceivedSqsMessageDecorator.QUEUE_URL_CONFIG, queueUrl)),
-                AloReceivedSqsMessageDecorator.class
+            Map<String, Object> factoryConfig = config.modifyAndGetProperties(it ->
+                it.put(AloReceivedSqsMessageDecorator.QUEUE_URL_CONFIG, queueUrl)
             );
+            return AloFactoryConfig.loadDecorated(factoryConfig, AloReceivedSqsMessageDecorator.class);
         }
 
         private ErrorEmitter<Alo<ReceivedSqsMessage<T>>> newErrorEmitter() {

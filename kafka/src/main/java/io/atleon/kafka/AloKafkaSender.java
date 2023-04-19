@@ -3,7 +3,6 @@ package io.atleon.kafka;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
 import io.atleon.core.SenderResult;
-import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.reactivestreams.Publisher;
@@ -17,7 +16,6 @@ import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
 
 import java.io.Closeable;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -332,10 +330,10 @@ public class AloKafkaSender<K, V> implements Closeable {
             this.sender = sender;
         }
 
-        public static <K, V> SendResources<K, V> fromConfig(Map<String, Object> config) {
+        public static <K, V> SendResources<K, V> fromConfig(KafkaConfig config) {
             SenderOptions<K, V> senderOptions = SenderOptions.<K, V>create(newProducerConfig(config))
-                .maxInFlight(ConfigLoading.loadInt(config, MAX_IN_FLIGHT_PER_SEND_CONFIG).orElse(DEFAULT_MAX_IN_FLIGHT_PER_SEND))
-                .stopOnError(ConfigLoading.loadBoolean(config, STOP_ON_ERROR_CONFIG).orElse(DEFAULT_STOP_ON_ERROR));
+                .maxInFlight(config.loadInt(MAX_IN_FLIGHT_PER_SEND_CONFIG).orElse(DEFAULT_MAX_IN_FLIGHT_PER_SEND))
+                .stopOnError(config.loadBoolean(STOP_ON_ERROR_CONFIG).orElse(DEFAULT_STOP_ON_ERROR));
             return new SendResources<>(KafkaSender.create(ContextualProducerFactory.INSTANCE, senderOptions));
         }
 
@@ -363,20 +361,17 @@ public class AloKafkaSender<K, V> implements Closeable {
             sender.close();
         }
 
-        private static Map<String, Object> newProducerConfig(Map<String, Object> config) {
-            // Initialize Producer config from full config
-            Map<String, Object> producerConfig = new HashMap<>(config);
+        private static Map<String, Object> newProducerConfig(KafkaConfig config) {
+            return config.modifyAndGetProperties(producerConfig -> {
+                // Remove any Atleon-specific config (helps avoid warning logs about unused config)
+                producerConfig.keySet().removeIf(key -> key.startsWith(CONFIG_PREFIX));
 
-            // Remove any Atleon-specific config (helps avoid warning logs about unused config)
-            producerConfig.keySet().removeIf(key -> key.startsWith(CONFIG_PREFIX));
-
-            // If enabled, increment Client ID
-            String clientId = ConfigLoading.loadStringOrThrow(config, CommonClientConfigs.CLIENT_ID_CONFIG);
-            if (ConfigLoading.loadBoolean(config, AUTO_INCREMENT_CLIENT_ID_CONFIG).orElse(DEFAULT_AUTO_INCREMENT_CLIENT_ID)) {
-                producerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
-            }
-
-            return producerConfig;
+                // If enabled, increment Client ID
+                String clientId = config.loadClientId();
+                if (config.loadBoolean(AUTO_INCREMENT_CLIENT_ID_CONFIG).orElse(DEFAULT_AUTO_INCREMENT_CLIENT_ID)) {
+                    producerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
+                }
+            });
         }
 
         private static long nextClientIdCount(String clientId) {

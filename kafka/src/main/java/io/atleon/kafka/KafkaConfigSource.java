@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 
-public class KafkaConfigSource extends ConfigSource<Map<String, Object>, KafkaConfigSource> {
+public class KafkaConfigSource extends ConfigSource<KafkaConfig, KafkaConfigSource> {
 
     protected KafkaConfigSource() {
 
@@ -82,7 +82,7 @@ public class KafkaConfigSource extends ConfigSource<Map<String, Object>, KafkaCo
     }
 
     @Override
-    protected Map<String, Object> postProcessProperties(Map<String, Object> properties) {
-        return properties;
+    protected KafkaConfig postProcessProperties(Map<String, Object> properties) {
+        return new KafkaConfig(properties);
     }
 }
