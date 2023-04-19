@@ -132,7 +132,7 @@ public final class ConfigLoading {
         Class<? extends T> type,
         Function<String, Optional<List<T>>> predefinedTypeInstantiator
     ) {
-        return ConfigLoading.loadStream(configs, property, Function.identity())
+        return loadStream(configs, property, Function.identity())
             .map(stream -> coerceToList(stream, type, predefinedTypeInstantiator));
     }
 
