@@ -100,6 +100,10 @@ public final class SqsReceiver {
 
         private final AtomicBoolean done = new AtomicBoolean(false);
 
+        // Receipt handles that have been emitted, but not finished processing
+        private final Set<String> inProcessReceiptHandles = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+        // Receipt handles that have been emitted, but not deleted nor had their visibility reset
         private final Set<String> inFlightReceiptHandles = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
         private final Sinks.Many<String> receiptHandlesToDelete = Sinks.unsafe().many().unicast().onBackpressureError();
@@ -136,7 +140,7 @@ public final class SqsReceiver {
         private Mono<?> doDispose() {
             return executionPhaser.arriveAndAwaitAdvanceReactively()
                 .then(Mono.fromRunnable(receiptHandlesToDelete::tryEmitComplete))
-                .then(Mono.defer(() -> createChangeMessageVisibilities(inFlightReceiptHandles, Duration.ZERO, __ -> true)))
+                .then(Mono.defer(() -> createChangeMessageVisibilities(inProcessReceiptHandles, Duration.ZERO, __ -> true)))
                 .then(executionPhaser.arriveAndAwaitAdvanceReactively())
                 .timeout(options.closeTimeout())
                 .doFinally(__ -> client.close())
@@ -182,25 +186,24 @@ public final class SqsReceiver {
         private void emit(Message message) {
             String receiptHandle = message.receiptHandle();
             Runnable deleter = () -> {
-                if (executionPhaser.register() == 0 && !done.get() && inFlightReceiptHandles.remove(receiptHandle)) {
+                if (executionPhaser.register() == 0 && !done.get() && inProcessReceiptHandles.remove(receiptHandle)) {
                     receiptHandlesToDeleteQueue.addAndDrain(receiptHandle);
-                    maybeScheduleMessageReception();
                 }
                 executionPhaser.arriveAndDeregister();
             };
 
-            SqsMessageVisibilityChanger visibilityChanger = (timeout, stillInFlight) -> {
+            SqsMessageVisibilityChanger visibilityChanger = (timeout, stillInProcess) -> {
                 if (executionPhaser.register() == 0 && !done.get()) {
-                    if (stillInFlight && inFlightReceiptHandles.contains(receiptHandle)) {
+                    if (stillInProcess && inProcessReceiptHandles.contains(receiptHandle)) {
                         maybeChangeMessageVisibility(receiptHandle, timeout);
-                    } else if (!stillInFlight && inFlightReceiptHandles.remove(receiptHandle)) {
-                        maybeChangeMessageVisibility(receiptHandle, timeout);
-                        maybeScheduleMessageReception();
+                    } else if (!stillInProcess && inProcessReceiptHandles.remove(receiptHandle)) {
+                        maybeChangeMessageVisibilityMarkNotInFlight(receiptHandle, timeout);
                     }
                 }
                 executionPhaser.arriveAndDeregister();
             };
 
+            inProcessReceiptHandles.add(receiptHandle);
             inFlightReceiptHandles.add(receiptHandle);
             doNext(SqsReceiverMessage.create(message, deleter, visibilityChanger));
         }
@@ -215,18 +218,26 @@ public final class SqsReceiver {
                 .entries(entries)
                 .build();
             maybeExecute(SqsAsyncClient::deleteMessageBatch, request, __ -> true)
-                .subscribe(this::handleMessagesDeleted, this::doError);
+                .subscribe(response -> handleMessagesDeleted(response, receiptHandles), this::doError);
         }
 
-        private void handleMessagesDeleted(DeleteMessageBatchResponse response) {
+        private void handleMessagesDeleted(DeleteMessageBatchResponse response, Collection<String> receiptHandles) {
             if (response.hasFailed()) {
                 doError(new BatchRequestFailedException("DeleteMessage", response.failed()));
+            } else if (inFlightReceiptHandles.removeAll(receiptHandles)) {
+                maybeScheduleMessageReception();
             }
         }
 
         private void maybeChangeMessageVisibility(String receiptHandle, Duration timeout) {
             createChangeMessageVisibilities(Collections.singletonList(receiptHandle), timeout, phase -> phase == 0)
-                .subscribe(this::handleMessageVisibilitiesChanged, this::doError);
+                .subscribe(response -> handleMessageVisibilitiesChanged(response, Collections.emptyList()), this::doError);
+        }
+
+        private void maybeChangeMessageVisibilityMarkNotInFlight(String receiptHandle, Duration timeout) {
+            List<String> receiptHandles = Collections.singletonList(receiptHandle);
+            createChangeMessageVisibilities(receiptHandles, timeout, phase -> phase == 0)
+                .subscribe(response -> handleMessageVisibilitiesChanged(response, receiptHandles), this::doError);
         }
 
         private Mono<ChangeMessageVisibilityBatchResponse> createChangeMessageVisibilities(
@@ -257,9 +268,14 @@ public final class SqsReceiver {
                 .build();
         }
 
-        private void handleMessageVisibilitiesChanged(ChangeMessageVisibilityBatchResponse response) {
+        private void handleMessageVisibilitiesChanged(
+            ChangeMessageVisibilityBatchResponse response,
+            Collection<String> receiptHandlesNoLongerInFlight
+        ) {
             if (response.hasFailed()) {
                 doError(new BatchRequestFailedException("ChangeMessageVisibility", response.failed()));
+            } else if (inFlightReceiptHandles.removeAll(receiptHandlesNoLongerInFlight)) {
+                maybeScheduleMessageReception();
             }
         }
 
