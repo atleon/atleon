@@ -128,8 +128,6 @@ public class AloSqsReceiver<T> {
      */
     public static final String CLOSE_TIMEOUT_CONFIG = CONFIG_PREFIX + "close.timeout";
 
-    private static final Duration DEFAULT_ERROR_EMISSION_TIMEOUT = Duration.ofSeconds(10);
-
     private static final Logger LOGGER = LoggerFactory.getLogger(AloSqsReceiver.class);
 
     private final SqsConfigSource configSource;
@@ -191,7 +189,7 @@ public class AloSqsReceiver<T> {
 
         public Flux<Alo<ReceivedSqsMessage<T>>> receive(String queueUrl) {
             AloFactory<ReceivedSqsMessage<T>> aloFactory = loadAloFactory(queueUrl);
-            ErrorEmitter<Alo<ReceivedSqsMessage<T>>> errorEmitter = loadErrorEmitter();
+            ErrorEmitter<Alo<ReceivedSqsMessage<T>>> errorEmitter = newErrorEmitter();
             return newReceiver().receiveManual(queueUrl)
                 .map(message -> deserialize(message, aloFactory, errorEmitter::safelyEmit))
                 .transform(errorEmitter::applyTo)
@@ -205,8 +203,8 @@ public class AloSqsReceiver<T> {
             );
         }
 
-        private ErrorEmitter<Alo<ReceivedSqsMessage<T>>> loadErrorEmitter() {
-            Duration timeout = config.loadDuration(ERROR_EMISSION_TIMEOUT_CONFIG).orElse(DEFAULT_ERROR_EMISSION_TIMEOUT);
+        private ErrorEmitter<Alo<ReceivedSqsMessage<T>>> newErrorEmitter() {
+            Duration timeout = config.loadDuration(ERROR_EMISSION_TIMEOUT_CONFIG).orElse(ErrorEmitter.DEFAULT_TIMEOUT);
             return ErrorEmitter.create(timeout);
         }
 

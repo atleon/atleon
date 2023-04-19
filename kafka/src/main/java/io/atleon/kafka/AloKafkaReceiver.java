@@ -136,8 +136,6 @@ public class AloKafkaReceiver<K, V> {
      */
     public static final String CLOSE_TIMEOUT_CONFIG = CONFIG_PREFIX + "close.timeout";
 
-    private static final Duration DEFAULT_ERROR_EMISSION_TIMEOUT = Duration.ofSeconds(10);
-
     private static final boolean DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS = false;
 
     private static final long DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION = 4096;
@@ -284,7 +282,7 @@ public class AloKafkaReceiver<K, V> {
         public Flux<Alo<ConsumerRecord<K, V>>> receive(ReceiverOptionsInitializer<K, V> optionsInitializer) {
             CompletableFuture<Collection<ReceiverPartition>> assignment = new CompletableFuture<>();
             AloFactory<ConsumerRecord<K, V>> aloFactory = loadAloFactory();
-            ErrorEmitter<Alo<ConsumerRecord<K, V>>> errorEmitter = loadErrorEmitter();
+            ErrorEmitter<Alo<ConsumerRecord<K, V>>> errorEmitter = newErrorEmitter();
             return newReceiver(optionsInitializer, assignment::complete).receive()
                 .transform(records -> maybeBlockRequestOnPartitionPositioning(records, assignment))
                 .map(record -> toAlo(record, aloFactory, errorEmitter::safelyEmit))
@@ -297,9 +295,9 @@ public class AloKafkaReceiver<K, V> {
             return AloFactoryConfig.loadDecorated(config, AloKafkaConsumerRecordDecorator.class);
         }
 
-        private ErrorEmitter<Alo<ConsumerRecord<K, V>>> loadErrorEmitter() {
+        private ErrorEmitter<Alo<ConsumerRecord<K, V>>> newErrorEmitter() {
             Duration timeout = ConfigLoading.loadDuration(config, ERROR_EMISSION_TIMEOUT_CONFIG)
-                .orElse(DEFAULT_ERROR_EMISSION_TIMEOUT);
+                .orElse(ErrorEmitter.DEFAULT_TIMEOUT);
             return ErrorEmitter.create(timeout);
         }
 

@@ -86,8 +86,6 @@ public class AloRabbitMQReceiver<T> {
      */
     public static final String ERROR_EMISSION_TIMEOUT_CONFIG = CONFIG_PREFIX + "error.emission.timeout";
 
-    private static final Duration DEFAULT_ERROR_EMISSION_TIMEOUT = Duration.ofSeconds(10);
-
     private static final Logger LOGGER = LoggerFactory.getLogger(AloRabbitMQReceiver.class);
 
     private final RabbitMQConfigSource configSource;
@@ -149,7 +147,7 @@ public class AloRabbitMQReceiver<T> {
 
         public Flux<Alo<ReceivedRabbitMQMessage<T>>> receive(String queue) {
             AloFactory<ReceivedRabbitMQMessage<T>> aloFactory = loadAloFactory(queue);
-            ErrorEmitter<Alo<ReceivedRabbitMQMessage<T>>> errorEmitter = loadErrorEmitter();
+            ErrorEmitter<Alo<ReceivedRabbitMQMessage<T>>> errorEmitter = newErrorEmitter();
             return Flux.using(this::newReceiver, it -> it.consumeManualAck(queue, newConsumeOptions()), Receiver::close)
                 .map(delivery -> deserialize(delivery, aloFactory, errorEmitter::safelyEmit))
                 .transform(errorEmitter::applyTo)
@@ -163,8 +161,8 @@ public class AloRabbitMQReceiver<T> {
             );
         }
 
-        private ErrorEmitter<Alo<ReceivedRabbitMQMessage<T>>> loadErrorEmitter() {
-            Duration timeout = config.loadDuration(ERROR_EMISSION_TIMEOUT_CONFIG).orElse(DEFAULT_ERROR_EMISSION_TIMEOUT);
+        private ErrorEmitter<Alo<ReceivedRabbitMQMessage<T>>> newErrorEmitter() {
+            Duration timeout = config.loadDuration(ERROR_EMISSION_TIMEOUT_CONFIG).orElse(ErrorEmitter.DEFAULT_TIMEOUT);
             return ErrorEmitter.create(timeout);
         }
 

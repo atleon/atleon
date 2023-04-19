@@ -33,7 +33,7 @@ public class MyStream extends AloStream<MyStreamConfig> {
             .transform(sender.sendAloValues(config.getDestinationTopic(), message -> message.substring(0, 1)))
             .resubscribeOnError(config.name())
             .doFinally(sender::close)
-            .subscribe(new DefaultAloSenderResultSubscriber());
+            .subscribe(new DefaultAloSenderResultSubscriber<>());
     }
 }
 ```

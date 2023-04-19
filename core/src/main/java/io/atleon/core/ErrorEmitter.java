@@ -16,6 +16,8 @@ import java.time.Duration;
  */
 public final class ErrorEmitter<T> {
 
+    public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10L);
+
     private static final Logger LOGGER = LoggerFactory.getLogger(ErrorEmitter.class);
 
     private final Duration timeout;
@@ -24,6 +26,10 @@ public final class ErrorEmitter<T> {
 
     private ErrorEmitter(Duration timeout) {
         this.timeout = timeout;
+    }
+
+    public static <T> ErrorEmitter<T> create() {
+        return new ErrorEmitter<>(DEFAULT_TIMEOUT);
     }
 
     public static <T> ErrorEmitter<T> create(Duration timeout) {
