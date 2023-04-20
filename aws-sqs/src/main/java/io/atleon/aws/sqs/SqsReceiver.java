@@ -197,14 +197,14 @@ public final class SqsReceiver {
                     if (stillInProcess && inProcessReceiptHandles.contains(receiptHandle)) {
                         maybeChangeMessageVisibility(receiptHandle, timeout);
                     } else if (!stillInProcess && inProcessReceiptHandles.remove(receiptHandle)) {
-                        maybeChangeMessageVisibilityMarkNotInFlight(receiptHandle, timeout);
+                        maybeChangeMessageVisibilityThenMarkNotInFlight(receiptHandle, timeout);
                     }
                 }
                 executionPhaser.arriveAndDeregister();
             };
 
-            inProcessReceiptHandles.add(receiptHandle);
             inFlightReceiptHandles.add(receiptHandle);
+            inProcessReceiptHandles.add(receiptHandle);
             doNext(SqsReceiverMessage.create(message, deleter, visibilityChanger));
         }
 
@@ -234,7 +234,7 @@ public final class SqsReceiver {
                 .subscribe(response -> handleMessageVisibilitiesChanged(response, Collections.emptyList()), this::doError);
         }
 
-        private void maybeChangeMessageVisibilityMarkNotInFlight(String receiptHandle, Duration timeout) {
+        private void maybeChangeMessageVisibilityThenMarkNotInFlight(String receiptHandle, Duration timeout) {
             List<String> receiptHandles = Collections.singletonList(receiptHandle);
             createChangeMessageVisibilities(receiptHandles, timeout, phase -> phase == 0)
                 .subscribe(response -> handleMessageVisibilitiesChanged(response, receiptHandles), this::doError);
