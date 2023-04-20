@@ -2,7 +2,7 @@ package io.atleon.core;
 
 import reactor.core.publisher.SynchronousSink;
 
-import java.util.function.Predicate;
+import java.util.function.BiPredicate;
 
 /**
  * A strategy applied when operations on {@link Alo} elements fail. When processing an error
@@ -13,9 +13,9 @@ import java.util.function.Predicate;
  */
 interface AloFailureStrategy {
 
-    AloFailureStrategy EMIT = new Emit(__ -> true);
+    AloFailureStrategy EMIT = new Emit((__, error) -> true);
 
-    AloFailureStrategy DELEGATE = new Delegate(__ -> true);
+    AloFailureStrategy DELEGATE = new Delegate((__, error) -> true);
 
     /**
      * Process the error and the {@link Alo} that caused it.
@@ -37,29 +37,29 @@ interface AloFailureStrategy {
         return EMIT;
     }
 
-    static AloFailureStrategy emitUnless(Predicate<? super Throwable> errorPredicate) {
-        return new Emit(errorPredicate.negate());
+    static AloFailureStrategy emit(BiPredicate<Object, ? super Throwable> errorPredicate) {
+        return new Emit(errorPredicate);
     }
 
     static AloFailureStrategy delegate() {
         return DELEGATE;
     }
 
-    static AloFailureStrategy delegateUnless(Predicate<? super Throwable> errorPredicate) {
-        return new Delegate(errorPredicate.negate());
+    static AloFailureStrategy delegate(BiPredicate<Object, ? super Throwable> errorPredicate) {
+        return new Delegate(errorPredicate);
     }
 
     class Emit implements AloFailureStrategy {
 
-        private final Predicate<? super Throwable> errorPredicate;
+        private final BiPredicate<Object, ? super Throwable> errorPredicate;
 
-        Emit(Predicate<? super Throwable> errorPredicate) {
+        Emit(BiPredicate<Object, ? super Throwable> errorPredicate) {
             this.errorPredicate = errorPredicate;
         }
 
         @Override
         public boolean process(SynchronousSink<?> sink, Alo<?> alo, Throwable error) {
-            if (errorPredicate.test(error)) {
+            if (errorPredicate.test(alo.get(), error)) {
                 sink.error(error);
             } else {
                 Alo.acknowledge(alo);
@@ -70,15 +70,15 @@ interface AloFailureStrategy {
 
     class Delegate implements AloFailureStrategy {
 
-        private final Predicate<? super Throwable> errorPredicate;
+        private final BiPredicate<Object, ? super Throwable> errorPredicate;
 
-        Delegate(Predicate<? super Throwable> errorPredicate) {
+        Delegate(BiPredicate<Object, ? super Throwable> errorPredicate) {
             this.errorPredicate = errorPredicate;
         }
 
         @Override
         public boolean process(SynchronousSink<?> sink, Alo<?> alo, Throwable error) {
-            if (errorPredicate.test(error)) {
+            if (errorPredicate.test(alo.get(), error)) {
                 return false;
             } else {
                 Alo.acknowledge(alo);

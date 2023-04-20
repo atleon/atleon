@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -508,7 +509,21 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @return A new {@link AloFlux} that terminally emits Alo failure errors unless filtered
      */
     public AloFlux<T> onAloErrorEmitUnless(Predicate<? super Throwable> errorPredicate) {
-        AloFailureStrategy aloFailureStrategy = AloFailureStrategy.emitUnless(errorPredicate);
+        return onAloErrorEmitUnless((__, error) -> errorPredicate.test(error));
+    }
+
+    /**
+     * Emit failures on Alo elements as terminal errors in <strong>upstream</strong> operators
+     * where the error does <strong>not</strong> match the provided bi-predicate which accepts the
+     * value that triggered the error and the error itself. When the bi-predicate <strong>is</strong>
+     * matched, recovery is accomplished by acknowledging the incriminating Alo element and
+     * allowing the pipeline to continue.
+     *
+     * @param errorPredicate A {@link BiPredicate} used to filter which errors are ignored
+     * @return A new {@link AloFlux} that terminally emits Alo failure errors unless filtered
+     */
+    public AloFlux<T> onAloErrorEmitUnless(BiPredicate<Object, ? super Throwable> errorPredicate) {
+        AloFailureStrategy aloFailureStrategy = AloFailureStrategy.emit(errorPredicate.negate());
         return new AloFlux<>(wrapped.contextWrite(Context.of(AloFailureStrategy.class, aloFailureStrategy)));
     }
 
@@ -539,7 +554,25 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @return A new {@link AloFlux} that delegates failure handling unless filtered
      */
     public AloFlux<T> onAloErrorDelegateUnless(Predicate<? super Throwable> errorPredicate) {
-        AloFailureStrategy aloFailureStrategy = AloFailureStrategy.delegateUnless(errorPredicate);
+        return onAloErrorDelegateUnless((__, error) -> errorPredicate.test(error));
+    }
+
+    /**
+     * Delegates Alo failure handling to pipeline operators in <strong>upstream</strong> operators
+     * where the error does <strong>not</strong> match the provided bi-predicate which accepts the
+     * value that triggered the error and the error itself.. When the predicate <strong>is</strong>
+     * matched, recovery is accomplished by acknowledging the incriminating Alo element and
+     * allowing the pipeline to continue.
+     * <p>
+     * In the case of synchronous mapping operations, error delegation results in Alo elements
+     * being negatively acknowledged. In the case of emitting elements that may contain errors
+     * (like {@link SenderResult}), handling errors is delegated to downstream Subscribers.
+     *
+     * @param errorPredicate A {@link BiPredicate} used to filter which errors are ignored
+     * @return A new {@link AloFlux} that delegates failure handling unless filtered
+     */
+    public AloFlux<T> onAloErrorDelegateUnless(BiPredicate<Object, ? super Throwable> errorPredicate) {
+        AloFailureStrategy aloFailureStrategy = AloFailureStrategy.delegate(errorPredicate.negate());
         return new AloFlux<>(wrapped.contextWrite(Context.of(AloFailureStrategy.class, aloFailureStrategy)));
     }
 
