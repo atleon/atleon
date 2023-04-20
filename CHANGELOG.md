@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.15.1]
+atleon `0.15.1` is a beta release containing updates outlined below
+
+### Fixes
+* [#167] - Make best effort to successfully emit errors when configured to do so in Receivers
+* [#171] - Avoid unbounded resource usage in `SqsReceiver` by not marking "not-in-flight" until reception of terminal response
+* [#172] - Encapsulate config for Kafka resources as `KafkaConfig`
+
+### Additions
+* [#169] - Implement consistent and configurable `AloFailureStrategy` for dealing with errors resulting from `Alo` processing
+* [#176] - Indicate when `ReceivedRabbitMQMessage` is a redelivery
+
 # [0.15.0]
 atleon `0.15.0` is a beta release containing updates outlined below
 
