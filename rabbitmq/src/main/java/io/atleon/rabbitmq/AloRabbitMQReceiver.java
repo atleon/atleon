@@ -200,7 +200,8 @@ public class AloRabbitMQReceiver<T> {
                 delivery.getEnvelope().getExchange(),
                 delivery.getEnvelope().getRoutingKey(),
                 delivery.getProperties(),
-                bodyDeserializer.deserialize(body)
+                bodyDeserializer.deserialize(body),
+                delivery.getEnvelope().isRedeliver()
             );
 
             return aloFactory.create(
