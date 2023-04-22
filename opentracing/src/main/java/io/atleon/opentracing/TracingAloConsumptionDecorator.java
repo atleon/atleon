@@ -44,14 +44,16 @@ public abstract class TracingAloConsumptionDecorator<T> implements AloDecorator<
     protected abstract Tracer.SpanBuilder newSpanBuilder(SpanBuilderFactory spanBuilderFactory, T t);
 
     protected final Optional<SpanContext> deduceSpanContextToLink(T t) {
-        Optional<SpanContext> activeSpanContext = tracerFacade.activeSpanContext();
         Optional<SpanContext> extractedSpanContext = extractSpanContext(t);
-        if (activeSpanContext.isPresent() && extractedSpanContext.isPresent()) {
-            String activeTraceId = activeSpanContext.get().toTraceId();
-            String extractedTraceId = extractedSpanContext.get().toTraceId();
-            return Objects.equals(activeTraceId, extractedTraceId) ? activeSpanContext : extractedSpanContext;
+        Optional<SpanContext> activeSpanContext = tracerFacade.activeSpanContext();
+        if (!activeSpanContext.isPresent()) {
+            return extractedSpanContext;
+        } else if (!extractedSpanContext.isPresent()) {
+            return activeSpanContext;
         } else {
-            return activeSpanContext.isPresent() ? activeSpanContext : extractedSpanContext;
+            String extractedTraceId = extractedSpanContext.get().toTraceId();
+            String activeTraceId = activeSpanContext.get().toTraceId();
+            return Objects.equals(extractedTraceId, activeTraceId) ? activeSpanContext : extractedSpanContext;
         }
     }
 
