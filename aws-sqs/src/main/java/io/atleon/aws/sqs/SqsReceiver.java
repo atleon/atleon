@@ -34,7 +34,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 import java.util.function.IntPredicate;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -74,7 +73,7 @@ public final class SqsReceiver {
      * @return Flux of inbound Messages whose visibility and deletion must be manually handled
      */
     public Flux<SqsReceiverMessage> receiveManual(String queueUrl) {
-        return Flux.from(subscriber -> subscriber.onSubscribe(new Poller(options::createClient, queueUrl, subscriber)));
+        return Flux.from(subscriber -> subscriber.onSubscribe(new Poller(queueUrl, subscriber)));
     }
 
     public static final class BatchRequestFailedException extends RuntimeException {
@@ -86,11 +85,11 @@ public final class SqsReceiver {
 
     private final class Poller implements Subscription {
 
-        private final SqsAsyncClient client;
-
         private final String queueUrl;
 
         private final Subscriber<? super SqsReceiverMessage> subscriber;
+
+        private final SqsAsyncClient client;
 
         private final ReactivePhaser executionPhaser = new ReactivePhaser(1);
 
@@ -110,10 +109,10 @@ public final class SqsReceiver {
 
         private final SerialQueue<String> receiptHandlesToDeleteQueue = SerialQueue.onEmitNext(receiptHandlesToDelete);
 
-        public Poller(Supplier<SqsAsyncClient> client, String queueUrl, Subscriber<? super SqsReceiverMessage> subscriber) {
-            this.client = client.get();
+        public Poller(String queueUrl, Subscriber<? super SqsReceiverMessage> subscriber) {
             this.queueUrl = queueUrl;
             this.subscriber = subscriber;
+            this.client = options.createClient();
             this.receiptHandlesToDelete.asFlux()
                 .doOnComplete(executionPhaser::register) // Avoid race condition with batch Scheduler and disposing
                 .transform(receiptHandles -> batch(receiptHandles, options.deleteBatchSize(), options.deleteInterval()))
