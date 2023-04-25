@@ -85,7 +85,7 @@ public class KafkaErrorHandling {
         AloKafkaSender<String, String> sender = AloKafkaSender.from(faultyKafkaSenderConfig);
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
             .receiveAloValues(Collections.singletonList(TOPIC_1))
-            .groupBy(Function.identity())
+            .groupBy(Function.identity(), Integer.MAX_VALUE)
             .map(groupedFlux -> groupedFlux
                 .publishOn(Schedulers.boundedElastic())
                 .map(String::toUpperCase)

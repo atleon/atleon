@@ -273,7 +273,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public GroupFlux<AloGroupedFlux<Integer, T>>
     groupByNumberHash(Function<? super T, ? extends Number> numberExtractor, int numGroups) {
-        return groupBy(NumberHashGroupExtractor.composed(numberExtractor, numGroups));
+        return groupBy(NumberHashGroupExtractor.composed(numberExtractor, numGroups), numGroups);
     }
 
     /**
@@ -290,7 +290,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
         int numGroups,
         Function<? super T, V> valueMapper
     ) {
-        return groupBy(NumberHashGroupExtractor.composed(numberExtractor, numGroups), valueMapper);
+        return groupBy(NumberHashGroupExtractor.composed(numberExtractor, numGroups), numGroups, valueMapper);
     }
 
     /**
@@ -319,21 +319,6 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     public <V> GroupFlux<AloGroupedFlux<Integer, V>>
     groupByStringHash(Function<? super T, String> stringExtractor, int numGroups, Function<? super T, V> valueMapper) {
         return groupBy(StringHashGroupExtractor.composed(stringExtractor, numGroups), numGroups, valueMapper);
-    }
-
-    /**
-     * @see Flux#groupBy(Function)
-     */
-    public <K> GroupFlux<AloGroupedFlux<K, T>> groupBy(Function<? super T, ? extends K> groupExtractor) {
-        return groupBy(groupExtractor, Integer.MAX_VALUE);
-    }
-
-    /**
-     * @see Flux#groupBy(Function)
-     */
-    public <K, V> GroupFlux<AloGroupedFlux<K, V>>
-    groupBy(Function<? super T, ? extends K> groupExtractor, Function<? super T, V> valueMapper) {
-        return groupBy(groupExtractor, Integer.MAX_VALUE, valueMapper);
     }
 
     /**

@@ -59,7 +59,7 @@ public class KafkaTopicPartitionParallelism {
         CountDownLatch latch = new CountDownLatch(NUM_SAMPLES);
         AloKafkaReceiver.<String, String>from(kafkaReceiverConfig)
             .receiveAloRecords(TOPIC)
-            .groupBy(ConsumerRecordExtraction::topicPartition)
+            .groupBy(ConsumerRecordExtraction::topicPartition, Integer.MAX_VALUE)
             .flatMapAlo(groupedFlux -> groupedFlux
                 .publishOn(Schedulers.boundedElastic())
                 .map(consumerRecord -> consumerRecord.value().toUpperCase())
