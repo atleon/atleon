@@ -5,8 +5,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 /**
  * A Collection of {@link Alo} produced from a one-to-many mapping of another Alo. Takes care of
@@ -17,41 +16,30 @@ import java.util.stream.Collectors;
  */
 final class AcknowledgingCollection<T> extends AbstractCollection<Alo<T>> {
 
-    private final Collection<T> collection;
+    private final Alo<Collection<T>> aloCollection;
 
-    private final Collection<T> unacknowledged;
+    private final AloFactory<T> aloFactory;
 
-    private final Runnable acknowledger;
+    private final Set<T> unacknowledged;
 
-    private final Consumer<? super Throwable> nacknowledger;
-
-    private final AloFactory<T> factory;
-
-    private AcknowledgingCollection(
-        Collection<T> collection,
-        Runnable acknowledger,
-        Consumer<? super Throwable> nacknowledger,
-        AloFactory<T> factory) {
-        this.collection = collection;
-        this.unacknowledged = collection.stream()
-            .collect(Collectors.toCollection(() -> Collections.newSetFromMap(new IdentityHashMap<>(collection.size()))));
-        this.acknowledger = acknowledger;
-        this.nacknowledger = nacknowledger;
-        this.factory = factory;
+    private AcknowledgingCollection(Alo<Collection<T>> aloCollection) {
+        this.aloCollection = aloCollection;
+        this.aloFactory = aloCollection.propagator();
+        this.unacknowledged = copyToIdentityHashSet(aloCollection.get());
     }
 
-    public static <T> Collection<Alo<T>> fromNonEmptyAloCollection(Alo<Collection<T>> ac) {
-        return new AcknowledgingCollection<>(ac.get(), ac.getAcknowledger(), ac.getNacknowledger(), ac.propagator());
+    public static <T> Collection<Alo<T>> fromNonEmptyAloCollection(Alo<Collection<T>> aloCollection) {
+        return new AcknowledgingCollection<>(aloCollection);
     }
 
     @Override
     public String toString() {
-        return "AcknowledgingCollection(" + collection + ")";
+        return "AcknowledgingCollection(" + aloCollection.get() + ")";
     }
 
     @Override
     public Iterator<Alo<T>> iterator() {
-        Iterator<T> iterator = collection.iterator();
+        Iterator<T> iterator = aloCollection.get().iterator();
         return new Iterator<Alo<T>>() {
 
             @Override
@@ -68,23 +56,29 @@ final class AcknowledgingCollection<T> extends AbstractCollection<Alo<T>> {
 
     @Override
     public int size() {
-        return collection.size();
+        return aloCollection.get().size();
     }
 
     private Alo<T> wrap(T value) {
-        return factory.create(value, () -> {
+        return aloFactory.create(value, () -> {
             synchronized (unacknowledged) {
                 if (unacknowledged.remove(value) && unacknowledged.isEmpty()) {
-                    acknowledger.run();
+                    Alo.acknowledge(aloCollection);
                 }
             }
         }, error -> {
             synchronized (unacknowledged) {
                 if (unacknowledged.contains(value)) {
                     unacknowledged.clear();
-                    nacknowledger.accept(error);
+                    Alo.nacknowledge(aloCollection, error);
                 }
             }
         });
+    }
+
+    private static <T> Set<T> copyToIdentityHashSet(Collection<T> collection) {
+        Set<T> set = Collections.newSetFromMap(new IdentityHashMap<>(collection.size()));
+        set.addAll(collection);
+        return set;
     }
 }

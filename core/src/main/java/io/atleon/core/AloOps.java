@@ -145,8 +145,7 @@ final class AloOps {
     }
 
     private static void processFailure(SynchronousSink<?> sink, Alo<?> alo, Throwable error, Runnable unprocessedFallback) {
-        AloFailureStrategy strategy = sink.contextView().getOrDefault(AloFailureStrategy.class, AloFailureStrategy.emit());
-        if (!strategy.process(sink, alo, error)) {
+        if (!AloFailureStrategy.choose(sink).process(alo, error, sink::error)) {
             unprocessedFallback.run();
         }
     }
