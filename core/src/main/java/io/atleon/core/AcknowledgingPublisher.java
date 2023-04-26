@@ -12,7 +12,6 @@ import java.util.IdentityHashMap;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 /**
  * A Publisher of {@link Alo} produced from a published mapping of another Alo. Takes care of
@@ -39,12 +38,7 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
     @Override
     public void subscribe(Subscriber<? super Alo<T>> subscriber) {
         if (subscribedOnce.compareAndSet(false, true)) {
-            Subscriber<T> acknowledgingSubscriber = new AcknowledgingSubscriber<>(
-                aloSource.getAcknowledger(),
-                aloSource.getNacknowledger(),
-                aloSource.propagator(),
-                subscriber
-            );
+            Subscriber<T> acknowledgingSubscriber = new AcknowledgingSubscriber<>(aloSource, subscriber);
             aloSource.runInContext(() -> aloSource.get().subscribe(acknowledgingSubscriber));
         } else {
             throw new IllegalStateException("AcknowledgingPublisher may only be subscribed to once");
@@ -59,23 +53,15 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
         private final Collection<Reference<T>> unacknowledged = Collections.newSetFromMap(new IdentityHashMap<>());
 
-        private final Runnable acknowledger;
-
-        private final Consumer<? super Throwable> nacknowledger;
+        private final Alo<Publisher<T>> aloSource;
 
         private final AloFactory<T> factory;
 
         private final Subscriber<? super Alo<T>> subscriber;
 
-        public AcknowledgingSubscriber(
-            Runnable acknowledger,
-            Consumer<? super Throwable> nacknowledger,
-            AloFactory<T> factory,
-            Subscriber<? super Alo<T>> subscriber
-        ) {
-            this.acknowledger = acknowledger;
-            this.nacknowledger = nacknowledger;
-            this.factory = factory;
+        public AcknowledgingSubscriber(Alo<Publisher<T>> aloSource, Subscriber<? super Alo<T>> subscriber) {
+            this.aloSource = aloSource;
+            this.factory = aloSource.propagator();
             this.subscriber = subscriber;
         }
 
@@ -105,7 +91,17 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
         @Override
         public void onError(Throwable error) {
-            subscriber.onError(error);
+            AtomicReference<Throwable> errorToEmitReference = new AtomicReference<>(null);
+            if (!AloFailureStrategy.choose(subscriber).process(aloSource, error, errorToEmitReference::set)) {
+                maybeExecuteNacknowledger(error);
+            }
+
+            Throwable errorToEmit = errorToEmitReference.get();
+            if (errorToEmit != null) {
+                subscriber.onError(errorToEmit);
+            } else {
+                onComplete();
+            }
         }
 
         @Override
@@ -148,7 +144,7 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
         private void maybeExecuteAcknowledger() {
             synchronized (unacknowledged) {
                 if (unacknowledged.isEmpty() && state.compareAndSet(State.IN_FLIGHT, State.EXECUTED)) {
-                    acknowledger.run();
+                    Alo.acknowledge(aloSource);
                 }
             }
         }
@@ -157,7 +153,7 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
             synchronized (unacknowledged) {
                 if (state.compareAndSet(State.ACTIVE, State.EXECUTED) || state.compareAndSet(State.IN_FLIGHT, State.EXECUTED)) {
                     unacknowledged.clear();
-                    nacknowledger.accept(error);
+                    Alo.nacknowledge(aloSource, error);
                 }
             }
         }

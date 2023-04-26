@@ -351,10 +351,25 @@ class AloFluxTest {
     }
 
     @Test
+    public void errorsCanBeEmittedWhenPublishing() {
+        TestAlo alo = new TestAlo("data");
+
+        AloFlux<?> aloFlux = Flux.just(alo)
+            .as(AloFlux::wrap)
+            .concatMap(__ -> Mono.error(new UnsupportedOperationException("Boom")))
+            .onAloErrorEmit();
+
+        StepVerifier.create(aloFlux).expectError().verify();
+
+        assertFalse(alo.isAcknowledged());
+        assertFalse(alo.isNacknowledged());
+    }
+
+    @Test
     public void errorsCanBeIgnoredRatherThanEmitted() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<Void> aloFlux = Flux.just(alo)
+        AloFlux<?> aloFlux = Flux.just(alo)
             .as(AloFlux::wrap)
             .consume(data -> {
                 throw new UnsupportedOperationException("Boom");
@@ -368,10 +383,25 @@ class AloFluxTest {
     }
 
     @Test
+    public void errorsCanBeIgnoredRatherThanEmittedWhenPublishing() {
+        TestAlo alo = new TestAlo("data");
+
+        AloFlux<?> aloFlux = Flux.just(alo)
+            .as(AloFlux::wrap)
+            .concatMap(__ -> Mono.error(new UnsupportedOperationException("Boom")))
+            .onAloErrorEmitUnless(UnsupportedOperationException.class::isInstance);
+
+        StepVerifier.create(aloFlux).expectComplete().verify();
+
+        assertTrue(alo.isAcknowledged());
+        assertFalse(alo.isNacknowledged());
+    }
+
+    @Test
     public void errorHandlingCanBeDelegated() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<Void> aloFlux = Flux.just(alo)
+        AloFlux<?> aloFlux = Flux.just(alo)
             .as(AloFlux::wrap)
             .consume(data -> {
                 throw new UnsupportedOperationException("Boom");
@@ -385,14 +415,44 @@ class AloFluxTest {
     }
 
     @Test
+    public void errorHandlingCanBeDelegatedWhenPublishing() {
+        TestAlo alo = new TestAlo("data");
+
+        AloFlux<?> aloFlux = Flux.just(alo)
+            .as(AloFlux::wrap)
+            .concatMap(__ -> Mono.error(new UnsupportedOperationException("Boom")))
+            .onAloErrorDelegate();
+
+        StepVerifier.create(aloFlux).expectComplete().verify();
+
+        assertFalse(alo.isAcknowledged());
+        assertTrue(alo.isNacknowledged());
+    }
+
+    @Test
     public void errorsCanBeIgnoredRatherThanDelegated() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<Void> aloFlux = Flux.just(alo)
+        AloFlux<?> aloFlux = Flux.just(alo)
             .as(AloFlux::wrap)
             .consume(data -> {
                 throw new UnsupportedOperationException("Boom");
             })
+            .onAloErrorDelegateUnless(UnsupportedOperationException.class::isInstance);
+
+        StepVerifier.create(aloFlux).expectComplete().verify();
+
+        assertTrue(alo.isAcknowledged());
+        assertFalse(alo.isNacknowledged());
+    }
+
+    @Test
+    public void errorsCanBeIgnoredRatherThanDelegatedWhenPublishing() {
+        TestAlo alo = new TestAlo("data");
+
+        AloFlux<?> aloFlux = Flux.just(alo)
+            .as(AloFlux::wrap)
+            .concatMap(__ -> Mono.error(new UnsupportedOperationException("Boom")))
             .onAloErrorDelegateUnless(UnsupportedOperationException.class::isInstance);
 
         StepVerifier.create(aloFlux).expectComplete().verify();
