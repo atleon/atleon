@@ -150,7 +150,7 @@ public class AloKafkaReceiver<K, V> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloKafkaReceiver.class);
 
-    private static final Map<String, AtomicLong> COUNTS_BY_CLIENT_ID = new ConcurrentHashMap<>();
+    private static final Map<String, AtomicLong> COUNTS_BY_ID = new ConcurrentHashMap<>();
 
     private final KafkaConfigSource configSource;
 
@@ -319,7 +319,7 @@ public class AloKafkaReceiver<K, V> {
 
                 // If enabled, increment Client ID
                 if (config.loadBoolean(AUTO_INCREMENT_CLIENT_ID_CONFIG).orElse(DEFAULT_AUTO_INCREMENT_CLIENT_ID)) {
-                    properties.computeIfPresent(CommonClientConfigs.CLIENT_ID_CONFIG, (__, id) -> increment(id.toString()));
+                    properties.computeIfPresent(CommonClientConfigs.CLIENT_ID_CONFIG, (__, id) -> incrementId(id.toString()));
                 }
             });
         }
@@ -381,9 +381,8 @@ public class AloKafkaReceiver<K, V> {
             }
         }
 
-        private static String increment(String clientId) {
-            AtomicLong count = COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, __ -> new AtomicLong());
-            return clientId + "-" + count.incrementAndGet();
+        private static String incrementId(String id) {
+            return id + "-" + COUNTS_BY_ID.computeIfAbsent(id, __ -> new AtomicLong()).incrementAndGet();
         }
 
         private static <T> Mono<T>

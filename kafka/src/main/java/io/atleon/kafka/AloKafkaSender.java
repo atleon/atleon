@@ -82,7 +82,7 @@ public class AloKafkaSender<K, V> implements Closeable {
 
     private static final boolean DEFAULT_STOP_ON_ERROR = false;
 
-    private static final Map<String, AtomicLong> COUNTS_BY_CLIENT_ID = new ConcurrentHashMap<>();
+    private static final Map<String, AtomicLong> COUNTS_BY_ID = new ConcurrentHashMap<>();
 
     private final Mono<SendResources<K, V>> futureResources;
 
@@ -368,14 +368,13 @@ public class AloKafkaSender<K, V> implements Closeable {
 
                 // If enabled, increment Client ID
                 if (config.loadBoolean(AUTO_INCREMENT_CLIENT_ID_CONFIG).orElse(DEFAULT_AUTO_INCREMENT_CLIENT_ID)) {
-                    properties.computeIfPresent(CommonClientConfigs.CLIENT_ID_CONFIG, (__, id) -> increment(id.toString()));
+                    properties.computeIfPresent(CommonClientConfigs.CLIENT_ID_CONFIG, (__, id) -> incrementId(id.toString()));
                 }
             });
         }
 
-        private static String increment(String clientId) {
-            AtomicLong count = COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, __ -> new AtomicLong());
-            return clientId + "-" + count.incrementAndGet();
+        private static String incrementId(String id) {
+            return id + "-" + COUNTS_BY_ID.computeIfAbsent(id, __ -> new AtomicLong()).incrementAndGet();
         }
     }
 }
