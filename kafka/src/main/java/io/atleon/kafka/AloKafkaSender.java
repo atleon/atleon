@@ -362,20 +362,20 @@ public class AloKafkaSender<K, V> implements Closeable {
         }
 
         private static Map<String, Object> newProducerConfig(KafkaConfig config) {
-            return config.modifyAndGetProperties(producerConfig -> {
+            return config.modifyAndGetProperties(properties -> {
                 // Remove any Atleon-specific config (helps avoid warning logs about unused config)
-                producerConfig.keySet().removeIf(key -> key.startsWith(CONFIG_PREFIX));
+                properties.keySet().removeIf(key -> key.startsWith(CONFIG_PREFIX));
 
                 // If enabled, increment Client ID
-                String clientId = config.loadClientId();
                 if (config.loadBoolean(AUTO_INCREMENT_CLIENT_ID_CONFIG).orElse(DEFAULT_AUTO_INCREMENT_CLIENT_ID)) {
-                    producerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
+                    properties.computeIfPresent(CommonClientConfigs.CLIENT_ID_CONFIG, (__, id) -> increment(id.toString()));
                 }
             });
         }
 
-        private static long nextClientIdCount(String clientId) {
-            return COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, key -> new AtomicLong()).incrementAndGet();
+        private static String increment(String clientId) {
+            AtomicLong count = COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, __ -> new AtomicLong());
+            return clientId + "-" + count.incrementAndGet();
         }
     }
 }

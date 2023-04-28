@@ -313,14 +313,13 @@ public class AloKafkaReceiver<K, V> {
         }
 
         private Map<String, Object> newConsumerConfig() {
-            return config.modifyAndGetProperties(consumerConfig -> {
+            return config.modifyAndGetProperties(properties -> {
                 // Remove any Atleon-specific config (helps avoid warning logs about unused config)
-                consumerConfig.keySet().removeIf(key -> key.startsWith(CONFIG_PREFIX));
+                properties.keySet().removeIf(key -> key.startsWith(CONFIG_PREFIX));
 
                 // If enabled, increment Client ID
-                String clientId = config.loadClientId();
                 if (config.loadBoolean(AUTO_INCREMENT_CLIENT_ID_CONFIG).orElse(DEFAULT_AUTO_INCREMENT_CLIENT_ID)) {
-                    consumerConfig.put(CommonClientConfigs.CLIENT_ID_CONFIG, clientId + "-" + nextClientIdCount(clientId));
+                    properties.computeIfPresent(CommonClientConfigs.CLIENT_ID_CONFIG, (__, id) -> increment(id.toString()));
                 }
             });
         }
@@ -382,8 +381,9 @@ public class AloKafkaReceiver<K, V> {
             }
         }
 
-        private static long nextClientIdCount(String clientId) {
-            return COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, key -> new AtomicLong()).incrementAndGet();
+        private static String increment(String clientId) {
+            AtomicLong count = COUNTS_BY_CLIENT_ID.computeIfAbsent(clientId, __ -> new AtomicLong());
+            return clientId + "-" + count.incrementAndGet();
         }
 
         private static <T> Mono<T>

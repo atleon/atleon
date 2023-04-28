@@ -2,7 +2,6 @@ package io.atleon.kafka;
 
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
-import org.apache.kafka.clients.CommonClientConfigs;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -23,10 +22,6 @@ public class KafkaConfig {
         Map<String, Object> modifiedProperties = new HashMap<>(properties);
         modifier.accept(modifiedProperties);
         return modifiedProperties;
-    }
-
-    public String loadClientId() {
-        return ConfigLoading.loadStringOrThrow(properties, CommonClientConfigs.CLIENT_ID_CONFIG);
     }
 
     public <T extends Configurable> Optional<T> loadConfiguredWithPredefinedTypes(
