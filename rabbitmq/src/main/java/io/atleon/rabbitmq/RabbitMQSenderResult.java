@@ -8,7 +8,7 @@ import reactor.rabbitmq.OutboundMessageResult;
 
 import java.util.Optional;
 
-public class RabbitMQSenderResult<T> implements SenderResult {
+public final class RabbitMQSenderResult<T> implements SenderResult {
 
     private final String exchange;
 

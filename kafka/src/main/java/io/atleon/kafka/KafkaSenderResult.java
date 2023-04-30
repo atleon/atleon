@@ -6,7 +6,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 
 import java.util.Optional;
 
-public class KafkaSenderResult<T> implements SenderResult {
+public final class KafkaSenderResult<T> implements SenderResult {
 
     private final RecordMetadata recordMetadata;
 
