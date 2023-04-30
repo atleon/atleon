@@ -59,6 +59,11 @@
             </dependency>
             <dependency>
                 <groupId>io.atleon</groupId>
+                <artifactId>atleon-kotlin</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
                 <artifactId>atleon-micrometer</artifactId>
                 <version>${project.version}</version>
             </dependency>
