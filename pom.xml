@@ -63,6 +63,7 @@
         <module>kafka-avro-embedded</module>
         <module>kafka-avro</module>
         <module>kafka-embedded</module>
+        <module>kotlin</module>
         <module>micrometer</module>
         <module>micrometer-auto</module>
         <module>opentracing</module>
