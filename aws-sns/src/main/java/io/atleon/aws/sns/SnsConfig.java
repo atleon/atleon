@@ -14,7 +14,7 @@ import java.util.Optional;
 /**
  * Config used by SNS Resources to build Clients and load typed configuration values.
  */
-public final class SnsConfig {
+public class SnsConfig {
 
     public static final String ENDPOINT_OVERRIDE_CONFIG = "sns.endpoint.override";
 
