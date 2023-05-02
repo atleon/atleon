@@ -22,7 +22,7 @@ class AloFluxTest {
 
         val aloFlux = Flux.just(alo)
             .`as` { AloFlux.wrap(it) }
-            .suspendConsume { delay(100) }
+            .suspendMap { delay(100) }
 
         StepVerifier.create(aloFlux).expectComplete().verify()
 
