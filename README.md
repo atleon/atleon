@@ -29,11 +29,11 @@ public class MyStream extends AloStream<MyStreamConfig> {
         return config.buildKafkaMessageReceiver()
             .receiveAloRecords(config.getSourceTopic())
             .map(record -> config.getService().transform(record.value()))
-            .filter(result -> !result.isEmpty())
+            .filter(message -> !message.isEmpty())
             .transform(sender.sendAloValues(config.getDestinationTopic(), message -> message.substring(0, 1)))
             .resubscribeOnError(config.name())
             .doFinally(sender::close)
-            .subscribe(new DefaultAloSenderResultSubscriber<>());
+            .subscribeWith(new DefaultAloSenderResultSubscriber<>());
     }
 }
 ```
