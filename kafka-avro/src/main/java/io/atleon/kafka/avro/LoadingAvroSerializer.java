@@ -5,8 +5,9 @@ import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
 import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDe;
-import io.confluent.kafka.serializers.KafkaAvroSerializerConfig;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import org.apache.avro.Schema;
+import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Serializer;
 import org.slf4j.Logger;
@@ -40,7 +41,7 @@ public abstract class LoadingAvroSerializer<T> extends LoadingAvroSerDe implemen
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LoadingAvroSerializer.class);
 
-    private static final Map<String, AvroSchemaCache<Class>> WRITER_SCHEMA_CACHES_BY_OLD_SUBJECT = new ConcurrentHashMap<>();
+    private static final Map<String, AvroSchemaCache<Class<?>>> WRITER_SCHEMA_CACHES_BY_OLD_SUBJECT = new ConcurrentHashMap<>();
 
     private boolean writerSchemaCaching = false;
 
@@ -50,7 +51,7 @@ public abstract class LoadingAvroSerializer<T> extends LoadingAvroSerDe implemen
 
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
-        this.configureClientProperties(new KafkaAvroSerializerConfig(configs), new AvroSchemaProvider());
+        this.configureClientProperties(new AbstractKafkaSchemaSerDeConfig(configDef(), configs), new AvroSchemaProvider());
         this.writerSchemaCaching = ConfigLoading.loadBoolean(configs, WRITER_SCHEMA_CACHING_PROPERTY)
             .orElse(writerSchemaCaching);
         this.writerSchemaGeneration = ConfigLoading.loadBoolean(configs, WRITER_SCHEMA_GENERATION_PROPERTY)
@@ -108,8 +109,12 @@ public abstract class LoadingAvroSerializer<T> extends LoadingAvroSerDe implemen
 
     protected abstract void serializeDataToOutput(ByteArrayOutputStream output, Schema schema, T data) throws IOException;
 
-    private AvroSchemaCache<Class> getWriterSchemaCache(String topic) {
+    private AvroSchemaCache<Class<?>> getWriterSchemaCache(String topic) {
         String oldSubject = topic + (isKey ? "-key" : "-value");
         return WRITER_SCHEMA_CACHES_BY_OLD_SUBJECT.computeIfAbsent(oldSubject, key -> new AvroSchemaCache<>());
+    }
+
+    private static ConfigDef configDef() {
+        return AbstractKafkaSchemaSerDeConfig.baseConfigDef();
     }
 }
