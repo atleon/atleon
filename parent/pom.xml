@@ -18,7 +18,6 @@
         <confluent.version>6.2.2</confluent.version> <!-- https://docs.confluent.io/platform/current/installation/versions-interoperability.html -->
         <guava.version>20.0</guava.version>
         <jackson.version>2.12.3</jackson.version>
-        <javassist.version>3.27.0-GA</javassist.version>
         <jetbrains-annotations.version>23.0.0</jetbrains-annotations.version>
         <junit-jupiter.version>5.6.3</junit-jupiter.version>
         <kotlin.version>1.6.21</kotlin.version> <!-- Dictated by kotlinx-coroutines version -->
@@ -32,7 +31,6 @@
         <reactor-rabbitmq.version>1.5.4</reactor-rabbitmq.version>
         <scala.version>2.13.6</scala.version>
         <slf4j.version>1.7.36</slf4j.version>
-        <snappy-java.version>1.1.8.1</snappy-java.version>
         <spring.version>5.3.7</spring.version>
         <swagger3.version>2.1.13</swagger3.version>
         <testcontainers.version>1.17.6</testcontainers.version>
@@ -135,25 +133,6 @@
                 <groupId>com.rabbitmq</groupId>
                 <artifactId>amqp-client</artifactId>
                 <version>${rabbitmq-amqp-client.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.confluent</groupId>
-                <artifactId>kafka-avro-serializer</artifactId>
-                <version>${confluent.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.google.guava</groupId>
-                        <artifactId>guava</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>log4j</groupId>
-                        <artifactId>log4j</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>slf4j-log4j12</artifactId>
-                    </exclusion>
-                </exclusions>
             </dependency>
             <dependency>
                 <groupId>io.confluent</groupId>
@@ -365,16 +344,6 @@
                 <groupId>org.apache.zookeeper</groupId>
                 <artifactId>zookeeper</artifactId>
                 <version>${zookeeper.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.javassist</groupId>
-                <artifactId>javassist</artifactId>
-                <version>${javassist.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.xerial.snappy</groupId>
-                <artifactId>snappy-java</artifactId>
-                <version>${snappy-java.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

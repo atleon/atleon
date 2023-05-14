@@ -4,8 +4,9 @@ import io.atleon.util.ConfigLoading;
 import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
-import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
+import io.confluent.kafka.serializers.AbstractKafkaSchemaSerDeConfig;
 import org.apache.avro.Schema;
+import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +56,7 @@ public abstract class LoadingAvroDeserializer<T> extends LoadingAvroSerDe implem
 
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
-        this.configureClientProperties(new KafkaAvroDeserializerConfig(configs), new AvroSchemaProvider());
+        this.configureClientProperties(new AbstractKafkaSchemaSerDeConfig(configDef(), configs), new AvroSchemaProvider());
         this.readNullOnFailure = ConfigLoading.loadBoolean(configs, READ_NULL_ON_FAILURE_PROPERTY)
             .orElse(readNullOnFailure);
         this.readerSchemaLoading = ConfigLoading.loadBoolean(configs, READER_SCHEMA_LOADING_PROPERTY)
@@ -102,7 +103,7 @@ public abstract class LoadingAvroDeserializer<T> extends LoadingAvroSerDe implem
         try {
             return readerSchemaLoading ? loadReaderSchema(writerSchema) : writerSchema;
         } catch (Exception e) {
-            LOGGER.error("Failed to load Reader Schema for topic={}. Defaulting to writerSchema={} e={}", topic, writerSchema, e);
+            LOGGER.error("Failed to load Reader Schema for topic={}. Defaulting to writerSchema={}", topic, writerSchema, e);
             return writerSchema;
         }
     }
@@ -115,6 +116,10 @@ public abstract class LoadingAvroDeserializer<T> extends LoadingAvroSerDe implem
     }
 
     protected abstract T deserializeNonNullWithSchemas(Schema writerSchema, Schema readerSchema, ByteBuffer dataBuffer) throws IOException;
+
+    private static ConfigDef configDef() {
+        return AbstractKafkaSchemaSerDeConfig.baseConfigDef();
+    }
 
     private static final class MissingSchemaIdException extends IllegalArgumentException {
 

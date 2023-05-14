@@ -21,10 +21,6 @@
         <!-- Third Party Compile Dependencies -->
         <dependency>
             <groupId>io.confluent</groupId>
-            <artifactId>kafka-avro-serializer</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.confluent</groupId>
             <artifactId>kafka-schema-registry-client</artifactId>
         </dependency>
         <dependency>
