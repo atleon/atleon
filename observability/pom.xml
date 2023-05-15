@@ -8,18 +8,13 @@
         <relativePath>../parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>atleon-aws-testcontainers</artifactId>
-    <packaging>jar</packaging>
+    <artifactId>atleon-observability</artifactId>
+    <packaging>pom</packaging>
 
-    <dependencies>
-        <!-- Third Party Compile Dependencies -->
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>localstack</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>testcontainers</artifactId>
-        </dependency>
-    </dependencies>
+    <modules>
+        <module>micrometer</module>
+        <module>micrometer-auto</module>
+        <module>opentracing</module>
+        <module>opentracing-auto</module>
+    </modules>
 </project>

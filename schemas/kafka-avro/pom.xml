@@ -3,24 +3,15 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.atleon</groupId>
-        <artifactId>atleon-parent</artifactId>
+        <artifactId>atleon-schemas</artifactId>
         <version>0.16.2-SNAPSHOT</version>
-        <relativePath>../parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>atleon-aws-sqs</artifactId>
+    <artifactId>atleon-kafka-avro</artifactId>
     <packaging>jar</packaging>
 
     <dependencies>
         <!-- Project Compile Dependencies -->
-        <dependency>
-            <groupId>io.atleon</groupId>
-            <artifactId>atleon-aws-util</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.atleon</groupId>
-            <artifactId>atleon-core</artifactId>
-        </dependency>
         <dependency>
             <groupId>io.atleon</groupId>
             <artifactId>atleon-util</artifactId>
@@ -28,47 +19,34 @@
 
         <!-- Third Party Compile Dependencies -->
         <dependency>
-            <groupId>io.projectreactor</groupId>
-            <artifactId>reactor-core</artifactId>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-schema-registry-client</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.reactivestreams</groupId>
-            <artifactId>reactive-streams</artifactId>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-schema-serializer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>auth</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>regions</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>sqs</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>utils</artifactId>
-        </dependency>
 
         <!-- Project Test Dependencies -->
         <dependency>
             <groupId>io.atleon</groupId>
-            <artifactId>atleon-aws-testcontainers</artifactId>
+            <artifactId>atleon-kafka-avro-embedded</artifactId>
             <scope>test</scope>
         </dependency>
 
         <!-- Third Party Test Dependencies -->
-        <dependency>
-            <groupId>io.projectreactor</groupId>
-            <artifactId>reactor-test</artifactId>
-            <scope>test</scope>
-        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>

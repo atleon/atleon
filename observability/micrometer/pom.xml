@@ -3,9 +3,8 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.atleon</groupId>
-        <artifactId>atleon-parent</artifactId>
+        <artifactId>atleon-observability</artifactId>
         <version>0.16.2-SNAPSHOT</version>
-        <relativePath>../parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>atleon-micrometer</artifactId>

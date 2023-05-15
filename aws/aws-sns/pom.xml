@@ -3,73 +3,74 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.atleon</groupId>
-        <artifactId>atleon-parent</artifactId>
+        <artifactId>atleon-aws</artifactId>
         <version>0.16.2-SNAPSHOT</version>
-        <relativePath>../parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>atleon-opentracing</artifactId>
+    <artifactId>atleon-aws-sns</artifactId>
     <packaging>jar</packaging>
 
     <dependencies>
-        <!-- Third Party Compile Dependencies -->
-        <dependency>
-            <groupId>io.opentracing</groupId>
-            <artifactId>opentracing-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.opentracing</groupId>
-            <artifactId>opentracing-util</artifactId>
-        </dependency>
-
-        <!-- Project Provided Dependencies -->
+        <!-- Project Compile Dependencies -->
         <dependency>
             <groupId>io.atleon</groupId>
-            <artifactId>atleon-aws-sqs</artifactId>
-            <scope>provided</scope>
+            <artifactId>atleon-aws-util</artifactId>
         </dependency>
         <dependency>
             <groupId>io.atleon</groupId>
             <artifactId>atleon-core</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.atleon</groupId>
-            <artifactId>atleon-kafka</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.atleon</groupId>
-            <artifactId>atleon-rabbitmq</artifactId>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.atleon</groupId>
             <artifactId>atleon-util</artifactId>
-            <scope>provided</scope>
         </dependency>
 
-        <!-- Third Party Provided Dependencies -->
+        <!-- Third Party Compile Dependencies -->
         <dependency>
-            <groupId>com.rabbitmq</groupId>
-            <artifactId>amqp-client</artifactId>
-            <scope>provided</scope>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka-clients</artifactId>
-            <scope>provided</scope>
+            <groupId>org.reactivestreams</groupId>
+            <artifactId>reactive-streams</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
-            <artifactId>sqs</artifactId>
-            <scope>provided</scope>
+            <artifactId>auth</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>regions</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sns</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>utils</artifactId>
+        </dependency>
+
+        <!-- Project Test Dependencies -->
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-aws-sqs</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-aws-testcontainers</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <!-- Third Party Test Dependencies -->
         <dependency>
             <groupId>io.projectreactor</groupId>
-            <artifactId>reactor-core</artifactId>
+            <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -83,8 +84,8 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.reactivestreams</groupId>
-            <artifactId>reactive-streams</artifactId>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sqs</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

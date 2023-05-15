@@ -3,12 +3,11 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.atleon</groupId>
-        <artifactId>atleon-parent</artifactId>
+        <artifactId>atleon-aws</artifactId>
         <version>0.16.2-SNAPSHOT</version>
-        <relativePath>../parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>atleon-aws-sns</artifactId>
+    <artifactId>atleon-aws-sqs</artifactId>
     <packaging>jar</packaging>
 
     <dependencies>
@@ -49,7 +48,7 @@
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
-            <artifactId>sns</artifactId>
+            <artifactId>sqs</artifactId>
         </dependency>
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
@@ -57,11 +56,6 @@
         </dependency>
 
         <!-- Project Test Dependencies -->
-        <dependency>
-            <groupId>io.atleon</groupId>
-            <artifactId>atleon-aws-sqs</artifactId>
-            <scope>test</scope>
-        </dependency>
         <dependency>
             <groupId>io.atleon</groupId>
             <artifactId>atleon-aws-testcontainers</artifactId>
@@ -82,11 +76,6 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>sqs</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

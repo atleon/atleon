@@ -8,15 +8,13 @@
         <relativePath>../parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>atleon-micrometer-auto</artifactId>
-    <packaging>jar</packaging>
+    <artifactId>atleon-aws</artifactId>
+    <packaging>pom</packaging>
 
-    <dependencies>
-        <!-- Project Runtime Dependencies -->
-        <dependency>
-            <groupId>io.atleon</groupId>
-            <artifactId>atleon-micrometer</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-    </dependencies>
+    <modules>
+        <module>aws-sns</module>
+        <module>aws-sqs</module>
+        <module>aws-testcontainers</module>
+        <module>aws-util</module>
+    </modules>
 </project>

@@ -53,24 +53,17 @@
 
     <modules>
         <module>amqp-embedded</module>
-        <module>aws-sns</module>
-        <module>aws-sqs</module>
-        <module>aws-testcontainers</module>
-        <module>aws-util</module>
+        <module>aws</module>
         <module>bom</module>
         <module>core</module>
         <module>kafka</module>
-        <module>kafka-avro-embedded</module>
-        <module>kafka-avro</module>
         <module>kafka-embedded</module>
         <module>kotlin</module>
-        <module>micrometer</module>
-        <module>micrometer-auto</module>
-        <module>opentracing</module>
-        <module>opentracing-auto</module>
+        <module>observability</module>
         <module>parent</module>
         <module>polling</module>
         <module>rabbitmq</module>
+        <module>schemas</module>
         <module>spring</module>
         <module>util</module>
         <module>zookeeper-embedded</module>
