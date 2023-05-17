@@ -1,4 +1,4 @@
-package io.atleon.kafka.avro;
+package io.atleon.avro;
 
 import io.atleon.util.FieldResolution;
 import io.atleon.util.Instantiation;
@@ -63,7 +63,7 @@ public final class AvroDeserialization {
             genericField.setAccessible(true);
             genericField.set(referenceData, fieldData);
         } catch (Exception e) {
-            LOGGER.warn("Failed to instantiate generic Data Field: genericField={} schema={} e={}", genericField, nonNullFieldSchema, e);
+            LOGGER.warn("Failed to instantiate generic Data Field: genericField={} schema={}", genericField, nonNullFieldSchema, e);
         }
     }
 

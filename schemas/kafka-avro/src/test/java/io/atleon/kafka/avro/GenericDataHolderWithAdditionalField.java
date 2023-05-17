@@ -1,5 +1,6 @@
 package io.atleon.kafka.avro;
 
+import io.atleon.avro.AvroSchemas;
 import org.apache.avro.JsonProperties;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericContainer;

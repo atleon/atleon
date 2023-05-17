@@ -12,6 +12,7 @@
     <packaging>pom</packaging>
 
     <modules>
+        <module>avro</module>
         <module>kafka-avro</module>
         <module>kafka-avro-embedded</module>
     </modules>

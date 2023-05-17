@@ -1,5 +1,8 @@
 package io.atleon.kafka.avro;
 
+import io.atleon.avro.AvroSchemaCache;
+import io.atleon.avro.AvroSchemas;
+import io.atleon.avro.AvroSerialization;
 import io.atleon.util.ConfigLoading;
 import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;

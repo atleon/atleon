@@ -7,15 +7,11 @@
         <version>0.16.2-SNAPSHOT</version>
     </parent>
 
-    <artifactId>atleon-kafka-avro</artifactId>
+    <artifactId>atleon-avro</artifactId>
     <packaging>jar</packaging>
 
     <dependencies>
         <!-- Project Compile Dependencies -->
-        <dependency>
-            <groupId>io.atleon</groupId>
-            <artifactId>atleon-avro</artifactId>
-        </dependency>
         <dependency>
             <groupId>io.atleon</groupId>
             <artifactId>atleon-util</artifactId>
@@ -23,31 +19,12 @@
 
         <!-- Third Party Compile Dependencies -->
         <dependency>
-            <groupId>io.confluent</groupId>
-            <artifactId>kafka-schema-registry-client</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.confluent</groupId>
-            <artifactId>kafka-schema-serializer</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.apache.avro</groupId>
             <artifactId>avro</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka-clients</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-        </dependency>
-
-        <!-- Project Test Dependencies -->
-        <dependency>
-            <groupId>io.atleon</groupId>
-            <artifactId>atleon-kafka-avro-embedded</artifactId>
-            <scope>test</scope>
         </dependency>
 
         <!-- Third Party Test Dependencies -->

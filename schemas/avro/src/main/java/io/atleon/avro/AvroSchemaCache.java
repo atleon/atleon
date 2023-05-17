@@ -1,4 +1,4 @@
-package io.atleon.kafka.avro;
+package io.atleon.avro;
 
 import org.apache.avro.Schema;
 
