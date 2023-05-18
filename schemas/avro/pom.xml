@@ -14,6 +14,10 @@
         <!-- Project Compile Dependencies -->
         <dependency>
             <groupId>io.atleon</groupId>
+            <artifactId>atleon-schema</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
             <artifactId>atleon-util</artifactId>
         </dependency>
 
