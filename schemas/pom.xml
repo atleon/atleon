@@ -15,5 +15,8 @@
         <module>avro</module>
         <module>kafka-avro</module>
         <module>kafka-avro-embedded</module>
+        <module>schema</module>
+        <module>schema-registry-confluent</module>
+        <module>schema-registry-confluent-embedded</module>
     </modules>
 </project>

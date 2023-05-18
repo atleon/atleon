@@ -1,40 +1,27 @@
 package io.atleon.kafka.avro;
 
-import io.atleon.util.ConfigLoading;
-import org.apache.avro.Schema;
-import org.apache.avro.io.EncoderFactory;
-import org.apache.avro.reflect.ReflectData;
-import org.apache.avro.reflect.ReflectDatumWriter;
+import io.atleon.schemaregistry.confluent.AvroRegistryKafkaSerializer;
+import io.atleon.schemaregistry.confluent.AvroRegistrySerializerConfig;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.lang.reflect.Type;
 import java.util.Map;
 
+/**
+ * @deprecated Use {@link AvroRegistryKafkaSerializer}
+ */
+@Deprecated
 public class ReflectEncoderAvroSerializer<T> extends LoadingAvroSerializer<T> {
 
-    public static final String REFLECT_ALLOW_NULL_PROPERTY = "reflect.allow.null";
+    public static final String REFLECT_ALLOW_NULL_PROPERTY = AvroRegistrySerializerConfig.AVRO_REFLECTION_ALLOW_NULL_CONFIG;
 
-    private boolean reflectAllowNull = false;
+    private final AvroRegistryKafkaSerializer<T> serializer = new AvroRegistryKafkaSerializer<>();
 
     @Override
     public void configure(Map<String, ?> configs, boolean isKey) {
-        super.configure(configs, isKey);
-        this.reflectAllowNull = ConfigLoading.loadBoolean(configs, REFLECT_ALLOW_NULL_PROPERTY).orElse(reflectAllowNull);
+        serializer.configure(configs, isKey);
     }
 
     @Override
-    protected Schema loadTypeSchema(Type dataType) {
-        return getReflectData().getSchema(dataType);
-    }
-
-    @Override
-    protected void serializeDataToOutput(ByteArrayOutputStream output, Schema schema, T data) throws IOException {
-        new ReflectDatumWriter<>(schema, getReflectData())
-            .write(data, EncoderFactory.get().directBinaryEncoder(output, null));
-    }
-
-    private ReflectData getReflectData() {
-        return reflectAllowNull ? ReflectData.AllowNull.get() : ReflectData.get();
+    public byte[] serialize(String topic, T data) {
+        return serializer.serialize(topic, data);
     }
 }

@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
 
 public abstract class AbstractPollingTest {
 
-    protected static class TestPollable implements Pollable<String, String> {
+    protected static final class TestPollable implements Pollable<String, String> {
 
         private final Collection<String> events;
 
