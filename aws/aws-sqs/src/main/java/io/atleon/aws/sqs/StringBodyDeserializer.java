@@ -6,7 +6,7 @@ package io.atleon.aws.sqs;
 public final class StringBodyDeserializer implements BodyDeserializer<String> {
 
     @Override
-    public String deserialize(String body) {
-        return body;
+    public String deserialize(String data) {
+        return data;
     }
 }

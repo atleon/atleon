@@ -47,6 +47,13 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <!-- Project Provided Dependencies -->
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-rabbitmq</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Project Test Dependencies -->
         <dependency>
             <groupId>io.atleon</groupId>

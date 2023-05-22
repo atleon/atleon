@@ -16,5 +16,5 @@ public interface BodySerializer<T> extends Configurable {
 
     }
 
-    String serialize(T body);
+    String serialize(T data);
 }

@@ -8,7 +8,7 @@ package io.atleon.aws.sqs;
 public final class StringBodySerializer<T> implements BodySerializer<T> {
 
     @Override
-    public String serialize(T body) {
-        return body.toString();
+    public String serialize(T data) {
+        return data.toString();
     }
 }
