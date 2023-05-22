@@ -51,8 +51,8 @@ public class SqsProcessingConfig implements AloStreamConfig {
     public static final class LongBodyDeserializer implements BodyDeserializer<Long> {
 
         @Override
-        public Long deserialize(String body) {
-            return Long.parseLong(body);
+        public Long deserialize(String data) {
+            return Long.parseLong(data);
         }
     }
 }

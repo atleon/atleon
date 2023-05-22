@@ -5,9 +5,9 @@ import java.nio.ByteBuffer;
 public final class LongBodySerializer implements BodySerializer<Long> {
 
     @Override
-    public SerializedBody serialize(Long aLong) {
+    public SerializedBody serialize(Long data) {
         ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
-        buffer.putLong(aLong);
+        buffer.putLong(data);
         return SerializedBody.ofBytes(buffer.array());
     }
 }
