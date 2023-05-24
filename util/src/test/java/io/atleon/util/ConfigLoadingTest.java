@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class ConfigLoadingTest {
+public class ConfigLoadingTest {
 
     @Test
     public void parseableConfigsAreLoadedCorrectly() {
@@ -28,6 +28,10 @@ class ConfigLoadingTest {
         assertEquals(10, ConfigLoading.loadIntOrThrow(Collections.singletonMap("integer", "10"), "integer"));
         assertEquals(15L, ConfigLoading.loadLongOrThrow(Collections.singletonMap("long", "15"), "long"));
         assertEquals("x", ConfigLoading.loadStringOrThrow(Collections.singletonMap("string", "x"), "string"));
+        assertEquals(
+            TestConfigurable.class,
+            ConfigLoading.loadClassOrThrow(Collections.singletonMap("type", TestConfigurable.class.getName()), "type")
+        );
     }
 
     @Test

@@ -66,10 +66,10 @@ public abstract class AvroDeserializer<T> implements SchematicDeserializer<T, Sc
 
     protected final T deserializeUnsafe(
         byte[] data,
-        Function<ByteBuffer, KeyableSchema<Schema>> keyableWriterSchemaExtractor
+        Function<ByteBuffer, KeyableSchema<Schema>> dataBufferToWriterSchema
     ) throws IOException {
         ByteBuffer buffer = ByteBuffer.wrap(data);
-        KeyableSchema<Schema> keyableWriterSchema = keyableWriterSchemaExtractor.apply(buffer);
+        KeyableSchema<Schema> keyableWriterSchema = dataBufferToWriterSchema.apply(buffer);
         Schema readerSchema = keyableWriterSchema.key()
             .map(writerKey -> readerSchemasByWriterKey.load(writerKey, __ -> loadReaderSchema(keyableWriterSchema.schema())))
             .orElseGet(() -> loadReaderSchema(keyableWriterSchema.schema()));
