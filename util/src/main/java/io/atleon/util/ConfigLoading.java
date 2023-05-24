@@ -52,6 +52,10 @@ public final class ConfigLoading {
         return loadString(configs, property).orElseThrow(supplyMissingConfigPropertyException(property));
     }
 
+    public static Class<?> loadClassOrThrow(Map<String, ?> configs, String property) {
+        return ConfigLoading.loadClass(configs, property).orElseThrow(supplyMissingConfigPropertyException(property));
+    }
+
     public static <T extends Configurable> Optional<T> loadConfiguredWithPredefinedTypes(
         Map<String, ?> configs,
         String property,
@@ -87,6 +91,11 @@ public final class ConfigLoading {
 
     public static Optional<String> loadString(Map<String, ?> configs, String property) {
         return loadParseable(configs, property, String.class, Function.identity());
+    }
+
+    public static Optional<Class<?>> loadClass(Map<String, ?> configs, String property) {
+        return loadParseable(configs, property, Class.class, TypeResolution::classForQualifiedName)
+            .map(type -> (Class<?>) type);
     }
 
     public static <T> Optional<T>
