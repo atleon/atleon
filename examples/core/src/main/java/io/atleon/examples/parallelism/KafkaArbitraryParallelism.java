@@ -24,8 +24,8 @@ import java.util.function.Function;
  * This example shows how to process Kafka records with arbitrarily high parallelism. You can try
  * changing the number of samples and/or number of processing groups to see significant changes
  * in processing speed. Note that in-order offset acknowledgement is handled (under the hood) by
- * {@link io.atleon.core.OrderManagingAcknowledgementOperator} such that offset commits are not
- * executed past any record whose offset we have not yet fully processed (acknowledged)
+ * {@link io.atleon.core.AloQueueingTransformer} such that offset commits are not executed past any
+ * record whose offset we have not yet fully processed (acknowledged).
  */
 public class KafkaArbitraryParallelism {
 

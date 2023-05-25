@@ -1,10 +1,11 @@
 package io.atleon.polling;
 
 import io.atleon.core.Alo;
+import io.atleon.core.AloComponentExtractor;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
-import io.atleon.core.OrderManagingAcknowledgementOperator;
+import io.atleon.core.AloQueueingTransformer;
 import io.atleon.polling.reactive.PollerOptions;
 import io.atleon.polling.reactive.PollingReceiver;
 import io.atleon.polling.reactive.PollingSourceConfig;
@@ -32,7 +33,7 @@ public class AloPollingReceiver<P, O> {
         private final boolean nack;
 
         NackStrategy(final boolean emit,
-                            final boolean nack) {
+                     final boolean nack) {
             this.emit = emit;
             this.nack = nack;
         }
@@ -91,27 +92,27 @@ public class AloPollingReceiver<P, O> {
         }
 
         public Flux<Alo<Polled<P, O>>> receive(final PollingReceiver<P, O> receiver) {
-            return receiver
-                    .receive()
-                    .transform(this::createAloRecords);
-
+            final Sinks.Empty<Alo<Polled<P, O>>> sink = Sinks.empty();
+            return receiver.receive()
+                .transform(newAloQueueingTransformer(sink))
+                .mergeWith(sink.asMono());
         }
 
-        private Flux<Alo<Polled<P,O>>> createAloRecords(final Flux<ReceiverRecord<P, O>> records) {
-            final Sinks.Empty<Alo<Polled<P, O>>> sink = Sinks.empty();
-            return records.map(record -> aloFactory.create(record.getRecord(),
-                            () -> ack(record),
-                            t -> nack(sink, t, record)))
-                    .mergeWith(sink.asMono())
-                    .transform(aloRecords -> new OrderManagingAcknowledgementOperator<>(
-                            aloRecords, Polled::getGroup));
+        private AloQueueingTransformer<ReceiverRecord<P, O>, Polled<P, O>> newAloQueueingTransformer(Sinks.Empty<?> sink) {
+            AloComponentExtractor<ReceiverRecord<P, O>, Polled<P, O>> componentExtractor = AloComponentExtractor.composed(
+                record -> () -> ack(record),
+                record -> error -> nack(sink, error, record),
+                ReceiverRecord::getRecord
+            );
+            return AloQueueingTransformer.create(componentExtractor)
+                .withGroupExtractor(receiverRecord -> receiverRecord.getRecord().getGroup());
         }
 
         private void ack(final ReceiverRecord<P, O> record) {
             record.getPollable().ack(record.getRecord().getOffset());
         }
 
-        private void nack(final Sinks.Empty<Alo<Polled<P, O>>> sink,
+        private void nack(final Sinks.Empty<?> sink,
                           final Throwable throwable,
                           final ReceiverRecord<P, O> record) {
             if (nackStrategy.nack) {
