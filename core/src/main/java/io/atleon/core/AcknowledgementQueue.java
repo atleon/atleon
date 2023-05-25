@@ -23,6 +23,7 @@ abstract class AcknowledgementQueue {
     /**
      * Append an In-Flight Acknowledgement to the Queue backed by the following Acknowledger and
      * Nacknowledger
+     *
      * @return The In-Flight Acknowledgement to be completed on this Queue in the Future
      */
     public InFlight add(Runnable acknowledger, Consumer<? super Throwable> nacknowledger) {
@@ -33,6 +34,7 @@ abstract class AcknowledgementQueue {
 
     /**
      * Complete an In-Flight Acknowledgement in this Queue
+     *
      * @return The number of elements drained from this Queue due to completion of Acknowledgement
      */
     public long complete(InFlight toComplete) {
@@ -41,6 +43,7 @@ abstract class AcknowledgementQueue {
 
     /**
      * Exceptionally complete an In-Flight Acknowledgement in this Queue
+     *
      * @return The number of elements drained from this Queue due to completion of Acknowledgement
      */
     public long completeExceptionally(InFlight toComplete, Throwable error) {
@@ -70,7 +73,7 @@ abstract class AcknowledgementQueue {
 
     static final class InFlight {
 
-        private enum State { IN_PROCESS, COMPLETED, EXECUTED }
+        private enum State {IN_PROCESS, COMPLETED, EXECUTED}
 
         private static final AtomicReferenceFieldUpdater<InFlight, State> STATE =
             AtomicReferenceFieldUpdater.newUpdater(InFlight.class, State.class, "state");

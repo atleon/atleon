@@ -1,7 +1,6 @@
 package io.atleon.core;
 
 import org.junit.jupiter.api.Test;
-import org.reactivestreams.Subscriber;
 import reactor.core.publisher.Sinks;
 
 import java.util.ArrayList;
@@ -18,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class AloQueuingSubscriberTest {
+public class AloQueueingTransformerTest {
 
     protected static final Executor EXECUTOR = Executors.newCachedThreadPool();
 
@@ -52,16 +51,15 @@ public class AloQueuingSubscriberTest {
             }
         });
 
-        List<Alo<String>> emitted = new ArrayList<>();
-        Subscriber<Alo<String>> subscriber = Adapters.toSubscriber(emitted::add);
-
         Sinks.Many<TestAlo> sink = Sinks.many().multicast().onBackpressureBuffer();
-        sink.asFlux().subscribe(
-            new AloQueueingSubscriber<>(subscriber, String::length, OrderManagingAcknowledgementQueue::create, 2)
-        );
 
-        sink.tryEmitNext(firstAcknowledgeable);
-        sink.tryEmitNext(secondAcknowledgeable);
+        List<Alo<String>> emitted = new ArrayList<>();
+        sink.asFlux()
+            .transform(newTransformer())
+            .subscribe(emitted::add);
+
+        sink.emitNext(firstAcknowledgeable, Sinks.EmitFailureHandler.FAIL_FAST);
+        sink.emitNext(secondAcknowledgeable, Sinks.EmitFailureHandler.FAIL_FAST);
 
         EXECUTOR.execute(() -> Alo.acknowledge(emitted.get(0)));
         assertTrue(firstAcknowledgementStarted.get());
@@ -97,29 +95,28 @@ public class AloQueuingSubscriberTest {
         TestAlo boy = new TestAlo("BOY");
         Collection<TestAlo> all = Arrays.asList(mom, dad, dog, cat, boy);
 
-        List<Alo<String>> emitted = new ArrayList<>();
-        Subscriber<Alo<String>> subscriber = Adapters.toSubscriber(emitted::add);
-
         Sinks.Many<TestAlo> sink = Sinks.many().multicast().onBackpressureBuffer();
-        sink.asFlux().subscribe(
-            new AloQueueingSubscriber<>(subscriber, String::length, OrderManagingAcknowledgementQueue::create, 2)
-        );
 
-        sink.tryEmitNext(mom);
-        sink.tryEmitNext(dad);
+        List<Alo<String>> emitted = new ArrayList<>();
+        sink.asFlux()
+            .transform(newTransformer().withMaxInFlight(2))
+            .subscribe(emitted::add);
 
-        assertTrue(all.stream().noneMatch(TestAlo::isAcknowledged));
-        assertTrue(all.stream().noneMatch(TestAlo::isNacknowledged));
-        assertEquals(2, emitted.size());
-
-        sink.tryEmitNext(dog);
+        sink.emitNext(mom, Sinks.EmitFailureHandler.FAIL_FAST);
+        sink.emitNext(dad, Sinks.EmitFailureHandler.FAIL_FAST);
 
         assertTrue(all.stream().noneMatch(TestAlo::isAcknowledged));
         assertTrue(all.stream().noneMatch(TestAlo::isNacknowledged));
         assertEquals(2, emitted.size());
 
-        sink.tryEmitNext(cat);
-        sink.tryEmitNext(boy);
+        sink.emitNext(dog, Sinks.EmitFailureHandler.FAIL_FAST);
+
+        assertTrue(all.stream().noneMatch(TestAlo::isAcknowledged));
+        assertTrue(all.stream().noneMatch(TestAlo::isNacknowledged));
+        assertEquals(2, emitted.size());
+
+        sink.emitNext(cat, Sinks.EmitFailureHandler.FAIL_FAST);
+        sink.emitNext(boy, Sinks.EmitFailureHandler.FAIL_FAST);
 
         assertTrue(all.stream().noneMatch(TestAlo::isAcknowledged));
         assertTrue(all.stream().noneMatch(TestAlo::isNacknowledged));
@@ -161,11 +158,9 @@ public class AloQueuingSubscriberTest {
         Sinks.Many<TestAlo> sink = Sinks.many().multicast().onBackpressureBuffer();
 
         List<Alo<String>> emitted = new ArrayList<>();
-        Subscriber<Alo<String>> subscriber = Adapters.toSubscriber(emitted::add);
-
-        sink.asFlux().subscribe(
-            new AloQueueingSubscriber<>(subscriber, String::length, OrderManagingAcknowledgementQueue::create, 3)
-        );
+        sink.asFlux()
+            .transform(newTransformer().withGroupExtractor(alo -> alo.get().length()).withMaxInFlight(3))
+            .subscribe(emitted::add);
 
         all.forEach(sink::tryEmitNext);
 
@@ -193,5 +188,11 @@ public class AloQueuingSubscriberTest {
         Alo.acknowledge(emitted.get(3));
 
         assertTrue(all.stream().allMatch(TestAlo::isAcknowledged));
+    }
+
+    private static AloQueueingTransformer<TestAlo, String> newTransformer() {
+        return AloQueueingTransformer.create(
+            AloComponentExtractor.composed(Alo::getAcknowledger, Alo::getNacknowledger, Alo::get)
+        );
     }
 }

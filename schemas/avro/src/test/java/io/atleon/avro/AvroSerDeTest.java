@@ -2,10 +2,8 @@ package io.atleon.avro;
 
 import io.atleon.schema.SchemaBytes;
 import org.apache.avro.Schema;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 

@@ -1,13 +1,14 @@
 package io.atleon.kafka;
 
 import io.atleon.core.Alo;
+import io.atleon.core.AloComponentExtractor;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
+import io.atleon.core.AloQueueingTransformer;
 import io.atleon.core.AloSignalListenerFactory;
 import io.atleon.core.AloSignalListenerFactoryConfig;
 import io.atleon.core.ErrorEmitter;
-import io.atleon.core.OrderManagingAcknowledgementOperator;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
@@ -30,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
@@ -279,19 +281,12 @@ public class AloKafkaReceiver<K, V> {
 
         public Flux<Alo<ConsumerRecord<K, V>>> receive(ReceiverOptionsInitializer<K, V> optionsInitializer) {
             CompletableFuture<Collection<ReceiverPartition>> assignment = new CompletableFuture<>();
-            AloFactory<ConsumerRecord<K, V>> aloFactory = loadAloFactory();
             ErrorEmitter<Alo<ConsumerRecord<K, V>>> errorEmitter = newErrorEmitter();
             return newReceiver(optionsInitializer, assignment::complete).receive()
                 .transform(records -> maybeBlockRequestOnPartitionPositioning(records, assignment))
-                .map(record -> toAlo(record, aloFactory, errorEmitter::safelyEmit))
+                .transform(newAloQueueingTransformer(errorEmitter::safelyEmit))
                 .transform(errorEmitter::applyTo)
-                .transform(this::newOrderManagingAcknowledgementOperator)
                 .transform(this::applySignalListenerFactories);
-        }
-
-        private AloFactory<ConsumerRecord<K, V>> loadAloFactory() {
-            Map<String, Object> factoryConfig = config.modifyAndGetProperties(properties -> {});
-            return AloFactoryConfig.loadDecorated(factoryConfig, AloKafkaConsumerRecordDecorator.class);
         }
 
         private ErrorEmitter<Alo<ConsumerRecord<K, V>>> newErrorEmitter() {
@@ -333,11 +328,30 @@ public class AloKafkaReceiver<K, V> {
             return shouldApplyBlocking ? records.mergeWith(blockRequestOnPartitionPositioning(assignment)) : records;
         }
 
-        private OrderManagingAcknowledgementOperator<ConsumerRecord<K, V>, Alo<ConsumerRecord<K, V>>>
-        newOrderManagingAcknowledgementOperator(Flux<Alo<ConsumerRecord<K, V>>> alos) {
-            long maxInFlight = config.loadLong(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG)
-                .orElse(DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION);
-            return new OrderManagingAcknowledgementOperator<>(alos, ConsumerRecordExtraction::topicPartition, maxInFlight);
+        private AloQueueingTransformer<ReceiverRecord<K, V>, ConsumerRecord<K, V>>
+        newAloQueueingTransformer(Consumer<Throwable> errorEmitter) {
+            return AloQueueingTransformer.create(newComponentExtractor(errorEmitter))
+                .withGroupExtractor(ConsumerRecordExtraction::topicPartition)
+                .withFactory(loadAloFactory())
+                .withMaxInFlight(loadMaxInFlightPerSubscription());
+        }
+
+        private AloComponentExtractor<ReceiverRecord<K, V>, ConsumerRecord<K, V>>
+        newComponentExtractor(Consumer<Throwable> errorEmitter) {
+            return AloComponentExtractor.composed(
+                record -> record.receiverOffset()::acknowledge,
+                record -> nacknowledgerFactory.create(record, errorEmitter),
+                Function.identity()
+            );
+        }
+
+        private AloFactory<ConsumerRecord<K, V>> loadAloFactory() {
+            Map<String, Object> factoryConfig = config.modifyAndGetProperties(properties -> {});
+            return AloFactoryConfig.loadDecorated(factoryConfig, AloKafkaConsumerRecordDecorator.class);
+        }
+
+        private long loadMaxInFlightPerSubscription() {
+            return config.loadLong(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG).orElse(DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION);
         }
 
         private Flux<Alo<ConsumerRecord<K, V>>> applySignalListenerFactories(Flux<Alo<ConsumerRecord<K, V>>> aloRecords) {
@@ -348,18 +362,6 @@ public class AloKafkaReceiver<K, V> {
                 aloRecords = aloRecords.tap(factory);
             }
             return aloRecords;
-        }
-
-        private Alo<ConsumerRecord<K, V>> toAlo(
-            ReceiverRecord<K, V> record,
-            AloFactory<ConsumerRecord<K, V>> aloFactory,
-            Consumer<Throwable> errorEmitter
-        ) {
-            return aloFactory.create(
-                record,
-                record.receiverOffset()::acknowledge,
-                nacknowledgerFactory.create(record, errorEmitter)
-            );
         }
 
         private static <K, V> NacknowledgerFactory<K, V> createNacknowledgerFactory(KafkaConfig config) {
