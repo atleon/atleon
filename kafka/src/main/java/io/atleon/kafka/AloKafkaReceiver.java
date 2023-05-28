@@ -5,6 +5,8 @@ import io.atleon.core.AloComponentExtractor;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
+import io.atleon.core.AloQueueListener;
+import io.atleon.core.AloQueueListenerConfig;
 import io.atleon.core.AloQueueingTransformer;
 import io.atleon.core.AloSignalListenerFactory;
 import io.atleon.core.AloSignalListenerFactoryConfig;
@@ -331,7 +333,8 @@ public class AloKafkaReceiver<K, V> {
         private AloQueueingTransformer<ReceiverRecord<K, V>, ConsumerRecord<K, V>>
         newAloQueueingTransformer(Consumer<Throwable> errorEmitter) {
             return AloQueueingTransformer.create(newComponentExtractor(errorEmitter))
-                .withGroupExtractor(ConsumerRecordExtraction::topicPartition)
+                .withGroupExtractor(record -> record.receiverOffset().topicPartition())
+                .withListener(loadQueueListener())
                 .withFactory(loadAloFactory())
                 .withMaxInFlight(loadMaxInFlightPerSubscription());
         }
@@ -343,6 +346,12 @@ public class AloKafkaReceiver<K, V> {
                 record -> nacknowledgerFactory.create(record, errorEmitter),
                 Function.identity()
             );
+        }
+
+        private AloQueueListener loadQueueListener() {
+            Map<String, Object> listenerConfig = config.modifyAndGetProperties(properties -> {});
+            return AloQueueListenerConfig.load(listenerConfig, AloKafkaQueueListener.class)
+                .orElseGet(AloQueueListener::noOp);
         }
 
         private AloFactory<ConsumerRecord<K, V>> loadAloFactory() {
