@@ -6,14 +6,14 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.metrics.MetricsReporter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
 
@@ -27,7 +27,7 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
 
     protected static final String CLIENT_ID_TAG = "client-id";
 
-    private static final Logger LOGGER = Logger.getLogger(AbstractKafkaMetricsReporter.class.getName());
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractKafkaMetricsReporter.class);
 
     private static final double ABSENT_EVALUATION = Double.NaN;
 
@@ -157,7 +157,7 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
                 .tags(meterKey.getTags())
                 .register(meterRegistry);
         } catch (Exception e) {
-            LOGGER.log(Level.FINE, "Failed to register Gauge with key=" + meterKey, e);
+            LOGGER.debug("Failed to register Gauge with key={}", meterKey, e);
         }
     }
 }

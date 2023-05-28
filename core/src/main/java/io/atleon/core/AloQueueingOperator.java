@@ -20,6 +20,8 @@ final class AloQueueingOperator<T, V> implements Publisher<Alo<V>> {
 
     private final Supplier<? extends AcknowledgementQueue> queueSupplier;
 
+    private final AloQueueListener listener;
+
     private final AloComponentExtractor<T, V> componentExtractor;
 
     private final AloFactory<V> factory;
@@ -30,6 +32,7 @@ final class AloQueueingOperator<T, V> implements Publisher<Alo<V>> {
         Publisher<? extends T> source,
         Function<T, ?> groupExtractor,
         Supplier<? extends AcknowledgementQueue> queueSupplier,
+        AloQueueListener listener,
         AloComponentExtractor<T, V> componentExtractor,
         AloFactory<V> factory,
         long maxInFlight
@@ -37,6 +40,7 @@ final class AloQueueingOperator<T, V> implements Publisher<Alo<V>> {
         this.source = source;
         this.groupExtractor = groupExtractor;
         this.queueSupplier = queueSupplier;
+        this.listener = listener;
         this.componentExtractor = componentExtractor;
         this.factory = factory;
         this.maxInFlight = maxInFlight;
@@ -48,6 +52,7 @@ final class AloQueueingOperator<T, V> implements Publisher<Alo<V>> {
             actual,
             groupExtractor,
             queueSupplier,
+            listener,
             componentExtractor,
             factory,
             maxInFlight
@@ -72,6 +77,8 @@ final class AloQueueingOperator<T, V> implements Publisher<Alo<V>> {
 
         private final Supplier<? extends AcknowledgementQueue> queueSupplier;
 
+        private final AloQueueListener listener;
+
         private final AloComponentExtractor<T, V> componentExtractor;
 
         private final AloFactory<V> factory;
@@ -90,13 +97,15 @@ final class AloQueueingOperator<T, V> implements Publisher<Alo<V>> {
             Subscriber<? super Alo<V>> actual,
             Function<T, ?> groupExtractor,
             Supplier<? extends AcknowledgementQueue> queueSupplier,
+            AloQueueListener listener,
             AloComponentExtractor<T, V> componentExtractor,
             AloFactory<V> factory,
             long maxInFlight
         ) {
             this.actual = actual;
-            this.queueSupplier = queueSupplier;
             this.groupExtractor = groupExtractor;
+            this.queueSupplier = queueSupplier;
+            this.listener = listener;
             this.componentExtractor = componentExtractor;
             this.factory = factory;
             this.freeCapacity = maxInFlight;
@@ -110,23 +119,27 @@ final class AloQueueingOperator<T, V> implements Publisher<Alo<V>> {
 
         @Override
         public void onNext(T t) {
-            AcknowledgementQueue queue = queuesByGroup.computeIfAbsent(groupExtractor.apply(t), __ -> queueSupplier.get());
+            Object group = groupExtractor.apply(t);
+            AcknowledgementQueue queue = queuesByGroup.computeIfAbsent(group, this::newQueueForGroup);
 
             AcknowledgementQueue.InFlight inFlight =
                 queue.add(componentExtractor.nativeAcknowledger(t), componentExtractor.nativeNacknowledger(t));
+            listener.enqueued(group, 1);
 
-            Runnable acknowledger = () -> postComplete(queue.complete(inFlight));
-            Consumer<Throwable> nacknowedger = error -> postComplete(queue.completeExceptionally(inFlight, error));
+            Runnable acknowledger = () -> postComplete(group, queue.complete(inFlight));
+            Consumer<Throwable> nacknowedger = error -> postComplete(group, queue.completeExceptionally(inFlight, error));
             actual.onNext(factory.create(componentExtractor.value(t), acknowledger, nacknowedger));
         }
 
         @Override
         public void onError(Throwable t) {
+            listener.close();
             actual.onError(t);
         }
 
         @Override
         public void onComplete() {
+            listener.close();
             actual.onComplete();
         }
 
@@ -140,13 +153,25 @@ final class AloQueueingOperator<T, V> implements Publisher<Alo<V>> {
 
         @Override
         public void cancel() {
-            parent.cancel();
+            try {
+                parent.cancel();
+            } finally {
+                listener.close();
+            }
         }
 
-        private void postComplete(long drainedFromQueue) {
-            if (freeCapacity != Long.MAX_VALUE && drainedFromQueue > 0L) {
-                FREE_CAPACITY.addAndGet(this, drainedFromQueue);
-                drainRequest();
+        private AcknowledgementQueue newQueueForGroup(Object group) {
+            listener.created(group);
+            return queueSupplier.get();
+        }
+
+        private void postComplete(Object group, long drainedFromQueue) {
+            if (drainedFromQueue > 0L) {
+                listener.dequeued(group, drainedFromQueue);
+                if (freeCapacity != Long.MAX_VALUE) {
+                    FREE_CAPACITY.addAndGet(this, drainedFromQueue);
+                    drainRequest();
+                }
             }
         }
 
