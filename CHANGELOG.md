@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.17.0]
+atleon `0.17.0` is a beta release containing updates outlined below
+
+### Additions
+* [#191] - Implemented export of metrics concerning `Alo` queueing
+* [#192] - Refactored Avro and Confluent Schema Registry integration to make serialization with either/both available for all infrastructures
+* [#195] - Added new modules and support for Protobuf and JSON (Jackson) serialization
+
+### Removals
+* [#189] - Removed dependency on `io.confluent:kafka-avro-serializer`
+
 # [0.16.1]
 atleon `0.16.1` is a beta release containing updates outlined below
 
