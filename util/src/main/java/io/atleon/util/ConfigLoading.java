@@ -155,15 +155,21 @@ public final class ConfigLoading {
     }
 
     private static <T> Optional<Stream<T>> loadStream(Map<String, ?> configs, String property, Function<Object, T> coercer) {
-        return Optional.ofNullable(configs.get(property))
-            .map(value -> convertToStream(value).map(coercer));
+        if (configs.containsKey(property)) {
+            Object value = configs.get(property);
+            return Optional.of(value == null ? Stream.empty() : convertToStream(value).map(coercer));
+        } else {
+            return Optional.empty();
+        }
     }
 
     private static Stream<?> convertToStream(Object value) {
         if (value instanceof Collection) {
             return Collection.class.cast(value).stream();
         } else if (value instanceof CharSequence) {
-            return Stream.of(value.toString().split(",")).map(String::trim);
+            return Stream.of(value.toString().split(","))
+                .map(String::trim)
+                .filter(string -> !string.isEmpty());
         } else {
             return Stream.of(value);
         }
