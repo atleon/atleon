@@ -93,6 +93,17 @@ public class ConfigLoadingTest {
     }
 
     @Test
+    public void noInstancesAreCreatedIfClassNamesAreEmpty() {
+        Map<String, ?> nullConfigs = Collections.singletonMap("instances", null);
+        Map<String, ?> emptyConfigs = Collections.singletonMap("instances", "");
+
+        assertTrue(ConfigLoading.loadListOfInstances(nullConfigs, "instances", Object.class).isPresent());
+        assertTrue(ConfigLoading.loadListOfInstances(emptyConfigs, "instances", Object.class).isPresent());
+        assertTrue(ConfigLoading.loadListOfInstancesOrEmpty(nullConfigs, "instances", Object.class).isEmpty());
+        assertTrue(ConfigLoading.loadListOfInstancesOrEmpty(emptyConfigs, "instances", Object.class).isEmpty());
+    }
+
+    @Test
     public void configurablesCanBeLoadedAndConfigured() {
         Map<String, Object> configs = new HashMap<>();
         configs.put("configurable", TestConfigurable.class);
