@@ -7,20 +7,23 @@ import io.atleon.micrometer.AloKafkaMetricsReporter;
 import io.atleon.spring.AutoConfigureStream;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.LongSerializer;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 
 import java.util.Map;
 
-@AutoConfigureStream(KafkaGeneration.class)
-public class KafkaGenerationConfig implements AloStreamConfig {
+@Profile("!integrationTest")
+@AutoConfigureStream(KafkaGenerationStream.class)
+public class KafkaGenerationStreamConfig implements AloStreamConfig {
 
     private final Map<String, ?> kafkaProperties;
 
     private final String topic;
 
-    public KafkaGenerationConfig(
-        @Value("#{localKafka}") Map<String, ?> kafkaProperties,
-        @Value("${example.kafka.topic}") String topic
+    public KafkaGenerationStreamConfig(
+        @Qualifier("exampleKafkaProperties") Map<String, ?> kafkaProperties,
+        @Value("${stream.kafka.input.topic}") String topic
     ) {
         this.kafkaProperties = kafkaProperties;
         this.topic = topic;

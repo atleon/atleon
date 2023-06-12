@@ -83,6 +83,6 @@ public class KafkaConfigSource extends ConfigSource<KafkaConfig, KafkaConfigSour
 
     @Override
     protected KafkaConfig postProcessProperties(Map<String, Object> properties) {
-        return new KafkaConfig(properties);
+        return KafkaConfig.create(properties);
     }
 }

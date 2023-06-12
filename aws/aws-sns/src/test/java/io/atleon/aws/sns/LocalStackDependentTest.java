@@ -21,7 +21,7 @@ import java.util.UUID;
 
 public class LocalStackDependentTest {
 
-    private static final AtleonLocalStackContainer CONTAINER = startContainer();
+    private static final AtleonLocalStackContainer CONTAINER = AtleonLocalStackContainer.createAndStart();
 
     protected String topicArn;
 
@@ -127,12 +127,6 @@ public class LocalStackDependentTest {
 
     protected static Region getRegion() {
         return Region.of(CONTAINER.getRegion());
-    }
-
-    private static AtleonLocalStackContainer startContainer() {
-        AtleonLocalStackContainer container = new AtleonLocalStackContainer();
-        container.start();
-        return container;
     }
 
     private static AwsCredentials createAwsCredentials() {

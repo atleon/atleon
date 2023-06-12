@@ -14,8 +14,12 @@ public class KafkaConfig {
 
     private final Map<String, Object> properties;
 
-    public KafkaConfig(Map<String, Object> properties) {
+    protected KafkaConfig(Map<String, Object> properties) {
         this.properties = properties;
+    }
+
+    public static KafkaConfig create(Map<String, Object> properties) {
+        return new KafkaConfig(properties);
     }
 
     public Map<String, Object> modifyAndGetProperties(Consumer<Map<String, Object>> modifier) {

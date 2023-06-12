@@ -19,6 +19,12 @@ public class AtleonLocalStackContainer extends LocalStackContainer {
         withServices(Service.SNS, Service.SQS);
     }
 
+    public static AtleonLocalStackContainer createAndStart() {
+        AtleonLocalStackContainer container = new AtleonLocalStackContainer();
+        container.start();
+        return container;
+    }
+
     public URI getSnsEndpointOverride() {
         return getEndpointOverride(Service.SNS);
     }

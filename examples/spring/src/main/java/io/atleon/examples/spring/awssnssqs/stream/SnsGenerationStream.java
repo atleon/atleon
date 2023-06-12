@@ -8,10 +8,10 @@ import reactor.core.publisher.Flux;
 
 import java.time.Duration;
 
-public class SnsGeneration extends AloStream<SnsGenerationConfig> {
+public class SnsGenerationStream extends AloStream<SnsGenerationStreamConfig> {
 
     @Override
-    protected Disposable startDisposable(SnsGenerationConfig config) {
+    protected Disposable startDisposable(SnsGenerationStreamConfig config) {
         AloSnsSender<Long> sender = config.buildSender();
 
         return Flux.interval(Duration.ofMillis(100))

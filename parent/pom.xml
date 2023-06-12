@@ -23,6 +23,7 @@
         <kotlin.version>1.6.21</kotlin.version> <!-- Dictated by kotlinx-coroutines version -->
         <kotlinx-coroutines.version>1.6.4</kotlinx-coroutines.version>
         <micrometer.version>1.0.7</micrometer.version>
+        <mockito.version>4.11.0</mockito.version>
         <opentracing.verion>0.32.0</opentracing.verion>
         <protobuf.version>3.11.4</protobuf.version>
         <rabbitmq-amqp-client.version>5.13.1</rabbitmq-amqp-client.version>
@@ -293,6 +294,11 @@
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-engine</artifactId>
                 <version>${junit-jupiter.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-core</artifactId>
+                <version>${mockito.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.reactivestreams</groupId>

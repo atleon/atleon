@@ -43,6 +43,6 @@ public class SnsConfigSource extends ConfigSource<SnsConfig, SnsConfigSource> {
 
     @Override
     protected SnsConfig postProcessProperties(Map<String, Object> properties) {
-        return SnsConfig.fromMap(properties);
+        return SnsConfig.create(properties);
     }
 }

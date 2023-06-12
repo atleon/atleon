@@ -23,11 +23,11 @@ public class SqsConfig {
 
     private final Map<String, ?> properties;
 
-    private SqsConfig(Map<String, ?> properties) {
+    protected SqsConfig(Map<String, ?> properties) {
         this.properties = properties;
     }
 
-    public static SqsConfig fromMap(Map<String, ?> map) {
+    public static SqsConfig create(Map<String, ?> map) {
         return new SqsConfig(Collections.unmodifiableMap(new HashMap<>(map)));
     }
 

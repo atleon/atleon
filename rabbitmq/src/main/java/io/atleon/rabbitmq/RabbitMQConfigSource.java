@@ -36,7 +36,7 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
     }
 
     public Mono<ConnectionFactory> createConnectionFactory() {
-        return create().map(RabbitMQConfig::getConnectionFactory);
+        return create().map(RabbitMQConfig::buildConnectionFactory);
     }
 
     public RabbitMQConfigSource withHost(String host) {
@@ -78,6 +78,6 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
 
     @Override
     protected RabbitMQConfig postProcessProperties(Map<String, Object> properties) {
-        return new RabbitMQConfig(AloConnectionFactory.from(properties), properties);
+        return RabbitMQConfig.create(properties);
     }
 }

@@ -1,34 +1,28 @@
 package io.atleon.examples.spring.awssnssqs.config;
 
-import io.atleon.aws.util.AwsConfig;
+import io.atleon.aws.sqs.SqsConfig;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
-import software.amazon.awssdk.services.sqs.model.CreateQueueRequest;
 
-import java.net.URI;
 import java.util.Map;
 
-@Component
+@Configuration
 public class SqsConfiguration {
 
-    @Bean
-    public SqsAsyncClient sqsClient(
-        @Qualifier("localSqsEndpoint") URI endpointOverride,
-        @Value("#{localAws}") Map<String, ?> awsProperties
+    @Bean("sqsInputQueueUrl")
+    public String sqsInputQueueUrl(
+        @Qualifier("exampleAwsSnsSqsProperties") Map<String, ?> awsProperties,
+        @Value("${stream.sqs.input.queue.name}") String queueName
     ) {
-        return SqsAsyncClient.builder()
-            .endpointOverride(endpointOverride)
-            .region(AwsConfig.loadRegion(awsProperties).orElse(null))
-            .credentialsProvider(AwsConfig.loadCredentialsProvider(awsProperties))
-            .build();
+        return createQueueUrl(awsProperties, queueName);
     }
 
-    @Bean("sqsQueueUrl")
-    public String sqsQueueUrl(SqsAsyncClient client, @Value("${example.sqs.queue.name}") String queueName) {
-        CreateQueueRequest request = CreateQueueRequest.builder().queueName(queueName).build();
-        return client.createQueue(request).join().queueUrl();
+    private static String createQueueUrl(Map<String, ?> awsProperties, String queueName) {
+        try (SqsAsyncClient client = SqsConfig.create(awsProperties).buildClient()) {
+            return client.createQueue(builder -> builder.queueName(queueName)).join().queueUrl();
+        }
     }
 }

@@ -43,6 +43,6 @@ public class SqsConfigSource extends ConfigSource<SqsConfig, SqsConfigSource> {
 
     @Override
     protected SqsConfig postProcessProperties(Map<String, Object> properties) {
-        return SqsConfig.fromMap(properties);
+        return SqsConfig.create(properties);
     }
 }

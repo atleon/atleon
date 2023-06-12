@@ -20,11 +20,11 @@ public class SnsConfig {
 
     private final Map<String, ?> properties;
 
-    private SnsConfig(Map<String, ?> properties) {
+    protected SnsConfig(Map<String, ?> properties) {
         this.properties = properties;
     }
 
-    public static SnsConfig fromMap(Map<String, ?> map) {
+    public static SnsConfig create(Map<String, ?> map) {
         return new SnsConfig(Collections.unmodifiableMap(new HashMap<>(map)));
     }
 

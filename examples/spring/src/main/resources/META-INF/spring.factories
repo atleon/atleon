@@ -1,0 +1,5 @@
+# Environment Post-Processors
+org.springframework.boot.env.EnvironmentPostProcessor=\
+io.atleon.examples.spring.awssnssqs.config.LocalStackInitializer,\
+io.atleon.examples.spring.kafka.config.EmbeddedKafkaInitializer,\
+io.atleon.examples.spring.rabbitmq.config.EmbeddedAmqpInitializer

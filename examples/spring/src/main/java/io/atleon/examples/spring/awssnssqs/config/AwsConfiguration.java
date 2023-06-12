@@ -1,4 +1,4 @@
-package io.atleon.examples.spring.kafka.config;
+package io.atleon.examples.spring.awssnssqs.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -8,11 +8,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
-public class KafkaConfiguration {
+public class AwsConfiguration {
 
-    @Bean("exampleKafkaProperties")
-    @ConfigurationProperties(prefix = "example.kafka")
-    public Map<String, String> exampleKafkaProperties() {
+    @Bean("exampleAwsSnsSqsProperties")
+    @ConfigurationProperties(prefix = "example.aws.sns.sqs")
+    public Map<String, String> exampleAwsSnsSqsProperties() {
         return new HashMap<>();
     }
 }

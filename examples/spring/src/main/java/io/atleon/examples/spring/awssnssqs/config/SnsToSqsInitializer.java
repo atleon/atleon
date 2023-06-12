@@ -1,8 +1,9 @@
-package io.atleon.examples.spring.awssnssqs.initialization;
+package io.atleon.examples.spring.awssnssqs.config;
 
+import io.atleon.aws.sns.SnsConfig;
+import io.atleon.aws.sqs.SqsConfig;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationListener;
-import org.springframework.context.event.ApplicationContextEvent;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
@@ -14,35 +15,33 @@ import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 import software.amazon.awssdk.services.sqs.model.SetQueueAttributesRequest;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.UUID;
 
 @Component
-public class SnsToSqsInitializer implements ApplicationListener<ApplicationContextEvent>, Ordered {
+public class SnsToSqsInitializer implements ApplicationListener<ContextRefreshedEvent>, Ordered {
 
-    private final SnsAsyncClient snsClient;
-
-    private final SqsAsyncClient sqsClient;
+    private final Map<String, ?> awsProperties;
 
     private final String topicArn;
 
     private final String queueUrl;
 
     public SnsToSqsInitializer(
-        SnsAsyncClient snsClient,
-        SqsAsyncClient sqsClient,
-        @Qualifier("snsTopicArn") String topicArn,
-        @Qualifier("sqsQueueUrl") String queueUrl
+        @Qualifier("exampleAwsSnsSqsProperties") Map<String, ?> awsProperties,
+        @Qualifier("snsInputTopicArn") String topicArn,
+        @Qualifier("sqsInputQueueUrl") String queueUrl
     ) {
-        this.snsClient = snsClient;
-        this.sqsClient = sqsClient;
+        this.awsProperties = awsProperties;
         this.topicArn = topicArn;
         this.queueUrl = queueUrl;
     }
 
     @Override
-    public void onApplicationEvent(ApplicationContextEvent event) {
-        if (event instanceof ContextRefreshedEvent) {
-            subscribeSqsQueueToSnsTopic();
+    public void onApplicationEvent(ContextRefreshedEvent event) {
+        String queueArn = initializeSqsQueueArn();
+        try (SnsAsyncClient snsAsyncClient = SnsConfig.create(awsProperties).buildClient()) {
+            subscribeSqsQueueToSnsTopic(snsAsyncClient, queueArn);
         }
     }
 
@@ -51,7 +50,13 @@ public class SnsToSqsInitializer implements ApplicationListener<ApplicationConte
         return Ordered.HIGHEST_PRECEDENCE;
     }
 
-    private void subscribeSqsQueueToSnsTopic() {
+    private String initializeSqsQueueArn() {
+        try (SqsAsyncClient sqsClient = SqsConfig.create(awsProperties).buildClient()) {
+            return initializeSqsQueueArn(sqsClient);
+        }
+    }
+
+    private String initializeSqsQueueArn(SqsAsyncClient sqsClient) {
         // Get Attributes from created SQS Queue needed for subsequent Policy setting
         GetQueueAttributesRequest getQueueAttributesRequest = GetQueueAttributesRequest.builder()
             .queueUrl(queueUrl)
@@ -86,6 +91,10 @@ public class SnsToSqsInitializer implements ApplicationListener<ApplicationConte
             .build();
         sqsClient.setQueueAttributes(setQueueAttributesRequest).join();
 
+        return queueArn;
+    }
+
+    private void subscribeSqsQueueToSnsTopic(SnsAsyncClient snsClient, String queueArn) {
         // Subscribe the queue to the topic; Enable 'raw' message delivery to avoid unnecessary JSON wrapping with metadata
         SubscribeRequest subscribeRequest = SubscribeRequest.builder()
             .topicArn(topicArn)

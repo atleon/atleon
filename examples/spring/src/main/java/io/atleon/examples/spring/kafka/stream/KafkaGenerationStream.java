@@ -8,10 +8,10 @@ import reactor.core.publisher.Flux;
 import java.time.Duration;
 import java.util.function.Function;
 
-public class KafkaGeneration extends AloStream<KafkaGenerationConfig> {
+public class KafkaGenerationStream extends AloStream<KafkaGenerationStreamConfig> {
 
     @Override
-    protected Disposable startDisposable(KafkaGenerationConfig config) {
+    protected Disposable startDisposable(KafkaGenerationStreamConfig config) {
         AloKafkaSender<Long, Long> sender = config.buildKafkaLongSender();
 
         return Flux.interval(Duration.ofMillis(100))

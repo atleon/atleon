@@ -13,17 +13,18 @@ import java.util.function.Function;
 
 public class RabbitMQConfig {
 
-    private final ConnectionFactory connectionFactory;
-
     private final Map<String, Object> properties;
 
-    public RabbitMQConfig(ConnectionFactory connectionFactory, Map<String, Object> properties) {
-        this.connectionFactory = connectionFactory;
+    protected RabbitMQConfig(Map<String, Object> properties) {
         this.properties = properties;
     }
 
-    public ConnectionFactory getConnectionFactory() {
-        return connectionFactory;
+    public static RabbitMQConfig create(Map<String, Object> properties) {
+        return new RabbitMQConfig(properties);
+    }
+
+    public ConnectionFactory buildConnectionFactory() {
+        return AloConnectionFactory.from(properties);
     }
 
     public Map<String, Object> modifyAndGetProperties(Consumer<Map<String, Object>> modifier) {

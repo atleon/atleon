@@ -168,7 +168,7 @@ public class AloRabbitMQReceiver<T> {
 
         private Receiver newReceiver() {
             ReceiverOptions receiverOptions = new ReceiverOptions()
-                .connectionFactory(config.getConnectionFactory());
+                .connectionFactory(config.buildConnectionFactory());
             return new Receiver(receiverOptions);
         }
 
