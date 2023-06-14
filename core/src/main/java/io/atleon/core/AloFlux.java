@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -559,6 +560,28 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     public AloFlux<T> onAloErrorDelegateUnless(BiPredicate<Object, ? super Throwable> errorPredicate) {
         AloFailureStrategy aloFailureStrategy = AloFailureStrategy.delegate(errorPredicate.negate());
         return new AloFlux<>(wrapped.contextWrite(Context.of(AloFailureStrategy.class, aloFailureStrategy)));
+    }
+
+    /**
+     * Adds a delegate for negative acknowledgement to {@link Alo} elements in this pipeline. Upon
+     * downstream negative acknowledgement, the provided delegate will be invoked to produce a
+     * {@link Publisher}. After subscribing to that error, successful completion of that publisher
+     * implies that handling the error was delegated successfully, and the originating Alo can be
+     * acknowledged. On the other hand, if the delegate publisher errors, that error will be added
+     * as a suppressed exception to the original exception (when possible) and used to execute the
+     * originating Alo's nacknowledger.
+     * <p>
+     * Multiple delegates may be added to a pipeline. In this case, delegates are invoked in the
+     * <i>reverse</i> order that they are applied in the pipeline.
+     * <p>
+     * In order for a delegate to be used, the Alo error mode must be set to "delegate" downstream
+     * of this operator. For more information, see {@link #onAloErrorDelegate()}.
+     *
+     * @param delegate A {@link BiFunction} invoked when a downstream error occurs
+     * @return A new {@link AloFlux}
+     */
+    public AloFlux<T> addAloErrorDelegation(BiFunction<? super T, ? super Throwable, ? extends Publisher<?>> delegate) {
+        return new AloFlux<>(wrapped.map(new AloErrorDelegatingMapper<>(delegate)));
     }
 
     /**

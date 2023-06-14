@@ -461,6 +461,65 @@ class AloFluxTest {
         assertFalse(alo.isNacknowledged());
     }
 
+    @Test
+    public void errorsCanBeDelegatedToFluentDelegate() {
+        TestAlo alo = new TestAlo("data");
+
+        AloFlux<?> aloFlux = Flux.just(alo)
+            .as(AloFlux::wrap)
+            .addAloErrorDelegation((string, error) -> Mono.empty())
+            .consume(data -> {
+                throw new UnsupportedOperationException("Boom");
+            })
+            .onAloErrorDelegate();
+
+        StepVerifier.create(aloFlux).expectComplete().verify();
+
+        assertTrue(alo.isAcknowledged());
+        assertFalse(alo.isNacknowledged());
+    }
+
+    @Test
+    public void errorsCanBeDelegatedToFluentDelegateWhichMayPropagateTheError() {
+        TestAlo alo = new TestAlo("data");
+
+        AloFlux<?> aloFlux = Flux.just(alo)
+            .as(AloFlux::wrap)
+            .addAloErrorDelegation((string, error) -> Mono.error(error))
+            .consume(data -> {
+                throw new UnsupportedOperationException("Boom");
+            })
+            .onAloErrorDelegate();
+
+        StepVerifier.create(aloFlux).expectComplete().verify();
+
+        assertFalse(alo.isAcknowledged());
+        assertTrue(alo.isNacknowledged());
+        assertTrue(alo.getError().get() instanceof UnsupportedOperationException);
+        assertTrue(alo.getError().get().getSuppressed().length == 0);
+    }
+
+    @Test
+    public void errorsCanBeDelegatedToFluentDelegateWhichMayConsolidateError() {
+        TestAlo alo = new TestAlo("data");
+
+        AloFlux<?> aloFlux = Flux.just(alo)
+            .as(AloFlux::wrap)
+            .addAloErrorDelegation((string, error) -> Mono.error(new IllegalArgumentException("Bing")))
+            .consume(data -> {
+                throw new UnsupportedOperationException("Boom");
+            })
+            .onAloErrorDelegate();
+
+        StepVerifier.create(aloFlux).expectComplete().verify();
+
+        assertFalse(alo.isAcknowledged());
+        assertTrue(alo.isNacknowledged());
+        assertTrue(alo.getError().orElse(null) instanceof UnsupportedOperationException);
+        assertTrue(alo.getError().get().getSuppressed().length == 1);
+        assertTrue(alo.getError().get().getSuppressed()[0] instanceof IllegalArgumentException);
+    }
+
     private Collection<String> extractCharacters(String string) {
         return IntStream.range(0, string.length())
             .mapToObj(string::charAt)
