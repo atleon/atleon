@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.18.0]
+atleon `0.18.0` is a beta release containing updates outlined below
+
+### Additions
+* [#204] - Implemented fluent `Alo` error delegation; Supports use cases such as deadlettering
+
+### Fixes
+* Standardized `Config` creation convention(s)
+
 # [0.17.1]
 atleon `0.17.1` is a beta release containing updates outlined below
 
@@ -49,28 +58,28 @@ atleon `0.15.2` is a beta release containing updates outlined below
 # [0.15.1]
 atleon `0.15.1` is a beta release containing updates outlined below
 
+### Additions
+* [#169] - Implement consistent and configurable `AloFailureStrategy` for dealing with errors resulting from `Alo` processing
+* [#176] - Indicate when `ReceivedRabbitMQMessage` is a redelivery
+
 ### Fixes
 * [#167] - Make best effort to successfully emit errors when configured to do so in Receivers
 * [#171] - Avoid unbounded resource usage in `SqsReceiver` by not marking "not-in-flight" until reception of terminal response
 * [#172] - Encapsulate config for Kafka resources as `KafkaConfig`
 
-### Additions
-* [#169] - Implement consistent and configurable `AloFailureStrategy` for dealing with errors resulting from `Alo` processing
-* [#176] - Indicate when `ReceivedRabbitMQMessage` is a redelivery
-
 # [0.15.0]
 atleon `0.15.0` is a beta release containing updates outlined below
+
+### Additions
+* [#152] - Allow subscribing to Kafka topics that match a `Pattern`
+* [#154] - Provide terminal `consume` operator on `AloFlux`
+* [#156] - Nacknowledger behavior now configurable for Kafka
 
 ### Fixes
 * [#153] - Avoid nacknowledging if error will be emitted anyway
 * [#158] - Close RabbitMQ Receiver after every `AloFlux` termination
 * [#162] - Always execute queued acknowledgements in order, regardless of positive vs. negative
 * [#164] - Remove custom error handling in `AloRabbitMQSender`
-
-### Additions
-* [#152] - Allow subscribing to Kafka topics that match a `Pattern`
-* [#154] - Provide terminal `consume` operator on `AloFlux`
-* [#156] - Nacknowledger behavior now configurable for Kafka
 
 # [0.14.2]
 atleon `0.14.2` is a beta release containing updates outlined below
@@ -87,24 +96,24 @@ atleon `0.14.1` is a beta release containing updates outlined below
 # [0.14.0]
 atleon `0.14.0` is a beta release containing updates outlined below
 
+### Additions
+* [#136], [#146] - Added `AloSignalListenerFactory` and Micrometer instrumentation for Alo pipeline throughput metering
+
 ### Fixes
 * [#134] - Parameters used only by decorators have moved from consumed messages to configuration
 * [#138] - Standardized observation (metrics, tracing) naming
 * [#142] - No longer load `noOp` decorators when auto decorators explicitly configured, but none available
 * [#144] - Upgrade Reactor to v3.5.3
 
-### Additions
-* [#136], [#146] - Added `AloSignalListenerFactory` and Micrometer instrumentation for Alo pipeline throughput metering
-
 # [0.13.0]
 atleon `0.13.0` is a beta release containing updates outlined below
+
+### Additions
+* [#129] - Implemented annotation-based binding of `AloStream` and `AloStreamConfig` to Spring applications
 
 ### Fixes
 * [#131] - Deprecated `BLACKLIST` and `WHITELIST` in favor of `BLOCKLIST` and `ALLOWLIST`
 * Moved more documentation to [GitHub Wiki](../../wiki)
-
-### Additions
-* [#129] - Implemented annotation-based binding of `AloStream` and `AloStreamConfig` to Spring applications
 
 # [0.12.1]
 atleon `0.12.1` is a beta release containing updates outlined below
