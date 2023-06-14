@@ -22,6 +22,6 @@ public final class ProtobufKafkaDeserializer<T extends Message> implements Deser
 
     @Override
     public T deserialize(String topic, byte[] data) {
-        return parser.apply(data);
+        return data == null ? null : parser.apply(data);
     }
 }

@@ -9,6 +9,6 @@ public final class JsonNodeKafkaDeserializer implements Deserializer<JsonNode> {
 
     @Override
     public JsonNode deserialize(String topic, byte[] data) {
-        return objectMapperFacade.readAsNode(data);
+        return data == null ? null : objectMapperFacade.readAsNode(data);
     }
 }
