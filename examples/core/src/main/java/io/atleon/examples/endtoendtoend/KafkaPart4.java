@@ -34,8 +34,7 @@ public class KafkaPart4 {
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaPart4.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
-            .with(ProducerConfig.ACKS_CONFIG, "all");
+            .withProducerOrderingAndResiliencyConfigs();
 
         //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that we use an Auto
         // Offset Reset of 'earliest' to ensure we receive Records produced before subscribing with
@@ -55,7 +54,7 @@ public class KafkaPart4 {
         AloKafkaReceiver<Object, String> receiver = AloKafkaReceiver.forValues(kafkaReceiverConfig);
 
         //Step 5) Send some Record values to a hardcoded topic, using values as Record keys
-        sender.sendValues(Flux.just("Test"), value -> TOPIC_1, Function.identity())
+        sender.sendValues(Flux.just("Test"), TOPIC_1, Function.identity())
             .collectList()
             .doOnNext(senderResults -> System.out.println("senderResults: " + senderResults))
             .block();
@@ -66,7 +65,7 @@ public class KafkaPart4 {
         // the consumption of Alo data (by acknowledging). Note that we again need to explicitly
         // limit the number of results we expect ('.take(1)'), or else this Flow would never
         // complete.
-        receiver.receiveAloValues(Collections.singletonList(TOPIC_1))
+        receiver.receiveAloValues(TOPIC_1)
             .map(String::toUpperCase)
             .transform(sender.sendAloValues(TOPIC_2, Function.identity()))
             .consumeAloAndGet(Alo::acknowledge)
@@ -76,7 +75,7 @@ public class KafkaPart4 {
             .block();
 
         //Step 7) Consume the now-processed results
-        receiver.receiveAloValues(Collections.singletonList(TOPIC_2))
+        receiver.receiveAloValues(TOPIC_2)
             .consumeAloAndGet(Alo::acknowledge)
             .take(1)
             .collectList()

@@ -12,7 +12,6 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import reactor.core.publisher.Flux;
 
-import java.util.Collections;
 import java.util.function.Function;
 
 /**
@@ -32,8 +31,7 @@ public class KafkaPart2 {
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaPart2.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
-            .with(ProducerConfig.ACKS_CONFIG, "all");
+            .withProducerOrderingAndResiliencyConfigs();
 
         //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that we use an Auto
         // Offset Reset of 'earliest' to ensure we receive Records produced before subscribing with
@@ -56,7 +54,7 @@ public class KafkaPart2 {
         //Step 4) Subscribe to the same topic we produced previous values to. Note that we must
         // specify how many values to process ('.take(1)'), or else this Flow would never complete
         AloKafkaReceiver.<String>forValues(kafkaSenderConfig)
-            .receiveAloValues(Collections.singletonList(TOPIC))
+            .receiveAloValues(TOPIC)
             .consumeAloAndGet(Alo::acknowledge)
             .take(1)
             .collectList()

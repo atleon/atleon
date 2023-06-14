@@ -12,7 +12,6 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import reactor.core.publisher.Flux;
 
-import java.util.Collections;
 import java.util.function.Function;
 
 /**
@@ -36,8 +35,7 @@ public class KafkaPart3 {
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaPart3.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
-            .with(ProducerConfig.ACKS_CONFIG, "all");
+            .withProducerOrderingAndResiliencyConfigs();
 
         //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that we use an Auto
         // Offset Reset of 'earliest' to ensure we receive Records produced before subscribing with
@@ -54,7 +52,7 @@ public class KafkaPart3 {
         AloKafkaSender<String, String> sender = AloKafkaSender.from(kafkaSenderConfig);
 
         //Step 4) Send some Record values to a hardcoded topic, using values as Record keys
-        sender.sendValues(Flux.just("Test"), value -> TOPIC_1, Function.identity())
+        sender.sendValues(Flux.just("Test"), TOPIC_1, Function.identity())
             .collectList()
             .doOnNext(senderResults -> System.out.println("senderResults: " + senderResults))
             .block();
@@ -66,7 +64,7 @@ public class KafkaPart3 {
         // limit the number of results we expect ('.take(1)'), or else this Flow would never
         // complete.
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
-            .receiveAloValues(Collections.singletonList(TOPIC_1))
+            .receiveAloValues(TOPIC_1)
             .map(String::toUpperCase)
             .transform(sender.sendAloValues(TOPIC_2, Function.identity()))
             .consumeAloAndGet(Alo::acknowledge)
