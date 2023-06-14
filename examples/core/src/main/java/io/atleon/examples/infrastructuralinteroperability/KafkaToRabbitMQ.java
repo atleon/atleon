@@ -84,7 +84,7 @@ public class KafkaToRabbitMQ {
 
         //Step 6) Apply a streaming process over a Kafka -> RabbitMQ pairing
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
-            .receiveAloValues(Collections.singletonList(TOPIC))
+            .receiveAloValues(TOPIC)
             .map(String::toUpperCase)
             .transform(AloRabbitMQSender.<String>from(rabbitMQConfig)
                 .sendAloBodies(DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(QUEUE)))

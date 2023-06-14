@@ -44,8 +44,7 @@ public class KafkaDeduplication {
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaDeduplication.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
-            .with(ProducerConfig.ACKS_CONFIG, "all");
+            .withProducerOrderingAndResiliencyConfigs();
 
         //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that we block our main
         // Thread on partition assignment such that subsequently produced Records are processed
@@ -69,11 +68,10 @@ public class KafkaDeduplication {
         // never complete. Deduplication is applied early in the stream to limit the processing of
         // duplicate methods via AloFlux::deduplicate
         Mono<List<String>> processed = AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
-            .receiveAloValues(Collections.singletonList(TOPIC_1))
+            .receiveAloValues(TOPIC_1)
             .deduplicate(deduplicationConfig, Deduplication.identity())
             .map(String::toUpperCase)
-            .transform(AloKafkaSender.<String, String>from(kafkaSenderConfig)
-                .sendAloValues(TOPIC_2, Function.identity()))
+            .transform(AloKafkaSender.<String, String>from(kafkaSenderConfig).sendAloValues(TOPIC_2, Function.identity()))
             .consumeAloAndGet(Alo::acknowledge)
             .map(KafkaSenderResult::correlationMetadata)
             .doOnNext(next -> System.out.println("Processed next=" + next))

@@ -74,7 +74,7 @@ public class KafkaMicrometer {
 
         //Step 6) Apply stream processing to the Kafka topic we produced records to
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
-            .receiveAloValues(Collections.singletonList(TOPIC_1))
+            .receiveAloValues(TOPIC_1)
             .map(String::toUpperCase)
             .transform(AloKafkaSender.<String, String>from(kafkaSenderConfig).sendAloValues(TOPIC_2, Function.identity()))
             .tap(AloMicrometer.metrics("atleon.kafka.micrometer.sent"))
