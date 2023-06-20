@@ -1,7 +1,5 @@
 package io.atleon.core;
 
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
@@ -16,9 +14,13 @@ abstract class AcknowledgementQueue {
     private static final AtomicIntegerFieldUpdater<AcknowledgementQueue> DRAINS_IN_PROGRESS =
         AtomicIntegerFieldUpdater.newUpdater(AcknowledgementQueue.class, "drainsInProgress");
 
-    protected final Queue<InFlight> queue = new ConcurrentLinkedQueue<>();
+    protected final CompactingQueue<InFlight> queue;
 
     private volatile int drainsInProgress;
+
+    AcknowledgementQueue() {
+        queue = new ConcurrentCompactingQueue<>();
+    }
 
     /**
      * Append an In-Flight Acknowledgement to the Queue backed by the following Acknowledger and
