@@ -27,7 +27,7 @@ public class ConcurrentCompactingQueueTest {
     public void testConcurrentPuts() throws Exception {
         List<Future<CompactingQueue.Node<String>>> futures = new ArrayList<>();
         for(int i = 0; i < 1000; i++) {
-            futures.add(executorService.submit(() -> queue.add(UUID.randomUUID().toString())));
+            futures.add(executorService.submit(() -> queue.addItem(UUID.randomUUID().toString())));
         }
         for(Future<CompactingQueue.Node<String>> f : futures) {
             f.get();
@@ -44,7 +44,7 @@ public class ConcurrentCompactingQueueTest {
         final List<String> list = new ArrayList<>();
         executorService.execute(() -> {
             for(int i = 0; i < 10000; i++) {
-                queue.add(UUID.randomUUID().toString());
+                queue.addItem(UUID.randomUUID().toString());
             }
         });
         executorService.submit(() -> {

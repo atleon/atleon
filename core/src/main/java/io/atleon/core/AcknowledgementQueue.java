@@ -1,5 +1,7 @@
 package io.atleon.core;
 
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
@@ -14,12 +16,16 @@ abstract class AcknowledgementQueue {
     private static final AtomicIntegerFieldUpdater<AcknowledgementQueue> DRAINS_IN_PROGRESS =
         AtomicIntegerFieldUpdater.newUpdater(AcknowledgementQueue.class, "drainsInProgress");
 
-    protected final CompactingQueue<InFlight> queue;
+    protected final Queue<InFlight> queue;
 
     private volatile int drainsInProgress;
 
     AcknowledgementQueue() {
-        queue = new ConcurrentCompactingQueue<>();
+        this(new ConcurrentLinkedQueue<>());
+    }
+
+    AcknowledgementQueue(final Queue<InFlight> queue) {
+        this.queue = queue;
     }
 
     /**
@@ -63,8 +69,11 @@ abstract class AcknowledgementQueue {
         int missed = 1;
         do {
             while (!queue.isEmpty() && !queue.peek().isInProcess()) {
-                queue.remove().execute();
-                drained++;
+                InFlight inFlight;
+                if ((inFlight = queue.remove()) != null) {
+                    inFlight.execute();
+                    drained += inFlight.weight;
+                }
             }
 
             missed = DRAINS_IN_PROGRESS.addAndGet(this, -missed);
@@ -73,7 +82,9 @@ abstract class AcknowledgementQueue {
         return drained;
     }
 
-    static final class InFlight {
+    static class InFlight {
+
+        protected int weight;
 
         private enum State {IN_PROCESS, COMPLETED, EXECUTED}
 
@@ -88,20 +99,21 @@ abstract class AcknowledgementQueue {
 
         private Throwable error;
 
-        private InFlight(Runnable acknowledger, Consumer<? super Throwable> nacknowledger) {
+        InFlight(Runnable acknowledger, Consumer<? super Throwable> nacknowledger) {
             this.acknowledger = acknowledger;
             this.nacknowledger = nacknowledger;
+            this.weight = 1;
         }
 
         boolean isInProcess() {
             return state == State.IN_PROCESS;
         }
 
-        private boolean complete() {
+        protected boolean complete() {
             return STATE.compareAndSet(this, State.IN_PROCESS, State.COMPLETED);
         }
 
-        private boolean completeExceptionally(Throwable error) {
+        protected boolean completeExceptionally(Throwable error) {
             boolean completed = STATE.compareAndSet(this, State.IN_PROCESS, State.COMPLETED);
             if (completed) {
                 this.error = error;

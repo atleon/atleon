@@ -1,10 +1,12 @@
 package io.atleon.core;
 
 import java.util.Iterator;
+import java.util.List;
+import java.util.Queue;
 
-public interface CompactingQueue<T> {
+public interface CompactingQueue<T> extends Queue<T> {
 
-    Node<T> add(T item);
+    Node<T> addItem(T item);
 
     T remove();
 
@@ -16,9 +18,13 @@ public interface CompactingQueue<T> {
 
     interface Node<T> {
 
+        Node<T> getPrevious();
+
+        Node<T> getNext();
+
         T getItem();
 
-        void tryCompact();
+        List<T> tryCompact();
 
         default boolean isEmpty() {
             return getItem() == null;

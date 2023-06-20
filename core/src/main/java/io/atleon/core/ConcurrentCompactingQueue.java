@@ -1,11 +1,15 @@
 package io.atleon.core;
 
+import java.util.AbstractQueue;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
-public class ConcurrentCompactingQueue<T> implements CompactingQueue<T> {
+public class ConcurrentCompactingQueue<T> extends AbstractQueue<T> implements CompactingQueue<T> {
 
     private static final int HOPS = 2;
     private final AtomicReferenceFieldUpdater<ConcurrentCompactingQueue, ConcurrentCompactingQueue.CompactingNode> HEAD =
@@ -19,6 +23,8 @@ public class ConcurrentCompactingQueue<T> implements CompactingQueue<T> {
 
     private final AtomicReferenceFieldUpdater<ConcurrentCompactingQueue.CompactingNode, Object> ITEM =
             AtomicReferenceFieldUpdater.newUpdater(CompactingNode.class, Object.class, "item");
+
+    private AtomicInteger size;
 
     private final CompactingNode NEXT_TERMINATOR = new CompactingNode();
     private final CompactingNode PREV_TERMINATOR = new CompactingNode();
@@ -36,13 +42,21 @@ public class ConcurrentCompactingQueue<T> implements CompactingQueue<T> {
     ConcurrentCompactingQueue(final Function<T, Boolean> compactCheck) {
         this.compactCheck = compactCheck;
         head = tail = new CompactingNode();
+        size = new AtomicInteger(0);
     }
 
     @Override
-    public Node<T> add(T item) {
+    public Node<T> addItem(T item) {
         final CompactingNode node = new CompactingNode(item);
         add(node);
+        size.incrementAndGet();
         return node;
+    }
+
+    @Override
+    public boolean offer(T t) {
+        addItem(t);
+        return true;
     }
 
     @Override
@@ -67,6 +81,11 @@ public class ConcurrentCompactingQueue<T> implements CompactingQueue<T> {
     }
 
     @Override
+    public T poll() {
+        return remove();
+    }
+
+    @Override
     public T peek() {
         return peekInternal().item;
     }
@@ -80,6 +99,11 @@ public class ConcurrentCompactingQueue<T> implements CompactingQueue<T> {
     @Override
     public Iterator<T> iterator() {
         return new CompactingIterator();
+    }
+
+    @Override
+    public int size() {
+        return size.get();
     }
 
     private CompactingNode findFirst() {
@@ -329,10 +353,11 @@ public class ConcurrentCompactingQueue<T> implements CompactingQueue<T> {
     }
 
     private Boolean getShouldCompact(final T item) {
-        return compactCheck != null && compactCheck.apply(item);
+        return compactCheck != null && item != null && compactCheck.apply(item);
     }
 
     final class CompactingNode implements Node<T> {
+
         volatile T item;
 
         volatile CompactingNode previous;
@@ -348,28 +373,35 @@ public class ConcurrentCompactingQueue<T> implements CompactingQueue<T> {
         }
 
         @Override
+        public Node<T> getPrevious() {
+            return previous;
+        }
+
+        @Override
+        public Node<T> getNext() {
+            return next;
+        }
+
+        @Override
         public T getItem() {
             return item;
         }
 
         @Override
-        public void tryCompact() {
-            compactPrevious();
-            compactNext();
-        }
-
-        private void compactPrevious() {
-            final T previousItem = previous.item;
-            if (getShouldCompact(previousItem) && ITEM.compareAndSet(previous, previousItem, null)) {
-                remove(previous);
+        public List<T> tryCompact() {
+            List<T> compacted = new ArrayList<>();
+            if (previous != null && !previous.isEmpty()) {
+                final List<T> pc;
+                if (!(pc = previous.tryCompact()).isEmpty()) {
+                    compacted.addAll(pc);
+                }
+                final T previousItem = previous.item;
+                if (getShouldCompact(previousItem) && ITEM.compareAndSet(previous, previousItem, null)) {
+                    remove(previous);
+                    compacted.add(previousItem);
+                }
             }
-        }
-
-        private void compactNext() {
-            final T nextItem = next.item;
-            if (getShouldCompact(nextItem) && ITEM.compareAndSet(this, nextItem, null)) {
-                remove(this);
-            }
+            return compacted;
         }
     }
 
