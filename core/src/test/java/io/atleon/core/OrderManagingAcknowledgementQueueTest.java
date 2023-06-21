@@ -1,6 +1,8 @@
 package io.atleon.core;
 
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -159,5 +161,40 @@ public class OrderManagingAcknowledgementQueueTest {
         Timing.waitForCondition(() -> asyncDrained.get() != 0);
 
         assertEquals(2, asyncDrained.get());
+    }
+
+    @Test
+    public void concurrentAcknowledgementsAndNacknowledgementsExecuteCorrectly() {
+        int parallelism = Runtime.getRuntime().availableProcessors() * 8;
+        int count = parallelism * 250;
+        AtomicInteger positiveCount = new AtomicInteger(0);
+        AtomicInteger negativeCount = new AtomicInteger(0);
+        AtomicInteger errorCount = new AtomicInteger(0);
+        AtomicLong drained = new AtomicLong();
+
+        AcknowledgementQueue acknowledgementQueue = OrderManagingAcknowledgementQueue.create();
+
+        Flux.range(0, count)
+            .map(i -> acknowledgementQueue.add(positiveCount::incrementAndGet, error -> negativeCount.incrementAndGet()))
+            .parallel(parallelism)
+            .runOn(Schedulers.boundedElastic())
+            .subscribe(
+                inFlight -> {
+                    Timing.pause((long) (50 * Math.random()));
+                    if (Math.random() <= .65D) {
+                        errorCount.incrementAndGet();
+                        IllegalArgumentException error = new IllegalArgumentException("Boom");
+                        drained.addAndGet(acknowledgementQueue.completeExceptionally(inFlight, error));
+                    } else {
+                        drained.addAndGet(acknowledgementQueue.complete(inFlight));
+                    }
+                }
+            );
+
+        Timing.waitForCondition(() -> drained.get() == count, 30000);
+
+        assertEquals(count, drained.get());
+        assertEquals(errorCount.get(), negativeCount.get());
+        assertEquals(count, positiveCount.get() + negativeCount.get());
     }
 }
