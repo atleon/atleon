@@ -78,13 +78,16 @@ abstract class AcknowledgementQueue {
         private static final AtomicReferenceFieldUpdater<InFlight, State> STATE =
             AtomicReferenceFieldUpdater.newUpdater(InFlight.class, State.class, "state");
 
+        private static final AtomicReferenceFieldUpdater<InFlight, Throwable> ERROR =
+            AtomicReferenceFieldUpdater.newUpdater(InFlight.class, Throwable.class, "error");
+
         private final Runnable acknowledger;
 
         private final Consumer<? super Throwable> nacknowledger;
 
         private volatile State state = State.IN_PROCESS;
 
-        private Throwable error;
+        private volatile Throwable error;
 
         private InFlight(Runnable acknowledger, Consumer<? super Throwable> nacknowledger) {
             this.acknowledger = acknowledger;
@@ -95,16 +98,12 @@ abstract class AcknowledgementQueue {
             return state == State.IN_PROCESS;
         }
 
-        private boolean complete() {
-            return STATE.compareAndSet(this, State.IN_PROCESS, State.COMPLETED);
+        private boolean completeExceptionally(Throwable error) {
+            return ERROR.compareAndSet(this, null, error) && complete();
         }
 
-        private boolean completeExceptionally(Throwable error) {
-            boolean completed = STATE.compareAndSet(this, State.IN_PROCESS, State.COMPLETED);
-            if (completed) {
-                this.error = error;
-            }
-            return completed;
+        private boolean complete() {
+            return STATE.compareAndSet(this, State.IN_PROCESS, State.COMPLETED);
         }
 
         private void execute() {
