@@ -94,7 +94,7 @@ abstract class AcknowledgementQueue {
             this.nacknowledger = nacknowledger;
         }
 
-        boolean isInProcess() {
+        private boolean isInProcess() {
             return state == State.IN_PROCESS;
         }
 
