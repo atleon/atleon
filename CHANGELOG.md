@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.18.1]
+atleon `0.18.1` is a beta release containing updates outlined below
+
+### Fixes
+* [#195] - Guard against `null` data on Kafka deserialization for JSON and Protobuf
+* [#208] - Setting of `AcknowledgementQueue.InFlight.error` made to be volatile and atomic
+* `reactor-kafka` bumped to 1.3.18
+
 # [0.18.0]
 atleon `0.18.0` is a beta release containing updates outlined below
 
