@@ -29,7 +29,7 @@
         <rabbitmq-amqp-client.version>5.13.1</rabbitmq-amqp-client.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor.version>3.5.3</reactor.version>
-        <reactor-kafka.version>1.3.7</reactor-kafka.version>
+        <reactor-kafka.version>1.3.18</reactor-kafka.version>
         <reactor-rabbitmq.version>1.5.4</reactor-rabbitmq.version>
         <scala.version>2.13.6</scala.version>
         <slf4j.version>1.7.36</slf4j.version>

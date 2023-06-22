@@ -166,7 +166,7 @@ public class OrderManagingAcknowledgementQueueTest {
     @Test
     public void concurrentAcknowledgementsAndNacknowledgementsExecuteCorrectly() {
         int parallelism = Runtime.getRuntime().availableProcessors() * 8;
-        int count = parallelism * 250;
+        int count = parallelism * 1000;
         AtomicInteger positiveCount = new AtomicInteger(0);
         AtomicInteger negativeCount = new AtomicInteger(0);
         AtomicInteger errorCount = new AtomicInteger(0);
@@ -180,7 +180,7 @@ public class OrderManagingAcknowledgementQueueTest {
             .runOn(Schedulers.boundedElastic())
             .subscribe(
                 inFlight -> {
-                    Timing.pause((long) (50 * Math.random()));
+                    Timing.pause((long) (10 * Math.random()));
                     if (Math.random() <= .65D) {
                         errorCount.incrementAndGet();
                         IllegalArgumentException error = new IllegalArgumentException("Boom");
