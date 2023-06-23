@@ -7,6 +7,7 @@ import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationContextInitializer;
@@ -32,7 +33,8 @@ public class IntegrationTest {
 
     private static final String INPUT_TOPIC = "example-kafka-input-topic";
 
-    private static final Consumer<Number> SPECIAL_NUMBER_CONSUMER = mock(Consumer.class);
+    @Autowired
+    private Consumer<Number> specialNumberConsumer; // Known mock from Test Configuration
 
     @Test
     public void primeNumbersAreProcessed() {
@@ -40,7 +42,7 @@ public class IntegrationTest {
 
         produceNumber(primeNumber);
 
-        verify(SPECIAL_NUMBER_CONSUMER, timeout(10000)).accept(eq(primeNumber));
+        verify(specialNumberConsumer, timeout(10000)).accept(eq(primeNumber));
     }
 
     private void produceNumber(Number number) {
@@ -72,7 +74,7 @@ public class IntegrationTest {
 
         @Bean("specialNumberConsumer")
         public Consumer<Number> specialNumberConsumer() {
-            return SPECIAL_NUMBER_CONSUMER;
+            return mock(Consumer.class);
         }
     }
 }

@@ -9,6 +9,7 @@ import io.atleon.rabbitmq.LongBodySerializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
 import io.atleon.rabbitmq.RabbitMQMessage;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationContextInitializer;
@@ -36,7 +37,8 @@ public class IntegrationTest {
 
     private static final String INPUT_QUEUE = "example-rabbitmq-input-queue";
 
-    private static final Consumer<Number> SPECIAL_NUMBER_CONSUMER = mock(Consumer.class);
+    @Autowired
+    private Consumer<Number> specialNumberConsumer; // Known mock from Test Configuration
 
     @Test
     public void primeNumbersAreProcessed() {
@@ -44,7 +46,7 @@ public class IntegrationTest {
 
         produceNumber(primeNumber);
 
-        verify(SPECIAL_NUMBER_CONSUMER, timeout(10000)).accept(eq(primeNumber));
+        verify(specialNumberConsumer, timeout(10000)).accept(eq(primeNumber));
     }
 
     private void produceNumber(Number number) {
@@ -80,7 +82,7 @@ public class IntegrationTest {
 
         @Bean("specialNumberConsumer")
         public Consumer<Number> specialNumberConsumer() {
-            return SPECIAL_NUMBER_CONSUMER;
+            return mock(Consumer.class);
         }
     }
 }

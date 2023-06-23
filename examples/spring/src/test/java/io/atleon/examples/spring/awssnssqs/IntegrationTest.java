@@ -39,10 +39,11 @@ public class IntegrationTest {
 
     private static final String SQS_INPUT_QUEUE_NAME = "example-sqs-input-queue";
 
-    private static final Consumer<Number> SPECIAL_NUMBER_CONSUMER = mock(Consumer.class);
-
     @Autowired
     private String snsInputTopicArn; // Application creates this from set topic name, so just reuse it
+
+    @Autowired
+    private Consumer<Number> specialNumberConsumer; // Known mock from Test Configuration
 
     @Test
     public void primeNumbersAreProcessed() {
@@ -50,7 +51,7 @@ public class IntegrationTest {
 
         produceNumber(primeNumber);
 
-        verify(SPECIAL_NUMBER_CONSUMER, timeout(10000)).accept(eq(primeNumber));
+        verify(specialNumberConsumer, timeout(10000)).accept(eq(primeNumber));
     }
 
     private void produceNumber(Number number) {
@@ -90,7 +91,7 @@ public class IntegrationTest {
 
         @Bean("specialNumberConsumer")
         public Consumer<Number> specialNumberConsumer() {
-            return SPECIAL_NUMBER_CONSUMER;
+            return mock(Consumer.class);
         }
     }
 }
