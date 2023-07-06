@@ -5,13 +5,13 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * A thread safe Queue whose extensions manage the order-of-completion of In-Flight
  * Acknowledgements, and where the execution of those Acknowledgements is also thread safe
  */
-abstract class AcknowledgementQueue {
+final class AcknowledgementQueue {
 
     private static final AtomicIntegerFieldUpdater<AcknowledgementQueue> DRAINS_IN_PROGRESS =
         AtomicIntegerFieldUpdater.newUpdater(AcknowledgementQueue.class, "drainsInProgress");
@@ -19,6 +19,14 @@ abstract class AcknowledgementQueue {
     protected final Queue<InFlight> queue = new ConcurrentLinkedQueue<>();
 
     private volatile int drainsInProgress;
+
+    private AcknowledgementQueue() {
+
+    }
+
+    public static AcknowledgementQueue create() {
+        return new AcknowledgementQueue();
+    }
 
     /**
      * Append an In-Flight Acknowledgement to the Queue backed by the following Acknowledger and
@@ -50,7 +58,9 @@ abstract class AcknowledgementQueue {
         return complete(toComplete, inFlight -> inFlight.completeExceptionally(error)) ? drain() : 0L;
     }
 
-    protected abstract boolean complete(InFlight inFlight, Function<InFlight, Boolean> completer);
+    private boolean complete(InFlight inFlight, Predicate<InFlight> completer) {
+        return completer.test(inFlight);
+    }
 
     private long drain() {
         if (DRAINS_IN_PROGRESS.getAndIncrement(this) != 0) {

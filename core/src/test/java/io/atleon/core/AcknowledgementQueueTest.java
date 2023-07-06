@@ -17,11 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
-public class OrderManagingAcknowledgementQueueTest {
+public class AcknowledgementQueueTest {
 
     @Test
     public void acknowledgementsAreExecutedInOrderOfCreationAfterCompletion() {
-        AcknowledgementQueue queue = OrderManagingAcknowledgementQueue.create();
+        AcknowledgementQueue queue = AcknowledgementQueue.create();
 
         AtomicBoolean firstAcknowledged = new AtomicBoolean();
         AtomicBoolean secondAcknowledged = new AtomicBoolean();
@@ -48,7 +48,7 @@ public class OrderManagingAcknowledgementQueueTest {
 
     @Test
     public void nacknowledgementCanBeCompletedInOrder() {
-        AcknowledgementQueue queue = OrderManagingAcknowledgementQueue.create();
+        AcknowledgementQueue queue = AcknowledgementQueue.create();
 
         AtomicBoolean firstAcknowledged = new AtomicBoolean();
         AtomicReference<Throwable> firstNacknowledged = new AtomicReference<>();
@@ -77,7 +77,7 @@ public class OrderManagingAcknowledgementQueueTest {
 
     @Test
     public void recompletionOfInFlightsIsIgnored() {
-        AcknowledgementQueue queue = OrderManagingAcknowledgementQueue.create();
+        AcknowledgementQueue queue = AcknowledgementQueue.create();
 
         AtomicInteger firstAcknowledgements = new AtomicInteger();
         AtomicReference<Throwable> firstNacknowledged = new AtomicReference<>();
@@ -139,7 +139,7 @@ public class OrderManagingAcknowledgementQueueTest {
         CompletableFuture<Boolean> secondAcknowledgementStarted = new CompletableFuture<>();
         Runnable secondAcknowledger = () -> secondAcknowledgementStarted.complete(true);
 
-        AcknowledgementQueue queue = OrderManagingAcknowledgementQueue.create();
+        AcknowledgementQueue queue = AcknowledgementQueue.create();
 
         AcknowledgementQueue.InFlight firstInFlight = queue.add(firstAcknowledger, error -> {});
         AcknowledgementQueue.InFlight secondInFlight = queue.add(secondAcknowledger, error -> {});
@@ -172,7 +172,7 @@ public class OrderManagingAcknowledgementQueueTest {
         AtomicInteger errorCount = new AtomicInteger(0);
         AtomicLong drained = new AtomicLong();
 
-        AcknowledgementQueue acknowledgementQueue = OrderManagingAcknowledgementQueue.create();
+        AcknowledgementQueue acknowledgementQueue = AcknowledgementQueue.create();
 
         Flux.range(0, count)
             .map(i -> acknowledgementQueue.add(positiveCount::incrementAndGet, error -> negativeCount.incrementAndGet()))

@@ -56,7 +56,7 @@ public final class AloQueueingTransformer<T, V> implements Function<Publisher<T>
     public static <T, V> AloQueueingTransformer<T, V> create(AloComponentExtractor<T, V> componentExtractor) {
         return new AloQueueingTransformer<>(
             __ -> "singleton",
-            OrderManagingAcknowledgementQueue::create,
+            AcknowledgementQueue::create,
             AloQueueListener.noOp(),
             componentExtractor,
             ComposedAlo.factory(),
