@@ -40,6 +40,6 @@ public class AloQueueingTransformerPerformanceTest {
 
     private static <T> Mono<T> delayProbabilistically(T element, double probability, int maxDelayMillis) {
         long delayMillis = Math.random() <= probability ? (long) (Math.random() * maxDelayMillis) : 0L;
-        return Mono.just(element).delayElement(Duration.ofMillis(delayMillis));
+        return Mono.just(element).delaySubscription(Duration.ofMillis(delayMillis));
     }
 }
