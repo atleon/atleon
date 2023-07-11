@@ -109,7 +109,7 @@ final class AcknowledgementQueue {
         }
 
         private boolean completeExceptionally(Throwable error) {
-            return ERROR.compareAndSet(this, null, error) && complete();
+            return state == State.IN_PROCESS && ERROR.compareAndSet(this, null, error) && complete();
         }
 
         private boolean complete() {

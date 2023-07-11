@@ -83,23 +83,32 @@ public class AcknowledgementQueueTest {
         AtomicReference<Throwable> firstNacknowledged = new AtomicReference<>();
         AtomicInteger secondAcknowledgements = new AtomicInteger();
         AtomicReference<Throwable> secondNacknowledged = new AtomicReference<>();
+        AtomicInteger thirdAcknowledgements = new AtomicInteger();
+        AtomicReference<Throwable> thirdNacknowledged = new AtomicReference<>();
 
         AcknowledgementQueue.InFlight firstInFlight = queue.add(firstAcknowledgements::incrementAndGet, firstNacknowledged::set);
         AcknowledgementQueue.InFlight secondInFlight = queue.add(secondAcknowledgements::incrementAndGet, secondNacknowledged::set);
+        AcknowledgementQueue.InFlight thirdInFlight = queue.add(thirdAcknowledgements::incrementAndGet, thirdNacknowledged::set);
 
         queue.completeExceptionally(secondInFlight, new IllegalStateException());
+        queue.complete(thirdInFlight);
 
         assertEquals(0, firstAcknowledgements.get());
         assertNull(firstNacknowledged.get());
         assertEquals(0, secondAcknowledgements.get());
         assertNull(secondNacknowledged.get());
+        assertEquals(0, thirdAcknowledgements.get());
+        assertNull(thirdNacknowledged.get());
 
         queue.complete(secondInFlight);
+        queue.completeExceptionally(thirdInFlight, new IllegalStateException());
 
         assertEquals(0, firstAcknowledgements.get());
         assertNull(firstNacknowledged.get());
         assertEquals(0, secondAcknowledgements.get());
         assertNull(secondNacknowledged.get());
+        assertEquals(0, thirdAcknowledgements.get());
+        assertNull(thirdNacknowledged.get());
 
         queue.complete(firstInFlight);
 
@@ -107,6 +116,8 @@ public class AcknowledgementQueueTest {
         assertNull(firstNacknowledged.get());
         assertEquals(0, secondAcknowledgements.get());
         assertTrue(secondNacknowledged.get() instanceof IllegalStateException);
+        assertEquals(1, thirdAcknowledgements.get());
+        assertNull(thirdNacknowledged.get());
 
         queue.complete(firstInFlight);
 
@@ -114,6 +125,8 @@ public class AcknowledgementQueueTest {
         assertNull(firstNacknowledged.get());
         assertEquals(0, secondAcknowledgements.get());
         assertTrue(secondNacknowledged.get() instanceof IllegalStateException);
+        assertEquals(1, thirdAcknowledgements.get());
+        assertNull(thirdNacknowledged.get());
 
         queue.complete(secondInFlight);
 
@@ -121,6 +134,8 @@ public class AcknowledgementQueueTest {
         assertNull(firstNacknowledged.get());
         assertEquals(0, secondAcknowledgements.get());
         assertTrue(secondNacknowledged.get() instanceof IllegalStateException);
+        assertEquals(1, thirdAcknowledgements.get());
+        assertNull(thirdNacknowledged.get());
     }
 
     @Test
