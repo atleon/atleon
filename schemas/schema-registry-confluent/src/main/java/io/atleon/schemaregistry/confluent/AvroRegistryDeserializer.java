@@ -1,18 +1,19 @@
 package io.atleon.schemaregistry.confluent;
 
+import io.atleon.avro.AtleonReflectData;
 import io.atleon.avro.AvroDeserializer;
-import io.atleon.avro.GenericAvroDeserializer;
-import io.atleon.avro.ReflectAvroDeserializer;
-import io.atleon.avro.SpecificAvroDeserializer;
+import io.atleon.avro.GenericDatas;
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.SchemaProvider;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.specific.SpecificData;
 
 import java.util.Map;
 
 /**
- * A {@link RegistryDeserializer} that uses Avro and delegates to {@link ReflectAvroDeserializer}
+ * A {@link RegistryDeserializer} that uses Avro and delegates to {@link AvroDeserializer}
  *
  * @param <T> The type of data deserialized by this deserializer
  */
@@ -46,16 +47,26 @@ public final class AvroRegistryDeserializer<T> extends RegistryDeserializer<T, S
     }
 
     private AvroDeserializer<T> createDeserializer(AvroRegistryDeserializerConfig config) {
+        return AvroDeserializer.<T>create(createGenericData(config))
+            .withReaderSchemaLoadingEnabled(config.readerSchemaLoading())
+            .withReaderReferenceSchemaGenerationEnabled(config.readerReferenceSchemaGeneration());
+    }
+
+    private GenericData createGenericData(AvroRegistryDeserializerConfig config) {
+        GenericData genericData = instantiateGenericData(config);
+        if (config.useLogicalTypeConverters()) {
+            GenericDatas.addLogicalTypeConversion(genericData);
+        }
+        return genericData;
+    }
+
+    private GenericData instantiateGenericData(AvroRegistryDeserializerConfig config) {
         if (useSchemaReflection) {
-            return new ReflectAvroDeserializer<T>()
-                .withReaderSchemaLoadingEnabled(config.readerSchemaLoading())
-                .withReaderReferenceSchemaGenerationEnabled(config.readerReferenceSchemaGeneration())
-                .withAllowNull(config.reflectionAllowNull());
+            return config.reflectionAllowNull() ? new AtleonReflectData.AllowNull() : new AtleonReflectData();
         } else if (config.specificAvroReader()) {
-            return new SpecificAvroDeserializer<T>()
-                .withReaderSchemaLoadingEnabled(config.readerSchemaLoading());
+            return new SpecificData();
         } else {
-            return new GenericAvroDeserializer<>();
+            return new GenericData();
         }
     }
 }

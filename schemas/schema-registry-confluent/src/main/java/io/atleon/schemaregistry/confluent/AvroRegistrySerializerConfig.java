@@ -6,6 +6,16 @@ import java.util.Map;
 
 public final class AvroRegistrySerializerConfig extends RegistrySerializerConfig {
 
+    public static final String AVRO_REFLECTION_ALLOW_NULL_CONFIG = "avro.reflection.allow.null";
+    public static final boolean AVRO_REFLECTION_ALLOW_NULL_DEFAULT = false;
+    public static final String AVRO_REFLECTION_ALLOW_NULL_DOC =
+        "If true, allows null field values used in ReflectAvroSerializer";
+
+    public static final String AVRO_USE_LOGICAL_TYPE_CONVERTERS_CONFIG = "avro.use.logical.type.converters";
+    public static final boolean AVRO_USE_LOGICAL_TYPE_CONVERTERS_DEFAULT = false;
+    public static final String AVRO_USE_LOGICAL_TYPE_CONVERTERS_DOC =
+        "If true, use logical type converter in generic record";
+
     public static final String SCHEMA_CACHING_ENABLED_CONFIG = "writer.schema.caching";
     public static final boolean SCHEMA_CACHING_ENABLED_DEFAULT = false;
     public static final String SCHEMA_CACHING_ENABLED_DOC =
@@ -20,20 +30,24 @@ public final class AvroRegistrySerializerConfig extends RegistrySerializerConfig
             " generated dynamically at serialization time, and serialization type is generic" +
             " or parameterized.";
 
-    public static final String AVRO_REFLECTION_ALLOW_NULL_CONFIG = "avro.reflection.allow.null";
-    public static final boolean AVRO_REFLECTION_ALLOW_NULL_DEFAULT = false;
-    public static final String AVRO_REFLECTION_ALLOW_NULL_DOC =
-        "If true, allows null field values used in ReflectAvroSerializer";
-
     public AvroRegistrySerializerConfig(Map<?, ?> props) {
         super(avroRegistrySerializerConfigDef(), props);
     }
 
     public static ConfigDef avroRegistrySerializerConfigDef() {
         return registrySerializerConfigDef()
+            .define(AVRO_REFLECTION_ALLOW_NULL_CONFIG, ConfigDef.Type.BOOLEAN, AVRO_REFLECTION_ALLOW_NULL_DEFAULT, ConfigDef.Importance.LOW, AVRO_REFLECTION_ALLOW_NULL_DOC)
+            .define(AVRO_USE_LOGICAL_TYPE_CONVERTERS_CONFIG, ConfigDef.Type.BOOLEAN, AVRO_USE_LOGICAL_TYPE_CONVERTERS_DEFAULT, ConfigDef.Importance.MEDIUM, AVRO_USE_LOGICAL_TYPE_CONVERTERS_DOC)
             .define(SCHEMA_CACHING_ENABLED_CONFIG, ConfigDef.Type.BOOLEAN, SCHEMA_CACHING_ENABLED_DEFAULT, ConfigDef.Importance.MEDIUM, SCHEMA_CACHING_ENABLED_DOC)
-            .define(SCHEMA_GENERATION_ENABLED_CONFIG, ConfigDef.Type.BOOLEAN, SCHEMA_GENERATION_ENABLED_DEFAULT, ConfigDef.Importance.MEDIUM, SCHEMA_GENERATION_ENABLED_DOC)
-            .define(AVRO_REFLECTION_ALLOW_NULL_CONFIG, ConfigDef.Type.BOOLEAN, AVRO_REFLECTION_ALLOW_NULL_DEFAULT, ConfigDef.Importance.LOW, AVRO_REFLECTION_ALLOW_NULL_DOC);
+            .define(SCHEMA_GENERATION_ENABLED_CONFIG, ConfigDef.Type.BOOLEAN, SCHEMA_GENERATION_ENABLED_DEFAULT, ConfigDef.Importance.MEDIUM, SCHEMA_GENERATION_ENABLED_DOC);
+    }
+
+    public boolean reflectionAllowNull() {
+        return getBoolean(AVRO_REFLECTION_ALLOW_NULL_CONFIG);
+    }
+
+    public boolean useLogicalTypeConverters() {
+        return getBoolean(AVRO_USE_LOGICAL_TYPE_CONVERTERS_CONFIG);
     }
 
     public boolean schemaCachingEnabled() {
@@ -42,9 +56,5 @@ public final class AvroRegistrySerializerConfig extends RegistrySerializerConfig
 
     public boolean schemaGenerationEnabled() {
         return getBoolean(SCHEMA_GENERATION_ENABLED_CONFIG);
-    }
-
-    public boolean reflectionAllowNull() {
-        return getBoolean(AVRO_REFLECTION_ALLOW_NULL_CONFIG);
     }
 }

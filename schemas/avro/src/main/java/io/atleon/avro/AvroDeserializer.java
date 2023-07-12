@@ -4,9 +4,11 @@ import io.atleon.schema.KeyableSchema;
 import io.atleon.schema.SchematicDeserializer;
 import io.atleon.util.Throwing;
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.Decoder;
 import org.apache.avro.io.DecoderFactory;
+import org.apache.avro.specific.SpecificData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,31 +34,73 @@ import java.util.function.Function;
  * recursively instantiated based on writer schema-specified type information, and when coupled
  * with reader schema generation based on that instantiated reference data, continues to allow
  * backward compatible deserialization of those generic data types.
- *
- * <p>The details left up to extensions of this class are how to load/generate Schemas for Types
- * and what DatumReader(s) to use.
  */
-public abstract class AvroDeserializer<T> implements SchematicDeserializer<T, Schema> {
+public final class AvroDeserializer<T> implements SchematicDeserializer<T, Schema> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AvroDeserializer.class);
 
     private final AvroSchemaCache<Serializable> readerSchemasByWriterKey = new AvroSchemaCache<>();
 
-    protected final boolean readerSchemaLoadingEnabled;
+    private final GenericData genericData;
 
-    protected final boolean readerReferenceSchemaGenerationEnabled;
+    private final Function<Type, Schema> typeSchemaLoader;
 
-    public AvroDeserializer() {
-        this(true, false);
+    private final boolean readerSchemaLoadingEnabled;
+
+    private final boolean readerReferenceSchemaGenerationEnabled;
+
+    AvroDeserializer(GenericData genericData, Function<Type, Schema> typeSchemaLoader) {
+        this(genericData, typeSchemaLoader, true, false);
     }
 
-    protected AvroDeserializer(boolean readerSchemaLoadingEnabled, boolean readerReferenceSchemaGenerationEnabled) {
+    private AvroDeserializer(
+        GenericData genericData,
+        Function<Type, Schema> typeSchemaLoader,
+        boolean readerSchemaLoadingEnabled,
+        boolean readerReferenceSchemaGenerationEnabled
+    ) {
+        this.genericData = genericData;
+        this.typeSchemaLoader = typeSchemaLoader;
         this.readerSchemaLoadingEnabled = readerSchemaLoadingEnabled;
         this.readerReferenceSchemaGenerationEnabled = readerReferenceSchemaGenerationEnabled;
     }
 
+    public static <T> AvroDeserializer<T> generic() {
+        return create(GenericData.get());
+    }
+
+    public static <T> AvroDeserializer<T> specific() {
+        return create(SpecificData.get());
+    }
+
+    public static <T> AvroDeserializer<T> reflect() {
+        return create(AtleonReflectData.get());
+    }
+
+    public static <T> AvroDeserializer<T> create(GenericData genericData) {
+        return new AvroDeserializer<>(genericData, GenericDatas.createTypeSchemaLoader(genericData));
+    }
+
+    public AvroDeserializer<T> withReaderSchemaLoadingEnabled(boolean readerSchemaLoadingEnabled) {
+        return new AvroDeserializer<>(
+            genericData,
+            typeSchemaLoader,
+            readerSchemaLoadingEnabled,
+            readerReferenceSchemaGenerationEnabled
+        );
+    }
+
+    public AvroDeserializer<T> withReaderReferenceSchemaGenerationEnabled(boolean readerReferenceSchemaGenerationEnabled) {
+        return new AvroDeserializer<>(
+            genericData,
+            typeSchemaLoader,
+            readerSchemaLoadingEnabled,
+            readerReferenceSchemaGenerationEnabled
+        );
+    }
+
     @Override
-    public final T deserialize(byte[] data, Function<ByteBuffer, KeyableSchema<Schema>> dataBufferToWriterSchema) {
+    public T deserialize(byte[] data, Function<ByteBuffer, KeyableSchema<Schema>> dataBufferToWriterSchema) {
         try {
             return deserializeUnsafe(data, dataBufferToWriterSchema);
         } catch (IOException e) {
@@ -64,7 +108,7 @@ public abstract class AvroDeserializer<T> implements SchematicDeserializer<T, Sc
         }
     }
 
-    protected final T deserializeUnsafe(
+    private T deserializeUnsafe(
         byte[] data,
         Function<ByteBuffer, KeyableSchema<Schema>> dataBufferToWriterSchema
     ) throws IOException {
@@ -78,7 +122,7 @@ public abstract class AvroDeserializer<T> implements SchematicDeserializer<T, Sc
         return createDatumReader(keyableWriterSchema.schema(), readerSchema).read(null, decoder);
     }
 
-    protected final Schema loadReaderSchema(Schema writerSchema) {
+    private Schema loadReaderSchema(Schema writerSchema) {
         try {
             return readerSchemaLoadingEnabled ? loadReaderSchemaUnsafe(writerSchema) : writerSchema;
         } catch (Exception e) {
@@ -87,19 +131,19 @@ public abstract class AvroDeserializer<T> implements SchematicDeserializer<T, Sc
         }
     }
 
-    protected final Schema loadReaderSchemaUnsafe(Schema writerSchema) {
+    private Schema loadReaderSchemaUnsafe(Schema writerSchema) {
         // Note: If deserialization type is a SpecificRecord, it conventionally has a no-arg public constructor
         Object referenceData = AvroDeserialization.instantiateReferenceData(writerSchema);
         return AvroSchemas.getOrSupply(referenceData, () -> loadReaderSchemaUnsafe(writerSchema, referenceData));
     }
 
-    protected final Schema loadReaderSchemaUnsafe(Schema writerSchema, Object referenceData) {
+    private Schema loadReaderSchemaUnsafe(Schema writerSchema, Object referenceData) {
         return readerReferenceSchemaGenerationEnabled
-            ? AvroDeserialization.generateReaderReferenceSchema(referenceData, writerSchema, this::loadTypeSchema)
-            : loadTypeSchema(referenceData.getClass());
+            ? AvroDeserialization.generateReaderReferenceSchema(referenceData, writerSchema, typeSchemaLoader)
+            : typeSchemaLoader.apply(referenceData.getClass());
     }
 
-    protected abstract Schema loadTypeSchema(Type dataType);
-
-    protected abstract DatumReader<T> createDatumReader(Schema writerSchema, Schema readerSchema);
+    private DatumReader<T> createDatumReader(Schema writerSchema, Schema readerSchema) {
+        return (DatumReader<T>) genericData.createDatumReader(writerSchema, readerSchema);
+    }
 }

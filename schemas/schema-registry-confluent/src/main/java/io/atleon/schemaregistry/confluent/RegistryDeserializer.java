@@ -23,7 +23,7 @@ public abstract class RegistryDeserializer<T, S> extends RegistrySerDe implement
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RegistryDeserializer.class);
 
-    private boolean readNullOnFailure = false;
+    private boolean readNullOnFailure = RegistryDeserializerConfig.READ_NULL_ON_FAILURE_DEFAULT;
 
     public void configure(RegistryDeserializerConfig config) {
         super.configure(config);

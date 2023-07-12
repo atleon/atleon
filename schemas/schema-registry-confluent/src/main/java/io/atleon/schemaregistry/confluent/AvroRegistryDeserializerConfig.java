@@ -11,6 +11,16 @@ public final class AvroRegistryDeserializerConfig extends RegistryDeserializerCo
     public static final String SPECIFIC_AVRO_READER_DOC =
         "If true, tries to look up the SpecificRecord class";
 
+    public static final String AVRO_REFLECTION_ALLOW_NULL_CONFIG = "avro.reflection.allow.null";
+    public static final boolean AVRO_REFLECTION_ALLOW_NULL_DEFAULT = false;
+    public static final String AVRO_REFLECTION_ALLOW_NULL_DOC =
+        "If true, allows null field values used in ReflectAvroDeserializer";
+
+    public static final String AVRO_USE_LOGICAL_TYPE_CONVERTERS_CONFIG = "avro.use.logical.type.converters";
+    public static final boolean AVRO_USE_LOGICAL_TYPE_CONVERTERS_DEFAULT = false;
+    public static final String AVRO_USE_LOGICAL_TYPE_CONVERTERS_DOC =
+        "If true, use logical type converter in generic record";
+
     public static final String READER_SCHEMA_LOADING_CONFIG = "reader.schema.loading";
     public static final boolean READER_SCHEMA_LOADING_DEFAULT = true;
     public static final String READER_SCHEMA_LOADING_DOC =
@@ -22,11 +32,6 @@ public final class AvroRegistryDeserializerConfig extends RegistryDeserializerCo
         "If true, activates deep generation of objects that may provide schema data for" +
             " deserialization. Only useful when deserialization types are generic or parameterized.";
 
-    public static final String AVRO_REFLECTION_ALLOW_NULL_CONFIG = "avro.reflection.allow.null";
-    public static final boolean AVRO_REFLECTION_ALLOW_NULL_DEFAULT = false;
-    public static final String AVRO_REFLECTION_ALLOW_NULL_DOC =
-        "If true, allows null field values used in ReflectAvroDeserializer";
-
     public AvroRegistryDeserializerConfig(Map<?, ?> props) {
         super(avroRegistryDeserializerConfigDef(), props);
     }
@@ -34,13 +39,22 @@ public final class AvroRegistryDeserializerConfig extends RegistryDeserializerCo
     public static ConfigDef avroRegistryDeserializerConfigDef() {
         return registryDeserializerConfigDef()
             .define(SPECIFIC_AVRO_READER_CONFIG, ConfigDef.Type.BOOLEAN, SPECIFIC_AVRO_READER_DEFAULT, ConfigDef.Importance.LOW, SPECIFIC_AVRO_READER_DOC)
+            .define(AVRO_REFLECTION_ALLOW_NULL_CONFIG, ConfigDef.Type.BOOLEAN, AVRO_REFLECTION_ALLOW_NULL_DEFAULT, ConfigDef.Importance.LOW, AVRO_REFLECTION_ALLOW_NULL_DOC)
+            .define(AVRO_USE_LOGICAL_TYPE_CONVERTERS_CONFIG, ConfigDef.Type.BOOLEAN, AVRO_USE_LOGICAL_TYPE_CONVERTERS_DEFAULT, ConfigDef.Importance.MEDIUM, AVRO_USE_LOGICAL_TYPE_CONVERTERS_DOC)
             .define(READER_SCHEMA_LOADING_CONFIG, ConfigDef.Type.BOOLEAN, READER_SCHEMA_LOADING_DEFAULT, ConfigDef.Importance.LOW, READER_SCHEMA_LOADING_DOC)
-            .define(READER_REFERENCE_SCHEMA_GENERATION_CONFIG, ConfigDef.Type.BOOLEAN, READER_REFERENCE_SCHEMA_GENERATION_DEFAULT, ConfigDef.Importance.LOW, READER_REFERENCE_SCHEMA_GENERATION_DOC)
-            .define(AVRO_REFLECTION_ALLOW_NULL_CONFIG, ConfigDef.Type.BOOLEAN, AVRO_REFLECTION_ALLOW_NULL_DEFAULT, ConfigDef.Importance.LOW, AVRO_REFLECTION_ALLOW_NULL_DOC);
+            .define(READER_REFERENCE_SCHEMA_GENERATION_CONFIG, ConfigDef.Type.BOOLEAN, READER_REFERENCE_SCHEMA_GENERATION_DEFAULT, ConfigDef.Importance.LOW, READER_REFERENCE_SCHEMA_GENERATION_DOC);
     }
 
     public boolean specificAvroReader() {
         return getBoolean(SPECIFIC_AVRO_READER_CONFIG);
+    }
+
+    public boolean reflectionAllowNull() {
+        return getBoolean(AVRO_REFLECTION_ALLOW_NULL_CONFIG);
+    }
+
+    public boolean useLogicalTypeConverters() {
+        return getBoolean(AVRO_USE_LOGICAL_TYPE_CONVERTERS_CONFIG);
     }
 
     public boolean readerSchemaLoading() {
@@ -49,9 +63,5 @@ public final class AvroRegistryDeserializerConfig extends RegistryDeserializerCo
 
     public boolean readerReferenceSchemaGeneration() {
         return getBoolean(READER_REFERENCE_SCHEMA_GENERATION_CONFIG);
-    }
-
-    public boolean reflectionAllowNull() {
-        return getBoolean(AVRO_REFLECTION_ALLOW_NULL_CONFIG);
     }
 }

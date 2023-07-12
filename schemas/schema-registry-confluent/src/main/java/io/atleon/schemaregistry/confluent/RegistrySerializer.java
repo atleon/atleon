@@ -23,11 +23,11 @@ public abstract class RegistrySerializer<T, S> extends RegistrySerDe implements 
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RegistrySerializer.class);
 
-    private boolean autoRegisterSchema = true;
+    private boolean autoRegisterSchema = RegistrySerDeConfig.AUTO_REGISTER_SCHEMAS_DEFAULT;
 
-    private boolean useLatestVersion = false;
+    private boolean useLatestVersion = RegistrySerDeConfig.USE_LATEST_VERSION_DEFAULT;
 
-    private boolean latestCompatibilityStrict = true;
+    private boolean latestCompatibilityStrict = RegistrySerDeConfig.LATEST_COMPATIBILITY_STRICT_DEFAULT;
 
     @Override
     public void configure(RegistrySerDeConfig config) {
