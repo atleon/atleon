@@ -2,12 +2,9 @@ package io.atleon.avro;
 
 import io.atleon.schema.SchemaBytes;
 import org.apache.avro.Schema;
-import org.apache.avro.io.DatumReader;
 import org.apache.avro.reflect.ReflectData;
-import org.apache.avro.reflect.ReflectDatumReader;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -24,7 +21,7 @@ public class AvroUpgradeTest {
         TestDataWithNullableMap data = new TestDataWithNullableMap();
         data.setMap(Collections.singletonMap("KEY", TestData.create()));
 
-        SchemaBytes<Schema> schemaBytes = new ReflectAvroSerializer<>().serialize(data);
+        SchemaBytes<Schema> schemaBytes = AvroSerializer.reflect().serialize(data);
 
         Schema readerMapSchema = Schema.createMap(
             Schema.createRecord(
@@ -43,11 +40,12 @@ public class AvroUpgradeTest {
             null,
             false,
             Collections.singletonList(
-                new Schema.Field("map", ReflectData.makeNullable(readerMapSchema),null, Object.class.cast(null))
+                new Schema.Field("map", ReflectData.makeNullable(readerMapSchema), null, Object.class.cast(null))
             )
         );
 
-        Object deserialized = new TestAvroDeserializer<>(readerSchema).deserialize(schemaBytes.bytes(), schemaBytes.schema());
+        Object deserialized = new AvroDeserializer<>(ReflectData.get(), __ -> readerSchema)
+            .deserialize(schemaBytes.bytes(), schemaBytes.schema());
 
         assertTrue(deserialized instanceof TestDataWithNullableMap);
         assertEquals(
@@ -75,31 +73,12 @@ public class AvroUpgradeTest {
         testDataWithProblematicTypes.setDataSet(dataSet);
         testDataWithProblematicTypes.setSortedDataSet(sortedDataSet);
 
-        SchemaBytes<Schema> schemaBytes = new ReflectAvroSerializer<>().serialize(testDataWithProblematicTypes);
+        SchemaBytes<Schema> schemaBytes = AvroSerializer.reflect().serialize(testDataWithProblematicTypes);
 
         assertTrue(schemaBytes.bytes().length > 0);
 
-        Object deserialized = new ReflectAvroDeserializer<>().deserialize(schemaBytes.bytes(), schemaBytes.schema());
+        Object deserialized = AvroDeserializer.reflect().deserialize(schemaBytes.bytes(), schemaBytes.schema());
 
         assertEquals(testDataWithProblematicTypes, deserialized);
-    }
-
-    private static final class TestAvroDeserializer<T> extends AvroDeserializer<T> {
-
-        private final Schema readerSchema;
-
-        private TestAvroDeserializer(Schema readerSchema) {
-            this.readerSchema = readerSchema;
-        }
-
-        @Override
-        protected Schema loadTypeSchema(Type dataType) {
-            return readerSchema;
-        }
-
-        @Override
-        protected DatumReader<T> createDatumReader(Schema writerSchema, Schema readerSchema) {
-            return new ReflectDatumReader<>(writerSchema, readerSchema, ReflectData.get());
-        }
     }
 }

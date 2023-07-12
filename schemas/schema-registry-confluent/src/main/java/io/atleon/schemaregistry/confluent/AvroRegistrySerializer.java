@@ -1,18 +1,19 @@
 package io.atleon.schemaregistry.confluent;
 
+import io.atleon.avro.AtleonReflectData;
 import io.atleon.avro.AvroSerializer;
-import io.atleon.avro.GenericAvroSerializer;
-import io.atleon.avro.ReflectAvroSerializer;
+import io.atleon.avro.GenericDatas;
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.SchemaProvider;
 import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 
 import java.util.Map;
 
 /**
- * A {@link RegistrySerializer} that uses Avro and delegates to {@link ReflectAvroSerializer}
+ * A {@link RegistrySerializer} that uses Avro and delegates to {@link AvroSerializer}
  *
  * @param <T> The type of data serialized by this serializer
  */
@@ -46,13 +47,24 @@ public final class AvroRegistrySerializer<T> extends RegistrySerializer<T, Schem
     }
 
     private AvroSerializer<T> createSerializer(AvroRegistrySerializerConfig config) {
+        return AvroSerializer.<T>create(createGenericData(config))
+            .withSchemaCachingEnabled(config.schemaCachingEnabled())
+            .withSchemaGenerationEnabled(config.schemaGenerationEnabled());
+    }
+
+    private GenericData createGenericData(AvroRegistrySerializerConfig config) {
+        GenericData genericData = instantiateGenericData(config);
+        if (config.useLogicalTypeConverters()) {
+            GenericDatas.addLogicalTypeConversion(genericData);
+        }
+        return genericData;
+    }
+
+    private GenericData instantiateGenericData(AvroRegistrySerializerConfig config) {
         if (useSchemaReflection) {
-            return new ReflectAvroSerializer<T>()
-                .withSchemaCachingEnabled(config.schemaCachingEnabled())
-                .withSchemaGenerationEnabled(config.schemaGenerationEnabled())
-                .withAllowNull(config.reflectionAllowNull());
+            return config.reflectionAllowNull() ? new AtleonReflectData.AllowNull() : new AtleonReflectData();
         } else {
-            return new GenericAvroSerializer<>();
+            return new GenericData();
         }
     }
 }
