@@ -31,8 +31,6 @@ import java.util.function.Supplier;
  */
 public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
 
-    private final AvroSchemaCache<Class<?>> schemaCache = new AvroSchemaCache<>();
-
     private final GenericData genericData;
 
     private final Function<Type, Schema> typeSchemaLoader;
@@ -41,20 +39,28 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
 
     private final boolean schemaGenerationEnabled;
 
+    private final boolean removeJavaProperties;
+
+    private final AvroSchemaCache<Class<?>> schemaCache = new AvroSchemaCache<>();
+
+    private final AvroSchemaCache<Schema> transformedSchemas = new AvroSchemaCache<>();
+
     AvroSerializer(GenericData genericData, Function<Type, Schema> typeSchemaLoader) {
-        this(genericData, typeSchemaLoader, false, false);
+        this(genericData, typeSchemaLoader, false, false, false);
     }
 
     private AvroSerializer(
         GenericData genericData,
         Function<Type, Schema> typeSchemaLoader,
         boolean schemaCachingEnabled,
-        boolean schemaGenerationEnabled
+        boolean schemaGenerationEnabled,
+        boolean removeJavaProperties
     ) {
         this.genericData = genericData;
         this.typeSchemaLoader = typeSchemaLoader;
         this.schemaCachingEnabled = schemaCachingEnabled;
         this.schemaGenerationEnabled = schemaGenerationEnabled;
+        this.removeJavaProperties = removeJavaProperties;
     }
 
     public static <T> AvroSerializer<T> generic() {
@@ -70,11 +76,33 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
     }
 
     public AvroSerializer<T> withSchemaCachingEnabled(boolean schemaCachingEnabled) {
-        return new AvroSerializer<>(genericData, typeSchemaLoader, schemaCachingEnabled, schemaGenerationEnabled);
+        return new AvroSerializer<>(
+            genericData,
+            typeSchemaLoader,
+            schemaCachingEnabled,
+            schemaGenerationEnabled,
+            removeJavaProperties
+        );
     }
 
     public AvroSerializer<T> withSchemaGenerationEnabled(boolean schemaGenerationEnabled) {
-        return new AvroSerializer<>(genericData, typeSchemaLoader, schemaCachingEnabled, schemaGenerationEnabled);
+        return new AvroSerializer<>(
+            genericData,
+            typeSchemaLoader,
+            schemaCachingEnabled,
+            schemaGenerationEnabled,
+            removeJavaProperties
+        );
+    }
+
+    public AvroSerializer<T> withRemoveJavaProperties(boolean removeJavaProperties) {
+        return new AvroSerializer<>(
+            genericData,
+            typeSchemaLoader,
+            schemaCachingEnabled,
+            schemaGenerationEnabled,
+            removeJavaProperties
+        );
     }
 
     @Override
@@ -98,7 +126,25 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
         Supplier<Schema> supplier = schemaGenerationEnabled
             ? () -> AvroSerialization.generateWriterSchema(data, typeSchemaLoader)
             : () -> typeSchemaLoader.apply(data.getClass());
-        return AvroSchemas.getOrSupply(data, supplier);
+        Schema schema = AvroSchemas.getOrSupply(data, supplier);
+        return areAnySchemaTransformsEnabled() ? transformSchema(schema) : schema;
+    }
+
+    private boolean areAnySchemaTransformsEnabled() {
+        return removeJavaProperties;
+    }
+
+    private Schema transformSchema(Schema schema) {
+        return schemaCachingEnabled // Avoid redundant caching
+            ? transformUncachedSchema(schema)
+            : transformedSchemas.load(schema, this::transformUncachedSchema);
+    }
+
+    private Schema transformUncachedSchema(Schema schema) {
+        if (removeJavaProperties) {
+            schema = AvroSchemas.removeJavaProperties(schema);
+        }
+        return schema;
     }
 
     private DatumWriter<T> createDatumWriter(Schema schema) {
