@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class TypeResolution {
 
@@ -29,7 +30,7 @@ public final class TypeResolution {
     }
 
     public static boolean isGenericClass(Class<?> clazz) {
-        return clazz.getTypeParameters().length > 0;
+        return streamAllTypeParameters(clazz).findAny().isPresent();
     }
 
     public static boolean isDataStructure(Class<?> clazz) {
@@ -37,10 +38,13 @@ public final class TypeResolution {
     }
 
     public static Set<Type> getAllTypeParameters(Class<?> clazz) {
+        return streamAllTypeParameters(clazz).collect(Collectors.toSet());
+    }
+
+    private static Stream<TypeVariable<?>> streamAllTypeParameters(Class<?> clazz) {
         return withSuperClasses(clazz).stream()
             .<TypeVariable<?>[]>map(Class::getTypeParameters)
-            .flatMap(Arrays::stream)
-            .collect(Collectors.toSet());
+            .flatMap(Arrays::stream);
     }
 
     private static List<Class<?>> withSuperClasses(Class<?> clazz) {
