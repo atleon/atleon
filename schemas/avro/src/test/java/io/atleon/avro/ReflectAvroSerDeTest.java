@@ -14,7 +14,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class ReflectAvroSerDeTest extends AvroSerDeTest {
 
     public ReflectAvroSerDeTest() {
-        super(AvroSerializer.reflect(), AvroDeserializer.reflect().withReaderReferenceSchemaGenerationEnabled(true));
+        super(
+            AvroSerializer.reflect().withSchemaGenerationEnabled(true),
+            AvroDeserializer.reflect().withReaderReferenceSchemaGenerationEnabled(true)
+        );
     }
 
     @Test

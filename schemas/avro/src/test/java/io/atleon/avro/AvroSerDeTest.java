@@ -86,6 +86,19 @@ public abstract class AvroSerDeTest {
         assertEquals(genericData, deserialized);
     }
 
+    @Test
+    public void typesWithGenericSuperTypesCanBeSerializedAndDeserialized() {
+        StringDataHolder stringDataHolder = StringDataHolder.create();
+
+        SchemaBytes<Schema> schemaBytes = serializer.serialize(stringDataHolder);
+
+        assertTrue(schemaBytes.bytes().length > 0);
+
+        Object deserialized = deserializer.deserialize(schemaBytes.bytes(), schemaBytes.schema());
+
+        assertEquals(stringDataHolder, deserialized);
+    }
+
     private List<Schema.Field> copyFields(List<Schema.Field> fields) {
         return fields.stream()
             .map(field -> new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultVal()))
