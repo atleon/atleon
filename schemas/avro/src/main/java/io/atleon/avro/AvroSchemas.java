@@ -1,5 +1,10 @@
 package io.atleon.avro;
 
+import com.fasterxml.jackson.core.json.JsonReadFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.atleon.util.TypeResolution;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
@@ -7,13 +12,26 @@ import org.apache.avro.generic.GenericContainer;
 import org.apache.avro.reflect.ReflectData;
 import org.apache.avro.specific.SpecificData;
 
+import java.io.IOException;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 public final class AvroSchemas {
 
+    private static final ObjectMapper OBJECT_MAPPER = createObjectMapper();
+
     private AvroSchemas() {
 
+    }
+
+    public static Schema removeJavaProperties(Schema schema) {
+        try {
+            JsonNode node = OBJECT_MAPPER.readTree(schema.toString());
+            removeProperty(node, "avro.java.string");
+            return createParser().parse(node.toString());
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Could not parse schema: " + schema);
+        }
     }
 
     public static Schema getOrReflectNullable(Object data) {
@@ -60,5 +78,27 @@ public final class AvroSchemas {
 
     public static boolean isNull(Schema schema) {
         return schema.getType() == Schema.Type.NULL;
+    }
+
+    private static JsonMapper createObjectMapper() {
+        return JsonMapper.builder()
+            .enable(JsonReadFeature.ALLOW_NON_NUMERIC_NUMBERS)
+            .build();
+    }
+
+    private static Schema.Parser createParser() {
+        Schema.Parser parser = new Schema.Parser();
+        parser.setValidateDefaults(false);
+        return parser;
+    }
+
+    private static void removeProperty(JsonNode node, String propertyName) {
+        if (node.isObject()) {
+            ObjectNode.class.cast(node).remove(propertyName);
+        }
+
+        if (node.isObject() || node.isArray()) {
+            node.elements().forEachRemaining(element -> removeProperty(element, propertyName));
+        }
     }
 }
