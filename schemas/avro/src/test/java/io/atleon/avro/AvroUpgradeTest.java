@@ -5,8 +5,10 @@ import org.apache.avro.Schema;
 import org.apache.avro.reflect.ReflectData;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -44,7 +46,14 @@ public class AvroUpgradeTest {
             )
         );
 
-        Object deserialized = new AvroDeserializer<>(ReflectData.get(), __ -> readerSchema)
+        ReflectData testReflectData = new ReflectData() {
+            @Override
+            protected Schema createSchema(Type type, Map<String, Schema> names) {
+                return type.equals(TestDataWithNullableMap.class) ? readerSchema : super.createSchema(type, names);
+            }
+        };
+
+        Object deserialized = AvroDeserializer.create(testReflectData)
             .deserialize(schemaBytes.bytes(), schemaBytes.schema());
 
         assertTrue(deserialized instanceof TestDataWithNullableMap);

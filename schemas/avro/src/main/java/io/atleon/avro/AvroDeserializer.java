@@ -49,8 +49,8 @@ public final class AvroDeserializer<T> implements SchematicDeserializer<T, Schem
 
     private final boolean readerReferenceSchemaGenerationEnabled;
 
-    AvroDeserializer(GenericData genericData, Function<Type, Schema> typeSchemaLoader) {
-        this(genericData, typeSchemaLoader, true, false);
+    private AvroDeserializer(GenericData genericData, Function<Type, Schema> typeSchemaLoader) {
+        this(genericData, typeSchemaLoader, genericData instanceof SpecificData, false);
     }
 
     private AvroDeserializer(
