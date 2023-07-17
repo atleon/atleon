@@ -3,6 +3,7 @@ package io.atleon.schemaregistry.confluent;
 import org.apache.kafka.common.config.ConfigDef;
 
 import java.util.Map;
+import java.util.Optional;
 
 public final class AvroRegistryDeserializerConfig extends RegistryDeserializerConfig {
 
@@ -22,9 +23,10 @@ public final class AvroRegistryDeserializerConfig extends RegistryDeserializerCo
         "If true, use logical type converter in generic record";
 
     public static final String READER_SCHEMA_LOADING_CONFIG = "reader.schema.loading";
-    public static final boolean READER_SCHEMA_LOADING_DEFAULT = true;
+    public static final Boolean READER_SCHEMA_LOADING_DEFAULT = null;
     public static final String READER_SCHEMA_LOADING_DOC =
-        "If true, activates lookup of runtime reader schema based on writer schema type information";
+        "If true, activates lookup of runtime reader schema based on writer schema type information." +
+            " If null (or not set), schema loading is based on active type of GenericData.";
 
     public static final String READER_REFERENCE_SCHEMA_GENERATION_CONFIG = "reader.reference.schema.generation";
     public static final boolean READER_REFERENCE_SCHEMA_GENERATION_DEFAULT = false;
@@ -57,8 +59,8 @@ public final class AvroRegistryDeserializerConfig extends RegistryDeserializerCo
         return getBoolean(AVRO_USE_LOGICAL_TYPE_CONVERTERS_CONFIG);
     }
 
-    public boolean readerSchemaLoading() {
-        return getBoolean(READER_SCHEMA_LOADING_CONFIG);
+    public Optional<Boolean> readerSchemaLoading() {
+        return Optional.ofNullable(getBoolean(READER_SCHEMA_LOADING_CONFIG));
     }
 
     public boolean readerReferenceSchemaGeneration() {

@@ -45,7 +45,7 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
 
     private final AvroSchemaCache<Schema> transformedSchemas = new AvroSchemaCache<>();
 
-    AvroSerializer(GenericData genericData, Function<Type, Schema> typeSchemaLoader) {
+    private AvroSerializer(GenericData genericData, Function<Type, Schema> typeSchemaLoader) {
         this(genericData, typeSchemaLoader, false, false, false);
     }
 
