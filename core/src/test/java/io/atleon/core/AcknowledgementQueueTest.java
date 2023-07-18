@@ -1,6 +1,8 @@
 package io.atleon.core;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
@@ -21,7 +23,7 @@ public class AcknowledgementQueueTest {
 
     @Test
     public void acknowledgementsAreExecutedInOrderOfCreationAfterCompletion() {
-        AcknowledgementQueue queue = AcknowledgementQueue.create();
+        AcknowledgementQueue queue = AcknowledgementQueue.create(AcknowledgementQueueMode.STRICT);
 
         AtomicBoolean firstAcknowledged = new AtomicBoolean();
         AtomicBoolean secondAcknowledged = new AtomicBoolean();
@@ -48,7 +50,7 @@ public class AcknowledgementQueueTest {
 
     @Test
     public void nacknowledgementCanBeCompletedInOrder() {
-        AcknowledgementQueue queue = AcknowledgementQueue.create();
+        AcknowledgementQueue queue = AcknowledgementQueue.create(AcknowledgementQueueMode.STRICT);
 
         AtomicBoolean firstAcknowledged = new AtomicBoolean();
         AtomicReference<Throwable> firstNacknowledged = new AtomicReference<>();
@@ -77,7 +79,7 @@ public class AcknowledgementQueueTest {
 
     @Test
     public void recompletionOfInFlightsIsIgnored() {
-        AcknowledgementQueue queue = AcknowledgementQueue.create();
+        AcknowledgementQueue queue = AcknowledgementQueue.create(AcknowledgementQueueMode.STRICT);
 
         AtomicInteger firstAcknowledgements = new AtomicInteger();
         AtomicReference<Throwable> firstNacknowledged = new AtomicReference<>();
@@ -154,7 +156,7 @@ public class AcknowledgementQueueTest {
         CompletableFuture<Boolean> secondAcknowledgementStarted = new CompletableFuture<>();
         Runnable secondAcknowledger = () -> secondAcknowledgementStarted.complete(true);
 
-        AcknowledgementQueue queue = AcknowledgementQueue.create();
+        AcknowledgementQueue queue = AcknowledgementQueue.create(AcknowledgementQueueMode.STRICT);
 
         AcknowledgementQueue.InFlight firstInFlight = queue.add(firstAcknowledger, error -> {});
         AcknowledgementQueue.InFlight secondInFlight = queue.add(secondAcknowledger, error -> {});
@@ -179,7 +181,47 @@ public class AcknowledgementQueueTest {
     }
 
     @Test
-    public void concurrentAcknowledgementsAndNacknowledgementsExecuteCorrectly() {
+    public void compactedInFlightsResultInCorrectRequestCounts() {
+        AtomicBoolean firstAcknowledged = new AtomicBoolean();
+        AtomicBoolean secondAcknowledged = new AtomicBoolean();
+        AtomicBoolean thirdAcknowledged = new AtomicBoolean();
+        AtomicBoolean fourthAcknowledged = new AtomicBoolean();
+
+        AcknowledgementQueue queue = AcknowledgementQueue.create(AcknowledgementQueueMode.COMPACT);
+
+        AcknowledgementQueue.InFlight firstInFlight = queue.add(() -> firstAcknowledged.set(true), error -> {});
+        AcknowledgementQueue.InFlight secondInFlight = queue.add(() -> secondAcknowledged.set(true), error -> {});
+        AcknowledgementQueue.InFlight thirdInFlight = queue.add(() -> thirdAcknowledged.set(true), error -> {});
+        AcknowledgementQueue.InFlight fourthInFlight = queue.add(() -> fourthAcknowledged.set(true), error -> {});
+
+        assertEquals(0, queue.complete(secondInFlight));
+        assertFalse(firstAcknowledged.get());
+        assertFalse(secondAcknowledged.get());
+        assertFalse(thirdAcknowledged.get());
+        assertFalse(fourthAcknowledged.get());
+
+        assertEquals(0, queue.complete(fourthInFlight));
+        assertFalse(firstAcknowledged.get());
+        assertFalse(secondAcknowledged.get());
+        assertFalse(thirdAcknowledged.get());
+        assertFalse(fourthAcknowledged.get());
+
+        assertEquals(2, queue.complete(thirdInFlight));
+        assertFalse(firstAcknowledged.get());
+        assertFalse(secondAcknowledged.get());
+        assertFalse(thirdAcknowledged.get());
+        assertFalse(fourthAcknowledged.get());
+
+        assertEquals(2, queue.complete(firstInFlight));
+        assertTrue(firstAcknowledged.get());
+        assertFalse(secondAcknowledged.get());
+        assertFalse(thirdAcknowledged.get());
+        assertTrue(fourthAcknowledged.get());
+    }
+
+    @ParameterizedTest
+    @EnumSource(AcknowledgementQueueMode.class)
+    public void concurrentAcknowledgementsAndNacknowledgementsExecuteCorrectly(AcknowledgementQueueMode mode) {
         int parallelism = Runtime.getRuntime().availableProcessors() * 8;
         int count = parallelism * 1000;
         AtomicInteger positiveCount = new AtomicInteger(0);
@@ -187,7 +229,7 @@ public class AcknowledgementQueueTest {
         AtomicInteger errorCount = new AtomicInteger(0);
         AtomicLong drained = new AtomicLong();
 
-        AcknowledgementQueue acknowledgementQueue = AcknowledgementQueue.create();
+        AcknowledgementQueue acknowledgementQueue = AcknowledgementQueue.create(mode);
 
         Flux.range(0, count)
             .map(i -> acknowledgementQueue.add(positiveCount::incrementAndGet, error -> negativeCount.incrementAndGet()))
@@ -210,6 +252,8 @@ public class AcknowledgementQueueTest {
 
         assertEquals(count, drained.get());
         assertEquals(errorCount.get(), negativeCount.get());
-        assertEquals(count, positiveCount.get() + negativeCount.get());
+        if (mode != AcknowledgementQueueMode.COMPACT) {
+            assertEquals(count, positiveCount.get() + negativeCount.get());
+        }
     }
 }

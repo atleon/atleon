@@ -23,18 +23,20 @@ final class AcknowledgementQueue {
     private static final AtomicIntegerFieldUpdater<AcknowledgementQueue> DRAINS_IN_PROGRESS =
         AtomicIntegerFieldUpdater.newUpdater(AcknowledgementQueue.class, "drainsInProgress");
 
+    private final AcknowledgementQueueMode mode;
+
     private final Queue<InFlight> drainQueue = new ConcurrentLinkedQueue<>();
 
     private volatile InFlight tail;
 
     private volatile int drainsInProgress;
 
-    private AcknowledgementQueue() {
-
+    private AcknowledgementQueue(AcknowledgementQueueMode mode) {
+        this.mode = mode;
     }
 
-    public static AcknowledgementQueue create() {
-        return new AcknowledgementQueue();
+    public static AcknowledgementQueue create(AcknowledgementQueueMode mode) {
+        return new AcknowledgementQueue(mode);
     }
 
     /**
@@ -93,7 +95,7 @@ final class AcknowledgementQueue {
             while (!drainQueue.isEmpty()) {
                 InFlight completed = drainQueue.remove();
                 if (!completed.isSevered()) {
-                    drained += completed.isHead() ? drainHead(completed) : 0L;
+                    drained += completed.isHead() ? drainHead(completed) : drainNonHead(completed);
                 }
             }
 
@@ -117,6 +119,10 @@ final class AcknowledgementQueue {
             head = next;
         }
         return drained;
+    }
+
+    private long drainNonHead(InFlight nonHead) {
+        return mode == AcknowledgementQueueMode.COMPACT ? nonHead.tryCompact() : 0L;
     }
 
     static final class InFlight {
@@ -150,6 +156,37 @@ final class AcknowledgementQueue {
             this.previous = previous;
         }
 
+        private long tryCompact() {
+            long compacted = 0L;
+            if (!isCompletedWithoutError()) {
+                return compacted;
+            }
+
+            InFlight left = previous;
+            if (left.isCompletedWithoutError() && !left.isHead()) { // Don't sever head; Its completion must cause execution
+                left.sever(); // Need to sever left since it could be queued for draining and should then result in no-op
+                left = left.previous;
+                left.next.previous = null; // Enable efficient GC
+                compacted++;
+            }
+
+            InFlight right = this;
+            if (right.next != null && right.next.isCompletedWithoutError()) {
+                // No need to sever right since we know it (this) can't be completed again
+                right.previous = null; // Enable efficient GC
+                right = right.next;
+                NEXT.lazySet(right.previous, null); // Enable efficient GC
+                compacted++;
+            }
+
+            if (compacted != 0L) { // Only modify pointers if we actually compacted
+                NEXT.set(left, right);
+                right.previous = left;
+            }
+
+            return compacted;
+        }
+
         private InFlight sever() {
             InFlight observedNext = next;
             while (!casNext(observedNext, this)) { // Account for possible race with addition
@@ -177,6 +214,10 @@ final class AcknowledgementQueue {
 
         private boolean isInProcess() {
             return state == State.IN_PROCESS;
+        }
+
+        private boolean isCompletedWithoutError() {
+            return state == State.COMPLETED && error == null; // Ordering is important: State may be set after reading error
         }
 
         private boolean completeExceptionally(Throwable error) {
