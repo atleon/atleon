@@ -111,6 +111,13 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * See {@link Flux#ofType(Class)}
+     */
+    public <V> AloFlux<V> ofType(Class<V> clazz) {
+        return new AloFlux<>(wrapped.handle(AloOps.typeFilteringHandler(clazz, Alo::acknowledge)));
+    }
+
+    /**
      * @see Flux#map(Function)
      */
     public <V> AloFlux<V> map(Function<? super T, ? extends V> mapper) {

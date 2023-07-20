@@ -1,6 +1,7 @@
 package io.atleon.core;
 
 import org.junit.jupiter.api.Test;
+import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -31,6 +32,17 @@ class AloFluxTest {
         TestAlo nonEmpty = new TestAlo("DATA");
         Flux.just(nonEmpty).as(AloFlux::wrap).filter(String::isEmpty).unwrap().then().block();
         assertTrue(nonEmpty.isAcknowledged());
+    }
+
+    @Test
+    public void alosWithSpecificSubTypeOfDataItemCanBeProcessed() {
+        GenericAlo<Object> stringAlo = new GenericAlo<>("DATA");
+        GenericAlo<Object> integralAlo = new GenericAlo<>(1234);
+
+        AloFlux.wrap(Flux.just(stringAlo, integralAlo)).ofType(Integer.class).unwrap().then().block();
+
+        assertTrue(stringAlo.isAcknowledged());
+        assertFalse(integralAlo.isAcknowledged());
     }
 
     @Test
