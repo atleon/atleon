@@ -43,6 +43,17 @@ final class AloOps {
     }
 
     public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<R>>>
+    typeFilteringHandler(Class<R> clazz, Consumer<Alo<T>> negativeConsumer) {
+        return (alo, sink) -> {
+            if (clazz.isAssignableFrom(alo.get().getClass())) {
+                sink.next((Alo<R>) alo);
+            } else {
+                negativeConsumer.accept(alo);
+            }
+        };
+    }
+
+    public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<R>>>
     mappingHandler(Function<? super T, ? extends R> mapper) {
         return (alo, sink) -> {
             Alo<R> result = null;
