@@ -1,5 +1,6 @@
 package io.atleon.kafka;
 
+import io.atleon.core.AcknowledgementQueueMode;
 import io.atleon.core.Alo;
 import io.atleon.core.AloComponentExtractor;
 import io.atleon.core.AloFactory;
@@ -70,6 +71,17 @@ public class AloKafkaReceiver<K, V> {
      * Prefix used on all AloKafkaReceiver-specific configurations
      */
     public static final String CONFIG_PREFIX = "kafka.receiver.";
+
+    /**
+     * Configures the operating mode of the Acknowledgement Queue used to maintain commitment order
+     * of consumer offsets. By default, the mode is STRICT, where any given record's offset is not
+     * committed until all records received before it have been committed, and each record's offset
+     * is explicitly committed. In COMPACT mode, it is still the case that no record's offset is
+     * committed until all records received before it have been committed, but commitment of a
+     * given record's offset may be skipped if there are already multiple sequential records after
+     * it that are already ready for commitment.
+     */
+    public static final String ACKNOWLEDGEMENT_QUEUE_MODE_CONFIG = CONFIG_PREFIX + "acknowledgement.queue.mode";
 
     /**
      * Configures the behavior of negatively acknowledging received records. Some simple types are
@@ -143,6 +155,8 @@ public class AloKafkaReceiver<K, V> {
      * in-flight records to be acknowledged before allowing the rebalance to complete.
      */
     public static final String MAX_DELAY_REBALANCE_CONFIG = CONFIG_PREFIX + "max.delay.rebalance";
+
+    private static final AcknowledgementQueueMode DEFAULT_ACKNOWLEDGEMENT_QUEUE_MODE = AcknowledgementQueueMode.STRICT;
 
     private static final boolean DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS = false;
 
@@ -276,9 +290,12 @@ public class AloKafkaReceiver<K, V> {
 
         private final NacknowledgerFactory<K, V> nacknowledgerFactory;
 
+        private final AcknowledgementQueueMode acknowledgementQueueMode;
+
         public ReceiveResources(KafkaConfig config) {
             this.config = config;
             this.nacknowledgerFactory = createNacknowledgerFactory(config);
+            this.acknowledgementQueueMode = loadAcknowledgementQueueMode(config);
         }
 
         public Flux<Alo<ConsumerRecord<K, V>>> receive(ReceiverOptionsInitializer<K, V> optionsInitializer) {
@@ -306,7 +323,7 @@ public class AloKafkaReceiver<K, V> {
                 .commitInterval(config.loadDuration(COMMIT_INTERVAL_CONFIG).orElse(defaultOptions.commitInterval()))
                 .maxCommitAttempts(config.loadInt(MAX_COMMIT_ATTEMPTS_CONFIG).orElse(defaultOptions.maxCommitAttempts()))
                 .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
-                .maxDelayRebalance(config.loadDuration(MAX_DELAY_REBALANCE_CONFIG).orElse(defaultOptions.maxDelayRebalance()))
+                .maxDelayRebalance(loadMaxDelayRebalance().orElse(defaultOptions.maxDelayRebalance()))
                 .addAssignListener(onAssign);
             return KafkaReceiver.create(receiverOptions);
         }
@@ -323,6 +340,13 @@ public class AloKafkaReceiver<K, V> {
             });
         }
 
+        private Optional<Duration> loadMaxDelayRebalance() {
+            Optional<Duration> maxDelayRebalance = config.loadDuration(MAX_DELAY_REBALANCE_CONFIG);
+            return maxDelayRebalance.isPresent() || acknowledgementQueueMode == AcknowledgementQueueMode.STRICT
+                ? maxDelayRebalance
+                : Optional.of(Duration.ZERO); // By default, disable delay if acknowledgements may be skipped
+        }
+
         private Flux<ReceiverRecord<K, V>> maybeBlockRequestOnPartitionPositioning(
             Flux<ReceiverRecord<K, V>> records,
             CompletableFuture<Collection<ReceiverPartition>> assignment
@@ -336,6 +360,7 @@ public class AloKafkaReceiver<K, V> {
         newAloQueueingTransformer(Consumer<Throwable> errorEmitter) {
             return AloQueueingTransformer.create(newComponentExtractor(errorEmitter))
                 .withGroupExtractor(record -> record.receiverOffset().topicPartition())
+                .withQueueMode(acknowledgementQueueMode)
                 .withListener(loadQueueListener())
                 .withFactory(loadAloFactory())
                 .withMaxInFlight(loadMaxInFlightPerSubscription());
@@ -392,6 +417,11 @@ public class AloKafkaReceiver<K, V> {
             } else {
                 return Optional.empty();
             }
+        }
+
+        private static AcknowledgementQueueMode loadAcknowledgementQueueMode(KafkaConfig config) {
+            return config.loadEnum(ACKNOWLEDGEMENT_QUEUE_MODE_CONFIG, AcknowledgementQueueMode.class)
+                .orElse(DEFAULT_ACKNOWLEDGEMENT_QUEUE_MODE);
         }
 
         private static String incrementId(String id) {
