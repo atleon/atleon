@@ -2,6 +2,7 @@ package io.atleon.util;
 
 import org.junit.jupiter.api.Test;
 
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,6 +29,10 @@ public class ConfigLoadingTest {
         assertEquals(10, ConfigLoading.loadIntOrThrow(Collections.singletonMap("integer", "10"), "integer"));
         assertEquals(15L, ConfigLoading.loadLongOrThrow(Collections.singletonMap("long", "15"), "long"));
         assertEquals("x", ConfigLoading.loadStringOrThrow(Collections.singletonMap("string", "x"), "string"));
+        assertEquals(
+            RoundingMode.HALF_UP,
+            ConfigLoading.loadEnumOrThrow(Collections.singletonMap("enum", "HALF_UP"), "enum", RoundingMode.class)
+        );
         assertEquals(
             TestConfigurable.class,
             ConfigLoading.loadClassOrThrow(Collections.singletonMap("type", TestConfigurable.class.getName()), "type")

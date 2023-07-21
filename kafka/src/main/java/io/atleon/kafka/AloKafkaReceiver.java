@@ -138,17 +138,17 @@ public class AloKafkaReceiver<K, V> {
      */
     public static final String CLOSE_TIMEOUT_CONFIG = CONFIG_PREFIX + "close.timeout";
 
+    /**
+     * When rebalances occur, this configures the maximum duration that will be awaited for
+     * in-flight records to be acknowledged before allowing the rebalance to complete.
+     */
+    public static final String MAX_DELAY_REBALANCE_CONFIG = CONFIG_PREFIX + "max.delay.rebalance";
+
     private static final boolean DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS = false;
 
     private static final long DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION = 4096;
 
     private static final boolean DEFAULT_AUTO_INCREMENT_CLIENT_ID = false;
-
-    private static final Duration DEFAULT_POLL_TIMEOUT = Duration.ofMillis(100L);
-
-    private static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5L);
-
-    private static final int DEFAULT_MAX_COMMIT_ATTEMPTS = 100;
 
     private static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(30L);
 
@@ -300,11 +300,13 @@ public class AloKafkaReceiver<K, V> {
             ReceiverOptionsInitializer<K, V> optionsInitializer,
             Consumer<Collection<ReceiverPartition>> onAssign
         ) {
-            ReceiverOptions<K, V> receiverOptions = optionsInitializer.initialize(newConsumerConfig())
-                .pollTimeout(config.loadDuration(POLL_TIMEOUT_CONFIG).orElse(DEFAULT_POLL_TIMEOUT))
-                .commitInterval(config.loadDuration(COMMIT_INTERVAL_CONFIG).orElse(DEFAULT_COMMIT_INTERVAL))
-                .maxCommitAttempts(config.loadInt(MAX_COMMIT_ATTEMPTS_CONFIG).orElse(DEFAULT_MAX_COMMIT_ATTEMPTS))
+            ReceiverOptions<K, V> defaultOptions = optionsInitializer.initialize(newConsumerConfig());
+            ReceiverOptions<K, V> receiverOptions = defaultOptions
+                .pollTimeout(config.loadDuration(POLL_TIMEOUT_CONFIG).orElse(defaultOptions.pollTimeout()))
+                .commitInterval(config.loadDuration(COMMIT_INTERVAL_CONFIG).orElse(defaultOptions.commitInterval()))
+                .maxCommitAttempts(config.loadInt(MAX_COMMIT_ATTEMPTS_CONFIG).orElse(defaultOptions.maxCommitAttempts()))
                 .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
+                .maxDelayRebalance(config.loadDuration(MAX_DELAY_REBALANCE_CONFIG).orElse(defaultOptions.maxDelayRebalance()))
                 .addAssignListener(onAssign);
             return KafkaReceiver.create(receiverOptions);
         }

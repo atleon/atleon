@@ -127,13 +127,8 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
     }
 
     private static Optional<FilterInclusion> loadFilterInclusion(Map<String, ?> configs) {
-        Optional<FilterInclusion> filterInclusion = ConfigLoading.loadParseable(
-            configs,
-            FILTER_NAMES_INCLUSION_CONFIG,
-            FilterInclusion.class,
-            FilterInclusion::valueOf
-        );
-        return filterInclusion.map(AbstractKafkaMetricsReporter::sanitize);
+        return ConfigLoading.loadEnum(configs, FILTER_NAMES_INCLUSION_CONFIG, FilterInclusion.class)
+            .map(AbstractKafkaMetricsReporter::sanitize);
     }
 
     private static FilterInclusion sanitize(FilterInclusion filterInclusion) {

@@ -218,8 +218,7 @@ public class AloRabbitMQReceiver<T> {
                 return nacknowledgerFactory.get();
             }
 
-            Optional<NackStrategy> deprecatedNackStrategy =
-                config.loadParseable(NACK_STRATEGY_CONFIG, NackStrategy.class, NackStrategy::valueOf);
+            Optional<NackStrategy> deprecatedNackStrategy = config.loadEnum(NACK_STRATEGY_CONFIG, NackStrategy.class);
             if (deprecatedNackStrategy.isPresent()) {
                 LOGGER.warn("The configuration " + NACK_STRATEGY_CONFIG + " is deprecated. Use " + NACKNOWLEDGER_TYPE_CONFIG);
                 return deprecatedNackStrategy.map(Enum::name)

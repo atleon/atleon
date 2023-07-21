@@ -1,5 +1,7 @@
 package io.atleon.util;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.time.Duration;
 import java.util.Collection;
@@ -52,6 +54,10 @@ public final class ConfigLoading {
         return loadString(configs, property).orElseThrow(supplyMissingConfigPropertyException(property));
     }
 
+    public static <T extends Enum<T>> T loadEnumOrThrow(Map<String, ?> configs, String property, Class<T> enumType) {
+        return loadEnum(configs, property, enumType).orElseThrow(supplyMissingConfigPropertyException(property));
+    }
+
     public static Class<?> loadClassOrThrow(Map<String, ?> configs, String property) {
         return ConfigLoading.loadClass(configs, property).orElseThrow(supplyMissingConfigPropertyException(property));
     }
@@ -91,6 +97,10 @@ public final class ConfigLoading {
 
     public static Optional<String> loadString(Map<String, ?> configs, String property) {
         return loadParseable(configs, property, String.class, Function.identity());
+    }
+
+    public static <T extends Enum<T>> Optional<T> loadEnum(Map<String, ?> configs, String property, Class<T> enumType) {
+        return loadParseable(configs, property, enumType, value -> parseEnum(enumType, value));
     }
 
     public static Optional<Class<?>> loadClass(Map<String, ?> configs, String property) {
@@ -148,6 +158,17 @@ public final class ConfigLoading {
     public static Optional<Set<String>> loadSetOfString(Map<String, ?> configs, String property) {
         return loadStream(configs, property, Objects::toString)
             .map(stream -> stream.collect(Collectors.toCollection(LinkedHashSet::new)));
+    }
+
+    private static <T extends Enum<T>> T parseEnum(Class<T> enumType, String value) {
+        try {
+            Method method = enumType.getDeclaredMethod("valueOf", String.class);
+            return enumType.cast(method.invoke(null, value));
+        } catch (NoSuchMethodException e) {
+            throw new IllegalStateException("Could not get parsing method from enumType=" + enumType, e);
+        } catch (InvocationTargetException | IllegalAccessException e) {
+            throw new IllegalStateException("Could not invoke parsing method from enumType=" + enumType, e);
+        }
     }
 
     private static <T> Optional<T> load(Map<String, ?> configs, String property, Function<Object, T> coercer) {

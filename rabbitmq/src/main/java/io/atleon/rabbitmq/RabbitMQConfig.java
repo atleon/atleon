@@ -53,7 +53,7 @@ public class RabbitMQConfig {
         return ConfigLoading.loadInt(properties, property);
     }
 
-    public <T> Optional<T> loadParseable(String property, Class<T> type, Function<? super String, T> parser) {
-        return ConfigLoading.loadParseable(properties, property, type, parser);
+    public <T extends Enum<T>> Optional<T> loadEnum(String property, Class<T> type) {
+        return ConfigLoading.loadEnum(properties, property, type);
     }
 }
