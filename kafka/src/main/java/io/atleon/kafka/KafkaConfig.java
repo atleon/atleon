@@ -51,4 +51,8 @@ public class KafkaConfig {
     public Optional<Long> loadLong(String property) {
         return ConfigLoading.loadLong(properties, property);
     }
+
+    public <T extends Enum<T>> Optional<T> loadEnum(String property, Class<T> enumType) {
+        return ConfigLoading.loadEnum(properties, property, enumType);
+    }
 }
