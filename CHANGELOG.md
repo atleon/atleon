@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.19.0]
+atleon `0.19.0` is a beta release containing updates outlined below
+
+### Additions
+* [#202] - Acknowledgement queuing (for log-based receiving) now supports "compaction"
+* [#212] - Avro SerDes now support `avro.use.logical.type.converters`
+* [#216] - Avro SerDes now support `avro.remove.java.properties`
+* [#220] - Add `AloFlux::ofType`
+* [#223] - Acknowledgement queue mode made configurable for `AloKafkaReceiver`
+
+### Fixes
+* [#208] - Re-completions of queued in-flight acknowledgements are now ignored
+* [#214] - Avro SerDes now identify types with generic supertypes as themselves generic
+* [#218] - Avro SerDes do not attempt to load reader schema when deserializing as generic data (records/maps)
+
 # [0.18.1]
 atleon `0.18.1` is a beta release containing updates outlined below
 
