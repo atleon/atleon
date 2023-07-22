@@ -78,8 +78,6 @@ public class AloKafkaSender<K, V> implements Closeable {
 
     private static final boolean DEFAULT_AUTO_INCREMENT_CLIENT_ID = false;
 
-    private static final int DEFAULT_MAX_IN_FLIGHT_PER_SEND = 256;
-
     private static final boolean DEFAULT_STOP_ON_ERROR = false;
 
     private static final Map<String, AtomicLong> COUNTS_BY_ID = new ConcurrentHashMap<>();
@@ -331,8 +329,9 @@ public class AloKafkaSender<K, V> implements Closeable {
         }
 
         public static <K, V> SendResources<K, V> fromConfig(KafkaConfig config) {
-            SenderOptions<K, V> senderOptions = SenderOptions.<K, V>create(newProducerConfig(config))
-                .maxInFlight(config.loadInt(MAX_IN_FLIGHT_PER_SEND_CONFIG).orElse(DEFAULT_MAX_IN_FLIGHT_PER_SEND))
+            SenderOptions<K, V> defaultOptions = SenderOptions.create(newProducerConfig(config));
+            SenderOptions<K, V> senderOptions = defaultOptions
+                .maxInFlight(config.loadInt(MAX_IN_FLIGHT_PER_SEND_CONFIG).orElse(defaultOptions.maxInFlight()))
                 .stopOnError(config.loadBoolean(STOP_ON_ERROR_CONFIG).orElse(DEFAULT_STOP_ON_ERROR));
             return new SendResources<>(KafkaSender.create(ContextualProducerFactory.INSTANCE, senderOptions));
         }
