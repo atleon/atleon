@@ -26,11 +26,11 @@
         <mockito.version>4.11.0</mockito.version>
         <opentracing.verion>0.32.0</opentracing.verion>
         <protobuf.version>3.11.4</protobuf.version>
-        <rabbitmq-amqp-client.version>5.13.1</rabbitmq-amqp-client.version>
+        <rabbitmq-amqp-client.version>5.14.2</rabbitmq-amqp-client.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor.version>3.5.3</reactor.version>
         <reactor-kafka.version>1.3.18</reactor-kafka.version>
-        <reactor-rabbitmq.version>1.5.4</reactor-rabbitmq.version>
+        <reactor-rabbitmq.version>1.5.6</reactor-rabbitmq.version>
         <scala.version>2.13.6</scala.version>
         <slf4j.version>1.7.36</slf4j.version>
         <spring.version>5.3.7</spring.version>
