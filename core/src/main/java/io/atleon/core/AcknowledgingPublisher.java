@@ -98,6 +98,7 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
             Throwable errorToEmit = errorToEmitReference.get();
             if (errorToEmit != null) {
+                state.compareAndSet(State.ACTIVE, State.IN_FLIGHT);
                 subscriber.onError(errorToEmit);
             } else {
                 onComplete();
