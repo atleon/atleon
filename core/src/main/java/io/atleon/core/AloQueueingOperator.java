@@ -127,8 +127,8 @@ final class AloQueueingOperator<T, V> implements Publisher<Alo<V>> {
             listener.enqueued(group, 1);
 
             Runnable acknowledger = () -> postComplete(group, queue.complete(inFlight));
-            Consumer<Throwable> nacknowedger = error -> postComplete(group, queue.completeExceptionally(inFlight, error));
-            actual.onNext(factory.create(componentExtractor.value(t), acknowledger, nacknowedger));
+            Consumer<Throwable> nacknowledger = error -> postComplete(group, queue.completeExceptionally(inFlight, error));
+            actual.onNext(factory.create(componentExtractor.value(t), acknowledger, nacknowledger));
         }
 
         @Override

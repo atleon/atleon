@@ -21,5 +21,5 @@ public interface AloFactory<T> {
         return (t, acknowledger, nacknowledger) -> decorator.decorate(create(t, acknowledger, nacknowledger));
     }
 
-    Alo<T> create(T t, Runnable acknowledger, Consumer<? super Throwable> nacknowedger);
+    Alo<T> create(T t, Runnable acknowledger, Consumer<? super Throwable> nacknowledger);
 }
