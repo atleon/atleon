@@ -1,7 +1,6 @@
 package io.atleon.core;
 
 import org.junit.jupiter.api.Test;
-import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -64,7 +63,9 @@ class AloFluxTest {
         TestAlo alo = new TestAlo("DATA");
 
         Flux.just(alo).as(AloFlux::wrap).consume(System.out::println)
-            .subscribe(__ -> { throw new IllegalStateException("Should not emit anything"); });
+            .subscribe(__ -> {
+                throw new IllegalStateException("Should not emit anything");
+            });
 
         assertTrue(alo.isAcknowledged());
     }
@@ -161,8 +162,12 @@ class AloFluxTest {
         Function<String, Flux<String>> stringToChars = data -> Mono.just(data.chars())
             .flatMapMany(stream -> Flux.fromStream(stream.mapToObj(character -> String.valueOf((char) character))));
 
+        AloFlux<String> aloFlux = AloFlux.wrap(Flux.just(alo))
+            .groupBy(Function.identity(), Integer.MAX_VALUE)
+            .flatMapAlo(it -> it.concatMap(stringToChars));
+
         AtomicReference<Alo> lastAcknowledgeable = new AtomicReference<>();
-        StepVerifier.create(Flux.just(alo).as(AloFlux::wrap).concatMap(stringToChars), 3)
+        StepVerifier.create(aloFlux, 3)
             .expectSubscription()
             .consumeNextWith(aloData -> {
                 assertEquals("D", aloData.get());
@@ -204,7 +209,11 @@ class AloFluxTest {
         Function<String, Flux<String>> stringToChars = data -> Mono.just(data.chars())
             .flatMapMany(stream -> Flux.fromStream(stream.mapToObj(character -> String.valueOf((char) character))));
 
-        StepVerifier.create(Flux.just(alo).as(AloFlux::wrap).concatMap(stringToChars), 3)
+        AloFlux<String> aloFlux = AloFlux.wrap(Flux.just(alo))
+            .groupBy(Function.identity(), Integer.MAX_VALUE)
+            .flatMapAlo(it -> it.concatMap(stringToChars));
+
+        StepVerifier.create(aloFlux, 3)
             .expectSubscription()
             .consumeNextWith(aloData -> {
                 assertEquals("D", aloData.get());
@@ -240,8 +249,12 @@ class AloFluxTest {
             .flatMapMany(stream -> Flux.fromStream(stream.mapToObj(character -> String.valueOf((char) character))))
             .take(3);
 
+        AloFlux<String> aloFlux = AloFlux.wrap(Flux.just(alo))
+            .groupBy(Function.identity(), Integer.MAX_VALUE)
+            .flatMapAlo(it -> it.concatMap(stringToChars));
+
         AtomicReference<Alo> lastAcknowledgeable = new AtomicReference<>();
-        StepVerifier.create(Flux.just(alo).as(AloFlux::wrap).concatMap(stringToChars))
+        StepVerifier.create(aloFlux)
             .expectSubscription()
             .consumeNextWith(aloData -> {
                 assertEquals("D", aloData.get());
@@ -275,7 +288,11 @@ class AloFluxTest {
 
         Function<String, Flux<String>> stringToFlux = data -> sink.asFlux();
 
-        StepVerifier.create(Flux.just(alo).as(AloFlux::wrap).concatMap(stringToFlux))
+        AloFlux<String> aloFlux = AloFlux.wrap(Flux.just(alo))
+            .groupBy(Function.identity(), Integer.MAX_VALUE)
+            .flatMapAlo(it -> it.concatMap(stringToFlux));
+
+        StepVerifier.create(aloFlux)
             .expectSubscription()
             .then(() -> sink.tryEmitNext("D"))
             .consumeNextWith(aloData -> {
@@ -298,7 +315,11 @@ class AloFluxTest {
         Function<String, Flux<String>> stringToChars = data -> Mono.just(data.chars())
             .flatMapMany(stream -> Flux.fromStream(stream.mapToObj(character -> String.valueOf((char) character))));
 
-        StepVerifier.create(Flux.just(alo).as(AloFlux::wrap).concatMap(stringToChars), 2)
+        AloFlux<String> aloFlux = AloFlux.wrap(Flux.just(alo))
+            .groupBy(Function.identity(), Integer.MAX_VALUE)
+            .flatMapAlo(it -> it.concatMap(stringToChars));
+
+        StepVerifier.create(aloFlux, 2)
             .expectSubscription()
             .consumeNextWith(aloData -> {
                 assertEquals("D", aloData.get());
