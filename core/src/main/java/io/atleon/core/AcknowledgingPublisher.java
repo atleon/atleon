@@ -67,7 +67,18 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
         @Override
         public void onSubscribe(Subscription subscription) {
-            subscriber.onSubscribe(new ComposedSubscription(subscription::request, decorateCancellation(subscription)));
+            // We do NOT decorate cancellation with management of state and/or acknowledgement
+            // management. This is due to the following logic, applicable upon cancellation:
+            // 1) No matter what, we MUST propagate cancellation to obey ReactiveStreams rule 1.8
+            // 2) We SHOULD NOT call any downstream subscriber methods since downstream has
+            //    cancelled (signals would likely just be ignored)
+            // 3) We SHOULD NOT negatively acknowledge since we have no error with which to do so
+            // 4) We MUST NOT positively acknowledge as that could violate "at least once"
+            // 5) We SHOULD NOT change state from ACTIVE, as that might interfere with reception of
+            //    possibly-racing upstream termination signals
+            // Given the above, we have exhausted all possible side-effects as actions that we, at
+            // best, should not do. Therefore, we propagate the subscription as-is.
+            subscriber.onSubscribe(subscription);
         }
 
         @Override
@@ -83,9 +94,9 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
                     unacknowledged.add(valueReference);
                 }
             }
-            // NOTE: We MUST pass the raw value here and not just the Reference. This is because it
-            //       is possible for the Reference's referent to be garbage collected between the
-            //       above Reference creation and calling `get` on said Reference
+            // We MUST pass the raw value here and not just the Reference. This is because it is
+            // possible for the Reference's referent to be garbage collected between the above
+            // Reference creation and calling `get` on said Reference
             subscriber.onNext(wrap(value, valueReference));
         }
 
@@ -111,15 +122,6 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
                 maybeExecuteAcknowledger();
             }
             subscriber.onComplete();
-        }
-
-        private Runnable decorateCancellation(Subscription subscription) {
-            return () -> {
-                subscription.cancel();
-                if (state.compareAndSet(State.ACTIVE, State.IN_FLIGHT)) {
-                    maybeExecuteAcknowledger();
-                }
-            };
         }
 
         private Alo<T> wrap(T value, Reference<T> valueReference) {
