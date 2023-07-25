@@ -86,7 +86,9 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
             // Use WeakReferences to track which emitted values have/haven't been acknowledged,
             // allowing those values to be garbage collected if their downstream transformations
             // do not require a handle on the originating value (and are processed asynchronously)
-            Reference<T> valueReference = new WeakReference<>(Objects.requireNonNull(value, "Empty value emitted - Adhering to ReactiveStreams rule 2.13"));
+            Reference<T> valueReference = new WeakReference<>(
+                Objects.requireNonNull(value, "Empty value emitted - Adhering to ReactiveStreams rule 2.13")
+            );
             synchronized (unacknowledged) {
                 // Ignoring race condition with IN_FLIGHT here; Execution is predicated on
                 // obtaining a synchronization lock on `unacknowledged` which we own at this point
@@ -102,17 +104,34 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
         @Override
         public void onError(Throwable error) {
-            AtomicReference<Throwable> errorToEmitReference = new AtomicReference<>(null);
-            if (!AloFailureStrategy.choose(subscriber).process(aloSource, error, errorToEmitReference::set)) {
-                maybeExecuteNacknowledger(error);
+            AtomicReference<Throwable> errorReference = new AtomicReference<>(null);
+
+            // Delegation to failure strategy may result in execution, so must synchronize
+            synchronized (unacknowledged) {
+                if (state.compareAndSet(State.ACTIVE, State.IN_FLIGHT) &&
+                    AloFailureStrategy.choose(subscriber).process(aloSource, error, errorReference::set)) {
+                    // If we get here, the error we have received is the terminating signal, and
+                    // that error has been successfully handled by the chosen failure strategy.
+                    // We therefore mark our state as executed, which we can safely do since other
+                    // executions require a lock on unacknowledged. This will avoid any further
+                    // unnecessary error propagation.
+                    state.set(State.EXECUTED);
+                } else {
+                    // If we get here, the error was either not the terminating signal or handling
+                    // the error has been delegated to us. Make sure the negative acknowledgement
+                    // is executed if it's possible to do so
+                    maybeExecuteNacknowledger(error);
+                }
             }
 
-            Throwable errorToEmit = errorToEmitReference.get();
+            Throwable errorToEmit = errorReference.get();
             if (errorToEmit != null) {
-                state.compareAndSet(State.ACTIVE, State.IN_FLIGHT);
+                // Failure strategy must have requested that we emit the error
                 subscriber.onError(errorToEmit);
             } else {
-                onComplete();
+                // The error was either successfully processed or delegated via negative
+                // acknowledgement. Do not unnecessarily emit an error that has been handled.
+                subscriber.onComplete();
             }
         }
 
@@ -154,7 +173,7 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
         private void maybeExecuteNacknowledger(Throwable error) {
             synchronized (unacknowledged) {
-                if (state.compareAndSet(State.ACTIVE, State.EXECUTED) || state.compareAndSet(State.IN_FLIGHT, State.EXECUTED)) {
+                if (state.getAndSet(State.EXECUTED) != State.EXECUTED) {
                     unacknowledged.clear();
                     Alo.nacknowledge(aloSource, error);
                 }
