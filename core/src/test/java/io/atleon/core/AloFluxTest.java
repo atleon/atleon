@@ -309,6 +309,35 @@ class AloFluxTest {
     }
 
     @Test
+    public void publishedAloIsNotAcknowledgedWhenUpstreamErrorsFollowedByAcknowledgement() {
+        TestAlo alo = new TestAlo("DATA");
+
+        Sinks.Many<String> sink = Sinks.many().multicast().onBackpressureBuffer();
+
+        Function<String, Flux<String>> stringToFlux = data -> sink.asFlux();
+
+        AloFlux<String> aloFlux = AloFlux.wrap(Flux.just(alo))
+            .groupBy(Function.identity(), Integer.MAX_VALUE)
+            .flatMapAlo(it -> it.concatMap(stringToFlux));
+
+        AtomicReference<Alo<String>> first = new AtomicReference<>(null);
+
+        StepVerifier.create(aloFlux)
+            .expectSubscription()
+            .then(() -> sink.tryEmitNext("D"))
+            .consumeNextWith(aloData -> {
+                assertEquals("D", aloData.get());
+                first.set(aloData);
+                sink.tryEmitError(new IllegalArgumentException());
+            })
+            .then(() -> Alo.acknowledge(first.get()))
+            .then(() -> assertFalse(alo.isAcknowledged()))
+            .then(() -> assertFalse(alo.isNacknowledged()))
+            .expectError()
+            .verify();
+    }
+
+    @Test
     public void publishedAloNacknowledgesAfterDownstreamNacknowledgement() {
         TestAlo alo = new TestAlo("DATA");
 
