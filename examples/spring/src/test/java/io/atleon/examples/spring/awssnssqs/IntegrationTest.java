@@ -39,6 +39,8 @@ public class IntegrationTest {
 
     private static final String SQS_INPUT_QUEUE_NAME = "example-sqs-input-queue";
 
+    private static final String SQS_OUTPUT_QUEUE_NAME = "example-sqs-output-queue";
+
     @Autowired
     private String snsInputTopicArn; // Application creates this from set topic name, so just reuse it
 
@@ -81,7 +83,8 @@ public class IntegrationTest {
                 "example.aws.sns.sqs." + SnsConfig.ENDPOINT_OVERRIDE_CONFIG + "=" + CONTAINER.getSnsEndpointOverride(),
                 "example.aws.sns.sqs." + SqsConfig.ENDPOINT_OVERRIDE_CONFIG + "=" + CONTAINER.getSqsEndpointOverride(),
                 "stream.sns.input.topic.name=" + SNS_INPUT_TOPIC_NAME,
-                "stream.sqs.input.queue.name=" + SQS_INPUT_QUEUE_NAME
+                "stream.sqs.input.queue.name=" + SQS_INPUT_QUEUE_NAME,
+                "stream.sqs.output.queue.name=" + SQS_OUTPUT_QUEUE_NAME
             );
         }
     }

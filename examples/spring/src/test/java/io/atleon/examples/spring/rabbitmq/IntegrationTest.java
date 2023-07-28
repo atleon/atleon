@@ -37,6 +37,8 @@ public class IntegrationTest {
 
     private static final String INPUT_QUEUE = "example-rabbitmq-input-queue";
 
+    private static final String OUTPUT_QUEUE = "example-rabbitmq-output-queue";
+
     @Autowired
     private Consumer<Number> specialNumberConsumer; // Known mock from Test Configuration
 
@@ -72,7 +74,8 @@ public class IntegrationTest {
                 "example.rabbitmq." + ConnectionFactoryConfigurator.USERNAME + "=" + AMQP_CONFIG.getUsername(),
                 "example.rabbitmq." + ConnectionFactoryConfigurator.PASSWORD + "=" + AMQP_CONFIG.getPassword(),
                 "stream.rabbitmq.exchange=" + EXCHANGE,
-                "stream.rabbitmq.input.queue=" + INPUT_QUEUE
+                "stream.rabbitmq.input.queue=" + INPUT_QUEUE,
+                "stream.rabbitmq.output.queue=" + OUTPUT_QUEUE
             );
         }
     }

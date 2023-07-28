@@ -20,6 +20,14 @@ public class SqsConfiguration {
         return createQueueUrl(awsProperties, queueName);
     }
 
+    @Bean("sqsOutputQueueUrl")
+    public String sqsOutputQueueUrl(
+        @Qualifier("exampleAwsSnsSqsProperties") Map<String, ?> awsProperties,
+        @Value("${stream.sqs.output.queue.name}") String queueName
+    ) {
+        return createQueueUrl(awsProperties, queueName);
+    }
+
     private static String createQueueUrl(Map<String, ?> awsProperties, String queueName) {
         try (SqsAsyncClient client = SqsConfig.create(awsProperties).buildClient()) {
             return client.createQueue(builder -> builder.queueName(queueName)).join().queueUrl();

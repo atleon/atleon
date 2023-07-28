@@ -20,7 +20,10 @@ public class NumbersService {
                 return false;
             }
         }
-        specialNumberConsumer.accept(number);
         return safeValue > 0;
+    }
+
+    public void handleNumber(Number number) {
+        specialNumberConsumer.accept(number);
     }
 }
