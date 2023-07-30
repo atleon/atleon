@@ -46,7 +46,7 @@ final class AcknowledgementQueue {
      * @return The In-Flight Acknowledgement to be completed on this Queue in the Future
      */
     public InFlight add(Runnable acknowledger, Consumer<? super Throwable> nacknowledger) {
-        for (; ;) {
+        for (; ; ) {
             InFlight observedTail = tail;
             InFlight previous = observedTail == null || observedTail.isSevered() ? null : observedTail;
             InFlight newTail = new InFlight(acknowledger, nacknowledger, previous);
@@ -92,8 +92,7 @@ final class AcknowledgementQueue {
         long drained = 0L;
         int missed = 1;
         do {
-            while (!drainQueue.isEmpty()) {
-                InFlight completed = drainQueue.remove();
+            for (InFlight completed = drainQueue.poll(); completed != null; completed = drainQueue.poll()) {
                 if (!completed.isSevered()) {
                     drained += completed.isHead() ? drainHead(completed) : drainNonHead(completed);
                 }
@@ -229,12 +228,10 @@ final class AcknowledgementQueue {
         }
 
         private void execute() {
-            if (STATE.getAndSet(this, State.EXECUTED) != State.EXECUTED) {
-                executeAcknowledgement();
+            if (STATE.getAndSet(this, State.EXECUTED) == State.EXECUTED) {
+                return;
             }
-        }
 
-        private void executeAcknowledgement() {
             if (error == null) {
                 acknowledger.run();
             } else {
