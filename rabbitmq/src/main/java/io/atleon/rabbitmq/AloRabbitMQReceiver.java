@@ -1,5 +1,6 @@
 package io.atleon.rabbitmq;
 
+import io.atleon.core.Acknowledgement;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
@@ -204,11 +205,12 @@ public class AloRabbitMQReceiver<T> {
                 delivery.getEnvelope().isRedeliver()
             );
 
-            return aloFactory.create(
-                message,
+            Acknowledgement acknowledgement = Acknowledgement.create(
                 () -> ack(delivery, errorEmitter),
                 nacknowledgerFactory.create(message, requeue -> nack(delivery, requeue, errorEmitter), errorEmitter)
             );
+
+            return aloFactory.create(message, acknowledgement::positive, acknowledgement::negative);
         }
 
         private static <T> NacknowledgerFactory<T> createNacknowledgerFactory(RabbitMQConfig config) {
