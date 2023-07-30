@@ -4,14 +4,11 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Predicate;
 
 /**
  * A Publisher of {@link Alo} produced from a published mapping of another Alo. Takes care of
@@ -47,17 +44,23 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
     private static final class AcknowledgingSubscriber<T> implements Subscriber<T> {
 
-        private enum State {ACTIVE, IN_FLIGHT, EXECUTED}
+        private enum State {ACTIVE, IN_FLIGHT, EXECUTING, EXECUTED}
 
-        private final AtomicReference<State> state = new AtomicReference<>(State.ACTIVE);
+        private static final AtomicReferenceFieldUpdater<AcknowledgingSubscriber, State> STATE =
+            AtomicReferenceFieldUpdater.newUpdater(AcknowledgingSubscriber.class, State.class, "state");
 
-        private final Collection<Reference<T>> unacknowledged = Collections.newSetFromMap(new IdentityHashMap<>());
+        private static final AtomicLongFieldUpdater<AcknowledgingSubscriber> COUNT =
+            AtomicLongFieldUpdater.newUpdater(AcknowledgingSubscriber.class, "count");
 
         private final Alo<Publisher<T>> aloSource;
 
         private final AloFactory<T> factory;
 
         private final Subscriber<? super Alo<T>> subscriber;
+
+        private volatile State state = State.ACTIVE;
+
+        private volatile long count = 1L; // Initialize to one for onComplete
 
         public AcknowledgingSubscriber(Alo<Publisher<T>> aloSource, Subscriber<? super Alo<T>> subscriber) {
             this.aloSource = aloSource;
@@ -83,45 +86,30 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
         @Override
         public void onNext(T value) {
-            // Use WeakReferences to track which emitted values have/haven't been acknowledged,
-            // allowing those values to be garbage collected if their downstream transformations
-            // do not require a handle on the originating value (and are processed asynchronously)
-            Reference<T> valueReference = new WeakReference<>(
-                Objects.requireNonNull(value, "Empty value emitted - Adhering to ReactiveStreams rule 2.13")
-            );
-            synchronized (unacknowledged) {
-                // Ignoring race condition with IN_FLIGHT here; Execution is predicated on
-                // obtaining a synchronization lock on `unacknowledged` which we own at this point
-                if (state.get() == State.ACTIVE) {
-                    unacknowledged.add(valueReference);
-                }
-            }
-            // We MUST pass the raw value here and not just the Reference. This is because it is
-            // possible for the Reference's referent to be garbage collected between the above
-            // Reference creation and calling `get` on said Reference
-            subscriber.onNext(wrap(value, valueReference));
+            Acknowledgement acknowledgement = Acknowledgement.create(this::inFlightAcknowledged, this::inFlightNacknowledged);
+
+            COUNT.incrementAndGet(this);
+            subscriber.onNext(factory.create(value, acknowledgement::positive, acknowledgement::negative));
         }
 
         @Override
         public void onError(Throwable error) {
             AtomicReference<Throwable> errorReference = new AtomicReference<>(null);
 
-            // Delegation to failure strategy may result in execution, so must synchronize
-            synchronized (unacknowledged) {
-                if (state.compareAndSet(State.ACTIVE, State.IN_FLIGHT) &&
-                    AloFailureStrategy.choose(subscriber).process(aloSource, error, errorReference::set)) {
-                    // If we get here, the error we have received is the terminating signal, and
-                    // that error has been successfully handled by the chosen failure strategy.
-                    // We therefore mark our state as executed, which we can safely do since other
-                    // executions require a lock on unacknowledged. This will avoid any further
-                    // unnecessary error propagation.
-                    state.set(State.EXECUTED);
-                } else {
-                    // If we get here, the error was either not the terminating signal or handling
-                    // the error has been delegated to us. Make sure the negative acknowledgement
-                    // is executed if it's possible to do so
-                    maybeExecuteNacknowledger(error);
-                }
+            if (STATE.compareAndSet(this, State.ACTIVE, State.EXECUTING) &&
+                AloFailureStrategy.choose(subscriber).process(aloSource, error, errorReference::set)) {
+                // If we get here, the error we have received is the terminating signal, and that
+                // error has been successfully handled by the chosen failure strategy. We therefore
+                // clean up by marking our state as EXECUTED, which we can safely do since we know
+                // the state MUST currently be EXECUTING, and no further termination action(s) can
+                // (or should) be executed.
+                STATE.set(this, State.EXECUTED);
+            } else {
+                // If we get here, the error was either not the terminating signal (and therefore
+                // negative acknowledgement has been executed, or we raced with it), or handling
+                // the error has been delegated to us. Make sure negative acknowledgement is
+                // executed if it's possible to do so
+                maybeExecuteNacknowledger(error, priorState -> priorState == State.ACTIVE || priorState == State.EXECUTING);
             }
 
             Throwable errorToEmit = errorReference.get();
@@ -137,46 +125,31 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
         @Override
         public void onComplete() {
-            if (state.compareAndSet(State.ACTIVE, State.IN_FLIGHT)) {
+            if (STATE.compareAndSet(this, State.ACTIVE, State.IN_FLIGHT) && COUNT.decrementAndGet(this) == 0L) {
                 maybeExecuteAcknowledger();
             }
             subscriber.onComplete();
         }
 
-        private Alo<T> wrap(T value, Reference<T> valueReference) {
-            return factory.create(
-                value,
-                () -> {
-                    synchronized (unacknowledged) {
-                        if (unacknowledged.remove(valueReference)) {
-                            maybeExecuteAcknowledger();
-                        }
-                    }
-                },
-                error -> {
-                    synchronized (unacknowledged) {
-                        if (unacknowledged.contains(valueReference)) {
-                            maybeExecuteNacknowledger(error);
-                        }
-                    }
-                }
-            );
-        }
-
-        private void maybeExecuteAcknowledger() {
-            synchronized (unacknowledged) {
-                if (unacknowledged.isEmpty() && state.compareAndSet(State.IN_FLIGHT, State.EXECUTED)) {
-                    Alo.acknowledge(aloSource);
-                }
+        private void inFlightAcknowledged() {
+            if (COUNT.decrementAndGet(this) == 0L) { // Can only reach zero after onComplete
+                maybeExecuteAcknowledger();
             }
         }
 
-        private void maybeExecuteNacknowledger(Throwable error) {
-            synchronized (unacknowledged) {
-                if (state.getAndSet(State.EXECUTED) != State.EXECUTED) {
-                    unacknowledged.clear();
-                    Alo.nacknowledge(aloSource, error);
-                }
+        private void inFlightNacknowledged(Throwable error) {
+            maybeExecuteNacknowledger(error, priorState -> priorState == State.ACTIVE || priorState == State.IN_FLIGHT);
+        }
+
+        private void maybeExecuteAcknowledger() {
+            if (STATE.compareAndSet(this, State.IN_FLIGHT, State.EXECUTED)) {
+                Alo.acknowledge(aloSource);
+            }
+        }
+
+        private void maybeExecuteNacknowledger(Throwable error, Predicate<State> priorStateMustMatch) {
+            if (priorStateMustMatch.test(STATE.getAndSet(this, State.EXECUTED))) {
+                Alo.nacknowledge(aloSource, error);
             }
         }
     }

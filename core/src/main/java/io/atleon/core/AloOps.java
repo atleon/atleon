@@ -2,7 +2,6 @@ package io.atleon.core;
 
 import reactor.core.publisher.SynchronousSink;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -84,26 +83,6 @@ final class AloOps {
                     sink.next(PresentAlo.wrap(result));
                 } else {
                     absentConsumer.accept(alo);
-                }
-            }
-        };
-    }
-
-    public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<Collection<R>>>>
-    mappingToManyHandler(Function<? super T, ? extends Collection<R>> mapper, Consumer<? super Alo<T>> emptyMappingConsumer) {
-        return (alo, sink) -> {
-            Alo<Collection<R>> result = null;
-            try {
-                result = Objects.requireNonNull(alo.map(mapper), "Alo implementation returned null mapping");
-            } catch (Throwable error) {
-                processFailureOrNacknowledge(sink, alo, error);
-            }
-
-            if (result != null) {
-                if (result.get().isEmpty()) {
-                    emptyMappingConsumer.accept(alo);
-                } else {
-                    sink.next(result);
                 }
             }
         };
