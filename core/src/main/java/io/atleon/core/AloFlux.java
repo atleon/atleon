@@ -183,6 +183,17 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * Similar to (and backed by) {@link Flux#flatMapIterable(Function)}, map each emitted Alo data
+     * item to a Collection of results, which are then flattened and emitted as Alo-wrapped
+     * elements.
+     *
+     * @param mapper Function that maps each data item to a Collection of results
+     */
+    public <R> AloFlux<R> flatMapCollection(Function<? super T, ? extends Collection<? extends R>> mapper) {
+        return flatMap(mapper.andThen(Flux::fromIterable));
+    }
+
+    /**
      * @see Flux#flatMap(Function)
      */
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper) {
@@ -206,19 +217,6 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper, int concurrency, int prefetch) {
         return wrapped.<Alo<Publisher<V>>>handle(AloOps.mappingHandler(mapper))
             .flatMap(AcknowledgingPublisher::fromAloPublisher, concurrency, prefetch)
-            .as(AloFlux::new);
-    }
-
-    /**
-     * Similar to (and backed by) {@link Flux#flatMapIterable(Function)}, map each emitted Alo data
-     * item to a Collection of results, which are then flattened and emitted as Alo-wrapped
-     * elements.
-     *
-     * @param mapper Function that maps each data item to a Collection of results
-     */
-    public <R, C extends Collection<R>> AloFlux<R> flatMapCollection(Function<? super T, ? extends C> mapper) {
-        return wrapped.handle(AloOps.mappingToManyHandler(mapper, Alo::acknowledge))
-            .flatMapIterable(AcknowledgingCollection::fromNonEmptyAloCollection)
             .as(AloFlux::new);
     }
 
