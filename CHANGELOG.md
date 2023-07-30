@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.19.3]
+atleon `0.19.3` is a beta release containing updates outlined below
+
+### Fixes
+* [#232] `AloRabbitMQReceiver` now ensures `Alo` acknowledgement is idempotent
+* [#234] Refactor `AcknowledgingPublisher` to use pure state machine, and remove synchronization for efficiency
+* [#236] Activity Enforcement now uses System epoch millis rather than `Instant` to avert GC overhead
+
 # [0.19.2]
 atleon `0.19.2` is a beta release containing updates outlined below
 
