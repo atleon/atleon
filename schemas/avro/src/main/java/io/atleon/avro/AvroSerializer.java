@@ -12,6 +12,7 @@ import org.apache.avro.io.EncoderFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.util.EnumSet;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -31,6 +32,8 @@ import java.util.function.Supplier;
  */
 public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
 
+    private enum Transform {REMOVE_JAVA_PROPERTIES}
+
     private final GenericData genericData;
 
     private final Function<Type, Schema> typeSchemaLoader;
@@ -39,14 +42,14 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
 
     private final boolean schemaGenerationEnabled;
 
-    private final boolean removeJavaProperties;
+    private final EnumSet<Transform> transforms;
 
     private final AvroSchemaCache<Class<?>> schemaCache = new AvroSchemaCache<>();
 
     private final AvroSchemaCache<Schema> transformedSchemas = new AvroSchemaCache<>();
 
     private AvroSerializer(GenericData genericData, Function<Type, Schema> typeSchemaLoader) {
-        this(genericData, typeSchemaLoader, false, false, false);
+        this(genericData, typeSchemaLoader, false, false, EnumSet.noneOf(Transform.class));
     }
 
     private AvroSerializer(
@@ -54,13 +57,13 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
         Function<Type, Schema> typeSchemaLoader,
         boolean schemaCachingEnabled,
         boolean schemaGenerationEnabled,
-        boolean removeJavaProperties
+        EnumSet<Transform> transforms
     ) {
         this.genericData = genericData;
         this.typeSchemaLoader = typeSchemaLoader;
         this.schemaCachingEnabled = schemaCachingEnabled;
         this.schemaGenerationEnabled = schemaGenerationEnabled;
-        this.removeJavaProperties = removeJavaProperties;
+        this.transforms = transforms;
     }
 
     public static <T> AvroSerializer<T> generic() {
@@ -81,7 +84,7 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
             typeSchemaLoader,
             schemaCachingEnabled,
             schemaGenerationEnabled,
-            removeJavaProperties
+            transforms
         );
     }
 
@@ -91,7 +94,7 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
             typeSchemaLoader,
             schemaCachingEnabled,
             schemaGenerationEnabled,
-            removeJavaProperties
+            transforms
         );
     }
 
@@ -101,7 +104,7 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
             typeSchemaLoader,
             schemaCachingEnabled,
             schemaGenerationEnabled,
-            removeJavaProperties
+            modifyIfNecessary(transforms, Transform.REMOVE_JAVA_PROPERTIES, removeJavaProperties)
         );
     }
 
@@ -127,11 +130,7 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
             ? () -> AvroSerialization.generateWriterSchema(data, typeSchemaLoader)
             : () -> typeSchemaLoader.apply(data.getClass());
         Schema schema = AvroSchemas.getOrSupply(data, supplier);
-        return areAnySchemaTransformsEnabled() ? transformSchema(schema) : schema;
-    }
-
-    private boolean areAnySchemaTransformsEnabled() {
-        return removeJavaProperties;
+        return transforms.isEmpty() ? schema : transformSchema(schema);
     }
 
     private Schema transformSchema(Schema schema) {
@@ -141,7 +140,7 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
     }
 
     private Schema transformUncachedSchema(Schema schema) {
-        if (removeJavaProperties) {
+        if (transforms.contains(Transform.REMOVE_JAVA_PROPERTIES)) {
             schema = AvroSchemas.removeJavaProperties(schema);
         }
         return schema;
@@ -149,5 +148,11 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
 
     private DatumWriter<T> createDatumWriter(Schema schema) {
         return (DatumWriter<T>) genericData.createDatumWriter(schema);
+    }
+
+    private static <E extends Enum<E>> EnumSet<E> modifyIfNecessary(EnumSet<E> source, E value, boolean shouldContain) {
+        EnumSet<E> result = EnumSet.copyOf(source);
+        boolean modified = shouldContain ? result.add(value) : result.remove(value);
+        return modified ? result : source;
     }
 }
