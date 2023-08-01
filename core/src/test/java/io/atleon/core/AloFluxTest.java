@@ -73,7 +73,7 @@ class AloFluxTest {
     @Test
     public void emptyManyMappingHasConsumerExecuted() {
         TestAlo empty = new TestAlo("");
-        Flux.just(empty).as(AloFlux::wrap).flatMapCollection(this::extractCharacters).unwrap().then().block();
+        Flux.just(empty).as(AloFlux::wrap).flatMapIterable(this::extractCharacters).unwrap().then().block();
         assertTrue(empty.isAcknowledged());
     }
 
@@ -82,7 +82,7 @@ class AloFluxTest {
         TestAlo alo = new TestAlo("DATA");
 
         List<Alo<String>> result =
-            Flux.just(alo).as(AloFlux::wrap).flatMapCollection(this::extractCharacters).unwrap().collectList().block();
+            Flux.just(alo).as(AloFlux::wrap).flatMapIterable(this::extractCharacters).unwrap().collectList().block();
 
         assertNotNull(result);
         assertEquals(4, result.size());
@@ -106,7 +106,7 @@ class AloFluxTest {
         TestAlo alo = new TestAlo("DATA");
 
         List<Alo<String>> result =
-            Flux.just(alo).as(AloFlux::wrap).flatMapCollection(this::extractCharacters).unwrap().collectList().block();
+            Flux.just(alo).as(AloFlux::wrap).flatMapIterable(this::extractCharacters).unwrap().collectList().block();
 
         assertNotNull(result);
         assertEquals(4, result.size());
@@ -133,7 +133,7 @@ class AloFluxTest {
         TestAlo alo = new TestAlo("DATA");
 
         List<Alo<String>> result =
-            Flux.just(alo).as(AloFlux::wrap).flatMapCollection(this::extractCharacters).unwrap().collectList().block();
+            Flux.just(alo).as(AloFlux::wrap).flatMapIterable(this::extractCharacters).unwrap().collectList().block();
 
         assertNotNull(result);
         assertEquals(4, result.size());

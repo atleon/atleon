@@ -183,13 +183,17 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
-     * Similar to (and backed by) {@link Flux#flatMapIterable(Function)}, map each emitted Alo data
-     * item to a Collection of results, which are then flattened and emitted as Alo-wrapped
-     * elements.
-     *
-     * @param mapper Function that maps each data item to a Collection of results
+     * @deprecated Use {@link AloFlux#flatMapIterable(Function)} instead
      */
+    @Deprecated
     public <R> AloFlux<R> flatMapCollection(Function<? super T, ? extends Collection<? extends R>> mapper) {
+        return flatMapIterable(mapper);
+    }
+
+    /**
+     * @see Flux#flatMapIterable(Function)
+     */
+    public <R> AloFlux<R> flatMapIterable(Function<? super T, ? extends Iterable<? extends R>> mapper) {
         return flatMap(mapper.andThen(Flux::fromIterable));
     }
 
