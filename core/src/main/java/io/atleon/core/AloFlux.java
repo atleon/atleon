@@ -281,8 +281,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param numGroups       How many groups to divide the source sequence in to
      * @return A Flux of grouped AloFluxes
      */
-    public GroupFlux<AloGroupedFlux<Integer, T>>
-    groupByNumberHash(Function<? super T, ? extends Number> numberExtractor, int numGroups) {
+    public GroupFlux<Integer, T> groupByNumberHash(Function<? super T, ? extends Number> numberExtractor, int numGroups) {
         return groupBy(NumberHashGroupExtractor.composed(numberExtractor, numGroups), numGroups);
     }
 
@@ -295,7 +294,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param numGroups       How many groups to divide the source sequence in to
      * @return A Flux of grouped AloFluxes
      */
-    public <V> GroupFlux<AloGroupedFlux<Integer, V>> groupByNumberHash(
+    public <V> GroupFlux<Integer, V> groupByNumberHash(
         Function<? super T, ? extends Number> numberExtractor,
         int numGroups,
         Function<? super T, V> valueMapper
@@ -312,8 +311,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param numGroups       How many groups to divide the source sequence in to
      * @return A Flux of grouped AloFluxes
      */
-    public GroupFlux<AloGroupedFlux<Integer, T>>
-    groupByStringHash(Function<? super T, String> stringExtractor, int numGroups) {
+    public GroupFlux<Integer, T> groupByStringHash(Function<? super T, String> stringExtractor, int numGroups) {
         return groupBy(StringHashGroupExtractor.composed(stringExtractor, numGroups), numGroups);
     }
 
@@ -326,7 +324,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param numGroups       How many groups to divide the source sequence in to
      * @return A Flux of grouped AloFluxes
      */
-    public <V> GroupFlux<AloGroupedFlux<Integer, V>>
+    public <V> GroupFlux<Integer, V>
     groupByStringHash(Function<? super T, String> stringExtractor, int numGroups, Function<? super T, V> valueMapper) {
         return groupBy(StringHashGroupExtractor.composed(stringExtractor, numGroups), numGroups, valueMapper);
     }
@@ -334,22 +332,21 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     /**
      * @see Flux#groupBy(Function)
      */
-    public <K> GroupFlux<AloGroupedFlux<K, T>>
-    groupBy(Function<? super T, ? extends K> groupExtractor, int cardinality) {
+    public <K> GroupFlux<K, T> groupBy(Function<? super T, ? extends K> groupExtractor, int cardinality) {
         return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()))
             .<AloGroupedFlux<K, T>>map(AloGroupedFlux::create)
-            .as(flux -> new GroupFlux<>(flux, cardinality));
+            .as(flux -> GroupFlux.create(flux, cardinality));
     }
 
     /**
      * @see Flux#groupBy(Function)
      */
-    public <K, V> GroupFlux<AloGroupedFlux<K, V>>
+    public <K, V> GroupFlux<K, V>
     groupBy(Function<? super T, ? extends K> groupExtractor, int cardinality, Function<? super T, V> valueMapper) {
         BiConsumer<Alo<T>, SynchronousSink<Alo<V>>> aloValueMappingHandler = AloOps.mappingHandler(valueMapper);
         return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()))
             .<AloGroupedFlux<K, V>>map(groupedFlux -> AloGroupedFlux.create(groupedFlux, aloValueMappingHandler))
-            .as(flux -> new GroupFlux<>(flux, cardinality));
+            .as(flux -> GroupFlux.create(flux, cardinality));
     }
 
     /**
