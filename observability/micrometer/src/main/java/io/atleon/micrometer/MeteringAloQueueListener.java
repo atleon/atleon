@@ -95,7 +95,7 @@ public abstract class MeteringAloQueueListener<K> implements AloQueueListener {
 
     private void registerGauge(MeterKey meterKey) {
         try {
-            Gauge.builder(inFlightMetricName, meterKey, IN_FLIGHT_GROUP_REGISTRY::evaluate)
+            Gauge.builder(meterKey.getName(), meterKey, IN_FLIGHT_GROUP_REGISTRY::evaluate)
                 .description("The number of in-flight Alo items awaiting acknowledgement execution")
                 .tags(meterKey.getTags())
                 .register(meterRegistry);
