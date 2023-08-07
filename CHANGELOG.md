@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.20.0]
+atleon `0.20.0` is a beta release containing updates outlined below
+
+### Fixes
+* [#239] `flatMapCollection` deprecated in favor of `flatMapIterable` (Reactor parity)
+* [#240] Added several convenience methods for working with grouping to make it easier to define and convert to concurrent pipelines
+
 # [0.19.3]
 atleon `0.19.3` is a beta release containing updates outlined below
 
