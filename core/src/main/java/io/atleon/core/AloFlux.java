@@ -350,6 +350,18 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * Apply grouping by round-robin emission on the provided number of "rails"
+     *
+     * @param cardinality the number of processing "rails"
+     * @return a {@link GroupFlux} where keys are rail IDs
+     */
+    public GroupFlux<Integer, T> groupByRoundRobin(int cardinality) {
+        return wrapped.parallel(cardinality).groups()
+            .map(AloGroupedFlux::create)
+            .as(flux -> GroupFlux.create(flux, cardinality));
+    }
+
+    /**
      * @see Flux#publishOn(Scheduler)
      */
     public AloFlux<T> publishOn(Scheduler scheduler) {
