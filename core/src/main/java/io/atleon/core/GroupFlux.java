@@ -160,6 +160,14 @@ public class GroupFlux<K, T> {
     }
 
     /**
+     * @deprecated Use {{@link #map(Function)}} instead
+     */
+    @Deprecated
+    public final <V> GroupFlux<K, V> mapExtended(Function<? super AloGroupedFlux<K, T>, ? extends Publisher<Alo<V>>> mapper) {
+        return map(mapper);
+    }
+
+    /**
      * Transform the items emitted by this {@link GroupFlux} by applying a synchronous function
      * to each item.
      *
