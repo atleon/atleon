@@ -12,7 +12,10 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
- * A wrapped {@link Flux} of grouped {@link AloFlux} sequences
+ * A wrapped {@link Flux} of grouped {@link AloFlux} sequences. Exposes convenience methods
+ * (prefixed with "inner") to transform the emitted inner grouped fluxes. By convention, in order
+ * to do useful operations on the underlying sequence(s) (like subscribe to them), any instance
+ * must be converted (back) to an {@link AloFlux} through any of the "flatMapAlo" methods.
  *
  * @param <K> the type of groups emitted by this {@link GroupFlux}
  * @param <T> the type of {@link AloFlux} emitted as each group
@@ -45,7 +48,7 @@ public class GroupFlux<K, T> {
      *
      * @return a transformed {@link GroupFlux}
      */
-    public final GroupFlux<K, T> innerFilter(Predicate<? super T> predicate) {
+    public GroupFlux<K, T> innerFilter(Predicate<? super T> predicate) {
         return map(group -> group.filter(predicate));
     }
 
@@ -55,7 +58,7 @@ public class GroupFlux<K, T> {
      *
      * @return a transformed {@link GroupFlux}
      */
-    public final <V> GroupFlux<K, V> innerMap(Function<? super T, ? extends V> mapper) {
+    public <V> GroupFlux<K, V> innerMap(Function<? super T, ? extends V> mapper) {
         return map(group -> group.map(mapper));
     }
 
@@ -65,7 +68,7 @@ public class GroupFlux<K, T> {
      *
      * @return a transformed {@link GroupFlux}
      */
-    public final <V> GroupFlux<K, V> innerMapNotNull(Function<? super T, ? extends V> mapper) {
+    public <V> GroupFlux<K, V> innerMapNotNull(Function<? super T, ? extends V> mapper) {
         return map(group -> group.mapNotNull(mapper));
     }
 
@@ -75,7 +78,7 @@ public class GroupFlux<K, T> {
      *
      * @return a transformed {@link GroupFlux}
      */
-    public final <V> GroupFlux<K, V> innerMapPresent(Function<? super T, Optional<? extends V>> mapper) {
+    public <V> GroupFlux<K, V> innerMapPresent(Function<? super T, Optional<? extends V>> mapper) {
         return map(group -> group.mapPresent(mapper));
     }
 
@@ -85,7 +88,7 @@ public class GroupFlux<K, T> {
      *
      * @return a transformed {@link GroupFlux}
      */
-    public final GroupFlux<K, Void> innerConsume(Consumer<? super T> consumer) {
+    public GroupFlux<K, Void> innerConsume(Consumer<? super T> consumer) {
         return map(group -> group.consume(consumer));
     }
 
@@ -95,7 +98,7 @@ public class GroupFlux<K, T> {
      *
      * @return a transformed {@link GroupFlux}
      */
-    public final <V> GroupFlux<K, V> innerConcatMap(Function<? super T, ? extends Publisher<V>> mapper) {
+    public <V> GroupFlux<K, V> innerConcatMap(Function<? super T, ? extends Publisher<V>> mapper) {
         return map(group -> group.concatMap(mapper));
     }
 
@@ -105,7 +108,7 @@ public class GroupFlux<K, T> {
      *
      * @return a transformed {@link GroupFlux}
      */
-    public final <V> GroupFlux<K, V> innerConcatMap(Function<? super T, ? extends Publisher<V>> mapper, int prefetch) {
+    public <V> GroupFlux<K, V> innerConcatMap(Function<? super T, ? extends Publisher<V>> mapper, int prefetch) {
         return map(group -> group.concatMap(mapper, prefetch));
     }
 
@@ -115,7 +118,7 @@ public class GroupFlux<K, T> {
      *
      * @return a transformed {@link GroupFlux}
      */
-    public final <V> GroupFlux<K, V> innerFlatMapIterable(Function<? super T, ? extends Iterable<? extends V>> mapper) {
+    public <V> GroupFlux<K, V> innerFlatMapIterable(Function<? super T, ? extends Iterable<? extends V>> mapper) {
         return map(group -> group.flatMapIterable(mapper));
     }
 
@@ -125,7 +128,7 @@ public class GroupFlux<K, T> {
      *
      * @return a transformed {@link GroupFlux}
      */
-    public final GroupFlux<K, List<T>> innerBufferTimeout(int maxSize, Duration maxTime) {
+    public GroupFlux<K, List<T>> innerBufferTimeout(int maxSize, Duration maxTime) {
         return map(group -> group.bufferTimeout(maxSize, maxTime));
     }
 
@@ -135,7 +138,7 @@ public class GroupFlux<K, T> {
      *
      * @return a transformed {@link GroupFlux}
      */
-    public final GroupFlux<K, List<T>> innerBufferTimeout(int maxSize, Duration maxTime, Scheduler scheduler) {
+    public GroupFlux<K, List<T>> innerBufferTimeout(int maxSize, Duration maxTime, Scheduler scheduler) {
         return map(group -> group.bufferTimeout(maxSize, maxTime, scheduler));
     }
 
@@ -145,7 +148,7 @@ public class GroupFlux<K, T> {
      *
      * @return a transformed {@link GroupFlux}
      */
-    public final GroupFlux<K, T> innerPublishOn(Scheduler scheduler) {
+    public GroupFlux<K, T> innerPublishOn(Scheduler scheduler) {
         return map(group -> group.publishOn(scheduler));
     }
 
@@ -155,7 +158,7 @@ public class GroupFlux<K, T> {
      *
      * @return a transformed {@link GroupFlux}
      */
-    public final GroupFlux<K, T> innerPublishOn(Scheduler scheduler, int prefetch) {
+    public GroupFlux<K, T> innerPublishOn(Scheduler scheduler, int prefetch) {
         return map(group -> group.publishOn(scheduler, prefetch));
     }
 
@@ -163,7 +166,7 @@ public class GroupFlux<K, T> {
      * @deprecated Use {{@link #map(Function)}} instead
      */
     @Deprecated
-    public final <V> GroupFlux<K, V> mapExtended(Function<? super AloGroupedFlux<K, T>, ? extends Publisher<Alo<V>>> mapper) {
+    public <V> GroupFlux<K, V> mapExtended(Function<? super AloGroupedFlux<K, T>, ? extends Publisher<Alo<V>>> mapper) {
         return map(mapper);
     }
 
@@ -176,7 +179,7 @@ public class GroupFlux<K, T> {
      * @return a transformed {@link GroupFlux}
      * @see Flux#map(Function)
      */
-    public final <V> GroupFlux<K, V> map(Function<? super AloGroupedFlux<K, T>, ? extends Publisher<Alo<V>>> mapper) {
+    public <V> GroupFlux<K, V> map(Function<? super AloGroupedFlux<K, T>, ? extends Publisher<Alo<V>>> mapper) {
         return new GroupFlux<>(wrapped.map(group -> group.transformGrouped(mapper)), cardinality);
     }
 
@@ -186,7 +189,7 @@ public class GroupFlux<K, T> {
      *
      * @return a new {@link AloFlux} of the merged results
      */
-    public final AloFlux<T> flatMapAlo() {
+    public AloFlux<T> flatMapAlo() {
         return flatMapAlo(Function.identity());
     }
 
@@ -200,7 +203,7 @@ public class GroupFlux<K, T> {
      * @return a new {@link AloFlux} of the merged results
      * @see Flux#flatMap(Function)
      */
-    public final <V> AloFlux<V> flatMapAlo(Function<? super AloGroupedFlux<K, T>, ? extends Publisher<Alo<V>>> mapper) {
+    public <V> AloFlux<V> flatMapAlo(Function<? super AloGroupedFlux<K, T>, ? extends Publisher<Alo<V>>> mapper) {
         return wrapped.flatMap(mapper, cardinality).as(AloFlux::wrap);
     }
 }
