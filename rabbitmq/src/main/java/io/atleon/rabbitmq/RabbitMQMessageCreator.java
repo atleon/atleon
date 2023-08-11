@@ -7,6 +7,7 @@ import java.util.function.Function;
  *
  * @param <T> The type of message bodies
  */
+@FunctionalInterface
 public interface RabbitMQMessageCreator<T> extends Function<T, RabbitMQMessage<T>> {
 
     @Override

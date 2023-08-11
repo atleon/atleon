@@ -2,6 +2,7 @@ package io.atleon.rabbitmq;
 
 import com.rabbitmq.client.AMQP;
 
+import java.util.Date;
 import java.util.UUID;
 
 public abstract class AbstractRabbitMQMessageCreator<T> implements RabbitMQMessageCreator<T> {
@@ -26,6 +27,8 @@ public abstract class AbstractRabbitMQMessageCreator<T> implements RabbitMQMessa
     protected abstract String extractRoutingKey(T body);
 
     protected AMQP.BasicProperties.Builder createMessagePropertiesBuilder(T body) {
-        return initialProperties.builder().messageId(UUID.randomUUID().toString());
+        return initialProperties.builder()
+            .messageId(UUID.randomUUID().toString())
+            .timestamp(new Date());
     }
 }
