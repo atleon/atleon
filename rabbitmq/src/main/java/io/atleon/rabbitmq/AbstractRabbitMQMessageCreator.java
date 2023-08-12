@@ -19,7 +19,8 @@ public abstract class AbstractRabbitMQMessageCreator<T> implements RabbitMQMessa
             extractExchange(body),
             extractRoutingKey(body),
             createMessagePropertiesBuilder(body).build(),
-            body);
+            body
+        );
     }
 
     protected abstract String extractExchange(T body);

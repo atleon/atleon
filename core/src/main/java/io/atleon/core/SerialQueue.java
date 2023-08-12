@@ -61,8 +61,8 @@ public final class SerialQueue<T> {
 
         int missed = 1;
         do {
-            while (!queue.isEmpty()) {
-                drain.accept(queue.remove());
+            for (T t = queue.poll(); t != null; t = queue.poll()) {
+                drain.accept(t);
             }
             missed = DRAINS_IN_PROGRESS.addAndGet(this, -missed);
         } while (missed != 0);
