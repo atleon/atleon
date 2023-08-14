@@ -23,12 +23,12 @@ public class SqsConfigSource extends ConfigSource<SqsConfig, SqsConfigSource> {
         super(propertiesToName);
     }
 
-    public static SqsConfigSource named(String name) {
-        return new SqsConfigSource(name);
-    }
-
     public static SqsConfigSource unnamed() {
         return new SqsConfigSource();
+    }
+
+    public static SqsConfigSource named(String name) {
+        return new SqsConfigSource(name);
     }
 
     @Override

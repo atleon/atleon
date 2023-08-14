@@ -27,6 +27,10 @@ public class KafkaConfigSource extends ConfigSource<KafkaConfig, KafkaConfigSour
         super(propertiesToName);
     }
 
+    public static KafkaConfigSource unnamed() {
+        return new KafkaConfigSource();
+    }
+
     public static KafkaConfigSource named(String name) {
         return new KafkaConfigSource(name);
     }

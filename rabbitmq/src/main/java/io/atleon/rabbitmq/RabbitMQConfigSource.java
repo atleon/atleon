@@ -23,12 +23,12 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
         super(propertiesToName);
     }
 
-    public static RabbitMQConfigSource named(String name) {
-        return new RabbitMQConfigSource(name);
-    }
-
     public static RabbitMQConfigSource unnamed() {
         return new RabbitMQConfigSource();
+    }
+
+    public static RabbitMQConfigSource named(String name) {
+        return new RabbitMQConfigSource(name);
     }
 
     public ConnectionFactory createConnectionFactoryNow() {
