@@ -23,7 +23,7 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
     public static final String PROCESSORS_PROPERTY = "source.processors";
 
     protected ConfigSource() {
-        super();
+
     }
 
     protected ConfigSource(String name) {

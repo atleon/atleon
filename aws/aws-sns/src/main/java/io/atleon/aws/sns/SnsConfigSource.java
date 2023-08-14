@@ -23,12 +23,12 @@ public class SnsConfigSource extends ConfigSource<SnsConfig, SnsConfigSource> {
         super(propertiesToName);
     }
 
-    public static SnsConfigSource named(String name) {
-        return new SnsConfigSource(name);
-    }
-
     public static SnsConfigSource unnamed() {
         return new SnsConfigSource();
+    }
+
+    public static SnsConfigSource named(String name) {
+        return new SnsConfigSource(name);
     }
 
     @Override
