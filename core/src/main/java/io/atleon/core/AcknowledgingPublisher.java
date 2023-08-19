@@ -74,7 +74,7 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
             // management. This is due to the following logic, applicable upon cancellation:
             // 1) No matter what, we MUST propagate cancellation to obey ReactiveStreams rule 1.8
             // 2) We SHOULD NOT call any downstream subscriber methods since downstream has
-            //    cancelled (signals would likely just be ignored)
+            //    cancelled (signals likely ignored and follows ReactiveStreams rule 1.8+TCK)
             // 3) We SHOULD NOT negatively acknowledge since we have no error with which to do so
             // 4) We MUST NOT positively acknowledge as that could violate "at least once"
             // 5) We SHOULD NOT change state from ACTIVE, as that might interfere with reception of

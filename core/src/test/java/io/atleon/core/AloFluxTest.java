@@ -4,12 +4,16 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -582,10 +586,115 @@ class AloFluxTest {
         assertTrue(alo.getError().get().getSuppressed()[0] instanceof IllegalArgumentException);
     }
 
+    @Test
+    public void interleavedSynchronousErrorsResultInCorrectRepublishing() throws Exception {
+        TestAlo alo1 = new TestAlo("DATA1");
+        TestAlo alo2 = new TestAlo("DATA2");
+        TestAlo alo3 = new TestAlo("DATA3");
+
+        CountDownLatch latch1 = new CountDownLatch(1);
+        CountDownLatch latch2 = new CountDownLatch(1);
+        AtomicBoolean thrownOnce = new AtomicBoolean(false);
+        List<String> successfullyProcessed = new ArrayList<>();
+        Flux.just(alo1, alo2, alo3)
+            .as(AloFlux::wrap)
+            .groupBy(Function.identity(), Integer.MAX_VALUE)
+            .innerPublishOn(Schedulers.boundedElastic())
+            .innerMap(value -> {
+                if (value.equals("DATA1") && thrownOnce.compareAndSet(false, true)) {
+                    awaitSynchronously(latch1);
+                    throw new UnsupportedOperationException("Boom");
+                } else if (value.equals("DATA2")) {
+                    awaitSynchronously(latch2);
+                }
+                return value;
+            })
+            .flatMapAlo()
+            .doFinally(__ -> latch2.countDown())
+            .resubscribeOnError(AloFluxTest.class.getSimpleName(), Duration.ofSeconds(1))
+            .consumeAloAndGet(Alo::acknowledge)
+            .doOnNext(successfullyProcessed::add)
+            .doOnNext(__ -> latch1.countDown()) // Will count down when DATA3 is first emitted
+            .subscribe();
+
+        while (successfullyProcessed.size() < 4) {
+            Thread.sleep(100L);
+        }
+
+        assertEquals(1, alo1.acknowledgedCount());
+        assertEquals(1, alo2.acknowledgedCount());
+        assertEquals(2, alo3.acknowledgedCount());
+
+        assertEquals(4, successfullyProcessed.size());
+        assertEquals("DATA3", successfullyProcessed.get(0));
+        assertEquals(1, successfullyProcessed.stream().filter("DATA1"::equals).count());
+        assertEquals(1, successfullyProcessed.stream().filter("DATA2"::equals).count());
+        assertEquals(2, successfullyProcessed.stream().filter("DATA3"::equals).count());
+    }
+
+    @Test
+    public void interleavedAsynchronousErrorsResultInCorrectRepublishing() throws Exception {
+        TestAlo alo1 = new TestAlo("DATA1");
+        TestAlo alo2 = new TestAlo("DATA2");
+        TestAlo alo3 = new TestAlo("DATA3");
+
+        CountDownLatch latch1 = new CountDownLatch(1);
+        CountDownLatch latch2 = new CountDownLatch(1);
+        AtomicBoolean erroredOnce = new AtomicBoolean(false);
+        List<String> successfullyProcessed = new ArrayList<>();
+        Flux.just(alo1, alo2, alo3)
+            .as(AloFlux::wrap)
+            .groupBy(Function.identity(), Integer.MAX_VALUE)
+            .innerPublishOn(Schedulers.boundedElastic())
+            .innerConcatMap(value -> {
+                if (value.equals("DATA1") && erroredOnce.compareAndSet(false, true)) {
+                    return await(latch1).then(Mono.error(new UnsupportedOperationException("Boom")));
+                } else if (value.equals("DATA2")) {
+                    return await(latch2).thenReturn(value);
+                } else {
+                    return Mono.just(value);
+                }
+            })
+            .flatMapAlo()
+            .doFinally(__ -> latch2.countDown())
+            .resubscribeOnError(AloFluxTest.class.getSimpleName(), Duration.ofSeconds(1))
+            .consumeAloAndGet(Alo::acknowledge)
+            .doOnNext(successfullyProcessed::add)
+            .doOnNext(__ -> latch1.countDown()) // Will count down when DATA3 is first emitted
+            .subscribe();
+
+        while (successfullyProcessed.size() < 4) {
+            Thread.sleep(100L);
+        }
+
+        assertEquals(1, alo1.acknowledgedCount());
+        assertEquals(1, alo2.acknowledgedCount());
+        assertEquals(2, alo3.acknowledgedCount());
+
+        assertEquals(4, successfullyProcessed.size());
+        assertEquals("DATA3", successfullyProcessed.get(0));
+        assertEquals(1, successfullyProcessed.stream().filter("DATA1"::equals).count());
+        assertEquals(1, successfullyProcessed.stream().filter("DATA2"::equals).count());
+        assertEquals(2, successfullyProcessed.stream().filter("DATA3"::equals).count());
+    }
+
     private Collection<String> extractCharacters(String string) {
         return IntStream.range(0, string.length())
             .mapToObj(string::charAt)
             .map(Object::toString)
             .collect(Collectors.toList());
+    }
+
+    private static <T> Mono<T> await(CountDownLatch latch) {
+        return Mono.<T>fromRunnable(() -> awaitSynchronously(latch))
+            .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private static void awaitSynchronously(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (Exception e) {
+            System.err.println("Unexpected failure=" + e);
+        }
     }
 }

@@ -1,7 +1,6 @@
 package io.atleon.core;
 
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -15,7 +14,7 @@ public class GenericAlo<T> implements Alo<T> {
 
     private final Runnable acknowledgerHook;
 
-    private final AtomicBoolean acknowledged = new AtomicBoolean(false);
+    private final AtomicInteger acknowledgedCount = new AtomicInteger(0);
 
     private final AtomicReference<Throwable> nacknowledged = new AtomicReference<>();
 
@@ -48,7 +47,7 @@ public class GenericAlo<T> implements Alo<T> {
     public Runnable getAcknowledger() {
         return () -> {
             acknowledgerHook.run();
-            acknowledged.set(true);
+            acknowledgedCount.incrementAndGet();
         };
     }
 
@@ -62,7 +61,11 @@ public class GenericAlo<T> implements Alo<T> {
     }
 
     public boolean isAcknowledged() {
-        return acknowledged.get();
+        return acknowledgedCount() > 0;
+    }
+
+    public int acknowledgedCount() {
+        return acknowledgedCount.get();
     }
 
     public boolean isNacknowledged() {
