@@ -14,8 +14,6 @@
     <modules>
         <module>avro</module>
         <module>json-jackson</module>
-        <module>kafka-avro</module>
-        <module>kafka-avro-embedded</module>
         <module>protobuf</module>
         <module>schema</module>
         <module>schema-registry-confluent</module>
