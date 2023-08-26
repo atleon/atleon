@@ -1,6 +1,7 @@
 package io.atleon.core;
 
 import org.junit.jupiter.api.Test;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -13,6 +14,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -587,7 +591,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void interleavedSynchronousErrorsResultInCorrectRepublishing() throws Exception {
+    public void interleavedSynchronousErrorsResultInCorrectRepublishing() {
         TestAlo alo1 = new TestAlo("DATA1");
         TestAlo alo2 = new TestAlo("DATA2");
         TestAlo alo3 = new TestAlo("DATA3");
@@ -596,7 +600,7 @@ class AloFluxTest {
         CountDownLatch latch2 = new CountDownLatch(1);
         AtomicBoolean thrownOnce = new AtomicBoolean(false);
         List<String> successfullyProcessed = new ArrayList<>();
-        Flux.just(alo1, alo2, alo3)
+        Disposable disposable = publishAsync(alo1, alo2, alo3)
             .as(AloFlux::wrap)
             .groupBy(Function.identity(), Integer.MAX_VALUE)
             .innerPublishOn(Schedulers.boundedElastic())
@@ -617,9 +621,9 @@ class AloFluxTest {
             .doOnNext(__ -> latch1.countDown()) // Will count down when DATA3 is first emitted
             .subscribe();
 
-        while (successfullyProcessed.size() < 4) {
-            Thread.sleep(100L);
-        }
+        Timing.waitForCondition(() -> alo1.acknowledgedCount() + alo2.acknowledgedCount() + alo3.acknowledgedCount() >= 4);
+        Timing.waitForCondition(() -> successfullyProcessed.size() >= 4);
+        disposable.dispose();
 
         assertEquals(1, alo1.acknowledgedCount());
         assertEquals(1, alo2.acknowledgedCount());
@@ -633,7 +637,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void interleavedAsynchronousErrorsResultInCorrectRepublishing() throws Exception {
+    public void interleavedAsynchronousErrorsResultInCorrectRepublishing() {
         TestAlo alo1 = new TestAlo("DATA1");
         TestAlo alo2 = new TestAlo("DATA2");
         TestAlo alo3 = new TestAlo("DATA3");
@@ -642,7 +646,7 @@ class AloFluxTest {
         CountDownLatch latch2 = new CountDownLatch(1);
         AtomicBoolean erroredOnce = new AtomicBoolean(false);
         List<String> successfullyProcessed = new ArrayList<>();
-        Flux.just(alo1, alo2, alo3)
+        Disposable disposable = publishAsync(alo1, alo2, alo3)
             .as(AloFlux::wrap)
             .groupBy(Function.identity(), Integer.MAX_VALUE)
             .innerPublishOn(Schedulers.boundedElastic())
@@ -652,7 +656,7 @@ class AloFluxTest {
                 } else if (value.equals("DATA2")) {
                     return await(latch2).thenReturn(value);
                 } else {
-                    return Mono.just(value);
+                    return Mono.just(value).hide();
                 }
             })
             .flatMapAlo()
@@ -663,9 +667,9 @@ class AloFluxTest {
             .doOnNext(__ -> latch1.countDown()) // Will count down when DATA3 is first emitted
             .subscribe();
 
-        while (successfullyProcessed.size() < 4) {
-            Thread.sleep(100L);
-        }
+        Timing.waitForCondition(() -> alo1.acknowledgedCount() + alo2.acknowledgedCount() + alo3.acknowledgedCount() >= 4);
+        Timing.waitForCondition(() -> successfullyProcessed.size() >= 4);
+        disposable.dispose();
 
         assertEquals(1, alo1.acknowledgedCount());
         assertEquals(1, alo2.acknowledgedCount());
@@ -683,6 +687,18 @@ class AloFluxTest {
             .mapToObj(string::charAt)
             .map(Object::toString)
             .collect(Collectors.toList());
+    }
+
+    @SafeVarargs
+    private static <T> Flux<T> publishAsync(T... values) {
+        return Flux.create(sink -> {
+            ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+            sink.onCancel(executorService::shutdown);
+            for (int i = 0; i < values.length; i++) {
+                T value = values[i];
+                executorService.schedule(() -> sink.next(value), 100L * i, TimeUnit.MILLISECONDS);
+            }
+        });
     }
 
     private static <T> Mono<T> await(CountDownLatch latch) {
