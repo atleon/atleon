@@ -54,16 +54,6 @@
             </dependency>
             <dependency>
                 <groupId>io.atleon</groupId>
-                <artifactId>atleon-kafka-avro</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.atleon</groupId>
-                <artifactId>atleon-kafka-avro-embedded</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.atleon</groupId>
                 <artifactId>atleon-kafka-embedded</artifactId>
                 <version>${project.version}</version>
             </dependency>
