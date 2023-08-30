@@ -649,11 +649,11 @@ class AloFluxTest {
             .groupBy(Function.identity(), Integer.MAX_VALUE)
             .innerConcatMap(value -> {
                 if (value.equals("DATA1") && erroredOnce.compareAndSet(false, true)) {
-                    return await(latch1).then(Mono.error(new UnsupportedOperationException("Boom")));
+                    return await(latch1).then(Mono.<String>error(new UnsupportedOperationException("Boom")).delaySubscription(Duration.ofMillis(100)));
                 } else if (value.equals("DATA2")) {
                     return await(latch2).thenReturn(value);
                 } else {
-                    return Mono.just(value).doAfterTerminate(latch1::countDown);
+                    return Mono.just(value).doFinally(__ -> latch1.countDown());
                 }
             })
             .flatMapAlo()
