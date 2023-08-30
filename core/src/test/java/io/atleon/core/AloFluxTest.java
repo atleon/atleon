@@ -1,7 +1,6 @@
 package io.atleon.core;
 
 import org.junit.jupiter.api.Test;
-import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
@@ -598,9 +597,10 @@ class AloFluxTest {
 
         CountDownLatch latch1 = new CountDownLatch(1);
         CountDownLatch latch2 = new CountDownLatch(1);
+        CountDownLatch completed = new CountDownLatch(1);
         AtomicBoolean thrownOnce = new AtomicBoolean(false);
         List<String> successfullyProcessed = new ArrayList<>();
-        Disposable disposable = publishAsync(alo1, alo2, alo3)
+        publishAsync(alo1, alo2, alo3)
             .as(AloFlux::wrap)
             .groupBy(Function.identity(), Integer.MAX_VALUE)
             .innerPublishOn(Schedulers.boundedElastic())
@@ -618,12 +618,9 @@ class AloFluxTest {
             .resubscribeOnError(AloFluxTest.class.getSimpleName(), Duration.ofSeconds(1))
             .consumeAloAndGet(Alo::acknowledge)
             .doOnNext(successfullyProcessed::add)
-            .doOnNext(__ -> latch1.countDown()) // Will count down when DATA3 is first emitted
-            .subscribe();
+            .subscribe(__ -> latch1.countDown(), System.err::println, completed::countDown);
 
-        Timing.waitForCondition(() -> alo1.acknowledgedCount() + alo2.acknowledgedCount() + alo3.acknowledgedCount() >= 4);
-        Timing.waitForCondition(() -> successfullyProcessed.size() >= 4);
-        disposable.dispose();
+        awaitSynchronously(completed);
 
         assertEquals(1, alo1.acknowledgedCount());
         assertEquals(1, alo2.acknowledgedCount());
@@ -644,32 +641,28 @@ class AloFluxTest {
 
         CountDownLatch latch1 = new CountDownLatch(1);
         CountDownLatch latch2 = new CountDownLatch(1);
+        CountDownLatch completed = new CountDownLatch(1);
         AtomicBoolean erroredOnce = new AtomicBoolean(false);
         List<String> successfullyProcessed = new ArrayList<>();
-        Disposable disposable = publishAsync(alo1, alo2, alo3)
+        publishAsync(alo1, alo2, alo3)
             .as(AloFlux::wrap)
             .groupBy(Function.identity(), Integer.MAX_VALUE)
-            .innerPublishOn(Schedulers.boundedElastic())
             .innerConcatMap(value -> {
                 if (value.equals("DATA1") && erroredOnce.compareAndSet(false, true)) {
                     return await(latch1).then(Mono.error(new UnsupportedOperationException("Boom")));
                 } else if (value.equals("DATA2")) {
                     return await(latch2).thenReturn(value);
                 } else {
-                    return Mono.just(value).hide();
+                    return Mono.just(value).doAfterTerminate(latch1::countDown);
                 }
             })
             .flatMapAlo()
             .doFinally(__ -> latch2.countDown())
             .resubscribeOnError(AloFluxTest.class.getSimpleName(), Duration.ofSeconds(1))
             .consumeAloAndGet(Alo::acknowledge)
-            .doOnNext(successfullyProcessed::add)
-            .doOnNext(__ -> latch1.countDown()) // Will count down when DATA3 is first emitted
-            .subscribe();
+            .subscribe(successfullyProcessed::add, System.err::println, completed::countDown);
 
-        Timing.waitForCondition(() -> alo1.acknowledgedCount() + alo2.acknowledgedCount() + alo3.acknowledgedCount() >= 4);
-        Timing.waitForCondition(() -> successfullyProcessed.size() >= 4);
-        disposable.dispose();
+        awaitSynchronously(completed);
 
         assertEquals(1, alo1.acknowledgedCount());
         assertEquals(1, alo2.acknowledgedCount());
@@ -693,11 +686,11 @@ class AloFluxTest {
     private static <T> Flux<T> publishAsync(T... values) {
         return Flux.create(sink -> {
             ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-            sink.onCancel(executorService::shutdown);
-            for (int i = 0; i < values.length; i++) {
-                T value = values[i];
-                executorService.schedule(() -> sink.next(value), 100L * i, TimeUnit.MILLISECONDS);
-            }
+            sink.onDispose(executorService::shutdown);
+            IntStream.range(0, values.length).forEach(i ->
+                    executorService.schedule(() -> sink.next(values[i]), 100L * i, TimeUnit.MILLISECONDS)
+            );
+            executorService.schedule(sink::complete, 100L * values.length, TimeUnit.MILLISECONDS);
         });
     }
 
