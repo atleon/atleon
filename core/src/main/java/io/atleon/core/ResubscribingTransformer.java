@@ -30,7 +30,7 @@ final class ResubscribingTransformer<T> implements Function<Publisher<T>, Publis
     private Flux<?> scheduleResubscription(Flux<Retry.RetrySignal> signals) {
         return signals
             .doOnNext(signal ->
-                LOGGER.warn("An Error has occurred! Scheduling resubscription: name={} errorNo={} delay={}",
+                LOGGER.error("An Error has occurred! Scheduling resubscription: name={} errorNo={} delay={}",
                     config.getName(), signal.totalRetries() + 1, config.getDelay(), signal.failure()))
             .delayElements(config.getDelay())
             .doOnNext(signal ->
