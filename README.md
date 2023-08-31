@@ -6,7 +6,7 @@
 
 Atleon is reactive message processing framework based on [Reactive Streams](https://www.reactive-streams.org/) and backed by [Project Reactor](https://projectreactor.io/).
 
-The primary goal of Atleon is to make it straightforward to implement infinite message processing pipelines compatible with non-blocking APIs, integrable with popular message brokers (like [Kafka](https://kafka.apache.org/), [RabbitMQ](https://www.rabbitmq.com/), etc.), while maintaining **at** **le**ast **on**ce processing guarantees.
+The primary goal of Atleon is to make it straightforward to implement infinite message processing pipelines compatible with non-blocking APIs, integrable with popular message brokers (like [Kafka](https://kafka.apache.org/), [RabbitMQ](https://www.rabbitmq.com/), etc.), while _seamlessly_ maintaining **at** **le**ast **on**ce processing guarantees.
 
 
 ## Documentation and Getting Started
