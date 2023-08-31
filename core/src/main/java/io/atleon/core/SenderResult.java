@@ -41,7 +41,7 @@ public interface SenderResult {
      */
     class FailureException extends RuntimeException {
 
-        FailureException(SenderResult senderResult) {
+        private FailureException(SenderResult senderResult) {
             super("Failed processing where senderResult=" + senderResult);
         }
     }
