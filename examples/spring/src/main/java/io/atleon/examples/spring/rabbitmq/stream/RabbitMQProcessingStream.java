@@ -1,7 +1,7 @@
 package io.atleon.examples.spring.rabbitmq.stream;
 
-import io.atleon.core.Alo;
 import io.atleon.core.AloStream;
+import io.atleon.core.DefaultAloSenderResultSubscriber;
 import io.atleon.rabbitmq.AloRabbitMQSender;
 import reactor.core.Disposable;
 
@@ -17,6 +17,6 @@ public class RabbitMQProcessingStream extends AloStream<RabbitMQProcessingStream
             .transform(sender.sendAloBodies(config.buildLongMessageCreator()))
             .resubscribeOnError(config.name())
             .doFinally(sender::close)
-            .subscribe(Alo::acknowledge);
+            .subscribeWith(new DefaultAloSenderResultSubscriber<>());
     }
 }

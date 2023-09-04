@@ -2,8 +2,8 @@ package io.atleon.examples.spring.awssnssqs.stream;
 
 import io.atleon.aws.sqs.AloSqsSender;
 import io.atleon.aws.sqs.ComposedSqsMessage;
-import io.atleon.core.Alo;
 import io.atleon.core.AloStream;
+import io.atleon.core.DefaultAloSenderResultSubscriber;
 import reactor.core.Disposable;
 
 public class SqsProcessingStream extends AloStream<SqsProcessingStreamConfig> {
@@ -18,6 +18,6 @@ public class SqsProcessingStream extends AloStream<SqsProcessingStreamConfig> {
             .transform(sender.sendAloBodies(ComposedSqsMessage::fromBody, config.getOutputQueueUrl()))
             .resubscribeOnError(config.name())
             .doFinally(sender::close)
-            .subscribe(Alo::acknowledge);
+            .subscribeWith(new DefaultAloSenderResultSubscriber<>());
     }
 }
