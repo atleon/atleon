@@ -18,7 +18,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Kafka {@link Producer} that is aware of the fact that all sent {@link ProducerRecord}s are
