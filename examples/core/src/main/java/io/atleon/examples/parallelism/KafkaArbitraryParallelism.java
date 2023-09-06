@@ -66,20 +66,19 @@ public class KafkaArbitraryParallelism {
         AloKafkaReceiver.<String, String>from(kafkaReceiverConfig)
             .receiveAloRecords(TOPIC)
             .groupByStringHash(ConsumerRecord::key, NUM_GROUPS, ConsumerRecord::value)
-            .flatMapAlo(groupedFluex -> groupedFluex
-                .publishOn(Schedulers.boundedElastic())
-                .map(String::toUpperCase)
-                .doOnNext(next -> {
-                    try {
-                        Double sleepMillis = Math.random() * MAX_SLEEP_MILLIS + 1;
-                        System.out.println(String.format("next=%s thread=%s sleepMillis=%d",
-                            next, Thread.currentThread().getName(), sleepMillis.longValue()));
-                        Thread.sleep(sleepMillis.longValue());
-                    } catch (Exception e) {
-                        System.err.println("Failed to sleep");
-                    }
-                })
-            )
+            .innerPublishOn(Schedulers.boundedElastic())
+            .innerMap(String::toUpperCase)
+            .innerDoOnNext(next -> {
+                try {
+                    Double sleepMillis = Math.random() * MAX_SLEEP_MILLIS + 1;
+                    System.out.println(String.format("next=%s thread=%s sleepMillis=%d",
+                        next, Thread.currentThread().getName(), sleepMillis.longValue()));
+                    Thread.sleep(sleepMillis.longValue());
+                } catch (Exception e) {
+                    System.err.println("Failed to sleep");
+                }
+            })
+            .flatMapAlo()
             .consumeAloAndGet(Alo::acknowledge)
             .subscribe(string -> latch.countDown());
 

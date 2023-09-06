@@ -8,6 +8,7 @@ import io.atleon.kafka.KafkaConfigSource;
 import io.atleon.kafka.embedded.EmbeddedKafka;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -59,21 +60,20 @@ public class KafkaTopicPartitionParallelism {
         CountDownLatch latch = new CountDownLatch(NUM_SAMPLES);
         AloKafkaReceiver.<String, String>from(kafkaReceiverConfig)
             .receiveAloRecords(TOPIC)
-            .groupBy(ConsumerRecordExtraction::topicPartition, Integer.MAX_VALUE)
-            .flatMapAlo(groupedFlux -> groupedFlux
-                .publishOn(Schedulers.boundedElastic())
-                .map(consumerRecord -> consumerRecord.value().toUpperCase())
-                .doOnNext(next -> {
-                    try {
-                        Double sleepMillis = Math.random() * MAX_SLEEP_MILLIS + 1;
-                        System.out.println(String.format("next=%s thread=%s sleepMillis=%d",
-                            next, Thread.currentThread().getName(), sleepMillis.longValue()));
-                        Thread.sleep(sleepMillis.longValue());
-                    } catch (Exception e) {
-                        System.err.println("Failed to sleep");
-                    }
-                })
-            )
+            .groupBy(ConsumerRecordExtraction::topicPartition, Integer.MAX_VALUE, ConsumerRecord::value)
+            .innerPublishOn(Schedulers.boundedElastic())
+            .innerMap(String::toUpperCase)
+            .innerDoOnNext(next -> {
+                try {
+                    Double sleepMillis = Math.random() * MAX_SLEEP_MILLIS + 1;
+                    System.out.println(String.format("next=%s thread=%s sleepMillis=%d",
+                        next, Thread.currentThread().getName(), sleepMillis.longValue()));
+                    Thread.sleep(sleepMillis.longValue());
+                } catch (Exception e) {
+                    System.err.println("Failed to sleep");
+                }
+            })
+            .flatMapAlo()
             .consumeAloAndGet(Alo::acknowledge)
             .subscribe(string -> latch.countDown());
 

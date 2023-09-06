@@ -43,6 +43,16 @@ public class GroupFlux<K, T> {
     }
 
     /**
+     * Convenience method for applying {@link AloFlux#doOnNext(Consumer)} to each inner grouped
+     * sequence.
+     *
+     * @return a transformed {@link GroupFlux}
+     */
+    public GroupFlux<K, T> innerDoOnNext(Consumer<? super T> onNext) {
+        return map(group -> group.doOnNext(onNext));
+    }
+
+    /**
      * Convenience method for applying {@link AloFlux#filter(Predicate)} to each inner grouped
      * sequence.
      *

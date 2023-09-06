@@ -85,19 +85,17 @@ public class KafkaErrorHandling {
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
             .receiveAloValues(TOPIC_1)
             .groupBy(Function.identity(), Integer.MAX_VALUE)
-            .map(groupedFlux -> groupedFlux
-                .publishOn(Schedulers.boundedElastic())
-                .map(String::toUpperCase)
-                .doOnNext(next -> {
-                    try {
-                        if (next.equals("TEST_1")) {
-                            latch.await();
-                        }
-                    } catch (Exception e) {
-                        System.err.println("Unexpected failure=" + e);
+            .innerPublishOn(Schedulers.boundedElastic())
+            .innerMap(String::toUpperCase)
+            .innerDoOnNext(next -> {
+                try {
+                    if (next.equals("TEST_1")) {
+                        latch.await();
                     }
-                })
-            )
+                } catch (Exception e) {
+                    System.err.println("Unexpected failure=" + e);
+                }
+            })
             .flatMapAlo(sender.sendAloValues(TOPIC_2, Function.identity()))
             .doOnNext(next -> latch.countDown())
             .doOnNext(senderResult -> {
