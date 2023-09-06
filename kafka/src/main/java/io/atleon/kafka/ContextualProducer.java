@@ -109,11 +109,6 @@ final class ContextualProducer<K, V> implements Producer<K, V> {
     }
 
     @Override
-    public void close(long timeout, TimeUnit unit) {
-        delegate.close(timeout, unit);
-    }
-
-    @Override
     public void close(Duration timeout) {
         delegate.close(timeout);
     }
