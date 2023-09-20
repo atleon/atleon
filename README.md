@@ -4,10 +4,9 @@
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.atleon/atleon-core/badge.svg?style=plastic)](https://mvnrepository.com/artifact/io.atleon)
 [![Javadoc](https://javadoc.io/badge2/io.atleon/atleon-core/javadoc.svg)](https://javadoc.io/doc/io.atleon/atleon-core)
 
-Atleon is reactive message processing framework based on [Reactive Streams](https://www.reactive-streams.org/) and backed by [Project Reactor](https://projectreactor.io/).
+Atleon is a lightweight reactive stream processing framework that scalably transforms data from any supported infrastructure, and allows sending transformed data nearly anywhere, while _seamlessly_ maintaining **at** **le**ast **on**ce processing guarantees.
 
-The primary goal of Atleon is to make it straightforward to implement infinite message processing pipelines compatible with non-blocking APIs, integrable with popular message brokers (like [Kafka](https://kafka.apache.org/), [RabbitMQ](https://www.rabbitmq.com/), etc.), while _seamlessly_ maintaining **at** **le**ast **on**ce processing guarantees.
-
+Atleon is based on [Reactive Streams](https://www.reactive-streams.org/) and backed by [Project Reactor](https://projectreactor.io/).
 
 ## Documentation and Getting Started
 Atleon documentation and instructions on how to get started are available in the [Wiki](../../wiki).
