@@ -6,7 +6,7 @@ public class ReceivedRabbitMQMessage<T> extends RabbitMQMessage<T> {
 
     private final boolean redeliver;
 
-    public ReceivedRabbitMQMessage(
+    private ReceivedRabbitMQMessage(
         String exchange,
         String routingKey,
         AMQP.BasicProperties properties,
@@ -17,7 +17,25 @@ public class ReceivedRabbitMQMessage<T> extends RabbitMQMessage<T> {
         this.redeliver = redeliver;
     }
 
+    public static <T> ReceivedRabbitMQMessage<T> create(
+        String exchange,
+        String routingKey,
+        AMQP.BasicProperties properties,
+        T body,
+        boolean redeliver
+    ) {
+        return new ReceivedRabbitMQMessage<>(exchange, routingKey, properties, body, redeliver);
+    }
+
+    /**
+     * @deprecated Use {@link #redeliver()}
+     */
+    @Deprecated
     public boolean isRedeliver() {
+        return redeliver;
+    }
+
+    public boolean redeliver() {
         return redeliver;
     }
 }

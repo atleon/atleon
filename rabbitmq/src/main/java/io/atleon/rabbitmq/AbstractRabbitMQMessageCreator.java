@@ -15,7 +15,7 @@ public abstract class AbstractRabbitMQMessageCreator<T> implements RabbitMQMessa
 
     @Override
     public RabbitMQMessage<T> apply(T body) {
-        return new RabbitMQMessage<>(
+        return RabbitMQMessage.create(
             extractExchange(body),
             extractRoutingKey(body),
             createMessagePropertiesBuilder(body).build(),

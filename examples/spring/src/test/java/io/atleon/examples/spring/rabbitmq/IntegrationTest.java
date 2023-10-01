@@ -57,7 +57,7 @@ public class IntegrationTest {
             .with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, LongBodySerializer.class);
         try (AloRabbitMQSender<Long> sender = AloRabbitMQSender.from(configSource)) {
             RabbitMQMessage<Long> message =
-                new RabbitMQMessage<>(EXCHANGE, INPUT_QUEUE, MessageProperties.MINIMAL_BASIC, number.longValue());
+                RabbitMQMessage.create(EXCHANGE, INPUT_QUEUE, MessageProperties.MINIMAL_BASIC, number.longValue());
             sender.sendMessage(message).block();
         }
     }

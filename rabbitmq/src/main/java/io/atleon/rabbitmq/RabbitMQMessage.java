@@ -18,26 +18,67 @@ public class RabbitMQMessage<T> {
 
     private final T body;
 
-    public RabbitMQMessage(String exchange, String routingKey, AMQP.BasicProperties properties, T body) {
+    RabbitMQMessage(String exchange, String routingKey, AMQP.BasicProperties properties, T body) {
         this.exchange = exchange;
         this.routingKey = routingKey;
         this.properties = properties;
         this.body = body;
     }
 
+    public static <T> RabbitMQMessage<T> create(
+        String exchange,
+        String routingKey,
+        AMQP.BasicProperties properties,
+        T body
+    ) {
+        return new RabbitMQMessage<>(exchange, routingKey, properties, body);
+    }
+
+    /**
+     * @deprecated Use {@link #exchange()}
+     */
+    @Deprecated
     public String getExchange() {
         return exchange;
     }
 
+    public String exchange() {
+        return exchange;
+    }
+
+    /**
+     * @deprecated Use {@link #routingKey()}
+     */
+    @Deprecated
     public String getRoutingKey() {
         return routingKey;
     }
 
+    public String routingKey() {
+        return routingKey;
+    }
+
+    /**
+     * @deprecated Use {@link #properties()}
+     */
+    @Deprecated
     public AMQP.BasicProperties getProperties() {
         return properties;
     }
 
+    public AMQP.BasicProperties properties() {
+        return properties;
+    }
+
+    /**
+     * @deprecated Use {@link #body()}
+     */
+    @Deprecated
     public T getBody() {
+        return body;
+    }
+
+    public T body() {
         return body;
     }
 }
