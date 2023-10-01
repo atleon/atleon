@@ -245,10 +245,10 @@ public class AloRabbitMQSender<T> implements Closeable {
         ) {
             RabbitMQMessage<T> message = dataToRabbitMQMessage.apply(data);
             return new CorrelableOutboundMessage<>(
-                message.getExchange(),
-                message.getRoutingKey(),
-                message.getProperties(),
-                bodySerializer.serialize(message.getBody()).bytes(),
+                message.exchange(),
+                message.routingKey(),
+                message.properties(),
+                bodySerializer.serialize(message.body()).bytes(),
                 data
             );
         }

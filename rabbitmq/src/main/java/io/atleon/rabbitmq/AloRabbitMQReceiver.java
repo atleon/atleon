@@ -115,7 +115,7 @@ public class AloRabbitMQReceiver<T> {
      */
     public AloFlux<T> receiveAloBodies(String queue) {
         return receiveAloMessages(queue)
-            .mapNotNull(ReceivedRabbitMQMessage::getBody);
+            .mapNotNull(ReceivedRabbitMQMessage::body);
     }
 
     /**
@@ -197,7 +197,7 @@ public class AloRabbitMQReceiver<T> {
             Consumer<Throwable> errorEmitter
         ) {
             SerializedBody body = SerializedBody.ofBytes(delivery.getBody());
-            ReceivedRabbitMQMessage<T> message = new ReceivedRabbitMQMessage<>(
+            ReceivedRabbitMQMessage<T> message = ReceivedRabbitMQMessage.create(
                 delivery.getEnvelope().getExchange(),
                 delivery.getEnvelope().getRoutingKey(),
                 delivery.getProperties(),
