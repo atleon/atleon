@@ -11,14 +11,14 @@ import org.reactivestreams.Publisher
 /**
  * Apply a coroutine-based mapping of items to an [AloFlux].
  */
-inline fun <T, reified V> AloFlux<T>.suspendMap(noinline mapper: suspend (T) -> V): AloFlux<V> = suspendMap(mapper, 1)
+inline fun <T, reified V> AloFlux<T>.suspendMap(noinline mapper: suspend (T) -> V?): AloFlux<V> = suspendMap(mapper, 1)
 
 /**
  * Apply a coroutine-based mapping of items to an [AloFlux] with a configurable maximum number of
  * concurrent invocations. Concurrent outputs are interleaved and therefore emission order is
  * non-deterministic.
  */
-inline fun <T, reified V> AloFlux<T>.suspendMap(noinline mapper: suspend (T) -> V, concurrency: Int): AloFlux<V> {
+inline fun <T, reified V> AloFlux<T>.suspendMap(noinline mapper: suspend (T) -> V?, concurrency: Int): AloFlux<V> {
     val publishingMapper: (T) -> Publisher<V> =
         if (V::class != Unit::class) {
             { mono { mapper.invoke(it) } }
