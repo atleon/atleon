@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 /**
  * Convenience method for applying [AloFlux.suspendMap] to each inner grouped sequence
  */
-inline fun <K, T, reified V> GroupFlux<K, T>.innerSuspendMap(noinline mapper: suspend (T) -> V): GroupFlux<K, V> =
+inline fun <K, T, reified V> GroupFlux<K, T>.innerSuspendMap(noinline mapper: suspend (T) -> V?): GroupFlux<K, V> =
     map { it.suspendMap(mapper) }
 
 /**
