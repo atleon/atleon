@@ -235,7 +235,21 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see Flux#bufferTimeout(int, Duration, Scheduler)
      */
     public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime, Scheduler scheduler) {
-        return wrapped.bufferTimeout(maxSize, maxTime, scheduler).map(AloOps::fanIn).as(AloFlux::wrap);
+        return bufferTimeout(maxSize, maxTime, scheduler, false);
+    }
+
+    /**
+     * @see Flux#bufferTimeout(int, Duration, boolean)
+     */
+    public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime, boolean fairBackpressure) {
+        return bufferTimeout(maxSize, maxTime, Schedulers.parallel(), fairBackpressure);
+    }
+
+    /**
+     * @see Flux#bufferTimeout(int, Duration, Scheduler, boolean)
+     */
+    public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime, Scheduler scheduler, boolean fairBackpressure) {
+        return wrapped.bufferTimeout(maxSize, maxTime, scheduler, fairBackpressure).map(AloOps::fanIn).as(AloFlux::wrap);
     }
 
     /**

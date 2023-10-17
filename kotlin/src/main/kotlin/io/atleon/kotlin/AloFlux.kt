@@ -14,24 +14,39 @@ import org.reactivestreams.Publisher
 inline fun <T, reified V> AloFlux<T>.suspendMap(noinline mapper: suspend (T) -> V?): AloFlux<V> = suspendMap(mapper, 1)
 
 /**
+ * Apply a coroutine-based mapping of items to an [AloFlux] with configurable prefetch.
+ */
+inline fun <T, reified V> AloFlux<T>.suspendMapPrefetch(noinline mapper: suspend (T) -> V?, prefetch: Int) =
+    suspendMap(mapper, 1, prefetch)
+
+/**
  * Apply a coroutine-based mapping of items to an [AloFlux] with a configurable maximum number of
  * concurrent invocations. Concurrent outputs are interleaved and therefore emission order is
  * non-deterministic.
  */
-inline fun <T, reified V> AloFlux<T>.suspendMap(noinline mapper: suspend (T) -> V?, concurrency: Int): AloFlux<V> {
+inline fun <T, reified V> AloFlux<T>.suspendMap(
+    noinline mapper: suspend (T) -> V?,
+    concurrency: Int,
+    prefetch: Int = 1
+): AloFlux<V> {
     val publishingMapper: (T) -> Publisher<V> =
         if (V::class != Unit::class) {
             { mono { mapper.invoke(it) } }
         } else {
             { publish { mapper.invoke(it) } }
         }
-    return if (concurrency == 1) concatMap(publishingMapper, 1) else flatMap(publishingMapper, concurrency, 1)
+    return if (concurrency == 1) concatMap(publishingMapper, prefetch) else flatMap(publishingMapper, concurrency, prefetch)
 }
 
 /**
  * Apply a one-to-many [Flow]-based mapping of items to an [AloFlux].
  */
 fun <T, V : Any> AloFlux<T>.flowMap(mapper: (T) -> Flow<V>): AloFlux<V> = flowMap(mapper, 1)
+
+/**
+ * Apply a one-to-many [Flow]-based mapping of items to an [AloFlux] with configurable prefetch.
+ */
+fun <T, V : Any> AloFlux<T>.flowMapPrefetch(mapper: (T) -> Flow<V>, prefetch: Int): AloFlux<V> = flowMap(mapper, 1, prefetch)
 
 /**
  * Apply a one-to-many [Flow]-based mapping of items to an [AloFlux] with a configurable maximum
