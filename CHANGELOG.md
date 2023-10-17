@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.23.0]
+atleon `0.23.0` is a beta release containing updates outlined below
+
+### Additions
+* [#257] Allow configuration of `prefetch` on `suspendMap`, and `fairBackpressure` on `bufferTimeout`
+
 # [0.22.0]
 atleon `0.22.0` is a beta release containing updates outlined below
 
