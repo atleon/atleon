@@ -153,6 +153,31 @@ public class GroupFlux<K, T> {
     }
 
     /**
+     * Convenience method for applying {@link AloFlux#bufferTimeout(int, Duration, boolean)} to
+     * each inner grouped sequence.
+     *
+     * @return a transformed {@link GroupFlux}
+     */
+    public GroupFlux<K, List<T>> innerBufferTimeout(int maxSize, Duration maxTime, boolean fairBackpressure) {
+        return map(group -> group.bufferTimeout(maxSize, maxTime, fairBackpressure));
+    }
+
+    /**
+     * Convenience method for applying {@link AloFlux#bufferTimeout(int, Duration, Scheduler, boolean)}
+     * to each inner grouped sequence.
+     *
+     * @return a transformed {@link GroupFlux}
+     */
+    public GroupFlux<K, List<T>> innerBufferTimeout(
+        int maxSize,
+        Duration maxTime,
+        Scheduler scheduler,
+        boolean fairBackpressure
+    ) {
+        return map(group -> group.bufferTimeout(maxSize, maxTime, scheduler, fairBackpressure));
+    }
+
+    /**
      * Convenience method for applying {@link AloFlux#publishOn(Scheduler)} to each inner grouped
      * sequence.
      *
