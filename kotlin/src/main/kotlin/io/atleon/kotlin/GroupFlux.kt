@@ -11,8 +11,8 @@ inline fun <K, T, reified V> GroupFlux<K, T>.innerSuspendMap(noinline mapper: su
     map { it.suspendMap(mapper) }
 
 /**
- * Convenience method for applying [AloFlux.suspendMap] with configurable prefetch to each inner
- * grouped sequence
+ * Convenience method for applying [AloFlux.suspendMapPrefetch] with configurable prefetch to each
+ * inner grouped sequence
  */
 inline fun <K, T, reified V> GroupFlux<K, T>.innerSuspendMapPrefetch(
     noinline mapper: suspend (T) -> V?,
@@ -26,8 +26,8 @@ fun <K, T, V : Any> GroupFlux<K, T>.innerFlowMap(mapper: (T) -> Flow<V>): GroupF
     map { it.flowMap(mapper) }
 
 /**
- * Convenience method for applying [AloFlux.suspendMap] with configurable prefetch to each inner
- * grouped sequence
+ * Convenience method for applying [AloFlux.suspendMapPrefetch] with configurable prefetch to each
+ * inner grouped sequence
  */
 fun <K, T, V : Any> GroupFlux<K, T>.innerFlowMapPrefetch(mapper: (T) -> Flow<V>, prefetch: Int): GroupFlux<K, V> =
     map { it.flowMapPrefetch(mapper, prefetch) }
