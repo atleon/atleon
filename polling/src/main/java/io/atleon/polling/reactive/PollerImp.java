@@ -26,7 +26,7 @@ public class PollerImp<P, O> implements Poller<P, O> {
         this.sink = Sinks.many().unicast().onBackpressureBuffer();
         this.scheduler = Schedulers.newSingle(new EventThreadFactory());
         this.eventLoop = new PollingEventLoop<>(scheduler, pollable, pollingInterval, sink);
-        this.scheduler.start();
+        this.scheduler.init();
     }
 
     @Override
