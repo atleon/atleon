@@ -16,16 +16,22 @@ public final class AloStreamNaming {
 
     private static String toKebabCase(String string) {
         StringBuilder result = new StringBuilder();
-        result.append(Character.toLowerCase(string.charAt(0)));
-        for (int i = 1; i < string.length(); i++) {
-            char character = string.charAt(i);
-            if (Character.isUpperCase(character)) {
+        for (int i = 0; i < string.length(); i++) {
+            if (isStartOfAnotherWord(string, i)) {
                 result.append("-");
-                result.append(Character.toLowerCase(character));
-            } else {
-                result.append(character);
             }
+            result.append(Character.toLowerCase(string.charAt(i)));
         }
         return result.toString();
+    }
+
+    private static boolean isStartOfAnotherWord(String string, int index) {
+        if (index <= 0 || !Character.isUpperCase(string.charAt(index))) {
+            return false;
+        } else if (index + 1 < string.length() && !Character.isUpperCase(string.charAt(index + 1))) {
+            return true;
+        } else {
+            return !Character.isUpperCase(string.charAt(index - 1));
+        }
     }
 }
