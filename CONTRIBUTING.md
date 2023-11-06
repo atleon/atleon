@@ -60,7 +60,7 @@ Some of the important TL;DRs:
 We use the following convention for commit message title and body:
 
 ```
-[ISSUE_REF]Short headline description of content
+[ISSUE_REF] Short headline description of content
 
 Longer description of the content of the commit and/or context of the change
 ```
