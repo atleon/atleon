@@ -97,6 +97,13 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * @see Flux#doOnDiscard(Class, Consumer)
+     */
+    public <R> AloFlux<T> doOnDiscard(Class<R> type, Consumer<? super R> hook) {
+        return new AloFlux<>(wrapped.contextWrite(DiscardHook.newContextModifier(type, hook)));
+    }
+
+    /**
      * @see Flux#filter(Predicate)
      */
     public AloFlux<T> filter(Predicate<? super T> predicate) {

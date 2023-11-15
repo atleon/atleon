@@ -9,6 +9,7 @@ import reactor.test.StepVerifier;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -400,6 +401,24 @@ class AloFluxTest {
         assertEquals(1, nonEmpty.mapCount());
         assertTrue(empty.isAcknowledged());
         assertFalse(nonEmpty.isAcknowledged());
+    }
+
+    @Test
+    public void hooksAreAppliedToDiscardedValues() {
+        TestAlo empty = new TestAlo("");
+        TestAlo nonEmpty = new TestAlo("data");
+
+        List<String> processed = new ArrayList<>();
+        List<String> discardTexts = new ArrayList<>();
+        AloFlux.wrap(Flux.just(empty, nonEmpty))
+            .filter(string -> !string.isEmpty())
+            .doOnDiscard(Object.class, value -> discardTexts.add("ONE: " + value))
+            .doOnDiscard(Integer.class, value -> discardTexts.add("TWO: " + value))
+            .doOnDiscard(String.class, value -> discardTexts.add("THREE: " + value))
+            .subscribe((alo) -> processed.add(alo.get()));
+
+        assertEquals(Collections.singletonList(nonEmpty.get()), processed);
+        assertEquals(Arrays.asList("ONE: " + empty.get(), "THREE: " + empty.get()), discardTexts);
     }
 
     @Test
