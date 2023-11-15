@@ -1,6 +1,9 @@
 package io.atleon.core;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.SynchronousSink;
+import reactor.util.context.ContextView;
 
 import java.util.Collections;
 import java.util.List;
@@ -17,12 +20,14 @@ import java.util.stream.Collectors;
  */
 final class AloOps {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AloOps.class);
+
     private AloOps() {
 
     }
 
     public static <T> BiConsumer<Alo<T>, SynchronousSink<Alo<T>>>
-    filteringHandler(Predicate<? super T> predicate, Consumer<Alo<T>> negativeConsumer) {
+    filteringHandler(Predicate<? super T> predicate, Consumer<? super Alo<T>> negativeConsumer) {
         return (alo, sink) -> {
             Boolean result = null;
             try {
@@ -35,19 +40,19 @@ final class AloOps {
                 if (result) {
                     sink.next(alo);
                 } else {
-                    negativeConsumer.accept(alo);
+                    handleDiscard(sink.contextView(), alo, negativeConsumer);
                 }
             }
         };
     }
 
     public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<R>>>
-    typeFilteringHandler(Class<R> clazz, Consumer<Alo<T>> negativeConsumer) {
+    typeFilteringHandler(Class<R> clazz, Consumer<? super Alo<T>> negativeConsumer) {
         return (alo, sink) -> {
             if (clazz.isAssignableFrom(alo.get().getClass())) {
                 sink.next((Alo<R>) alo);
             } else {
-                negativeConsumer.accept(alo);
+                handleDiscard(sink.contextView(), alo, negativeConsumer);
             }
         };
     }
@@ -137,6 +142,16 @@ final class AloOps {
     private static void processFailure(SynchronousSink<?> sink, Alo<?> alo, Throwable error, Runnable unprocessedFallback) {
         if (!AloFailureStrategy.choose(sink).process(alo, error, sink::error)) {
             unprocessedFallback.run();
+        }
+    }
+
+    private static <T> void handleDiscard(ContextView contextView, Alo<T> alo, Consumer<? super Alo<T>> afterHandle) {
+        try {
+            DiscardHook.choose(contextView).accept(alo.get());
+        } catch (Throwable error) {
+            LOGGER.warn("Error in discard hook", error);
+        } finally {
+            afterHandle.accept(alo);
         }
     }
 

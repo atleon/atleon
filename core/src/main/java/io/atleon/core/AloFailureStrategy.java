@@ -95,7 +95,7 @@ interface AloFailureStrategy {
 
         private final BiPredicate<Object, ? super Throwable> errorPredicate;
 
-        Emit(BiPredicate<Object, ? super Throwable> errorPredicate) {
+        private Emit(BiPredicate<Object, ? super Throwable> errorPredicate) {
             this.errorPredicate = errorPredicate;
         }
 
@@ -114,7 +114,7 @@ interface AloFailureStrategy {
 
         private final BiPredicate<Object, ? super Throwable> errorPredicate;
 
-        Delegate(BiPredicate<Object, ? super Throwable> errorPredicate) {
+        private Delegate(BiPredicate<Object, ? super Throwable> errorPredicate) {
             this.errorPredicate = errorPredicate;
         }
 
