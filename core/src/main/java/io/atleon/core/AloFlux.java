@@ -79,7 +79,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see Flux#doOnNext(Consumer)
      */
     public AloFlux<T> doOnNext(Consumer<? super T> onNext) {
-        return new AloFlux<>(wrapped.doOnNext(alo -> onNext.accept(alo.get())));
+        return new AloFlux<>(wrapped.doOnNext(alo -> alo.runInContext(() -> onNext.accept(alo.get()))));
     }
 
     /**
@@ -263,7 +263,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see Flux#delayUntil(Function)
      */
     public AloFlux<T> delayUntil(Function<? super T, ? extends Publisher<?>> triggerProvider) {
-        return new AloFlux<>(wrapped.delayUntil(alo -> triggerProvider.apply(alo.get())));
+        return new AloFlux<>(wrapped.delayUntil(alo -> alo.supplyInContext(() -> triggerProvider.apply(alo.get()))));
     }
 
     /**

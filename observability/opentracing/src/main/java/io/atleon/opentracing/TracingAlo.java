@@ -125,6 +125,13 @@ public class TracingAlo<T> extends AbstractDecoratingAlo<T> {
         return fields;
     }
 
+    /**
+     * This extension is necessary to make one-to-many mappings work correctly. The underlying span
+     * is propagated to all downstream mappings such that it can be activated in context. However,
+     * none of those mappings should finish the span. This is in contrast to "metering" where we
+     * do not propagate the meters at all, and simply rely on the originating element's
+     * acknowledgement to eventually be executed.
+     */
     private static final class Propagated<T> extends TracingAlo<T> {
 
         public Propagated(Alo<T> delegate, TracerFacade tracerFacade, Span span) {

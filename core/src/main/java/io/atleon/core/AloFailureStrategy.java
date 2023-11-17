@@ -101,7 +101,7 @@ interface AloFailureStrategy {
 
         @Override
         public boolean process(Alo<?> alo, Throwable error, Consumer<Throwable> errorEmitter) {
-            if (errorPredicate.test(alo.get(), error)) {
+            if (alo.supplyInContext(() -> errorPredicate.test(alo.get(), error))) {
                 errorEmitter.accept(error);
             } else {
                 Alo.acknowledge(alo);
@@ -120,7 +120,7 @@ interface AloFailureStrategy {
 
         @Override
         public boolean process(Alo<?> alo, Throwable error, Consumer<Throwable> errorEmitter) {
-            if (errorPredicate.test(alo.get(), error)) {
+            if (alo.supplyInContext(() -> errorPredicate.test(alo.get(), error))) {
                 return false;
             } else {
                 Alo.acknowledge(alo);
