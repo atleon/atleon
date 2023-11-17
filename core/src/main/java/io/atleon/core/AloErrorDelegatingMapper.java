@@ -4,7 +4,6 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Mono;
 
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 final class AloErrorDelegatingMapper<T> implements Function<Alo<T>, Alo<T>> {
@@ -17,12 +16,13 @@ final class AloErrorDelegatingMapper<T> implements Function<Alo<T>, Alo<T>> {
 
     @Override
     public Alo<T> apply(Alo<T> alo) {
-        Consumer<Throwable> nacknowledger = buildNacknowledger(alo.get(), alo.getAcknowledger(), alo.getNacknowledger());
-        return alo.<T>propagator().create(alo.get(), alo.getAcknowledger(), nacknowledger);
+        return alo.<T>propagator().create(alo.get(), alo.getAcknowledger(), error -> delegateAloError(alo, error));
     }
 
-    private Consumer<Throwable> buildNacknowledger(T t, Runnable acknowledger, Consumer<? super Throwable> nacknowledger) {
-        return error -> delegateError(t, error).subscribe(__ -> {}, nacknowledger, acknowledger);
+    private void delegateAloError(Alo<T> alo, Throwable error) {
+        alo.runInContext(() ->
+            delegateError(alo.get(), error).subscribe(__ -> {}, alo.getNacknowledger(), alo.getAcknowledger())
+        );
     }
 
     private Mono<Void> delegateError(T t, Throwable error) {

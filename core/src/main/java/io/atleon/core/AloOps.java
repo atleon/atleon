@@ -31,7 +31,7 @@ final class AloOps {
         return (alo, sink) -> {
             Boolean result = null;
             try {
-                result = predicate.test(alo.get());
+                result = alo.supplyInContext(() -> predicate.test(alo.get()));
             } catch (Throwable error) {
                 processFailureOrNacknowledge(sink, alo, error);
             }
@@ -62,6 +62,7 @@ final class AloOps {
         return (alo, sink) -> {
             Alo<R> result = null;
             try {
+                // Note: mapping is not invoked with *InContext since we're delegating to Alo anyway
                 result = Objects.requireNonNull(alo.map(mapper), "Alo implementation returned null mapping");
             } catch (Throwable error) {
                 processFailureOrNacknowledge(sink, alo, error);
@@ -78,6 +79,7 @@ final class AloOps {
         return (alo, sink) -> {
             Alo<Optional<? extends R>> result = null;
             try {
+                // Note: mapping is not invoked with *InContext since we're delegating to Alo anyway
                 result = Objects.requireNonNull(alo.map(mapper), "Alo implementation returned null mapping");
             } catch (Throwable error) {
                 processFailureOrNacknowledge(sink, alo, error);
@@ -98,7 +100,7 @@ final class AloOps {
         return (alo, sink) -> {
             boolean consumed = false;
             try {
-                consumer.accept(alo.get());
+                alo.runInContext(() -> consumer.accept(alo.get()));
                 consumed = true;
             } catch (Throwable error) {
                 processFailureOrNacknowledge(sink, alo, error);
@@ -147,7 +149,7 @@ final class AloOps {
 
     private static <T> void handleDiscard(ContextView contextView, Alo<T> alo, Consumer<? super Alo<T>> afterHandle) {
         try {
-            DiscardHook.choose(contextView).accept(alo.get());
+            alo.runInContext(() -> DiscardHook.choose(contextView).accept(alo.get()));
         } catch (Throwable error) {
             LOGGER.warn("Error in discard hook", error);
         } finally {
