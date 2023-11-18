@@ -3,6 +3,7 @@ package io.atleon.opentracing;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
 import io.opentracing.mock.MockTracer;
+import io.opentracing.tag.Tags;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -88,6 +89,7 @@ class TracingAloTest {
         assertEquals(0, alo.nacknowledgeCount());
         assertEquals(1, tracer.finishedSpans().size());
         assertTrue(tracer.finishedSpans().get(0).generatedErrors().isEmpty()); // Error generated if finished more than once
+        assertNull(tracer.finishedSpans().get(0).tags().get(Tags.ERROR.getKey()));
     }
 
     @Test
@@ -106,6 +108,7 @@ class TracingAloTest {
         assertEquals(0, alo.nacknowledgeCount());
         assertEquals(1, tracer.finishedSpans().size());
         assertTrue(tracer.finishedSpans().get(0).generatedErrors().isEmpty()); // Error generated if finished more than once
+        assertNull(tracer.finishedSpans().get(0).tags().get(Tags.ERROR.getKey()));
     }
 
     @Test
@@ -126,6 +129,7 @@ class TracingAloTest {
         assertEquals(0, alo.nacknowledgeCount());
         assertEquals(1, tracer.finishedSpans().size());
         assertTrue(tracer.finishedSpans().get(0).generatedErrors().isEmpty()); // Error generated if finished more than once
+        assertNull(tracer.finishedSpans().get(0).tags().get(Tags.ERROR.getKey()));
     }
 
     @Test

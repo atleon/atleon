@@ -99,7 +99,6 @@ public class TracingAlo<T> extends AbstractDecoratingAlo<T> {
             try {
                 acknowledger.run();
             } finally {
-                span.setTag(Tags.ERROR, false);
                 span.finish();
             }
         };
