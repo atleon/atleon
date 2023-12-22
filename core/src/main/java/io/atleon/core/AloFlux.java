@@ -602,25 +602,25 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
-     * Adds a delegate for negative acknowledgement to {@link Alo} elements in this pipeline. Upon
-     * downstream negative acknowledgement, the provided delegate will be invoked to produce a
+     * Adds a delegator for negative acknowledgement to {@link Alo} elements in this pipeline. Upon
+     * downstream negative acknowledgement, the provided delegator will be invoked to produce a
      * {@link Publisher}. After subscribing to that error, successful completion of that publisher
      * implies that handling the error was delegated successfully, and the originating Alo can be
-     * acknowledged. On the other hand, if the delegate publisher errors, that error will be added
+     * acknowledged. On the other hand, if the delegator publisher errors, that error will be added
      * as a suppressed exception to the original exception (when possible) and used to execute the
      * originating Alo's nacknowledger.
      * <p>
-     * Multiple delegates may be added to a pipeline. In this case, delegates are invoked in the
+     * Multiple delegators may be added to a pipeline. In this case, delegators are invoked in the
      * <i>reverse</i> order that they are applied in the pipeline.
      * <p>
-     * In order for a delegate to be used, the Alo error mode must be set to "delegate" downstream
+     * In order for a delegator to be used, the Alo error mode must be set to "delegator" downstream
      * of this operator. For more information, see {@link #onAloErrorDelegate()}.
      *
-     * @param delegate A {@link BiFunction} invoked when a downstream error occurs
+     * @param delegator A {@link BiFunction} invoked when a downstream error occurs
      * @return A new {@link AloFlux}
      */
-    public AloFlux<T> addAloErrorDelegation(BiFunction<? super T, ? super Throwable, ? extends Publisher<?>> delegate) {
-        return new AloFlux<>(wrapped.map(new AloErrorDelegatingMapper<>(delegate)));
+    public AloFlux<T> addAloErrorDelegation(BiFunction<? super T, ? super Throwable, ? extends Publisher<?>> delegator) {
+        return new AloFlux<>(wrapped.map(new AloErrorDelegatingMapper<>(delegator)));
     }
 
     /**

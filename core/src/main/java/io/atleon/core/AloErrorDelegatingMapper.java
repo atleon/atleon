@@ -8,10 +8,10 @@ import java.util.function.Function;
 
 final class AloErrorDelegatingMapper<T> implements Function<Alo<T>, Alo<T>> {
 
-    private final BiFunction<? super T, ? super Throwable, ? extends Publisher<?>> delegate;
+    private final BiFunction<? super T, ? super Throwable, ? extends Publisher<?>> delegator;
 
-    AloErrorDelegatingMapper(BiFunction<? super T, ? super Throwable, ? extends Publisher<?>> delegate) {
-        this.delegate = delegate;
+    AloErrorDelegatingMapper(BiFunction<? super T, ? super Throwable, ? extends Publisher<?>> delegator) {
+        this.delegator = delegator;
     }
 
     @Override
@@ -27,7 +27,7 @@ final class AloErrorDelegatingMapper<T> implements Function<Alo<T>, Alo<T>> {
 
     private Mono<Void> delegateError(T t, Throwable error) {
         try {
-            return Mono.when(delegate.apply(t, error))
+            return Mono.when(delegator.apply(t, error))
                 .onErrorMap(delegateError -> consolidateErrors(error, delegateError));
         } catch (Throwable delegateError) {
             return Mono.error(consolidateErrors(error, delegateError));

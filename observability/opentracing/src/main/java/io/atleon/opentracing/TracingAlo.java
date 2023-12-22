@@ -3,7 +3,6 @@ package io.atleon.opentracing;
 import io.atleon.core.AbstractDecoratingAlo;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
-import io.atleon.core.DelegatingAlo;
 import io.opentracing.References;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
@@ -14,7 +13,6 @@ import io.opentracing.tag.Tags;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -42,12 +40,12 @@ public class TracingAlo<T> extends AbstractDecoratingAlo<T> {
 
     @Override
     public void runInContext(Runnable runnable) {
-        tracerFacade.run(span, runnable);
+        tracerFacade.run(span, () -> delegate.runInContext(runnable));
     }
 
     @Override
     public <R> R supplyInContext(Supplier<R> supplier) {
-        return tracerFacade.supply(span, supplier);
+        return tracerFacade.supply(span, () -> delegate.supplyInContext(supplier));
     }
 
     @Override
@@ -60,7 +58,7 @@ public class TracingAlo<T> extends AbstractDecoratingAlo<T> {
     public <R> AloFactory<List<R>> fanInPropagator(List<? extends Alo<?>> alos) {
         Tracer.SpanBuilder spanBuilder = tracerFacade.newSpanBuilder("atleon.fan.in");
         for (Alo<?> alo : alos) {
-            extractSpanContext(alo).ifPresent(it -> spanBuilder.addReference(References.CHILD_OF, it));
+            doOnDelegator(alo, TracingAlo.class, it -> spanBuilder.addReference(References.CHILD_OF, it.spanContext()));
         }
         return delegate.<R>fanInPropagator(alos).withDecorator(alo -> start(alo, tracerFacade, spanBuilder));
     }
@@ -82,16 +80,6 @@ public class TracingAlo<T> extends AbstractDecoratingAlo<T> {
 
     public SpanContext spanContext() {
         return span.context();
-    }
-
-    private static Optional<SpanContext> extractSpanContext(Alo<?> alo) {
-        if (alo instanceof TracingAlo) {
-            return Optional.of(TracingAlo.class.cast(alo).spanContext());
-        } else if (alo instanceof DelegatingAlo) {
-            return extractSpanContext(DelegatingAlo.class.cast(alo).getDelegate());
-        } else {
-            return Optional.empty();
-        }
     }
 
     private static Runnable applySpanTermination(Runnable acknowledger, Span span) {

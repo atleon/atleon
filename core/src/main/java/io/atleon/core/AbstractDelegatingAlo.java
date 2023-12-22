@@ -57,4 +57,12 @@ public abstract class AbstractDelegatingAlo<T, U> implements DelegatingAlo<T> {
     public Alo<U> getDelegate() {
         return delegate;
     }
+
+    protected static <T extends DelegatingAlo<?>> void doOnDelegator(Alo<?> alo, Class<T> type, Consumer<T> consumer) {
+        if (type.isInstance(alo)) {
+            consumer.accept(type.cast(alo));
+        } else if (alo instanceof DelegatingAlo) {
+            doOnDelegator(DelegatingAlo.class.cast(alo).getDelegate(), type, consumer);
+        }
+    }
 }
