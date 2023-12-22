@@ -154,4 +154,30 @@ class TracingAloTest {
         assertEquals(3, tracer.finishedSpans().size());
         assertEquals(2, tracer.finishedSpans().get(2).references().size());
     }
+
+    @Test
+    public void wrappedDelegatesAreAppropriatelyDelegatedTo() {
+        TestAlo alo = new TestAlo("How much wood would a woodchuck chuck");
+
+        TracingAlo<String> inner = TracingAlo.start(alo, tracerFacade, tracerFacade.newSpanBuilder("inner"));
+        TracingAlo<String> outer = TracingAlo.start(inner, tracerFacade, tracerFacade.newSpanBuilder("outer"));
+
+        AloFlux.wrap(Flux.just(outer))
+            .filter(__ -> {
+                tracerFacade.activeSpan().ifPresent(span -> span.setTag("filtered", true));
+                return true;
+            })
+            .doOnNext(__ -> tracerFacade.activeSpan().ifPresent(span -> span.setTag("doneOnNext", true)))
+            .consumeAloAndGet(Alo::acknowledge)
+            .then()
+            .block(Duration.ofSeconds(10));
+
+        assertEquals(2, tracer.finishedSpans().size());
+        assertEquals("inner", tracer.finishedSpans().get(0).operationName());
+        assertEquals(true, tracer.finishedSpans().get(0).tags().get("filtered"));
+        assertEquals(true, tracer.finishedSpans().get(0).tags().get("doneOnNext"));
+        assertEquals("outer", tracer.finishedSpans().get(1).operationName());
+        assertNull(tracer.finishedSpans().get(1).tags().get("filtered"));
+        assertNull(tracer.finishedSpans().get(1).tags().get("doneOnNext"));
+    }
 }
