@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>io.atleon</groupId>
+        <artifactId>atleon-parent</artifactId>
+        <version>0.24.4-SNAPSHOT</version>
+        <relativePath>../parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>atleon-context-auto</artifactId>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <!-- Project Provided Dependencies -->
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-aws-sqs</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-core</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-kafka</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-rabbitmq</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>
