@@ -6,8 +6,11 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Timer;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 /**
  * Templated implementation of {@link Alo} metering decoration
@@ -35,8 +38,16 @@ public abstract class MeteringAloDecorator<T, K> implements AloDecorator<T> {
 
     @Override
     public final Alo<T> decorate(Alo<T> alo) {
-        K key = extractKey(alo.get());
-        return MeteringAlo.start(alo, newMeters(key));
+        T data = alo.get();
+        K key = extractKey(data);
+
+        Timer successTimer = meterFacade.timer(new TypeKey<>(AloMeterType.SUCCESS_TIMER, key));
+        Timer failureTimer = meterFacade.timer(new TypeKey<>(AloMeterType.FAILURE_TIMER, key));
+
+        long startedAtNano = System.nanoTime();
+        Runnable acknowledger = applyMetering(alo.getAcknowledger(), successTimer, startedAtNano);
+        Consumer<Throwable> nacknowledger = applyMetering(alo.getNacknowledger(), failureTimer, startedAtNano);
+        return alo.<T>propagator().create(data, acknowledger, nacknowledger);
     }
 
     /**
@@ -48,13 +59,6 @@ public abstract class MeteringAloDecorator<T, K> implements AloDecorator<T> {
      * @return A key used as part of the identifier for created metrics
      */
     protected abstract K extractKey(T t);
-
-    protected final AloMeters newMeters(K key) {
-        return new AloMeters(
-            meterFacade.timer(new TypeKey<>(AloMeterType.SUCCESS_TIMER, key)),
-            meterFacade.timer(new TypeKey<>(AloMeterType.FAILURE_TIMER, key))
-        );
-    }
 
     protected final MeterKey toMeterKey(String name, TypeKey<AloMeterType, K> typeKey) {
         switch (typeKey.type()) {
@@ -71,4 +75,25 @@ public abstract class MeteringAloDecorator<T, K> implements AloDecorator<T> {
      * Extract base set of {@link io.micrometer.core.instrument.Tag}s for metrics
      */
     protected abstract Iterable<Tag> extractTags(K key);
+
+    private static Runnable applyMetering(Runnable acknowledger, Timer timer, long startedAtNano) {
+        return () -> {
+            try {
+                acknowledger.run();
+            } finally {
+                timer.record(System.nanoTime() - startedAtNano, TimeUnit.NANOSECONDS);
+            }
+        };
+    }
+
+    private static Consumer<Throwable>
+    applyMetering(Consumer<? super Throwable> nacknowledger, Timer timer, long startedAtNano) {
+        return error -> {
+            try {
+                nacknowledger.accept(error);
+            } finally {
+                timer.record(System.nanoTime() - startedAtNano, TimeUnit.NANOSECONDS);
+            }
+        };
+    }
 }
