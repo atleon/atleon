@@ -43,9 +43,20 @@ public abstract class AloContext {
 
     }
 
+    /**
+     * Get the currently active context. If none is active, a no-op context is provided.
+     */
     public static AloContext active() {
         AloContext context = ACTIVE_CONTEXT.get();
         return context == null ? NO_OP : context;
+    }
+
+    /**
+     * Creates a new context. Clients should typically only use this for testing context-dependent
+     * code.
+     */
+    public static AloContext create() {
+        return new Impl();
     }
 
     /**
@@ -57,10 +68,6 @@ public abstract class AloContext {
      * Sets the value for the given key, and returns whether the value was successfully updated.
      */
     public abstract <T> boolean set(Key<T> key, T value);
-
-    static AloContext create() {
-        return new Impl();
-    }
 
     final void run(Runnable runnable) {
         AloContext previousContext = ACTIVE_CONTEXT.get();
