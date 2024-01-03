@@ -1,6 +1,7 @@
 package io.atleon.examples.deadlettering;
 
 import io.atleon.core.Alo;
+import io.atleon.core.ErrorDelegator;
 import io.atleon.kafka.AloKafkaReceiver;
 import io.atleon.kafka.AloKafkaSender;
 import io.atleon.kafka.KafkaConfigSource;
@@ -51,14 +52,16 @@ public class KafkaDeadlettering {
             .doOnNext(senderResults -> System.out.println("senderResults: " + senderResults))
             .block();
 
-        //Step 5) Apply consumption of the main topic we've produced data to as a stream process.
-        // When we encounter "bad" data that causes an error, we will "deadletter" it by sending
-        // the originating record to our dedicated topic
+        //Step 5) Create a dead-lettering error delegator
+        ErrorDelegator<String> deadletterDelegator = ErrorDelegator.sending(sender::sendRecord)
+            .composeData(string -> new ProducerRecord<>(DEADLETTER_TOPIC, "key", string));
+
+        //Step 6) Apply consumption of the main topic we've produced data to as a stream process.
+        // When we encounter "bad" data that causes an error, we will "deadletter" it using the
+        // previously-defined delegator. We also use onAloErrorDelegate to activate error delegation
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
             .receiveAloValues(MAIN_TOPIC)
-            .addAloErrorDelegation((string, error) ->
-                sender.sendRecord(new ProducerRecord<>(DEADLETTER_TOPIC, "key", string))
-            )
+            .addAloErrorDelegation(deadletterDelegator)
             .map(string -> {
                 if (string.equalsIgnoreCase("bad")) {
                     throw new UnsupportedOperationException("Boom");
@@ -73,7 +76,7 @@ public class KafkaDeadlettering {
             .doOnNext(receivedValues -> System.out.println("receivedValues: " + receivedValues))
             .block();
 
-        //Step 6) Receive the values that were deadlettered
+        //Step 7) Receive the values that were deadlettered
         AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
             .receiveAloValues(DEADLETTER_TOPIC)
             .consumeAloAndGet(Alo::acknowledge)
