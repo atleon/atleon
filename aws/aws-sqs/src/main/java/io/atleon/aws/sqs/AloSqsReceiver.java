@@ -245,7 +245,7 @@ public class AloSqsReceiver<T> {
             return aloFactory.create(
                 deserialized,
                 message.deleter(),
-                nacknowledgerFactory.create(deserialized, message.deleter(), message.visibilityChanger(), errorEmitter)
+                nacknowledgerFactory.create(deserialized, message.visibilityChanger(), errorEmitter)
             );
         }
 
