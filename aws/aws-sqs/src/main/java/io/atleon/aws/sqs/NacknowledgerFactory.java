@@ -29,7 +29,6 @@ public interface NacknowledgerFactory<T> extends Configurable {
 
     Consumer<Throwable> create(
         ReceivedSqsMessage<T> message,
-        Runnable deleter,
         SqsMessageVisibilityChanger visibilityChanger,
         Consumer<Throwable> errorEmitter
     );
@@ -43,7 +42,6 @@ public interface NacknowledgerFactory<T> extends Configurable {
         @Override
         public Consumer<Throwable> create(
             ReceivedSqsMessage<T> message,
-            Runnable deleter,
             SqsMessageVisibilityChanger visibilityChanger,
             Consumer<Throwable> errorEmitter
         ) {
@@ -69,7 +67,6 @@ public interface NacknowledgerFactory<T> extends Configurable {
         @Override
         public Consumer<Throwable> create(
             ReceivedSqsMessage<T> message,
-            Runnable deleter,
             SqsMessageVisibilityChanger visibilityChanger,
             Consumer<Throwable> errorEmitter
         ) {
