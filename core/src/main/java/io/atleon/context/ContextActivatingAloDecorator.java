@@ -12,6 +12,11 @@ import io.atleon.core.AloDecorator;
 public class ContextActivatingAloDecorator<T> implements AloDecorator<T> {
 
     @Override
+    public int order() {
+        return OUTERMOST_ORDER - 3000;
+    }
+
+    @Override
     public final Alo<T> decorate(Alo<T> alo) {
         return ContextActivatingAlo.create(alo);
     }

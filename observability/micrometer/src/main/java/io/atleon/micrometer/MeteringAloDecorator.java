@@ -37,6 +37,11 @@ public abstract class MeteringAloDecorator<T, K> implements AloDecorator<T> {
     }
 
     @Override
+    public int order() {
+        return INNERMOST_ORDER + 4000;
+    }
+
+    @Override
     public final Alo<T> decorate(Alo<T> alo) {
         T data = alo.get();
         K key = extractKey(data);

@@ -32,6 +32,11 @@ public abstract class TracingAloConsumptionDecorator<T> implements AloDecorator<
     }
 
     @Override
+    public int order() {
+        return INNERMOST_ORDER + 3000;
+    }
+
+    @Override
     public final Alo<T> decorate(Alo<T> alo) {
         T t = alo.get();
         Tracer.SpanBuilder spanBuilder = newSpanBuilder(tracerFacade::newSpanBuilder, t)
