@@ -1,5 +1,6 @@
 package io.atleon.spring;
 
+import io.atleon.application.ConfiguredAloStream;
 import io.atleon.core.AloStream;
 import io.atleon.core.AloStreamConfig;
 import org.springframework.context.ApplicationContext;

@@ -1,4 +1,4 @@
-package io.atleon.spring;
+package io.atleon.application;
 
 import java.util.Collection;
 import java.util.Optional;

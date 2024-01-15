@@ -1,5 +1,6 @@
 package io.atleon.rabbitmq;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
 public final class LongBodyDeserializer implements BodyDeserializer<Long> {
@@ -8,7 +9,7 @@ public final class LongBodyDeserializer implements BodyDeserializer<Long> {
     public Long deserialize(SerializedBody data) {
         ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
         buffer.put(data.bytes());
-        buffer.flip();
+        Buffer.class.cast(buffer).flip(); // Cast added for forward compatibility
         return buffer.getLong();
     }
 }

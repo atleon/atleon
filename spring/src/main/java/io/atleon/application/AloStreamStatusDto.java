@@ -1,4 +1,4 @@
-package io.atleon.spring;
+package io.atleon.application;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 

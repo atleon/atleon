@@ -1,4 +1,4 @@
-package io.atleon.spring;
+package io.atleon.application;
 
 import io.atleon.core.AloStream;
 
