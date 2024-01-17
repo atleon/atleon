@@ -27,6 +27,10 @@
             <artifactId>kafka-schema-registry</artifactId>
             <version>${confluent.version}</version>
             <exclusions>
+                <exclusion>
+                    <groupId>com.google.errorprone</groupId>
+                    <artifactId>error_prone_annotations</artifactId>
+                </exclusion>
                 <!-- Excluding to bring in managed version as runtime dependency -->
                 <exclusion>
                     <groupId>com.google.guava</groupId>
@@ -35,6 +39,18 @@
                 <exclusion>
                     <groupId>com.squareup</groupId>
                     <artifactId>kotlinpoet</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.squareup.okio</groupId>
+                    <artifactId>okio-jvm</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.squareup.wire</groupId>
+                    <artifactId>wire-runtime-jvm</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.squareup.wire</groupId>
+                    <artifactId>wire-schema-jvm</artifactId>
                 </exclusion>
                 <exclusion>
                     <groupId>jakarta.xml.bind</groupId>
