@@ -24,7 +24,7 @@ public class SqsLowLevel {
     private static final AtleonLocalStackContainer CONTAINER = AtleonLocalStackContainer.createAndStart();
 
     public static void main(String[] args) {
-        String queueUrl = createQueue("my-queue");
+        String queueUrl = createQueueAndGetUrl("my-queue");
         int numberOfMessages = args.length < 1 ? 20 : Integer.parseInt(args[0]);
 
         periodicallyProduceMessages(queueUrl, Duration.ofMillis(250), numberOfMessages);
@@ -39,7 +39,7 @@ public class SqsLowLevel {
             .block();
     }
 
-    private static String createQueue(String name) {
+    private static String createQueueAndGetUrl(String name) {
         try (SqsAsyncClient client = createClient()) {
             CreateQueueRequest request = CreateQueueRequest.builder().queueName(name).build();
             return client.createQueue(request).join().queueUrl();
