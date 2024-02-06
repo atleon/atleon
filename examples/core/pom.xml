@@ -18,6 +18,14 @@
         </dependency>
         <dependency>
             <groupId>io.atleon</groupId>
+            <artifactId>atleon-aws-testcontainers</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-aws-sqs</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
             <artifactId>atleon-core</artifactId>
         </dependency>
         <dependency>
