@@ -24,19 +24,23 @@ public class SqsLowLevel {
     private static final AtleonLocalStackContainer CONTAINER = AtleonLocalStackContainer.createAndStart();
 
     public static void main(String[] args) {
+        //Step 1) Create queue, then determine number of messages
         String queueUrl = createQueueAndGetUrl("my-queue");
         int numberOfMessages = args.length < 1 ? 20 : Integer.parseInt(args[0]);
 
+        //Step 2) Periodically produce number of messages asynchronously
         periodicallyProduceMessages(queueUrl, Duration.ofMillis(250), numberOfMessages);
 
+        //Step 3) Specify reception options
         SqsReceiverOptions options = SqsReceiverOptions.defaultOptions(SqsLowLevel::createClient);
+
+        //Step 4) Create Receiver, then apply consumption
         SqsReceiver.create(options)
             .receiveManual(queueUrl)
             .doOnNext(message -> System.out.println("Received message: " + message.body()))
             .doOnNext(SqsReceiverMessage::delete)
             .take(numberOfMessages)
-            .then()
-            .block();
+            .blockLast();
     }
 
     private static String createQueueAndGetUrl(String name) {
@@ -47,7 +51,10 @@ public class SqsLowLevel {
     }
 
     private static void periodicallyProduceMessages(String queueUrl, Duration period, int numberOfMessages) {
+        //Step 1) Specify sending options
         SqsSenderOptions options = SqsSenderOptions.defaultOptions(SqsLowLevel::createClient);
+
+        //Step 2) Create Sender, and produce number of messages periodically
         SqsSender sender = SqsSender.create(options);
         Flux.range(1, numberOfMessages)
             .delayElements(period)
