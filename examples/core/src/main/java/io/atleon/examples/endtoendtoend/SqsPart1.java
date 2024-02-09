@@ -26,7 +26,7 @@ public class SqsPart1 {
     private static final AtleonLocalStackContainer CONTAINER = AtleonLocalStackContainer.createAndStart();
 
     public static void main(String[] args) {
-        //Step 1) Create queue=
+        //Step 1) Create queue
         String queueUrl = createQueueAndGetUrl("my-queue");
 
         //Step 2) Periodically produce messages asynchronously

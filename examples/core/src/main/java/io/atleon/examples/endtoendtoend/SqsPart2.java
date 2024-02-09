@@ -43,9 +43,9 @@ public class SqsPart2 {
         AloSqsSender<String> sender = AloSqsSender.from(configSource);
         Disposable processing = AloSqsReceiver.<String>from(configSource)
             .receiveAloMessages(inputQueueUrl)
-            .map(message -> ComposedSqsMessage.fromBody(message.body().toUpperCase()))
-            .transform(messages -> sender.sendAloMessages(messages, outputQueueUrl))
-            .doOnNext(senderResult -> System.out.println("Sent message: " + senderResult.correlationMetadata().body()))
+            .map(message -> message.body().toUpperCase())
+            .transform(sender.sendAloBodies(ComposedSqsMessage::fromBody, outputQueueUrl))
+            .doOnNext(senderResult -> System.out.println("Sent message: " + senderResult.correlationMetadata()))
             .doFinally(sender::close)
             .subscribe(Alo::acknowledge);
 
