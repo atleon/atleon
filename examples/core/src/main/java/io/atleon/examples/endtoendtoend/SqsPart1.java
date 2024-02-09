@@ -9,7 +9,6 @@ import io.atleon.aws.sqs.StringBodyDeserializer;
 import io.atleon.aws.sqs.StringBodySerializer;
 import io.atleon.aws.testcontainers.AtleonLocalStackContainer;
 import io.atleon.aws.util.AwsConfig;
-import io.atleon.core.Alo;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
@@ -39,8 +38,8 @@ public class SqsPart1 {
         //Step 4) Create Receiver, then apply consumption
         Disposable processing = AloSqsReceiver.from(configSource)
             .receiveAloMessages(queueUrl)
-            .doOnNext(message -> System.out.println("Received message: " + message.body()))
-            .subscribe(Alo::acknowledge);
+            .consume(message -> System.out.println("Received message: " + message.body()))
+            .subscribe();
 
         //Step 5) Wait for user to terminate, then dispose of resources (stop stream processes)
         awaitTerminationByUser();

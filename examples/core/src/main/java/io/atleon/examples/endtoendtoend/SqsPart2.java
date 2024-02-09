@@ -9,7 +9,7 @@ import io.atleon.aws.sqs.StringBodyDeserializer;
 import io.atleon.aws.sqs.StringBodySerializer;
 import io.atleon.aws.testcontainers.AtleonLocalStackContainer;
 import io.atleon.aws.util.AwsConfig;
-import io.atleon.core.Alo;
+import io.atleon.core.DefaultAloSenderResultSubscriber;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
@@ -47,7 +47,7 @@ public class SqsPart2 {
             .transform(sender.sendAloBodies(ComposedSqsMessage::fromBody, outputQueueUrl))
             .doOnNext(senderResult -> System.out.println("Sent message: " + senderResult.correlationMetadata()))
             .doFinally(sender::close)
-            .subscribe(Alo::acknowledge);
+            .subscribeWith(new DefaultAloSenderResultSubscriber<>());
 
         //Step 5) Wait for user to terminate, then dispose of resources (stop stream processes)
         awaitTerminationByUser();
