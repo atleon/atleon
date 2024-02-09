@@ -89,7 +89,7 @@ public class SqsPart2 {
         try {
             System.in.read();
         } catch (IOException e) {
-            System.err.println("Failed to await user termination: e");
+            System.err.println("Failed to await termination by user: " + e);
         }
     }
 }
