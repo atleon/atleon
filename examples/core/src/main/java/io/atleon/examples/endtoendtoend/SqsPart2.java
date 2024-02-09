@@ -10,10 +10,12 @@ import io.atleon.aws.sqs.StringBodySerializer;
 import io.atleon.aws.testcontainers.AtleonLocalStackContainer;
 import io.atleon.aws.util.AwsConfig;
 import io.atleon.core.Alo;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.CreateQueueRequest;
 
+import java.io.IOException;
 import java.time.Duration;
 
 /**
@@ -25,13 +27,12 @@ public class SqsPart2 {
     private static final AtleonLocalStackContainer CONTAINER = AtleonLocalStackContainer.createAndStart();
 
     public static void main(String[] args) {
-        //Step 1) Create input and output queues, then determine number of messages
+        //Step 1) Create input and output queues
         String inputQueueUrl = createQueueAndGetUrl("my-input-queue");
         String outputQueueUrl = createQueueAndGetUrl("my-output-queue");
-        int numberOfMessages = args.length < 1 ? 20 : Integer.parseInt(args[0]);
 
-        //Step 2) Periodically produce number of messages asynchronously
-        periodicallyProduceMessages(inputQueueUrl, Duration.ofMillis(250), numberOfMessages);
+        //Step 2) Periodically produce messages asynchronously
+        Disposable production = periodicallyProduceMessages(inputQueueUrl, Duration.ofMillis(250));
 
         //Step 3) Specify reception and sending config
         SqsConfigSource configSource = createConfigSource()
@@ -40,15 +41,18 @@ public class SqsPart2 {
 
         //Step 4) Create Sender and Receiver, then apply processing
         AloSqsSender<String> sender = AloSqsSender.from(configSource);
-        AloSqsReceiver.<String>from(configSource)
+        Disposable processing = AloSqsReceiver.<String>from(configSource)
             .receiveAloMessages(inputQueueUrl)
             .map(message -> ComposedSqsMessage.fromBody(message.body().toUpperCase()))
             .transform(messages -> sender.sendAloMessages(messages, outputQueueUrl))
             .doOnNext(senderResult -> System.out.println("Sent message: " + senderResult.correlationMetadata().body()))
             .doFinally(sender::close)
-            .consumeAloAndGet(Alo::acknowledge)
-            .take(numberOfMessages)
-            .blockLast();
+            .subscribe(Alo::acknowledge);
+
+        //Step 5) Wait for user to terminate, then dispose of resources (stop stream processes)
+        awaitTerminationByUser();
+        production.dispose();
+        processing.dispose();
     }
 
     private static String createQueueAndGetUrl(String name) {
@@ -58,15 +62,14 @@ public class SqsPart2 {
         }
     }
 
-    private static void periodicallyProduceMessages(String queueUrl, Duration period, int numberOfMessages) {
+    private static Disposable periodicallyProduceMessages(String queueUrl, Duration period) {
         //Step 1) Specify sending config
         SqsConfigSource configSource = createConfigSource()
             .with(AloSqsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class);
 
-        //Step 2) Create Sender, and produce number of messages periodically
+        //Step 2) Create Sender, and produce messages periodically
         AloSqsSender<String> sender = AloSqsSender.from(configSource);
-        Flux.range(1, numberOfMessages)
-            .delayElements(period)
+        return Flux.interval(period)
             .map(number -> ComposedSqsMessage.fromBody("This is message #" + number))
             .transform(messages -> sender.sendMessages(messages, queueUrl))
             .doFinally(__ -> sender.close())
@@ -80,5 +83,13 @@ public class SqsPart2 {
             .with(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, CONTAINER.getAccessKey())
             .with(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, CONTAINER.getSecretKey())
             .with(SqsConfig.ENDPOINT_OVERRIDE_CONFIG, CONTAINER.getSqsEndpointOverride());
+    }
+
+    private static void awaitTerminationByUser() {
+        try {
+            System.in.read();
+        } catch (IOException e) {
+            System.err.println("Failed to await user termination: e");
+        }
     }
 }

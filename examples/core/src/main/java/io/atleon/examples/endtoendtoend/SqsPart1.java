@@ -10,10 +10,12 @@ import io.atleon.aws.sqs.StringBodySerializer;
 import io.atleon.aws.testcontainers.AtleonLocalStackContainer;
 import io.atleon.aws.util.AwsConfig;
 import io.atleon.core.Alo;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.CreateQueueRequest;
 
+import java.io.IOException;
 import java.time.Duration;
 
 /**
@@ -24,24 +26,26 @@ public class SqsPart1 {
     private static final AtleonLocalStackContainer CONTAINER = AtleonLocalStackContainer.createAndStart();
 
     public static void main(String[] args) {
-        //Step 1) Create queue, then determine number of messages
+        //Step 1) Create queue=
         String queueUrl = createQueueAndGetUrl("my-queue");
-        int numberOfMessages = args.length < 1 ? 20 : Integer.parseInt(args[0]);
 
-        //Step 2) Periodically produce number of messages asynchronously
-        periodicallyProduceMessages(queueUrl, Duration.ofMillis(250), numberOfMessages);
+        //Step 2) Periodically produce messages asynchronously
+        Disposable production = periodicallyProduceMessages(queueUrl, Duration.ofMillis(250));
 
         //Step 3) Specify reception config
         SqsConfigSource configSource = createConfigSource()
             .with(AloSqsReceiver.BODY_DESERIALIZER_CONFIG, StringBodyDeserializer.class);
 
         //Step 4) Create Receiver, then apply consumption
-        AloSqsReceiver.from(configSource)
+        Disposable processing = AloSqsReceiver.from(configSource)
             .receiveAloMessages(queueUrl)
             .doOnNext(message -> System.out.println("Received message: " + message.body()))
-            .consumeAloAndGet(Alo::acknowledge)
-            .take(numberOfMessages)
-            .blockLast();
+            .subscribe(Alo::acknowledge);
+
+        //Step 5) Wait for user to terminate, then dispose of resources (stop stream processes)
+        awaitTerminationByUser();
+        production.dispose();
+        processing.dispose();
     }
 
     private static String createQueueAndGetUrl(String name) {
@@ -51,16 +55,15 @@ public class SqsPart1 {
         }
     }
 
-    private static void periodicallyProduceMessages(String queueUrl, Duration period, int numberOfMessages) {
+    private static Disposable periodicallyProduceMessages(String queueUrl, Duration period) {
         //Step 1) Specify sending config
         SqsConfigSource configSource = createConfigSource()
             .with(AloSqsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class);
 
-        //Step 2) Create Sender, and produce number of messages periodically
+        //Step 2) Create Sender, and produce messages periodically
         AloSqsSender<String> sender = AloSqsSender.from(configSource);
-        Flux.range(1, numberOfMessages)
-            .delayElements(period)
-            .map(number -> ComposedSqsMessage.fromBody("This is message #" + number))
+        return Flux.interval(period)
+            .map(number -> ComposedSqsMessage.fromBody("This is message #" + (number + 1)))
             .transform(messages -> sender.sendMessages(messages, queueUrl))
             .doFinally(__ -> sender.close())
             .subscribe();
@@ -73,5 +76,13 @@ public class SqsPart1 {
             .with(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, CONTAINER.getAccessKey())
             .with(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, CONTAINER.getSecretKey())
             .with(SqsConfig.ENDPOINT_OVERRIDE_CONFIG, CONTAINER.getSqsEndpointOverride());
+    }
+
+    private static void awaitTerminationByUser() {
+        try {
+            System.in.read();
+        } catch (IOException e) {
+            System.err.println("Failed to await user termination: e");
+        }
     }
 }
