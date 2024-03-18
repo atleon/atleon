@@ -31,13 +31,25 @@ public final class SerialQueue<T> {
     }
 
     /**
+     * Creates a {@link SerialQueue} that wraps operations on some resource by allowing
+     * submission of operations on the provided resource (as {@link Consumer}).
+     *
+     * @param resource The resource on which operations are serialized
+     * @param <T> The type of resource operated on
+     * @return A new SerialQueue
+     */
+    public static <T> SerialQueue<Consumer<T>> on(T resource) {
+        return new SerialQueue<>(consumer -> consumer.accept(resource));
+    }
+
+    /**
      * Creates a {@link SerialQueue} that wraps the emissions of next items on a
      * {@link Sinks.Many}. Next emissions will fail fast if any of the sink's emissions are invoked
      * externally and not serialized with the created Queue.
      *
      * @param sink The sink into which queued items will be emitted
      * @param <T> The type of items emitted in to the sink
-     * @return A new DrainableQueue
+     * @return A new SerialQueue
      */
     public static <T> SerialQueue<T> onEmitNext(Sinks.Many<T> sink) {
         return new SerialQueue<>(t -> sink.emitNext(t, Sinks.EmitFailureHandler.FAIL_FAST));
