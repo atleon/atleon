@@ -620,7 +620,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @return A new {@link AloFlux}
      */
     public AloFlux<T> addAloErrorDelegation(BiFunction<? super T, ? super Throwable, ? extends Publisher<?>> delegator) {
-        return new AloFlux<>(wrapped.map(new AloErrorDelegatingMapper<>(delegator)));
+        return new AloFlux<>(new AloErrorDelegatingOperator<>(wrapped, delegator));
     }
 
     /**
