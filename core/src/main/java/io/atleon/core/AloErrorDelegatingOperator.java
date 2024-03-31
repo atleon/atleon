@@ -86,11 +86,8 @@ final class AloErrorDelegatingOperator<T> extends FluxOperator<Alo<T>, Alo<T>> {
         @Override
         public void onError(Throwable t) {
             unsuccessfullyDone = true;
-            try {
-                actual.onError(t);
-            } finally {
-                safelyDisposeAllInFlight();
-            }
+            safelyDisposeAllInFlight();
+            actual.onError(t);
         }
 
         @Override
