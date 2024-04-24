@@ -58,19 +58,19 @@ public class KafkaConfigSource extends ConfigSource<KafkaConfig, KafkaConfigSour
         return with(ConsumerConfig.GROUP_ID_CONFIG, groupId);
     }
 
-    public KafkaConfigSource withKeySerializer(Class<? extends Serializer<?>> serializerClass) {
+    public KafkaConfigSource withKeySerializer(Class<? extends Serializer> serializerClass) {
         return with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, serializerClass.getName());
     }
 
-    public KafkaConfigSource withValueSerializer(Class<? extends Serializer<?>> serializerClass) {
+    public KafkaConfigSource withValueSerializer(Class<? extends Serializer> serializerClass) {
         return with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, serializerClass.getName());
     }
 
-    public KafkaConfigSource withKeyDeserializer(Class<? extends Deserializer<?>> deserializerClass) {
+    public KafkaConfigSource withKeyDeserializer(Class<? extends Deserializer> deserializerClass) {
         return with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, deserializerClass.getName());
     }
 
-    public KafkaConfigSource withValueDeserializer(Class<? extends Deserializer<?>> deserializerClass) {
+    public KafkaConfigSource withValueDeserializer(Class<? extends Deserializer> deserializerClass) {
         return with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, deserializerClass.getName());
     }
 
