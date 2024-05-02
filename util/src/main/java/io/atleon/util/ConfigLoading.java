@@ -28,6 +28,15 @@ public final class ConfigLoading {
 
     }
 
+    /**
+     * Strips out conventional Atleon-specific properties to distill "native" config
+     */
+    public static Map<String, Object> loadNative(Map<String, Object> configs) {
+        return configs.entrySet().stream()
+            .filter(entry -> !entry.getKey().matches("^((atleon\\.)|(\\w+\\.(receiver|sender)\\.)).+"))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+
     public static <T extends Configurable> T
     loadConfiguredOrThrow(Map<String, ?> configs, String property, Class<? extends T> type) {
         return loadConfiguredWithPredefinedTypes(configs, property, type, typeName -> Optional.empty())

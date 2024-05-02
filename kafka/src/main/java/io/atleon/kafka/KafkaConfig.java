@@ -22,6 +22,10 @@ public class KafkaConfig {
         return new KafkaConfig(properties);
     }
 
+    public Map<String, Object> nativeProperties() {
+        return ConfigLoading.loadNative(properties);
+    }
+
     public Map<String, Object> modifyAndGetProperties(Consumer<Map<String, Object>> modifier) {
         Map<String, Object> modifiedProperties = new HashMap<>(properties);
         modifier.accept(modifiedProperties);
