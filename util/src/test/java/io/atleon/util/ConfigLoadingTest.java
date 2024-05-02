@@ -20,6 +20,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class ConfigLoadingTest {
 
     @Test
+    public void propertiesCanBeStrippedDownToNativeProperties() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("special.receiver.config", "value");
+        configs.put("atleon.config", "value");
+        configs.put("native.config", "value");
+
+        Map<String, Object> result = ConfigLoading.loadNative(configs);
+
+        assertEquals(Collections.singletonMap("native.config", "value"), result);
+    }
+
+    @Test
     public void parseableConfigsAreLoadedCorrectly() {
         assertEquals(
             Duration.ofSeconds(10),
