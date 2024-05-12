@@ -29,6 +29,12 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Third Party Compile Dependencies -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
         <!-- Third Party Provided Dependencies -->
         <dependency>
             <groupId>org.apache.kafka</groupId>

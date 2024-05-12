@@ -18,7 +18,7 @@ public final class ProtobufRabbitMQBodyDeserializer<T extends Message> implement
 
     @Override
     public void configure(Map<String, ?> properties) {
-        this.parser = ProtobufMessages.loadParser(properties, MESSAGE_TYPE_CONFIG, byte[].class);
+        this.parser = ProtobufMessages.loadParserOrThrow(properties, MESSAGE_TYPE_CONFIG, byte[].class);
     }
 
     @Override

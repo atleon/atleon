@@ -17,7 +17,7 @@ public class ProtobufMessagesTest {
 
         Map<String, ?> configs = Collections.singletonMap("type", StringValue.class);
 
-        Function<byte[], StringValue> parser = ProtobufMessages.loadParser(configs, "type", byte[].class);
+        Function<byte[], StringValue> parser = ProtobufMessages.loadParserOrThrow(configs, "type", byte[].class);
 
         assertEquals(message, parser.apply(message.toByteArray()));
     }
