@@ -1,6 +1,7 @@
 package io.atleon.core;
 
 import org.reactivestreams.Publisher;
+import reactor.core.observability.SignalListenerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
 
@@ -195,6 +196,16 @@ public class GroupFlux<K, T> {
      */
     public GroupFlux<K, T> innerPublishOn(Scheduler scheduler, int prefetch) {
         return map(group -> group.publishOn(scheduler, prefetch));
+    }
+
+    /**
+     * Convenience method for applying {@link AloFlux#tap(SignalListenerFactory)} to each inner
+     * grouped sequence.
+     *
+     * @return a transformed {@link GroupFlux}
+     */
+    public GroupFlux<K, T> innerTap(SignalListenerFactory<Alo<T>, ?> signalListenerFactory) {
+        return map(group -> group.tap(signalListenerFactory));
     }
 
     /**
