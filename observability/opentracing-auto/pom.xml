@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.atleon</groupId>
         <artifactId>atleon-observability</artifactId>
-        <version>0.26.4-SNAPSHOT</version>
+        <version>0.26.4</version>
     </parent>
 
     <artifactId>atleon-opentracing-auto</artifactId>
