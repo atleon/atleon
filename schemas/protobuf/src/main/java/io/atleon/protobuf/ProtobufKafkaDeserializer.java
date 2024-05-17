@@ -44,10 +44,14 @@ public final class ProtobufKafkaDeserializer<T extends Message> implements Deser
     }
 
     private static <T extends Message> Function<byte[], T> loadParser(Map<String, ?> configs, String specificKey) {
-        Optional<Function<byte[], T>> parser = ProtobufMessages.loadParser(configs, specificKey, byte[].class);
-        if (!parser.isPresent()) {
-            LOGGER.warn("Unsupported/Deprecated configuration. Please configure '{}'.", specificKey);
+        Optional<Function<byte[], T>> parser;
+        if ((parser = ProtobufMessages.loadParser(configs, specificKey, byte[].class)).isPresent()) {
+            return parser.get();
+        } else if ((parser = ProtobufMessages.loadParser(configs, MESSAGE_TYPE_CONFIG, byte[].class)).isPresent()) {
+            LOGGER.warn("Deprecated config '{}'. Please configure '{}'.", MESSAGE_TYPE_CONFIG, specificKey);
+            return parser.get();
+        } else {
+            throw new IllegalArgumentException("Missing config: " + specificKey);
         }
-        return ProtobufMessages.loadParserOrThrow(configs, MESSAGE_TYPE_CONFIG, byte[].class);
     }
 }
