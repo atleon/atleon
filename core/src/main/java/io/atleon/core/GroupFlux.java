@@ -4,6 +4,7 @@ import org.reactivestreams.Publisher;
 import reactor.core.observability.SignalListenerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.util.List;
@@ -206,6 +207,18 @@ public class GroupFlux<K, T> {
      */
     public GroupFlux<K, T> innerTap(SignalListenerFactory<Alo<T>, ?> signalListenerFactory) {
         return map(group -> group.tap(signalListenerFactory));
+    }
+
+    /**
+     * Apply a <i>cumulative</i> limit on the rate at which items are emitted across all inner
+     * grouped sequences. Especially useful when interacting with resource-constrained I/O
+     * dependencies.
+     *
+     * @return a transformed {@link GroupFlux}
+     */
+    public GroupFlux<K, T> limitPerSecond(double limitPerSecond) {
+        RateLimitingConfig config = new RateLimitingConfig(limitPerSecond);
+        return map(new RateLimitingTransformer<>(config, Schedulers.boundedElastic()));
     }
 
     /**

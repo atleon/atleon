@@ -493,7 +493,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
 
     /**
      * Limits the rate at which items are emitted by this Publisher. Especially useful in cases
-     * where processing requires interaction with resource-contrained I/O dependencies
+     * where processing requires interaction with resource-constrained I/O dependencies
      */
     public AloFlux<T> limitPerSecond(RateLimitingConfig config) {
         return new AloFlux<>(wrapped.transform(new RateLimitingTransformer<>(config, Schedulers.boundedElastic())));
