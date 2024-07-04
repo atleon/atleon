@@ -33,7 +33,7 @@ public final class ConfigLoading {
      */
     public static Map<String, Object> loadNative(Map<String, Object> configs) {
         return configs.entrySet().stream()
-            .filter(entry -> !entry.getKey().matches("^((atleon\\.)|(\\w+\\.(receiver|sender)\\.)).+"))
+            .filter(entry -> !entry.getKey().matches("^((atleon\\.)|(\\w+\\.(bounded\\.)?(receiver|sender)\\.)).+"))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
