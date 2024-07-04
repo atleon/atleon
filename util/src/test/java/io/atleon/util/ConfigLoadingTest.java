@@ -23,6 +23,7 @@ public class ConfigLoadingTest {
     public void propertiesCanBeStrippedDownToNativeProperties() {
         Map<String, Object> configs = new HashMap<>();
         configs.put("special.receiver.config", "value");
+        configs.put("special.bounded.receiver.config", "value");
         configs.put("atleon.config", "value");
         configs.put("native.config", "value");
 
