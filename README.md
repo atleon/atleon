@@ -4,7 +4,7 @@
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.atleon/atleon-core/badge.svg?style=plastic)](https://mvnrepository.com/artifact/io.atleon)
 [![Javadoc](https://javadoc.io/badge2/io.atleon/atleon-core/javadoc.svg)](https://javadoc.io/doc/io.atleon/atleon-core)
 
-Atleon is a lightweight reactive stream processing framework that scalably transforms data from any supported infrastructure, and allows sending transformed data nearly anywhere, while _seamlessly_ maintaining **at** **le**ast **on**ce processing guarantees.
+Atleon is a lightweight reactive stream processing framework that scalably transforms data from any supported infrastructure, and allows sending that data nearly anywhere, while _seamlessly_ maintaining **at** **le**ast **on**ce processing guarantees.
 
 Atleon is based on [Reactive Streams](https://www.reactive-streams.org/) and backed by [Project Reactor](https://projectreactor.io/).
 

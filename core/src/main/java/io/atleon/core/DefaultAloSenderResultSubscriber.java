@@ -44,6 +44,6 @@ public class DefaultAloSenderResultSubscriber<T extends SenderResult> extends Ba
      */
     protected void hookBeforeNacknowledge(T senderResult) {
         Throwable failureCause = senderResult.failureCause().orElse(null);
-        LOGGER.warn("SenderResult of type={} is failed", senderResult.getClass().getSimpleName(), failureCause);
+        LOGGER.error("SenderResult of type={} is failed", senderResult.getClass().getSimpleName(), failureCause);
     }
 }
