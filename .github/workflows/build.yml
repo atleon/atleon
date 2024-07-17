@@ -40,5 +40,5 @@ jobs:
       - name: Publish SNAPSHOT Artifacts
         run: ./mvnw deploy --settings ./.mvn/settings/mvn-settings.xml -B -U -P oss-snapshot -DskipTests=true
         env:
-          SONATYPE_JIRA_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
-          SONATYPE_JIRA_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_TOKEN_USER: ${{ secrets.SONATYPE_TOKEN_USER }}
+          SONATYPE_TOKEN_KEY: ${{ secrets.SONATYPE_TOKEN_KEY }}
