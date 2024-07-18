@@ -26,7 +26,7 @@ class AloSnsSenderTest extends LocalStackDependentTest {
             nacknowledgement::set
         );
 
-        AloSnsSender.<String>from(newAloSnsSenderConfigSource())
+        AloSnsSender.<String>create(newAloSnsSenderConfigSource())
             .sendAloMessages(Flux.just(aloSnsMessage), topicArn)
             .consumeAloAndGet(alo -> {
                 Alo.acknowledge(alo);

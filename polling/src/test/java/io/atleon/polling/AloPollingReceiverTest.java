@@ -39,7 +39,7 @@ public class AloPollingReceiverTest {
         messages.add(buildSuccessMessages("Batch - 2", 2));
         messages.add(buildSuccessMessages("Batch - 3", 3));
         pollable = new TestPollable(messages, acks, nacks);
-        AloPollingReceiver<TestMessage, TestMessage> receiver = AloPollingReceiver.from(pollable, config);
+        AloPollingReceiver<TestMessage, TestMessage> receiver = AloPollingReceiver.create(pollable, config);
         receiver.receivePayloads().subscribe();
 
         while (acks.size() < 10) {
@@ -57,7 +57,7 @@ public class AloPollingReceiverTest {
         messages.add(buildSuccessMessages("Batch - 1", 5));
         messages.add(buildFailureMessages("Batch - 2",5, 1));
         pollable = new TestPollable(messages, acks, nacks);
-        AloPollingReceiver<TestMessage, TestMessage> receiver = AloPollingReceiver.from(pollable, config);
+        AloPollingReceiver<TestMessage, TestMessage> receiver = AloPollingReceiver.create(pollable, config);
         receiver.receivePayloads().subscribe(alo -> {
             try {
                 alo.get().getMessage();

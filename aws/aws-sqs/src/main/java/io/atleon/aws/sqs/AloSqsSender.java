@@ -22,7 +22,7 @@ import java.util.function.Function;
  * {@link AloSqsSender#close()}. However, if after closing, more sent Publishers are subscribed to,
  * a new Sender instance will be created and cached.
  *
- * @param <T> The deserialized type of SQS Message bodies
+ * @param <T> The un-serialized type of SQS Message bodies
  */
 public class AloSqsSender<T> implements Closeable {
 
@@ -77,22 +77,75 @@ public class AloSqsSender<T> implements Closeable {
             .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SendResources::close);
     }
 
+    /**
+     * Alias for {@link #create(SqsConfigSource)}. Will be deprecated in future release.
+     */
     public static <T> AloSqsSender<T> from(SqsConfigSource configSource) {
+        return create(configSource);
+    }
+
+    /**
+     * Creates a new AloSqsSender from the provided {@link SqsConfigSource}
+     *
+     * @param configSource The reactive source of {@link SqsConfig}
+     * @param <T>          The type of messages bodies sent by this sender
+     * @return A new AloSqsSender
+     */
+    public static <T> AloSqsSender<T> create(SqsConfigSource configSource) {
         return new AloSqsSender<>(configSource);
     }
 
+    /**
+     * Sends a sequence of message bodies to be populated in {@link SqsMessage}s to the specified
+     * queue URL.
+     * <p>
+     * The output of each sent message body is an {@link SqsSenderResult} containing the sent
+     * value.
+     *
+     * @param bodies         A Publisher of SQS message bodies
+     * @param messageCreator A factory that creates {@link SqsMessage}s from message bodies
+     * @param queueUrl       URL of the queue to send messages to
+     * @return a Publisher of the results of each sent message
+     */
     public Flux<SqsSenderResult<T>> sendBodies(Publisher<T> bodies, SqsMessageCreator<T> messageCreator, String queueUrl) {
         return futureResources.flatMapMany(resources -> resources.send(bodies, messageCreator, queueUrl));
     }
 
+    /**
+     * Send a single {@link SqsMessage}
+     *
+     * @param message  A message to send
+     * @param queueUrl URL of the queue to send the message to
+     * @return A Publisher of the result of sending the message
+     */
     public Mono<SqsSenderResult<SqsMessage<T>>> sendMessage(SqsMessage<T> message, String queueUrl) {
         return futureResources.flatMap(resources -> resources.send(message, queueUrl));
     }
 
+    /**
+     * Sends a sequence of {@link SqsMessage}s
+     * <p>
+     * The output of each sent message is an {@link SqsSenderResult} containing the sent
+     * message.
+     *
+     * @param messages A Publisher of messages to send
+     * @param queueUrl URL of the queue to send messages to
+     * @return A Publisher of items referencing the result of each sent message
+     */
     public Flux<SqsSenderResult<SqsMessage<T>>> sendMessages(Publisher<SqsMessage<T>> messages, String queueUrl) {
         return futureResources.flatMapMany(resources -> resources.send(messages, Function.identity(), queueUrl));
     }
 
+    /**
+     * Creates a {@link Function} that can be used to transform a Publisher of {@link Alo} items
+     * referencing SQS message bodies to a Publisher of Alo items referencing the result of
+     * sending each message body. See {@link #sendAloBodies(Publisher, SqsMessageCreator, String)}
+     * for further information.
+     *
+     * @param messageCreator A factory that creates {@link SqsMessage}s from message bodies
+     * @param queueUrl URL of the queue to send messages to
+     * @return A {@link Function} useful for Publisher transformations
+     */
     public Function<Publisher<Alo<T>>, AloFlux<SqsSenderResult<T>>> sendAloBodies(
         SqsMessageCreator<T> messageCreator,
         String queueUrl
@@ -100,6 +153,20 @@ public class AloSqsSender<T> implements Closeable {
         return aloBodies -> sendAloBodies(aloBodies, messageCreator, queueUrl);
     }
 
+    /**
+     * Sends a sequence of {@link Alo} items referencing message bodies to be populated in
+     * {@link SqsMessage}s to the specified queue URL.
+     * <p>
+     * The output of each sent message body is an {@link SqsSenderResult} containing the sent
+     * value. Each emitted item is an {@link Alo} item referencing an {@link SqsSenderResult}
+     * and must be acknowledged or nacknowledged such that its processing can be marked complete at
+     * the origin of the message.
+     *
+     * @param aloBodies      A Publisher of Alo items referencing SQS message bodies
+     * @param messageCreator A factory that creates {@link SqsMessage}s from message bodies
+     * @param queueUrl       URL of the queue to send messages to
+     * @return a Publisher of Alo items referencing the result of each sent message
+     */
     public AloFlux<SqsSenderResult<T>> sendAloBodies(
         Publisher<Alo<T>> aloBodies,
         SqsMessageCreator<T> messageCreator,
@@ -110,12 +177,32 @@ public class AloSqsSender<T> implements Closeable {
             .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
+    /**
+     * Creates a {@link Function} that can be used to transform a Publisher of {@link Alo} items
+     * referencing SQS messages to a Publisher of Alo items referencing the result of sending each
+     * message. See {@link #sendAloMessages(Publisher, String)} for further information.
+     *
+     * @param queueUrl URL of the queue to send messages to
+     * @return A {@link Function} useful for Publisher transformations
+     */
     public Function<Publisher<Alo<SqsMessage<T>>>, AloFlux<SqsSenderResult<SqsMessage<T>>>> sendAloMessages(
         String queueUrl
     ) {
         return aloMessages -> sendAloMessages(aloMessages, queueUrl);
     }
 
+    /**
+     * Sends a sequence of {@link Alo} items referencing {@link SqsMessage}s
+     * <p>
+     * The output of each sent message is an {@link SqsSenderResult} containing the sent
+     * message. Each emitted item is an {@link Alo} item referencing a {@link SqsSenderResult}
+     * and must be acknowledged or nacknowledged such that its processing can be marked complete at
+     * the origin of the message.
+     *
+     * @param aloMessages A Publisher of Alo items referencing messages to send
+     * @param queueUrl    URL of the queue to send messages to
+     * @return A Publisher of Alo items referencing the result of each sent message
+     */
     public AloFlux<SqsSenderResult<SqsMessage<T>>> sendAloMessages(
         Publisher<Alo<SqsMessage<T>>> aloMessages,
         String queueUrl

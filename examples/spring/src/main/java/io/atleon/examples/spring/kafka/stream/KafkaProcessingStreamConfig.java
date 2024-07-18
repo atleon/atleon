@@ -45,7 +45,7 @@ public class KafkaProcessingStreamConfig implements AloStreamConfig {
             .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             .withKeyDeserializer(LongDeserializer.class)
             .withValueDeserializer(LongDeserializer.class);
-        return AloKafkaReceiver.from(configSource);
+        return AloKafkaReceiver.create(configSource);
     }
 
     public AloKafkaSender<Long, Long> buildKafkaLongSender() {
@@ -53,7 +53,7 @@ public class KafkaProcessingStreamConfig implements AloStreamConfig {
             .withProducerOrderingAndResiliencyConfigs()
             .withKeySerializer(LongSerializer.class)
             .withValueSerializer(LongSerializer.class);
-        return AloKafkaSender.from(configSource);
+        return AloKafkaSender.create(configSource);
     }
 
     public String getInputTopic() {

@@ -77,10 +77,33 @@ public class AloSnsSender<T> implements Closeable {
             .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SendResources::close);
     }
 
+    /**
+     * Alias for {@link #create(SnsConfigSource)}. Will be deprecated in future release.
+     */
     public static <T> AloSnsSender<T> from(SnsConfigSource configSource) {
+        return create(configSource);
+    }
+
+    /**
+     * Creates a new AloSnsSender from the provided {@link SnsConfigSource}
+     *
+     * @param configSource The reactive source of {@link SnsConfig}
+     * @param <T>          The type of messages bodies sent by this sender
+     * @return A new AloSnsSender
+     */
+    public static <T> AloSnsSender<T> create(SnsConfigSource configSource) {
         return new AloSnsSender<>(configSource);
     }
 
+    /**
+     * Creates a {@link Function} that can be used to transform a Publisher of SNS message bodies
+     * to a Publisher of results of* sending each message body. See
+     * {@link #sendBodies(Publisher, SnsMessageCreator, String)} for further information.
+     *
+     * @param messageCreator A factory that creates {@link SnsMessage}s from message bodies
+     * @param topicArn       ARN of the topic to send messages to
+     * @return A {@link Function} useful for Publisher transformations
+     */
     public Function<Publisher<T>, Flux<SnsSenderResult<T>>> sendBodies(
         SnsMessageCreator<T> messageCreator,
         String topicArn
@@ -88,18 +111,57 @@ public class AloSnsSender<T> implements Closeable {
         return bodies -> sendBodies(bodies, messageCreator, topicArn);
     }
 
+    /**
+     * Sends a sequence of message bodies to be populated in {@link SnsMessage}s to the specified
+     * topic ARN.
+     * <p>
+     * The output of each sent message body is an {@link SnsSenderResult} containing the sent
+     * value.
+     *
+     * @param bodies         A Publisher of SNS message bodies
+     * @param messageCreator A factory that creates {@link SnsMessage}s from message bodies
+     * @param topicArn       ARN of the topic to send messages to
+     * @return a Publisher of the results of each sent message
+     */
     public Flux<SnsSenderResult<T>> sendBodies(Publisher<T> bodies, SnsMessageCreator<T> messageCreator, String topicArn) {
         return futureResources.flatMapMany(resources -> resources.send(bodies, messageCreator, topicArn));
     }
 
+    /**
+     * Send a single {@link SnsMessage}
+     *
+     * @param message A message to send
+     * @param address Address to send the message to
+     * @return A Publisher of the result of sending the message
+     */
     public Mono<SnsSenderResult<SnsMessage<T>>> sendMessage(SnsMessage<T> message, SnsAddress address) {
         return futureResources.flatMap(resources -> resources.send(message, address));
     }
 
+    /**
+     * Sends a sequence of {@link SnsMessage}s
+     * <p>
+     * The output of each sent message is an {@link SnsSenderResult} containing the sent
+     * message.
+     *
+     * @param messages A Publisher of messages to send
+     * @param topicArn ARN of the topic to send messages to
+     * @return A Publisher of items referencing the result of each sent message
+     */
     public Flux<SnsSenderResult<SnsMessage<T>>> sendMessages(Publisher<SnsMessage<T>> messages, String topicArn) {
         return futureResources.flatMapMany(resources -> resources.send(messages, Function.identity(), topicArn));
     }
 
+    /**
+     * Creates a {@link Function} that can be used to transform a Publisher of {@link Alo} items
+     * referencing SNS message bodies to a Publisher of Alo items referencing the result of
+     * sending each message body. See {@link #sendAloBodies(Publisher, SnsMessageCreator, String)}
+     * for further information.
+     *
+     * @param messageCreator A factory that creates {@link SnsMessage}s from message bodies
+     * @param topicArn       ARN of the topic to send messages to
+     * @return A {@link Function} useful for Publisher transformations
+     */
     public Function<Publisher<Alo<T>>, AloFlux<SnsSenderResult<T>>> sendAloBodies(
         SnsMessageCreator<T> messageCreator,
         String topicArn
@@ -107,6 +169,20 @@ public class AloSnsSender<T> implements Closeable {
         return aloBodies -> sendAloBodies(aloBodies, messageCreator, topicArn);
     }
 
+    /**
+     * Sends a sequence of {@link Alo} items referencing message bodies to be populated in
+     * {@link SnsMessage}s to the specified topic ARN.
+     * <p>
+     * The output of each sent message body is an {@link SnsSenderResult} containing the sent
+     * value. Each emitted item is an {@link Alo} item referencing an {@link SnsSenderResult}
+     * and must be acknowledged or nacknowledged such that its processing can be marked complete at
+     * the origin of the message.
+     *
+     * @param aloBodies      A Publisher of Alo items referencing SNS message bodies
+     * @param messageCreator A factory that creates {@link SnsMessage}s from message bodies
+     * @param topicArn       ARN of the topic to send messages to
+     * @return a Publisher of Alo items referencing the result of each sent message
+     */
     public AloFlux<SnsSenderResult<T>> sendAloBodies(
         Publisher<Alo<T>> aloBodies,
         SnsMessageCreator<T> messageCreator,
@@ -117,12 +193,32 @@ public class AloSnsSender<T> implements Closeable {
             .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
+    /**
+     * Creates a {@link Function} that can be used to transform a Publisher of {@link Alo} items
+     * referencing SNS messages to a Publisher of Alo items referencing the result of sending each
+     * message. See {@link #sendAloMessages(Publisher, String)} for further information.
+     *
+     * @param topicArn ARN of the topic to send messages to
+     * @return A {@link Function} useful for Publisher transformations
+     */
     public Function<Publisher<Alo<SnsMessage<T>>>, AloFlux<SnsSenderResult<SnsMessage<T>>>> sendAloMessages(
         String topicArn
     ) {
         return aloMessages -> sendAloMessages(aloMessages, topicArn);
     }
 
+    /**
+     * Sends a sequence of {@link Alo} items referencing {@link SnsMessage}s
+     * <p>
+     * The output of each sent message is an {@link SnsSenderResult} containing the sent
+     * message. Each emitted item is an {@link Alo} item referencing a {@link SnsSenderResult}
+     * and must be acknowledged or nacknowledged such that its processing can be marked complete at
+     * the origin of the message.
+     *
+     * @param aloMessages A Publisher of Alo items referencing messages to send
+     * @param topicArn    ARN of the topic to send messages to
+     * @return A Publisher of Alo items referencing the result of each sent message
+     */
     public AloFlux<SnsSenderResult<SnsMessage<T>>> sendAloMessages(
         Publisher<Alo<SnsMessage<T>>> aloMessages,
         String topicArn

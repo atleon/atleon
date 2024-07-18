@@ -81,8 +81,8 @@ public class KafkaErrorHandling {
         // BOTH records and successfully process them
         CountDownLatch latch = new CountDownLatch(1);
         List<String> successfullyProcessed = new CopyOnWriteArrayList<>();
-        AloKafkaSender<String, String> sender = AloKafkaSender.from(faultyKafkaSenderConfig);
-        AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
+        AloKafkaSender<String, String> sender = AloKafkaSender.create(faultyKafkaSenderConfig);
+        AloKafkaReceiver.<Object, String>create(kafkaReceiverConfig)
             .receiveAloValues(TOPIC_1)
             .groupBy(Function.identity(), Integer.MAX_VALUE)
             .innerPublishOn(Schedulers.boundedElastic())
@@ -111,7 +111,7 @@ public class KafkaErrorHandling {
         // them on the same topic-partition
         Flux.just("test_1", "test_2")
             .subscribeOn(Schedulers.boundedElastic())
-            .transform(AloKafkaSender.<String, String>from(kafkaSenderConfig).sendValues(TOPIC_1, string -> "KEY"))
+            .transform(AloKafkaSender.<String, String>create(kafkaSenderConfig).sendValues(TOPIC_1, string -> "KEY"))
             .subscribe();
 
         //Step 6) Await the successful completion of the data we emitted. There should be exactly

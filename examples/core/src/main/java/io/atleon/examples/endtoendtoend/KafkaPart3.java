@@ -49,7 +49,7 @@ public class KafkaPart3 {
             .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
         //Step 3) Create a Sender which we'll reuse to produce Records
-        AloKafkaSender<String, String> sender = AloKafkaSender.from(kafkaSenderConfig);
+        AloKafkaSender<String, String> sender = AloKafkaSender.create(kafkaSenderConfig);
 
         //Step 4) Send some Record values to a hardcoded topic, using values as Record keys
         sender.sendValues(Flux.just("Test"), TOPIC_1, Function.identity())
@@ -63,7 +63,7 @@ public class KafkaPart3 {
         // the consumption of Alo data (by acknowledging). Note that we again need to explicitly
         // limit the number of results we expect ('.take(1)'), or else this Flow would never
         // complete.
-        AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
+        AloKafkaReceiver.<Object, String>create(kafkaReceiverConfig)
             .receiveAloValues(TOPIC_1)
             .map(String::toUpperCase)
             .transform(sender.sendAloValues(TOPIC_2, Function.identity()))

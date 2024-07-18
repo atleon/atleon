@@ -59,7 +59,7 @@ public class KafkaOpentracing {
         GlobalTracer.registerIfAbsent(tracer);
 
         //Step 4) Create an AloKafkaSender with which we'll send records
-        AloKafkaSender<String, String> sender = AloKafkaSender.from(kafkaSenderConfig);
+        AloKafkaSender<String, String> sender = AloKafkaSender.create(kafkaSenderConfig);
 
         //Step 5) Produce records to our input topic
         int numToEmit = 4;
@@ -70,7 +70,7 @@ public class KafkaOpentracing {
 
         //Step 6) Process the records we produced to another topic
         int numToCombine = 2;
-        AloKafkaReceiver.<String, String>from(kafkaReceiverConfig)
+        AloKafkaReceiver.<String, String>create(kafkaReceiverConfig)
             .receiveAloValues(TOPIC_1)
             .bufferTimeout(numToCombine, Duration.ofNanos(Long.MAX_VALUE))
             .map(strings -> String.join(" ", strings))

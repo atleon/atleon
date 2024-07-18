@@ -58,7 +58,7 @@ public class KafkaTopicPartitionParallelism {
         //"processing" in this case introduces a superficial blocking sleep which might mimic an
         //IO-bound process.
         CountDownLatch latch = new CountDownLatch(NUM_SAMPLES);
-        AloKafkaReceiver.<String, String>from(kafkaReceiverConfig)
+        AloKafkaReceiver.<String, String>create(kafkaReceiverConfig)
             .receiveAloRecords(TOPIC)
             .groupBy(ConsumerRecordExtraction::topicPartition, Integer.MAX_VALUE, ConsumerRecord::value)
             .innerPublishOn(Schedulers.boundedElastic())
@@ -82,7 +82,7 @@ public class KafkaTopicPartitionParallelism {
             .subscribeOn(Schedulers.boundedElastic())
             .map(i -> UUID.randomUUID())
             .map(UUID::toString)
-            .transform(AloKafkaSender.<String, String>from(kafkaSenderConfig).sendValues(TOPIC, Function.identity()))
+            .transform(AloKafkaSender.<String, String>create(kafkaSenderConfig).sendValues(TOPIC, Function.identity()))
             .subscribe();
 
         //Step 5) Await processing completion of the UUIDs we produced

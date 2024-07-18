@@ -44,7 +44,7 @@ public class KafkaDeadlettering {
             .with(AloKafkaReceiver.MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG, 1);
 
         //Step 3) Create a Sender which we'll reuse to produce Records
-        AloKafkaSender<String, String> sender = AloKafkaSender.from(kafkaSenderConfig);
+        AloKafkaSender<String, String> sender = AloKafkaSender.create(kafkaSenderConfig);
 
         //Step 4) Send two records, one "bad" and one "good"
         sender.sendValues(Flux.just("bad", "good"), MAIN_TOPIC, __ -> "key")
@@ -59,7 +59,7 @@ public class KafkaDeadlettering {
         //Step 6) Apply consumption of the main topic we've produced data to as a stream process.
         // When we encounter "bad" data that causes an error, we will "deadletter" it using the
         // previously-defined delegator. We also use onAloErrorDelegate to activate error delegation
-        AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
+        AloKafkaReceiver.<Object, String>create(kafkaReceiverConfig)
             .receiveAloValues(MAIN_TOPIC)
             .addAloErrorDelegation(deadletterDelegator)
             .map(string -> {
@@ -77,7 +77,7 @@ public class KafkaDeadlettering {
             .block();
 
         //Step 7) Receive the values that were deadlettered
-        AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
+        AloKafkaReceiver.<Object, String>create(kafkaReceiverConfig)
             .receiveAloValues(DEADLETTER_TOPIC)
             .consumeAloAndGet(Alo::acknowledge)
             .take(1)

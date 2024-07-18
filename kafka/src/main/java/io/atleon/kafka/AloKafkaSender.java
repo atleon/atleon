@@ -93,6 +93,13 @@ public class AloKafkaSender<K, V> implements Closeable {
     }
 
     /**
+     * Alias for {@link #create(KafkaConfigSource)}. Will be deprecated in future release.
+     */
+    public static <K, V> AloKafkaSender<K, V> from(KafkaConfigSource configSource) {
+        return create(configSource);
+    }
+
+    /**
      * Creates a new AloKafkaReceiver from the provided {@link KafkaConfigSource}
      *
      * @param configSource The reactive source of Kafka Sender properties
@@ -100,7 +107,7 @@ public class AloKafkaSender<K, V> implements Closeable {
      * @param <V>          The types of values contained in sent records
      * @return A new AloKafkaSender
      */
-    public static <K, V> AloKafkaSender<K, V> from(KafkaConfigSource configSource) {
+    public static <K, V> AloKafkaSender<K, V> create(KafkaConfigSource configSource) {
         return new AloKafkaSender<>(configSource);
     }
 

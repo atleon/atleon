@@ -56,13 +56,20 @@ public class AloRabbitMQSender<T> implements Closeable {
     }
 
     /**
+     * Alias for {@link #create(RabbitMQConfigSource)}. Will be deprecated in future release.
+     */
+    public static <T> AloRabbitMQSender<T> from(RabbitMQConfigSource configSource) {
+        return create(configSource);
+    }
+
+    /**
      * Creates a new AloRabbitMQSender from the provided {@link RabbitMQConfigSource}
      *
      * @param configSource The reactive source of {@link RabbitMQConfig}
      * @param <T>          The type of messages bodies sent by this sender
      * @return A new AloRabbitMQSender
      */
-    public static <T> AloRabbitMQSender<T> from(RabbitMQConfigSource configSource) {
+    public static <T> AloRabbitMQSender<T> create(RabbitMQConfigSource configSource) {
         return new AloRabbitMQSender<>(configSource);
     }
 

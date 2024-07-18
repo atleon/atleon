@@ -64,7 +64,7 @@ public class IntegrationTest {
             .with(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, CONTAINER.getSecretKey())
             .with(SnsConfig.ENDPOINT_OVERRIDE_CONFIG, CONTAINER.getSnsEndpointOverride())
             .with(AloSnsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class);
-        try (AloSnsSender<Long> sender = AloSnsSender.from(configSource)) {
+        try (AloSnsSender<Long> sender = AloSnsSender.create(configSource)) {
             SnsMessage<Long> message = ComposedSnsMessage.fromBody(number.longValue());
             sender.sendMessage(message, SnsAddress.topicArn(snsInputTopicArn)).block();
         }

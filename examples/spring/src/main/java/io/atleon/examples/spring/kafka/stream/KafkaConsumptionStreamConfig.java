@@ -42,7 +42,7 @@ public class KafkaConsumptionStreamConfig implements AloStreamConfig {
             .withKeyDeserializer(LongDeserializer.class)
             .withValueDeserializer(LongDeserializer.class)
             .with(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, AloKafkaMetricsReporter.class.getName());
-        return AloKafkaReceiver.from(configSource);
+        return AloKafkaReceiver.create(configSource);
     }
 
     public String getTopic() {

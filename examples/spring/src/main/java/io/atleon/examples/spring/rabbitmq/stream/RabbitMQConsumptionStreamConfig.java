@@ -34,7 +34,7 @@ public class RabbitMQConsumptionStreamConfig implements AloStreamConfig {
         RabbitMQConfigSource configSource = RabbitMQConfigSource.named(name())
             .withAll(rabbitMQProperties)
             .with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName());
-        return AloRabbitMQReceiver.from(configSource);
+        return AloRabbitMQReceiver.create(configSource);
     }
 
     public String getQueue() {

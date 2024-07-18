@@ -137,13 +137,20 @@ public class AloSqsReceiver<T> {
     }
 
     /**
+     * Alias for {@link #create(SqsConfigSource)}. Will be deprecated in future release.
+     */
+    public static <T> AloSqsReceiver<T> from(SqsConfigSource configSource) {
+        return create(configSource);
+    }
+
+    /**
      * Creates a new AloSqsReceiver from the provided {@link SqsConfigSource}
      *
      * @param configSource The reactive source of {@link SqsConfig}
      * @param <T>          The types of deserialized message bodies contained in received messages
      * @return A new AloSqsReceiver
      */
-    public static <T> AloSqsReceiver<T> from(SqsConfigSource configSource) {
+    public static <T> AloSqsReceiver<T> create(SqsConfigSource configSource) {
         return new AloSqsReceiver<>(configSource);
     }
 

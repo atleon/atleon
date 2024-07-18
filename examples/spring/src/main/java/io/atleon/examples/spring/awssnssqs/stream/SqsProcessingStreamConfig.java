@@ -38,13 +38,13 @@ public class SqsProcessingStreamConfig implements AloStreamConfig {
     public AloSqsReceiver<Long> buildReceiver() {
         SqsConfigSource configSource = baseSqsConfigSource()
             .with(AloSqsReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName());
-        return AloSqsReceiver.from(configSource);
+        return AloSqsReceiver.create(configSource);
     }
 
     public AloSqsSender<Long> buildSender() {
         SqsConfigSource configSource = baseSqsConfigSource()
             .with(AloSqsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName());
-        return AloSqsSender.from(configSource);
+        return AloSqsSender.create(configSource);
     }
 
     public String getInputQueueUrl() {

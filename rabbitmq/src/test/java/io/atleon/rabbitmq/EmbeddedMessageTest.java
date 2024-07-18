@@ -35,11 +35,11 @@ class EmbeddedMessageTest {
     public void consumedMessagesMatchSent() {
         String body = UUID.randomUUID().toString();
 
-        AloRabbitMQSender.<String>from(RABBIT_MQ_CONFIG_SOURCE)
+        AloRabbitMQSender.<String>create(RABBIT_MQ_CONFIG_SOURCE)
             .sendBodies(Mono.just(body), DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(queue))
             .then().block();
 
-        AloRabbitMQReceiver.<String>from(RABBIT_MQ_CONFIG_SOURCE)
+        AloRabbitMQReceiver.<String>create(RABBIT_MQ_CONFIG_SOURCE)
             .receiveAloBodies(queue)
             .as(StepVerifier::create)
             .consumeNextWith(aloString -> {

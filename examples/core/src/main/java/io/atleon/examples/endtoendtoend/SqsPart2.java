@@ -40,8 +40,8 @@ public class SqsPart2 {
             .with(AloSqsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class);
 
         //Step 4) Create Sender and Receiver, then apply processing
-        AloSqsSender<String> sender = AloSqsSender.from(configSource);
-        Disposable processing = AloSqsReceiver.<String>from(configSource)
+        AloSqsSender<String> sender = AloSqsSender.create(configSource);
+        Disposable processing = AloSqsReceiver.<String>create(configSource)
             .receiveAloMessages(inputQueueUrl)
             .map(message -> message.body().toUpperCase())
             .transform(sender.sendAloBodies(ComposedSqsMessage::fromBody, outputQueueUrl))
@@ -68,7 +68,7 @@ public class SqsPart2 {
             .with(AloSqsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class);
 
         //Step 2) Create Sender, and produce messages periodically
-        AloSqsSender<String> sender = AloSqsSender.from(configSource);
+        AloSqsSender<String> sender = AloSqsSender.create(configSource);
         return Flux.interval(period)
             .map(number -> ComposedSqsMessage.fromBody("This is message #" + number))
             .transform(messages -> sender.sendMessages(messages, queueUrl))

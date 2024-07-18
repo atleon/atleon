@@ -311,7 +311,7 @@ class KafkaBoundedReceiverTest {
         C data,
         Function<T, ProducerRecord<Object, T>> recordCreator
     ) {
-        try (AloKafkaSender<Object, T> sender = AloKafkaSender.from(configSource)) {
+        try (AloKafkaSender<Object, T> sender = AloKafkaSender.create(configSource)) {
             Flux.fromIterable(data)
                 .map(recordCreator)
                 .transform(sender::sendRecords)

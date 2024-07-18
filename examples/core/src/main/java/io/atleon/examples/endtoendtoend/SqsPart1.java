@@ -36,7 +36,7 @@ public class SqsPart1 {
             .with(AloSqsReceiver.BODY_DESERIALIZER_CONFIG, StringBodyDeserializer.class);
 
         //Step 4) Create Receiver, then apply consumption
-        Disposable processing = AloSqsReceiver.from(configSource)
+        Disposable processing = AloSqsReceiver.create(configSource)
             .receiveAloMessages(queueUrl)
             .consume(message -> System.out.println("Received message: " + message.body()))
             .subscribe();
@@ -60,7 +60,7 @@ public class SqsPart1 {
             .with(AloSqsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class);
 
         //Step 2) Create Sender, and produce messages periodically
-        AloSqsSender<String> sender = AloSqsSender.from(configSource);
+        AloSqsSender<String> sender = AloSqsSender.create(configSource);
         return Flux.interval(period)
             .map(number -> ComposedSqsMessage.fromBody("This is message #" + (number + 1)))
             .transform(messages -> sender.sendMessages(messages, queueUrl))

@@ -37,7 +37,7 @@ public class RabbitMQGenerationStreamConfig implements AloStreamConfig {
         RabbitMQConfigSource configSource = RabbitMQConfigSource.named(name())
             .withAll(rabbitMQProperties)
             .with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, LongBodySerializer.class.getName());
-        return AloRabbitMQSender.from(configSource);
+        return AloRabbitMQSender.create(configSource);
     }
 
     public RabbitMQMessageCreator<Long> buildMessageCreator() {

@@ -58,8 +58,16 @@ public class AloPollingReceiver<P, O> {
         this.resourcesMono = Mono.just(ReceiveResources.create(AloFactoryConfig.loadDefault(), config.getNackStrategy()));
     }
 
+    /**
+     * Alias for {@link #create(Pollable, PollingSourceConfig)}. Will be deprecated in future release.
+     */
     public static <P, O> AloPollingReceiver<P, O> from(final Pollable<P, O> pollable,
                                                        final PollingSourceConfig config) {
+        return create(pollable, config);
+    }
+
+    public static <P, O> AloPollingReceiver<P, O> create(final Pollable<P, O> pollable,
+                                                         final PollingSourceConfig config) {
         return new AloPollingReceiver<>(pollable, config);
     }
 
