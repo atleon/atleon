@@ -40,6 +40,13 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <!-- Third Party Optional Dependencies -->
+        <dependency>
+            <groupId>net.bytebuddy</groupId>
+            <artifactId>byte-buddy</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Third Party Test Dependencies -->
         <dependency>
             <groupId>io.projectreactor</groupId>

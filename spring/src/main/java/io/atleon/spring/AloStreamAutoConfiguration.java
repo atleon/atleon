@@ -4,6 +4,7 @@ import io.atleon.application.AloStreamCompatibility;
 import io.atleon.application.ConfiguredAloStream;
 import io.atleon.core.AloStream;
 import io.atleon.core.AloStreamConfig;
+import io.atleon.core.CompositeAloStream;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Condition;
@@ -18,6 +19,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 @Configuration(proxyBeanMethods = false)
 public class AloStreamAutoConfiguration {
@@ -30,35 +32,51 @@ public class AloStreamAutoConfiguration {
         Set<AloStream<?>> uniqueStreams = Collections.newSetFromMap(new IdentityHashMap<>());
         for (AloStreamConfig config : configs) {
             if (config.getClass().isAnnotationPresent(AutoConfigureStream.class)) {
-                AloStream<? super AloStreamConfig> stream = findOrCreateStream(context, config);
-                if (uniqueStreams.add(stream)) {
+                AutoConfigureStream annotation = config.getClass().getDeclaredAnnotation(AutoConfigureStream.class);
+                AloStream<? super AloStreamConfig> stream = findOrCreateStream(context, config, annotation);
+                if (uniqueStreams.add(extractStreamInstanceThatShouldBeUnique(stream))) {
                     AloStreamApplicationListener<?> listener = new AloStreamApplicationListener<>(stream, config);
                     context.addApplicationListener(listener);
                     configuredAloStreams.add(listener);
                 } else {
-                    throw new IllegalStateException("Instance of stream=" + stream + " applicable to more than one config!");
+                    throw new IllegalStateException("Applicable to more than one config: stream=" + stream);
                 }
             }
         }
         return configuredAloStreams;
     }
 
-    private <C extends AloStreamConfig> AloStream<? super C>
-    findOrCreateStream(ConfigurableApplicationContext context, C config) {
-        AutoConfigureStream annotation = config.getClass().getDeclaredAnnotation(AutoConfigureStream.class);
+    private static <C extends AloStreamConfig> AloStream<? super C>
+    findOrCreateStream(ConfigurableApplicationContext context, C config, AutoConfigureStream annotation) {
         Class<? extends AloStream<?>> streamType = (Class<? extends AloStream<?>>) annotation.value();
-        Optional<AloStream<? super C>> compatibleStream =
-            AloStreamCompatibility.findSingleCompatibleStream(context.getBeansOfType(streamType).values(), config);
+        Optional<AloStream<? super C>> compatibleStream = AloStreamCompatibility.findSingleCompatibleStream(
+            context.getBeansOfType(streamType, false, true).values(), config);
+        int count = Contexts.parseProperty(context, annotation.instanceCountProperty(), Integer::valueOf)
+            .orElse(annotation.instanceCount());
 
         if (compatibleStream.isPresent()) {
-            return compatibleStream.get();
+            AloStream<? super C> initial = compatibleStream.get();
+            return CompositeAloStream.nCopies(count, initial, newCreator(context, initial.getClass()));
         } else if (streamType.equals(AloStream.class)) {
             throw new IllegalStateException("Could not find compatible stream for config=" + config);
         } else if (AloStreamCompatibility.isCompatible(streamType, config)) {
-            return context.getBeanFactory().createBean((Class<? extends AloStream<? super C>>) streamType);
+            return CompositeAloStream.nCopies(count, newCreator(context, streamType));
         } else {
             throw new IllegalStateException("stream=" + streamType + " is incompatible with config=" + config);
         }
+    }
+
+    private static AloStream<?> extractStreamInstanceThatShouldBeUnique(AloStream<? super AloStreamConfig> stream) {
+        if (stream instanceof CompositeAloStream) {
+            CompositeAloStream<?> compositeAloStream = (CompositeAloStream<?>) stream;
+            return compositeAloStream.componentStreamCount() > 0 ? compositeAloStream.componentStreamAt(0) : stream;
+        } else {
+            return stream;
+        }
+    }
+
+    private static <T> Supplier<T> newCreator(ConfigurableApplicationContext context, Class<?> type) {
+        return () -> context.getBeanFactory().createBean((Class<? extends T>) type);
     }
 
     public static final class AutoConfigureStreamEnabled implements Condition {
