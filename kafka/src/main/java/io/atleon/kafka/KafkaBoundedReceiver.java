@@ -67,7 +67,7 @@ public class KafkaBoundedReceiver<K, V> {
      *
      * @param topic The name of a topic to receive records from
      * @param offsetRange The relative range of offsets to receive
-     * @return A bounded {@link Flux\} of {@link ConsumerRecord}
+     * @return A bounded {@link Flux} of {@link ConsumerRecord}
      */
     public Flux<ConsumerRecord<K, V>> receiveRecords(String topic, OffsetRange offsetRange) {
         return receiveRecords(Collections.singletonList(topic), offsetRange);
@@ -78,7 +78,7 @@ public class KafkaBoundedReceiver<K, V> {
      *
      * @param topics The topic names to receive records from
      * @param offsetRange The relative range of offsets to receive
-     * @return A bounded {@link Flux\} of {@link ConsumerRecord}
+     * @return A bounded {@link Flux} of {@link ConsumerRecord}
      */
     public Flux<ConsumerRecord<K, V>> receiveRecords(Collection<String> topics, OffsetRange offsetRange) {
         return receiveRecords(topics, OffsetRangeProvider.inOffsetRangeFromAllTopicPartitions(offsetRange));
@@ -90,7 +90,7 @@ public class KafkaBoundedReceiver<K, V> {
      *
      * @param topic The topic to receive records from
      * @param rangeProvider Provider of relative offset ranges to receive, given {@link TopicPartition}s
-     * @return A bounded {@link Flux\} of {@link ConsumerRecord}
+     * @return A bounded {@link Flux} of {@link ConsumerRecord}
      */
     public Flux<ConsumerRecord<K, V>> receiveRecords(String topic, OffsetRangeProvider rangeProvider) {
         return receiveRecords(Collections.singletonList(topic), rangeProvider);
@@ -102,7 +102,7 @@ public class KafkaBoundedReceiver<K, V> {
      *
      * @param topics The topic names to receive records from
      * @param rangeProvider Provider of relative offset ranges to receive, given {@link TopicPartition}s
-     * @return A bounded {@link Flux\} of {@link ConsumerRecord}
+     * @return A bounded {@link Flux} of {@link ConsumerRecord}
      */
     public Flux<ConsumerRecord<K, V>> receiveRecords(Collection<String> topics, OffsetRangeProvider rangeProvider) {
         return configSource.create().flatMapMany(it -> receiveRecords(it, topics, rangeProvider));
