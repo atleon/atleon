@@ -13,18 +13,18 @@ public class AloProcessingTest extends LocalStackDependentTest {
 
     @Test
     public void acknowledgedDataIsNotRepublished() {
-        AloSqsSender.<String>from(newAloSqsSenderConfigSource())
+        AloSqsSender.<String>create(newAloSqsSenderConfigSource())
             .sendBodies(Mono.just("DATA"), ComposedSqsMessage::fromBody, queueUrl)
             .then().block();
 
-        AloSqsReceiver.from(newAloSqsReceiverConfigSource())
+        AloSqsReceiver.create(newAloSqsReceiverConfigSource())
             .receiveAloBodies(queueUrl)
             .as(StepVerifier::create)
             .consumeNextWith(Alo::acknowledge)
             .thenCancel()
             .verify();
 
-        AloSqsReceiver.from(newAloSqsReceiverConfigSource())
+        AloSqsReceiver.create(newAloSqsReceiverConfigSource())
             .receiveAloBodies(queueUrl)
             .as(StepVerifier::create)
             .expectSubscription()
@@ -35,18 +35,18 @@ public class AloProcessingTest extends LocalStackDependentTest {
 
     @Test
     public void unacknowledgedDataIsRepublished() {
-        AloSqsSender.<String>from(newAloSqsSenderConfigSource())
+        AloSqsSender.<String>create(newAloSqsSenderConfigSource())
             .sendBodies(Mono.just("DATA"), ComposedSqsMessage::fromBody, queueUrl)
             .then().block();
 
-        AloSqsReceiver.from(newAloSqsReceiverConfigSource())
+        AloSqsReceiver.create(newAloSqsReceiverConfigSource())
             .receiveAloBodies(queueUrl)
             .as(StepVerifier::create)
             .expectNextCount(1)
             .thenCancel()
             .verify();
 
-        AloSqsReceiver.from(newAloSqsReceiverConfigSource())
+        AloSqsReceiver.create(newAloSqsReceiverConfigSource())
             .receiveAloBodies(queueUrl)
             .as(StepVerifier::create)
             .expectNextCount(1)
@@ -56,11 +56,11 @@ public class AloProcessingTest extends LocalStackDependentTest {
 
     @Test
     public void nacknowledgedDataIsRepublished() {
-        AloSqsSender.<String>from(newAloSqsSenderConfigSource())
+        AloSqsSender.<String>create(newAloSqsSenderConfigSource())
             .sendBodies(Flux.just("DATA1", "DATA2", "DATA3"), ComposedSqsMessage::fromBody, queueUrl)
             .then().block();
 
-        AloSqsReceiver.from(newAloSqsReceiverConfigSource())
+        AloSqsReceiver.create(newAloSqsReceiverConfigSource())
             .receiveAloBodies(queueUrl)
             .resubscribeOnError(AloProcessingTest.class.getSimpleName(), Duration.ofSeconds(0L))
             .as(StepVerifier::create)

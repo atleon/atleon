@@ -16,7 +16,7 @@ class KafkaLagThresholdStarterStopperTest {
 
     private static final KafkaConfigSource KAFKA_CONFIG_SOURCE = TestKafkaConfigSourceFactory.createSource(BOOTSTRAP_CONNECT);
 
-    private final AloKafkaSender<String, String> sender = AloKafkaSender.from(KAFKA_CONFIG_SOURCE);
+    private final AloKafkaSender<String, String> sender = AloKafkaSender.create(KAFKA_CONFIG_SOURCE);
 
     private final String topic = KafkaLagThresholdStarterStopperTest.class.getSimpleName() + UUID.randomUUID();
 
@@ -90,7 +90,7 @@ class KafkaLagThresholdStarterStopperTest {
     }
 
     private void consumeMessages(String groupId, int count) {
-        AloKafkaReceiver.<String>forValues(KAFKA_CONFIG_SOURCE.withConsumerGroupId(groupId))
+        AloKafkaReceiver.<Object, String>create(KAFKA_CONFIG_SOURCE.withConsumerGroupId(groupId))
             .receiveAloValues(topic)
             .consumeAloAndGet(Alo::acknowledge)
             .take(count)

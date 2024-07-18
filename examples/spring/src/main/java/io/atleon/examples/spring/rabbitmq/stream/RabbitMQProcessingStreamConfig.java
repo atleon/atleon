@@ -45,13 +45,13 @@ public class RabbitMQProcessingStreamConfig implements AloStreamConfig {
     public AloRabbitMQReceiver<Long> buildRabbitMQLongReceiver() {
         RabbitMQConfigSource configSource = baseRabbitMQConfigSource()
             .with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName());
-        return AloRabbitMQReceiver.from(configSource);
+        return AloRabbitMQReceiver.create(configSource);
     }
 
     public AloRabbitMQSender<Long> buildRabbitMQLongSender() {
         RabbitMQConfigSource configSource = baseRabbitMQConfigSource()
             .with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, LongBodySerializer.class.getName());
-        return AloRabbitMQSender.from(configSource);
+        return AloRabbitMQSender.create(configSource);
     }
 
     public RabbitMQMessageCreator<Long> buildLongMessageCreator() {

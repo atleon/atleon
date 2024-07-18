@@ -75,17 +75,17 @@ public class KafkaToRabbitMQ {
             .run();
 
         //Step 5) Produce some records to our Kafka topic
-        AloKafkaSender.<String, String>from(kafkaSenderConfig)
+        AloKafkaSender.<String, String>create(kafkaSenderConfig)
             .sendValues(Flux.just("Test"), value -> TOPIC, Function.identity())
             .collectList()
             .doOnNext(senderResults -> System.out.println("senderResults: " + senderResults))
             .block();
 
         //Step 6) Apply a streaming process over a Kafka -> RabbitMQ pairing
-        AloKafkaReceiver.<String>forValues(kafkaReceiverConfig)
+        AloKafkaReceiver.<Object, String>create(kafkaReceiverConfig)
             .receiveAloValues(TOPIC)
             .map(String::toUpperCase)
-            .transform(AloRabbitMQSender.<String>from(rabbitMQConfig)
+            .transform(AloRabbitMQSender.<String>create(rabbitMQConfig)
                 .sendAloBodies(DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(QUEUE)))
             .consumeAloAndGet(Alo::acknowledge)
             .take(1)
@@ -94,7 +94,7 @@ public class KafkaToRabbitMQ {
             .block();
 
         //Step 7) Consume the downstream results of the messages we processed
-        AloRabbitMQReceiver.<String>from(rabbitMQConfig)
+        AloRabbitMQReceiver.<String>create(rabbitMQConfig)
             .receiveAloBodies(QUEUE)
             .consumeAloAndGet(Alo::acknowledge)
             .take(1)

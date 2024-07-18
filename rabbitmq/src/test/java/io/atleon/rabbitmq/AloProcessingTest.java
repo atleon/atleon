@@ -33,18 +33,18 @@ public class AloProcessingTest {
 
     @Test
     public void acknowledgedDataIsNotRepublished() {
-        AloRabbitMQSender.from(RABBIT_MQ_CONFIG_SOURCE)
+        AloRabbitMQSender.create(RABBIT_MQ_CONFIG_SOURCE)
             .sendBodies(Mono.just("DATA"), DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(queue))
             .then().block();
 
-        AloRabbitMQReceiver.from(RABBIT_MQ_CONFIG_SOURCE)
+        AloRabbitMQReceiver.create(RABBIT_MQ_CONFIG_SOURCE)
             .receiveAloBodies(queue)
             .as(StepVerifier::create)
             .consumeNextWith(Alo::acknowledge)
             .thenCancel()
             .verify();
 
-        AloRabbitMQReceiver.from(RABBIT_MQ_CONFIG_SOURCE)
+        AloRabbitMQReceiver.create(RABBIT_MQ_CONFIG_SOURCE)
             .receiveAloBodies(queue)
             .as(StepVerifier::create)
             .expectSubscription()
@@ -55,18 +55,18 @@ public class AloProcessingTest {
 
     @Test
     public void unacknowledgedDataIsRepublished() {
-        AloRabbitMQSender.from(RABBIT_MQ_CONFIG_SOURCE)
+        AloRabbitMQSender.create(RABBIT_MQ_CONFIG_SOURCE)
             .sendBodies(Mono.just("DATA"), DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(queue))
             .then().block();
 
-        AloRabbitMQReceiver.from(RABBIT_MQ_CONFIG_SOURCE)
+        AloRabbitMQReceiver.create(RABBIT_MQ_CONFIG_SOURCE)
             .receiveAloBodies(queue)
             .as(StepVerifier::create)
             .expectNextCount(1)
             .thenCancel()
             .verify();
 
-        AloRabbitMQReceiver.from(RABBIT_MQ_CONFIG_SOURCE)
+        AloRabbitMQReceiver.create(RABBIT_MQ_CONFIG_SOURCE)
             .receiveAloBodies(queue)
             .as(StepVerifier::create)
             .expectNextCount(1)
@@ -76,11 +76,11 @@ public class AloProcessingTest {
 
     @Test
     public void nacknowledgedDataIsRepublished() {
-        AloRabbitMQSender.from(RABBIT_MQ_CONFIG_SOURCE)
+        AloRabbitMQSender.create(RABBIT_MQ_CONFIG_SOURCE)
             .sendBodies(Flux.just("DATA1", "DATA2", "DATA3"), DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(queue))
             .then().block();
 
-        AloRabbitMQReceiver.from(RABBIT_MQ_CONFIG_SOURCE)
+        AloRabbitMQReceiver.create(RABBIT_MQ_CONFIG_SOURCE)
             .receiveAloBodies(queue)
             .resubscribeOnError(AloProcessingTest.class.getSimpleName(), Duration.ofSeconds(0L))
             .as(StepVerifier::create)

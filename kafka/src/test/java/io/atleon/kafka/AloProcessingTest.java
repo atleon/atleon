@@ -22,18 +22,18 @@ public class AloProcessingTest {
 
     @Test
     public void acknowledgedDataIsNotRepublished() {
-        AloKafkaSender.from(KAFKA_CONFIG_SOURCE)
+        AloKafkaSender.create(KAFKA_CONFIG_SOURCE)
             .sendValues(Mono.just("DATA"), topic, Function.identity())
             .then().block();
 
-        AloKafkaReceiver.forValues(KAFKA_CONFIG_SOURCE)
+        AloKafkaReceiver.create(KAFKA_CONFIG_SOURCE)
             .receiveAloValues(Collections.singletonList(topic))
             .as(StepVerifier::create)
             .consumeNextWith(Alo::acknowledge)
             .thenCancel()
             .verify();
 
-        AloKafkaReceiver.forValues(KAFKA_CONFIG_SOURCE)
+        AloKafkaReceiver.create(KAFKA_CONFIG_SOURCE)
             .receiveAloValues(Collections.singletonList(topic))
             .as(StepVerifier::create)
             .expectSubscription()
@@ -44,18 +44,18 @@ public class AloProcessingTest {
 
     @Test
     public void unacknowledgedDataIsRepublished() {
-        AloKafkaSender.from(KAFKA_CONFIG_SOURCE)
+        AloKafkaSender.create(KAFKA_CONFIG_SOURCE)
             .sendValues(Mono.just("DATA"), topic, Function.identity())
             .then().block();
 
-        AloKafkaReceiver.forValues(KAFKA_CONFIG_SOURCE)
+        AloKafkaReceiver.create(KAFKA_CONFIG_SOURCE)
             .receiveAloValues(Collections.singletonList(topic))
             .as(StepVerifier::create)
             .expectNextCount(1)
             .thenCancel()
             .verify();
 
-        AloKafkaReceiver.forValues(KAFKA_CONFIG_SOURCE)
+        AloKafkaReceiver.create(KAFKA_CONFIG_SOURCE)
             .receiveAloValues(Collections.singletonList(topic))
             .as(StepVerifier::create)
             .expectNextCount(1)
@@ -65,11 +65,11 @@ public class AloProcessingTest {
 
     @Test
     public void nacknowledgedDataIsRepublished() {
-        AloKafkaSender.from(KAFKA_CONFIG_SOURCE)
+        AloKafkaSender.create(KAFKA_CONFIG_SOURCE)
             .sendValues(Flux.just("DATA1", "DATA2", "DATA3"), topic, Function.identity())
             .then().block();
 
-        AloKafkaReceiver.forValues(KAFKA_CONFIG_SOURCE)
+        AloKafkaReceiver.create(KAFKA_CONFIG_SOURCE)
             .receiveAloValues(Collections.singletonList(topic))
             .resubscribeOnError(AloProcessingTest.class.getSimpleName(), Duration.ofSeconds(0L))
             .as(StepVerifier::create)

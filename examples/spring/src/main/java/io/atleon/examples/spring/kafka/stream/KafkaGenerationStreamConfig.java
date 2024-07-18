@@ -37,7 +37,7 @@ public class KafkaGenerationStreamConfig implements AloStreamConfig {
             .withKeySerializer(LongSerializer.class)
             .withValueSerializer(LongSerializer.class)
             .with(ProducerConfig.METRIC_REPORTER_CLASSES_CONFIG, AloKafkaMetricsReporter.class.getName());
-        return AloKafkaSender.from(configSource);
+        return AloKafkaSender.create(configSource);
     }
 
     public String getTopic() {

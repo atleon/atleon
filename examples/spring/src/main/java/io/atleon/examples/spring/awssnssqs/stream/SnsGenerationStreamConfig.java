@@ -32,7 +32,7 @@ public class SnsGenerationStreamConfig implements AloStreamConfig {
             .with(AloSnsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName())
             .with(AloSnsSender.BATCH_SIZE_CONFIG, 10)
             .with(AloSnsSender.BATCH_DURATION_CONFIG, "PT0.1S");
-        return AloSnsSender.from(configSource);
+        return AloSnsSender.create(configSource);
     }
 
     public String getTopicArn() {

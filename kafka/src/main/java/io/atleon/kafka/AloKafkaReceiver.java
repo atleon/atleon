@@ -177,6 +177,13 @@ public class AloKafkaReceiver<K, V> {
     }
 
     /**
+     * Alias for {@link #create(KafkaConfigSource)}. Will be deprecated in future release.
+     */
+    public static <K, V> AloKafkaReceiver<K, V> from(KafkaConfigSource configSource) {
+        return create(configSource);
+    }
+
+    /**
      * Creates a new AloKafkaReceiver from the provided {@link KafkaConfigSource}
      *
      * @param configSource The reactive source of Kafka Receiver properties
@@ -184,7 +191,7 @@ public class AloKafkaReceiver<K, V> {
      * @param <V>          The types of values contained in received records
      * @return A new AloKafkaReceiver
      */
-    public static <K, V> AloKafkaReceiver<K, V> from(KafkaConfigSource configSource) {
+    public static <K, V> AloKafkaReceiver<K, V> create(KafkaConfigSource configSource) {
         return new AloKafkaReceiver<>(configSource);
     }
 
@@ -196,7 +203,9 @@ public class AloKafkaReceiver<K, V> {
      * @param configSource The reactive source of Kafka Receiver properties
      * @param <V>          The types of values contained in received records
      * @return A new AloKafkaReceiver
+     * @deprecated Use {@link AloKafkaReceiver#create(KafkaConfigSource)}
      */
+    @Deprecated
     public static <V> AloKafkaReceiver<Object, V> forValues(KafkaConfigSource configSource) {
         return new AloKafkaReceiver<>(configSource);
     }

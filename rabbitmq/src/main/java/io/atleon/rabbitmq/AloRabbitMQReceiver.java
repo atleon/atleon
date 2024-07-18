@@ -96,13 +96,20 @@ public class AloRabbitMQReceiver<T> {
     }
 
     /**
+     * Alias for {@link #create(RabbitMQConfigSource)}. Will be deprecated in future release.
+     */
+    public static <T> AloRabbitMQReceiver<T> from(RabbitMQConfigSource configSource) {
+        return create(configSource);
+    }
+
+    /**
      * Creates a new AloRabbitMQReceiver from the provided {@link RabbitMQConfigSource}
      *
      * @param configSource The reactive source of {@link RabbitMQConfig}
      * @param <T>          The types of deserialized message bodies contained in received messages
      * @return A new AloRabbitMQReceiver
      */
-    public static <T> AloRabbitMQReceiver<T> from(RabbitMQConfigSource configSource) {
+    public static <T> AloRabbitMQReceiver<T> create(RabbitMQConfigSource configSource) {
         return new AloRabbitMQReceiver<>(configSource);
     }
 

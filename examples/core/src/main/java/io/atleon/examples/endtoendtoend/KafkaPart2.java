@@ -45,7 +45,7 @@ public class KafkaPart2 {
             .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
         //Step 3) Send some Record values to a hardcoded topic, using values as Record keys
-        AloKafkaSender.<String, String>from(kafkaReceiverConfig)
+        AloKafkaSender.<String, String>create(kafkaReceiverConfig)
             .sendValues(Flux.just("Test"), TOPIC, Function.identity())
             .collectList()
             .doOnNext(senderResults -> System.out.println("senderResults: " + senderResults))
@@ -53,7 +53,7 @@ public class KafkaPart2 {
 
         //Step 4) Subscribe to the same topic we produced previous values to. Note that we must
         // specify how many values to process ('.take(1)'), or else this Flow would never complete
-        AloKafkaReceiver.<String>forValues(kafkaSenderConfig)
+        AloKafkaReceiver.<Object, String>create(kafkaSenderConfig)
             .receiveAloValues(TOPIC)
             .consumeAloAndGet(Alo::acknowledge)
             .take(1)

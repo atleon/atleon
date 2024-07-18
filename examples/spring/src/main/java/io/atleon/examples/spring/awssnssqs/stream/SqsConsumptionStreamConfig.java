@@ -33,7 +33,7 @@ public class SqsConsumptionStreamConfig implements AloStreamConfig {
         SqsConfigSource configSource = SqsConfigSource.named(name())
             .withAll(awsProperties)
             .with(AloSqsReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class);
-        return AloSqsReceiver.from(configSource);
+        return AloSqsReceiver.create(configSource);
     }
 
     public String getQueueUrl() {

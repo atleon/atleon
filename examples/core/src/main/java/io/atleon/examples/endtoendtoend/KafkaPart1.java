@@ -29,7 +29,7 @@ public class KafkaPart1 {
             .withProducerOrderingAndResiliencyConfigs();
 
         //Step 2) Send some Record values to a hardcoded topic, using values as Record keys
-        AloKafkaSender.<String, String>from(kafkaSenderConfig)
+        AloKafkaSender.<String, String>create(kafkaSenderConfig)
             .sendValues(Flux.just("Test"), TOPIC, Function.identity())
             .collectList()
             .doOnNext(senderResults -> System.out.println("senderResults: " + senderResults))

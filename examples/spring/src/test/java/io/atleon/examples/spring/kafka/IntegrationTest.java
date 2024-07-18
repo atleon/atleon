@@ -58,7 +58,7 @@ public class IntegrationTest {
         KafkaConfigSource configSource = baseKafkaConfigSource()
             .withKeySerializer(LongSerializer.class)
             .withValueSerializer(LongSerializer.class);
-        try (AloKafkaSender<Long, Long> sender = AloKafkaSender.from(configSource)) {
+        try (AloKafkaSender<Long, Long> sender = AloKafkaSender.create(configSource)) {
             ProducerRecord<Long, Long> record = new ProducerRecord<>(INPUT_TOPIC, number.longValue(), number.longValue());
             sender.sendRecord(record).block();
         }
@@ -70,7 +70,7 @@ public class IntegrationTest {
             .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             .withKeyDeserializer(LongDeserializer.class)
             .withValueDeserializer(LongDeserializer.class);
-        return AloKafkaReceiver.<Long, Long>from(configSource)
+        return AloKafkaReceiver.<Long, Long>create(configSource)
             .receiveAloValues(OUTPUT_TOPIC)
             .consumeAloAndGet(Alo::acknowledge)
             .any(number::equals)

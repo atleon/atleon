@@ -55,7 +55,7 @@ public class IntegrationTest {
         RabbitMQConfigSource configSource = RabbitMQConfigSource.unnamed()
             .withAll(AMQP_CONFIG.asMap())
             .with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, LongBodySerializer.class);
-        try (AloRabbitMQSender<Long> sender = AloRabbitMQSender.from(configSource)) {
+        try (AloRabbitMQSender<Long> sender = AloRabbitMQSender.create(configSource)) {
             RabbitMQMessage<Long> message =
                 RabbitMQMessage.create(EXCHANGE, INPUT_QUEUE, MessageProperties.MINIMAL_BASIC, number.longValue());
             sender.sendMessage(message).block();
