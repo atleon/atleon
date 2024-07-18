@@ -1,6 +1,7 @@
 package io.atleon.spring;
 
 import io.atleon.core.AloStream;
+import io.atleon.core.AloStreamConfig;
 import org.springframework.stereotype.Component;
 
 import java.lang.annotation.Documented;
@@ -10,11 +11,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation to be applied to {@link io.atleon.core.AloStreamConfig AloStreamConfig} types to have
- * Spring automatically bind the Config to an {@link io.atleon.core.AloStream AloStream}
- * implementation. When the type is not explicitly specified, a compatible stream registered with
- * Spring is searched for. When the type is explicitly specified, an instance of that type
- * registered with Spring is searched for; If it is not found, then an instance is created.
+ * Annotation to be applied to {@link AloStreamConfig AloStreamConfig} types to have Spring
+ * automatically bind the Config to an {@link AloStream AloStream} implementation. When the type is
+ * not explicitly specified, a compatible stream registered with Spring is searched for. When the
+ * type is explicitly specified, an instance of that type registered with Spring is searched for;
+ * If it is not found, then an instance is created.
  */
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
@@ -22,5 +23,28 @@ import java.lang.annotation.Target;
 @Component
 public @interface AutoConfigureStream {
 
+    /**
+     * The type of {@link AloStream} to bind the annotated {@link io.atleon.core.AloStreamConfig} to
+     */
     Class<? extends AloStream> value() default AloStream.class;
+
+    /**
+     * The number of stream instances to instantiate, configure, and run. In order for more than
+     * one instance to be created, it must be possible to create "unique" instances of the
+     * annotated {@link AloStreamConfig}. By default, this is implemented using
+     * <a href="https://bytebuddy.net">Byte Buddy</a>, which depends on being able to subclass
+     * the annotated AloStreamConfig. Due to the semantics of extension, the annotated class must
+     * be non-final and have some accessible constructor that accepts default values for all
+     * parameters. When multiple constructors are available, preference is given to those with
+     * fewer parameters. The extended classes override the {@link AloStreamConfig#name()} to ensure
+     * configured {@link AloStream} instances are uniquely named (i.e. by appending an ID).
+     */
+    int instanceCount() default 1;
+
+    /**
+     * A Spring property from which to source the {@link #instanceCount()}. If this is specified
+     * and the property is contained in the Spring {@link org.springframework.core.env.Environment},
+     * the value will be parsed as an integer; Else, will fall back to {@link #instanceCount()}.
+     */
+    String instanceCountProperty() default "";
 }

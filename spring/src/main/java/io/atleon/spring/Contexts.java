@@ -4,6 +4,9 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.ConditionContext;
 import org.springframework.util.ClassUtils;
 
+import java.util.Optional;
+import java.util.function.Function;
+
 final class Contexts {
 
     private Contexts() {
@@ -20,6 +23,12 @@ final class Contexts {
 
     public static boolean isPropertySetToFalse(ConditionContext context, String property) {
         return "false".equalsIgnoreCase(context.getEnvironment().getProperty(property));
+    }
+
+    public static <T> Optional<T> parseProperty(ApplicationContext context, String property, Function<String, T> parser) {
+        return property.isEmpty()
+            ? Optional.empty()
+            : Optional.ofNullable(context.getEnvironment().getProperty(property)).map(parser);
     }
 
     public static boolean isClassPresent(ConditionContext context, String className) {
