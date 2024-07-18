@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.27.0]
+atleon `0.27.0` is a beta release containing updates outlined below
+
+### Additions
+* [#302] Added reusable/generic Kafka utilities, including `KafkaBoundedReceiver` and `ReactiveAdmin`
+* [#306] Implemented convention for configuring dynamic starting and stopping of resources, like `AloStream`; Included implementation of Kafka Lag Threshold-based starter-stopper
+* [#308] Implemented ability to encapsulate and configure multiple copied instances of `AloStream`; Integrated into Spring configuration options
+
+### Fixes
+* [#304] Fixed `DefaultAloSenderResultSubscriber` to log negative acknowledgement at ERROR level
+* [#305] Added static `create` methods to all `Alo*[Sender|Receiver]` types, and aliased existing `from` methods to `create`; Deprecated `AloKafkaReceiver::forValues`
+
 # [0.26.5]
 atleon `0.26.5` is a beta release containing updates outlined below
 
