@@ -14,7 +14,7 @@ public class RabbitMQGenerationStream extends AloStream<RabbitMQGenerationStream
         AloRabbitMQSender<Long> sender = config.buildRabbitMQLongSender();
 
         return Flux.interval(Duration.ofMillis(100))
-            .transform(sender.sendBodies(config.buildMessageCreator()))
+            .transform(sender.sendBodies(config.buildLongMessageCreator()))
             .doFinally(sender::close)
             .subscribe();
     }
