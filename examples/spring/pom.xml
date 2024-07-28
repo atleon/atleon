@@ -10,10 +10,6 @@
     <artifactId>atleon-examples-spring</artifactId>
     <packaging>jar</packaging>
 
-    <properties>
-        <spring-boot.version>2.5.15</spring-boot.version>
-    </properties>
-
     <dependencies>
         <!-- Project Compile Dependencies -->
         <dependency>
@@ -92,7 +88,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot</artifactId>
-            <version>${spring-boot.version}</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
