@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.27.1]
+atleon `0.27.1` is a beta release containing updates outlined below
+
+### Additions
+* [#315] Added `io.atleon.spring.ConfigContext` which simplifies the conventional access of beans and properties in Atleon resources
+
+### Fixes
+* [#313] Fixed compatibility with Spring Boot 3.x+
+* [#317] Updated dependency versions
+
 # [0.27.0]
 atleon `0.27.0` is a beta release containing updates outlined below
 
