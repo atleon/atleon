@@ -44,7 +44,15 @@ public class AloConnectionFactory extends ConnectionFactory {
         this.addresses = addresses;
     }
 
+    /**
+     * @deprecated Use {@link #create(Map)}
+     */
+    @Deprecated
     public static AloConnectionFactory from(Map<String, ?> properties) {
+        return create(properties);
+    }
+
+    public static AloConnectionFactory create(Map<String, ?> properties) {
         List<Address> addresses = extractAddresses(properties);
 
         Map<String, String> configuratorProperties = createConfiguratorProperties(properties);
