@@ -24,7 +24,7 @@ public class RabbitMQConfig {
     }
 
     public ConnectionFactory buildConnectionFactory() {
-        return AloConnectionFactory.from(properties);
+        return AloConnectionFactory.create(properties);
     }
 
     public Map<String, Object> modifyAndGetProperties(Consumer<Map<String, Object>> modifier) {
