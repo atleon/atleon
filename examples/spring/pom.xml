@@ -46,10 +46,6 @@
         </dependency>
         <dependency>
             <groupId>io.atleon</groupId>
-            <artifactId>atleon-micrometer</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.atleon</groupId>
             <artifactId>atleon-rabbitmq</artifactId>
         </dependency>
         <dependency>

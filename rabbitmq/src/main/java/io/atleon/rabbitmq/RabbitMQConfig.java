@@ -13,13 +13,13 @@ import java.util.function.Function;
 
 public class RabbitMQConfig {
 
-    private final Map<String, Object> properties;
+    private final Map<String, ?> properties;
 
-    protected RabbitMQConfig(Map<String, Object> properties) {
+    protected RabbitMQConfig(Map<String, ?> properties) {
         this.properties = properties;
     }
 
-    public static RabbitMQConfig create(Map<String, Object> properties) {
+    public static RabbitMQConfig create(Map<String, ?> properties) {
         return new RabbitMQConfig(properties);
     }
 

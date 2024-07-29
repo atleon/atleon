@@ -2,6 +2,7 @@ package io.atleon.examples.spring.awssnssqs.config;
 
 import io.atleon.aws.sns.SnsConfig;
 import io.atleon.aws.sqs.SqsConfig;
+import io.atleon.spring.ConfigContext;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -28,11 +29,11 @@ public class SnsToSqsInitializer implements ApplicationListener<ContextRefreshed
     private final String queueUrl;
 
     public SnsToSqsInitializer(
-        @Qualifier("exampleAwsSnsSqsProperties") Map<String, ?> awsProperties,
+        ConfigContext context,
         @Qualifier("snsInputTopicArn") String topicArn,
         @Qualifier("sqsInputQueueUrl") String queueUrl
     ) {
-        this.awsProperties = awsProperties;
+        this.awsProperties = context.getPropertiesPrefixedBy("example.aws.sns.sqs");
         this.topicArn = topicArn;
         this.queueUrl = queueUrl;
     }

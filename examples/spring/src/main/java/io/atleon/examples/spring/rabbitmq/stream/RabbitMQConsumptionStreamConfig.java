@@ -1,27 +1,34 @@
 package io.atleon.examples.spring.rabbitmq.stream;
 
+import io.atleon.core.AloStreamConfig;
 import io.atleon.examples.spring.rabbitmq.service.NumbersService;
 import io.atleon.rabbitmq.AloRabbitMQReceiver;
 import io.atleon.rabbitmq.LongBodyDeserializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
 import io.atleon.spring.AutoConfigureStream;
-import io.atleon.spring.SpringAloStreamConfig;
+import io.atleon.spring.ConfigContext;
 
 @AutoConfigureStream(RabbitMQConsumptionStream.class)
-public class RabbitMQConsumptionStreamConfig extends SpringAloStreamConfig {
+public class RabbitMQConsumptionStreamConfig implements AloStreamConfig {
+
+    private final ConfigContext context;
+
+    public RabbitMQConsumptionStreamConfig(ConfigContext context) {
+        this.context = context;
+    }
 
     public AloRabbitMQReceiver<Long> buildRabbitMQLongReceiver() {
-        RabbitMQConfigSource configSource = getBean("exampleRabbitMQConfigSource", RabbitMQConfigSource.class)
-            .rename(name())
+        RabbitMQConfigSource configSource = RabbitMQConfigSource.named(name())
+            .withAll(context.getPropertiesPrefixedBy("example.rabbitmq"))
             .with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName());
         return AloRabbitMQReceiver.create(configSource);
     }
 
     public String getQueue() {
-        return getProperty("stream.rabbitmq.output.queue");
+        return context.getProperty("stream.rabbitmq.output.queue");
     }
 
     public NumbersService getService() {
-        return getBean(NumbersService.class);
+        return context.getBean(NumbersService.class);
     }
 }
