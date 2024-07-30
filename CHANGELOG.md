@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.27.2]
+atleon `0.27.2` is a beta release containing updates outlined below
+
+### Additions
+* [#315] Added `io.atleon.spring.ConfigContext::getProperty(key, clazz, defaultValue)` convenience method
+
+### Fixes
+* [#317] Update QPID 7.0.6 -> 9.0.0
+
 # [0.27.1]
 atleon `0.27.1` is a beta release containing updates outlined below
 
