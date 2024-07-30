@@ -44,28 +44,20 @@ public final class ConfigContext {
     }
 
     /**
-     * Return the property value associated with the given key, or {@link Optional#empty()} if not
-     * available.
-     */
-    public Optional<String> findProperty(String key) {
-        return Optional.ofNullable(applicationContext.getEnvironment().getProperty(key));
-    }
-
-    /**
-     * Return the property value associated with the given key, parsed as the provided type, or
-     * {@link Optional#empty()} if not available.
-     */
-    public <T> Optional<T> findProperty(String key, Class<T> clazz) {
-        return Optional.ofNullable(applicationContext.getEnvironment().getProperty(key, clazz));
-    }
-
-    /**
      * Get all properties that start with the provided prefix, with the prefix removed.
      */
     public Map<String, String> getPropertiesPrefixedBy(String prefix) {
         return Binder.get(applicationContext.getEnvironment())
             .bind(prefix, Bindable.mapOf(String.class, String.class))
             .orElse(Collections.emptyMap());
+    }
+
+    /**
+     * Return the property value associated with the given key, or {@code defaultValue} if the key
+     * cannot be resolved.
+     */
+    public <T> T getProperty(String key, Class<T> clazz, T defaultValue) {
+        return applicationContext.getEnvironment().getProperty(key, clazz, defaultValue);
     }
 
     /**
@@ -85,5 +77,21 @@ public final class ConfigContext {
      */
     public <T> T getProperty(String key, Class<T> clazz) throws IllegalStateException {
         return applicationContext.getEnvironment().getRequiredProperty(key, clazz);
+    }
+
+    /**
+     * Return the property value associated with the given key, or {@link Optional#empty()} if not
+     * available.
+     */
+    public Optional<String> findProperty(String key) {
+        return Optional.ofNullable(applicationContext.getEnvironment().getProperty(key));
+    }
+
+    /**
+     * Return the property value associated with the given key, parsed as the provided type, or
+     * {@link Optional#empty()} if not available.
+     */
+    public <T> Optional<T> findProperty(String key, Class<T> clazz) {
+        return Optional.ofNullable(applicationContext.getEnvironment().getProperty(key, clazz));
     }
 }
