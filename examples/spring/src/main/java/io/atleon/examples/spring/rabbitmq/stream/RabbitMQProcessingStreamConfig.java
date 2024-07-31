@@ -1,6 +1,7 @@
 package io.atleon.examples.spring.rabbitmq.stream;
 
 import io.atleon.core.AloStreamConfig;
+import io.atleon.core.ConfigContext;
 import io.atleon.examples.spring.rabbitmq.service.NumbersService;
 import io.atleon.rabbitmq.AloRabbitMQReceiver;
 import io.atleon.rabbitmq.AloRabbitMQSender;
@@ -10,7 +11,6 @@ import io.atleon.rabbitmq.LongBodySerializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
 import io.atleon.rabbitmq.RabbitMQMessageCreator;
 import io.atleon.spring.AutoConfigureStream;
-import io.atleon.spring.ConfigContext;
 
 @AutoConfigureStream(RabbitMQProcessingStream.class)
 public class RabbitMQProcessingStreamConfig implements AloStreamConfig {

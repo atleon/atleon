@@ -1,13 +1,13 @@
 package io.atleon.examples.spring.rabbitmq.stream;
 
 import io.atleon.core.AloStreamConfig;
+import io.atleon.core.ConfigContext;
 import io.atleon.rabbitmq.AloRabbitMQSender;
 import io.atleon.rabbitmq.DefaultRabbitMQMessageCreator;
 import io.atleon.rabbitmq.LongBodySerializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
 import io.atleon.rabbitmq.RabbitMQMessageCreator;
 import io.atleon.spring.AutoConfigureStream;
-import io.atleon.spring.ConfigContext;
 import org.springframework.context.annotation.Profile;
 
 @Profile("!integrationTest")

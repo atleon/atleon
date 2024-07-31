@@ -1,5 +1,6 @@
 package io.atleon.spring;
 
+import io.atleon.core.ConfigContext;
 import org.springframework.beans.BeansException;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -14,24 +15,30 @@ import java.util.Optional;
  * A facade around {@link ApplicationContext} used to access beans and properties conventionally
  * used by Atleon Config implementations.
  */
-public final class ConfigContext {
+public final class SpringConfigContext implements ConfigContext {
 
     private final ApplicationContext applicationContext;
 
-    public ConfigContext(ApplicationContext applicationContext) {
+    private SpringConfigContext(ApplicationContext applicationContext) {
         this.applicationContext = applicationContext;
     }
 
+    public static SpringConfigContext create(ApplicationContext applicationContext) {
+        return new SpringConfigContext(applicationContext);
+    }
+
     /**
-     * Return the bean instance that uniquely matches the given object type, if any.
+     * {@inheritDoc}
      */
+    @Override
     public <T> T getBean(Class<T> clazz) throws BeansException {
         return applicationContext.getBean(clazz);
     }
 
     /**
-     * Return the bean instance that uniquely matches the given name and object type, if any.
+     * {@inheritDoc}
      */
+    @Override
     public <T> T getBean(String name, Class<T> clazz) throws BeansException {
         return applicationContext.getBean(name, clazz);
     }
@@ -44,8 +51,9 @@ public final class ConfigContext {
     }
 
     /**
-     * Get all properties that start with the provided prefix, with the prefix removed.
+     * {@inheritDoc}
      */
+    @Override
     public Map<String, String> getPropertiesPrefixedBy(String prefix) {
         return Binder.get(applicationContext.getEnvironment())
             .bind(prefix, Bindable.mapOf(String.class, String.class))
@@ -53,44 +61,41 @@ public final class ConfigContext {
     }
 
     /**
-     * Return the property value associated with the given key, or {@code defaultValue} if the key
-     * cannot be resolved.
+     * {@inheritDoc}
      */
+    @Override
     public <T> T getProperty(String key, Class<T> clazz, T defaultValue) {
         return applicationContext.getEnvironment().getProperty(key, clazz, defaultValue);
     }
 
     /**
-     * Return the property value associated with the given key (never {@code null}).
-     *
-     * @throws IllegalStateException if the key cannot be resolved
+     * {@inheritDoc}
      */
+    @Override
     public String getProperty(String key) throws IllegalStateException {
         return applicationContext.getEnvironment().getRequiredProperty(key);
     }
 
     /**
-     * Return the property value associated with the given key, parsed as the provided type (never
-     * {@code null}).
-     *
-     * @throws IllegalStateException if the key cannot be resolved
+     * {@inheritDoc}
      */
+    @Override
     public <T> T getProperty(String key, Class<T> clazz) throws IllegalStateException {
         return applicationContext.getEnvironment().getRequiredProperty(key, clazz);
     }
 
     /**
-     * Return the property value associated with the given key, or {@link Optional#empty()} if not
-     * available.
+     * {@inheritDoc}
      */
+    @Override
     public Optional<String> findProperty(String key) {
         return Optional.ofNullable(applicationContext.getEnvironment().getProperty(key));
     }
 
     /**
-     * Return the property value associated with the given key, parsed as the provided type, or
-     * {@link Optional#empty()} if not available.
+     * {@inheritDoc}
      */
+    @Override
     public <T> Optional<T> findProperty(String key, Class<T> clazz) {
         return Optional.ofNullable(applicationContext.getEnvironment().getProperty(key, clazz));
     }
