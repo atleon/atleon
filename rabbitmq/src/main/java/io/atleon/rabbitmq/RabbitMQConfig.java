@@ -45,10 +45,6 @@ public class RabbitMQConfig {
         return ConfigLoading.loadConfiguredWithPredefinedTypes(properties, key, type, predefinedTypeInstantiator);
     }
 
-    public <T> T loadInstanceOrThrow(String property, Class<? extends T> type) {
-        return ConfigLoading.loadInstanceOrThrow(properties, property, type);
-    }
-
     public Optional<Duration> loadDuration(String property) {
         return ConfigLoading.loadDuration(properties, property);
     }

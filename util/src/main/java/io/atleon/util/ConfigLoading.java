@@ -43,11 +43,6 @@ public final class ConfigLoading {
             .orElseThrow(supplyMissingConfigPropertyException(property));
     }
 
-    public static <T> T loadInstanceOrThrow(Map<String, ?> configs, String property, Class<? extends T> type) {
-        return loadInstanceWithPredefinedTypes(configs, property, type, typeName -> Optional.empty())
-            .orElseThrow(supplyMissingConfigPropertyException(property));
-    }
-
     public static Duration loadDurationOrThrow(Map<String, ?> configs, String property) {
         return loadDuration(configs, property).orElseThrow(supplyMissingConfigPropertyException(property));
     }
