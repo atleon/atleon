@@ -1,12 +1,12 @@
 package io.atleon.examples.spring.rabbitmq.stream;
 
 import io.atleon.core.AloStreamConfig;
+import io.atleon.core.ConfigContext;
 import io.atleon.examples.spring.rabbitmq.service.NumbersService;
 import io.atleon.rabbitmq.AloRabbitMQReceiver;
 import io.atleon.rabbitmq.LongBodyDeserializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
 import io.atleon.spring.AutoConfigureStream;
-import io.atleon.spring.ConfigContext;
 
 @AutoConfigureStream(RabbitMQConsumptionStream.class)
 public class RabbitMQConsumptionStreamConfig implements AloStreamConfig {

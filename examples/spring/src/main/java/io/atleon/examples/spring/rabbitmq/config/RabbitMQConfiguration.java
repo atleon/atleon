@@ -1,10 +1,10 @@
 package io.atleon.examples.spring.rabbitmq.config;
 
+import io.atleon.core.ConfigContext;
 import io.atleon.rabbitmq.AloConnectionFactory;
 import io.atleon.rabbitmq.ExchangeDeclaration;
 import io.atleon.rabbitmq.QueueBinding;
 import io.atleon.rabbitmq.QueueDeclaration;
-import io.atleon.spring.ConfigContext;
 import io.atleon.spring.RabbitMQRoutingInitialization;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;

@@ -1,10 +1,10 @@
 package io.atleon.examples.spring.kafka.stream;
 
 import io.atleon.core.AloStreamConfig;
+import io.atleon.core.ConfigContext;
 import io.atleon.kafka.AloKafkaSender;
 import io.atleon.kafka.KafkaConfigSource;
 import io.atleon.spring.AutoConfigureStream;
-import io.atleon.spring.ConfigContext;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.springframework.context.annotation.Profile;
 

@@ -2,7 +2,7 @@ package io.atleon.examples.spring.awssnssqs.config;
 
 import io.atleon.aws.sns.SnsConfig;
 import io.atleon.aws.sqs.SqsConfig;
-import io.atleon.spring.ConfigContext;
+import io.atleon.core.ConfigContext;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;

@@ -4,8 +4,8 @@ import io.atleon.aws.sns.AloSnsSender;
 import io.atleon.aws.sns.SnsConfigSource;
 import io.atleon.aws.sns.StringBodySerializer;
 import io.atleon.core.AloStreamConfig;
+import io.atleon.core.ConfigContext;
 import io.atleon.spring.AutoConfigureStream;
-import io.atleon.spring.ConfigContext;
 import org.springframework.context.annotation.Profile;
 
 @Profile("!integrationTest")

@@ -4,9 +4,9 @@ import io.atleon.aws.sqs.AloSqsReceiver;
 import io.atleon.aws.sqs.LongBodyDeserializer;
 import io.atleon.aws.sqs.SqsConfigSource;
 import io.atleon.core.AloStreamConfig;
+import io.atleon.core.ConfigContext;
 import io.atleon.examples.spring.awssnssqs.service.NumbersService;
 import io.atleon.spring.AutoConfigureStream;
-import io.atleon.spring.ConfigContext;
 
 @AutoConfigureStream(SqsConsumptionStream.class)
 public class SqsConsumptionStreamConfig implements AloStreamConfig {
