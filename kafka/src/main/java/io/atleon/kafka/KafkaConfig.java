@@ -12,13 +12,13 @@ import java.util.function.Function;
 
 public class KafkaConfig {
 
-    private final Map<String, Object> properties;
+    private final Map<String, ?> properties;
 
-    protected KafkaConfig(Map<String, Object> properties) {
+    protected KafkaConfig(Map<String, ?> properties) {
         this.properties = properties;
     }
 
-    public static KafkaConfig create(Map<String, Object> properties) {
+    public static KafkaConfig create(Map<String, ?> properties) {
         return new KafkaConfig(properties);
     }
 
