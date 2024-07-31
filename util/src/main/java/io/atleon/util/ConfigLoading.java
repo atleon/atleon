@@ -31,7 +31,7 @@ public final class ConfigLoading {
     /**
      * Strips out conventional Atleon-specific properties to distill "native" config
      */
-    public static Map<String, Object> loadNative(Map<String, Object> configs) {
+    public static Map<String, Object> loadNative(Map<String, ?> configs) {
         return configs.entrySet().stream()
             .filter(entry -> !entry.getKey().matches("^((atleon\\.)|(\\w+\\.(bounded\\.)?(receiver|sender)\\.)).+"))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
@@ -40,6 +40,11 @@ public final class ConfigLoading {
     public static <T extends Configurable> T
     loadConfiguredOrThrow(Map<String, ?> configs, String property, Class<? extends T> type) {
         return loadConfiguredWithPredefinedTypes(configs, property, type, typeName -> Optional.empty())
+            .orElseThrow(supplyMissingConfigPropertyException(property));
+    }
+
+    public static <T> T loadInstanceOrThrow(Map<String, ?> configs, String property, Class<? extends T> type) {
+        return loadInstanceWithPredefinedTypes(configs, property, type, typeName -> Optional.empty())
             .orElseThrow(supplyMissingConfigPropertyException(property));
     }
 
@@ -77,11 +82,20 @@ public final class ConfigLoading {
         Class<? extends T> type,
         Function<String, Optional<T>> predefinedTypeInstantiator
     ) {
-        Function<String, T> instantiator = typeName ->
-            predefinedTypeInstantiator.apply(typeName).orElseGet(() -> Instantiation.oneTyped(type, typeName));
-        Optional<T> result = load(configs, property, value -> coerce(value, type, instantiator));
+        Optional<T> result = loadInstanceWithPredefinedTypes(configs, property, type, predefinedTypeInstantiator);
         result.ifPresent(configurable -> configurable.configure(configs));
         return result;
+    }
+
+    public static <T> Optional<T> loadInstanceWithPredefinedTypes(
+        Map<String, ?> configs,
+        String property,
+        Class<? extends T> type,
+        Function<String, Optional<T>> predefinedTypeInstantiator
+    ) {
+        Function<String, T> instantiator = typeName ->
+            predefinedTypeInstantiator.apply(typeName).orElseGet(() -> Instantiation.oneTyped(type, typeName));
+        return load(configs, property, value -> coerce(value, type, instantiator));
     }
 
     public static Optional<URI> loadUri(Map<String, ?> configs, String property) {
