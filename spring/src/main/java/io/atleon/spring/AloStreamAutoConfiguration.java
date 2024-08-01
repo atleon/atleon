@@ -5,6 +5,7 @@ import io.atleon.application.ConfiguredAloStream;
 import io.atleon.core.AloStream;
 import io.atleon.core.AloStreamConfig;
 import io.atleon.core.CompositeAloStream;
+import io.atleon.core.SelfConfigurableAloStream;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Condition;
@@ -14,6 +15,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -49,8 +51,11 @@ public class AloStreamAutoConfiguration {
     private static <C extends AloStreamConfig> AloStream<? super C>
     findOrCreateStream(ConfigurableApplicationContext context, C config, AutoConfigureStream annotation) {
         Class<? extends AloStream<?>> streamType = (Class<? extends AloStream<?>>) annotation.value();
-        Optional<AloStream<? super C>> compatibleStream = AloStreamCompatibility.findSingleCompatibleStream(
-            context.getBeansOfType(streamType, false, true).values(), config);
+        Collection<? extends AloStream<?>> registeredStreams = config instanceof SelfConfigurableAloStream
+            ? Collections.singletonList((SelfConfigurableAloStream) config)
+            : context.getBeansOfType(streamType, false, true).values();
+        Optional<AloStream<? super C>> compatibleStream =
+            AloStreamCompatibility.findSingleCompatibleStream(registeredStreams, config);
         int count = Contexts.parseProperty(context, annotation.instanceCountProperty(), Integer::valueOf)
             .orElse(annotation.instanceCount());
 

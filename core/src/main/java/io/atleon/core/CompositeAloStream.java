@@ -2,9 +2,12 @@ package io.atleon.core;
 
 import io.atleon.util.Throwing;
 import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.modifier.Visibility;
 import net.bytebuddy.dynamic.scaffold.subclass.ConstructorStrategy;
 import net.bytebuddy.implementation.InvocationHandlerAdapter;
+import net.bytebuddy.implementation.MethodDelegation;
+import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,10 +20,8 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
@@ -57,14 +58,15 @@ public class CompositeAloStream<C extends AloStreamConfig> extends AloStream<C> 
         } else if (count == 1) {
             return initial;
         } else {
-            Set<AloStream<? super C>> uniqueStreams = Collections.newSetFromMap(new IdentityHashMap<>());
-            uniqueStreams.add(initial);
+            List<AloStream<? super C>> componentStreams = new ArrayList<>();
+            componentStreams.add(applyInstanceIdIfPossible(initial, 1));
             for (int i = 1; i < count; i++) {
-                if (!uniqueStreams.add(creator.get())) {
+                componentStreams.add(applyInstanceIdIfPossible(creator.get(), i + 1));
+                if (componentStreams.get(i) == initial) {
                     throw new IllegalStateException("Copies must be identity-unique where initial=" + initial);
                 }
             }
-            return new CompositeAloStream<C>(new ArrayList<>(uniqueStreams));
+            return new CompositeAloStream<C>(componentStreams);
         }
     }
 
@@ -87,8 +89,17 @@ public class CompositeAloStream<C extends AloStreamConfig> extends AloStream<C> 
         return disposables.size() == 0 ? Disposables.disposed() : disposables;
     }
 
+    private static <C extends AloStreamConfig> AloStream<? super C>
+    applyInstanceIdIfPossible(AloStream<? super C> stream, int id) {
+        return stream instanceof SelfConfigurableAloStream
+            ? (AloStream<? super C>) SelfConfigurableAloStream.class.cast(stream).withInstanceId(id)
+            : stream;
+    }
+
     private static <C> ConfigCopier<C> getOrCreateConfigCopier(Class<?> configType) {
-        return (ConfigCopier<C>) CONFIG_COPIERS_BY_TYPE.computeIfAbsent(configType, ByteBuddyConfigCopier::new);
+        return AloStream.class.isAssignableFrom(configType)
+            ? (config, id) -> config // Self-configurable; Don't attempt to copy
+            : (ConfigCopier<C>) CONFIG_COPIERS_BY_TYPE.computeIfAbsent(configType, ByteBuddyConfigCopier::new);
     }
 
     private interface ConfigCopier<C> {
@@ -98,14 +109,22 @@ public class CompositeAloStream<C extends AloStreamConfig> extends AloStream<C> 
 
     private static final class ByteBuddyConfigCopier<C> implements ConfigCopier<C>, InvocationHandler {
 
+        private static final String INSTANCE_ID_FIELD_NAME = "_instanceId";
+
+        private static final String DELGATE_FIELD_NAME = "_delgate";
+
+        private static final String NAME = "name";
+
         private final Class<? extends C> proxiedConfigType;
 
         public ByteBuddyConfigCopier(Class<? extends C> configType) {
             this.proxiedConfigType = new ByteBuddy()
                 .subclass(configType, newProxyConstructorStrategy(configType))
-                .defineField("proxyId", Integer.class, Visibility.PUBLIC)
-                .defineField("delegate", configType, Visibility.PUBLIC)
+                .defineField(INSTANCE_ID_FIELD_NAME, Integer.class, Visibility.PUBLIC)
+                .defineField(DELGATE_FIELD_NAME, configType, Visibility.PUBLIC)
                 .method(ElementMatchers.any())
+                .intercept(MethodDelegation.toField(DELGATE_FIELD_NAME))
+                .method(nameMethodMatcher())
                 .intercept(InvocationHandlerAdapter.of(this))
                 .make()
                 .load(configType.getClassLoader())
@@ -116,8 +135,8 @@ public class CompositeAloStream<C extends AloStreamConfig> extends AloStream<C> 
         public C copy(C config, int id) {
             try {
                 C proxiedConfig = proxiedConfigType.getDeclaredConstructor().newInstance();
-                proxiedConfigType.getDeclaredField("proxyId").set(proxiedConfig, id);
-                proxiedConfigType.getDeclaredField("delegate").set(proxiedConfig, config);
+                proxiedConfigType.getDeclaredField(INSTANCE_ID_FIELD_NAME).set(proxiedConfig, id);
+                proxiedConfigType.getDeclaredField(DELGATE_FIELD_NAME).set(proxiedConfig, config);
                 return proxiedConfig;
             } catch (ReflectiveOperationException e) {
                 throw Throwing.propagate(e);
@@ -127,10 +146,13 @@ public class CompositeAloStream<C extends AloStreamConfig> extends AloStream<C> 
         @Override
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             Class<?> proxyType = proxy.getClass();
-            Object delegateValue = method.invoke(proxyType.getDeclaredField("delegate").get(proxy), args);
-            return isNameMethod(method)
-                ? delegateValue + "-" + proxyType.getDeclaredField("proxyId").get(proxy)
-                : delegateValue;
+            if (method.getName().equals(NAME)) {
+                Object delegateValue = method.invoke(proxyType.getDeclaredField(DELGATE_FIELD_NAME).get(proxy), args);
+                Object proxyId = proxyType.getDeclaredField(INSTANCE_ID_FIELD_NAME).get(proxy);
+                return delegateValue + "-" + proxyId;
+            } else {
+                throw new UnsupportedOperationException("Method not proxied: " + method);
+            }
         }
 
         private static ConstructorStrategy newProxyConstructorStrategy(Class<?> type) {
@@ -141,10 +163,10 @@ public class CompositeAloStream<C extends AloStreamConfig> extends AloStream<C> 
                 ElementMatchers.takesArguments(constructor.getParameterTypes()));
         }
 
-        private static boolean isNameMethod(Method method) {
-            return method.getName().equals("name")
-                && method.getParameterCount() == 0
-                && method.getReturnType() == String.class;
+        private static ElementMatcher.Junction<MethodDescription> nameMethodMatcher() {
+            return ElementMatchers.named(NAME)
+                .and(ElementMatchers.takesNoArguments())
+                .and(ElementMatchers.returns(String.class));
         }
     }
 
