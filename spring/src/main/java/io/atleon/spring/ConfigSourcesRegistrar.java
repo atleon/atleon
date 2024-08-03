@@ -32,8 +32,6 @@ public class ConfigSourcesRegistrar implements BeanDefinitionRegistryPostProcess
 
     private static final String SPECS_PROPERTY = "atleon.config.sources";
 
-    private static final String FACTORY_BEAN_NAME = "atleonConfigSourceFactory";
-
     private static final ResolvableType ENTRIES_TYPE =
         ResolvableType.forClassWithGenerics(List.class,
             ResolvableType.forClassWithGenerics(Map.class, String.class, String.class));
@@ -48,9 +46,6 @@ public class ConfigSourcesRegistrar implements BeanDefinitionRegistryPostProcess
 
     @Override
     public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) throws BeansException {
-        BeanDefinition factoryDefinition =
-            BeanDefinitionBuilder.genericBeanDefinition(Factory.class).getBeanDefinition();
-        registry.registerBeanDefinition(FACTORY_BEAN_NAME, factoryDefinition);
         specs.forEach(it -> register(it, registry::registerBeanDefinition));
     }
 
@@ -63,40 +58,25 @@ public class ConfigSourcesRegistrar implements BeanDefinitionRegistryPostProcess
         Map<String, Object> mutableSpec = new HashMap<>(spec);
         String name = Objects.requireNonNull(mutableSpec.remove("name"), "Spec must have name").toString();
         String type = Objects.requireNonNull(mutableSpec.remove("type"), "Spec must have type").toString();
-        registrar.accept(name, newDefinition(name, type, mutableSpec));
+        registrar.accept(name, newDefinition(type, name, mutableSpec));
     }
 
-    private static BeanDefinition newDefinition(String name, String type, Map<String, ?> properties) {
+    private static BeanDefinition newDefinition(String type, String name, Map<String, ?> properties) {
         switch (type) {
             case "kafka":
-                return newDefinition(KafkaConfigSource.class, () -> KafkaConfigSource.named(name), properties);
+                return newDefinition(KafkaConfigSource.class, () -> KafkaConfigSource.named(name).withAll(properties));
             case "rabbitMQ":
-                return newDefinition(RabbitMQConfigSource.class, () -> RabbitMQConfigSource.named(name), properties);
+                return newDefinition(RabbitMQConfigSource.class, () -> RabbitMQConfigSource.named(name).withAll(properties));
             case "sns":
-                return newDefinition(SnsConfigSource.class, () -> SnsConfigSource.named(name), properties);
+                return newDefinition(SnsConfigSource.class, () -> SnsConfigSource.named(name).withAll(properties));
             case "sqs":
-                return newDefinition(SqsConfigSource.class, () -> SqsConfigSource.named(name), properties);
+                return newDefinition(SqsConfigSource.class, () -> SqsConfigSource.named(name).withAll(properties));
             default:
                 throw new IllegalArgumentException("Unsupported config source type: " + type);
         }
     }
 
-    private static <T, S extends ConfigSource<T, S>> BeanDefinition newDefinition(
-        Class<S> configType,
-        Supplier<S> configCreator,
-        Map<String, ?> properties
-    ) {
-        BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(configType);
-        builder.setFactoryMethodOnBean("create", FACTORY_BEAN_NAME);
-        builder.addConstructorArgValue(configCreator);
-        builder.addConstructorArgValue(properties);
-        return builder.getBeanDefinition();
-    }
-
-    public static final class Factory {
-
-        public <T, S extends ConfigSource<T, S>> S create(Supplier<S> configCreator, Map<String, ?> properties) {
-            return configCreator.get().withAll(properties);
-        }
+    private static <T, S extends ConfigSource<T, S>> BeanDefinition newDefinition(Class<S> type, Supplier<S> supplier) {
+        return BeanDefinitionBuilder.rootBeanDefinition(type, supplier).getBeanDefinition();
     }
 }
