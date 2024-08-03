@@ -2,6 +2,7 @@ package io.atleon.core;
 
 import org.jetbrains.annotations.NotNull;
 import reactor.core.Disposable;
+import reactor.core.scheduler.Scheduler;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
@@ -30,7 +31,11 @@ public abstract class SelfConfigurableAloStream extends AloStream<SelfConfigurab
 
     protected abstract @NotNull Disposable startDisposable();
 
-    protected Optional<Integer> instanceId() {
+    protected Scheduler newBoundedElasticScheduler(int threadCap) {
+        return newBoundedElasticScheduler(name(), threadCap);
+    }
+
+    protected final Optional<Integer> instanceId() {
         return Optional.ofNullable(instanceId.get());
     }
 
