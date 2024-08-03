@@ -46,6 +46,10 @@ public abstract class ConfigProvider<T, P extends ConfigProvider<T, P>> {
         this.propertiesToName = propertiesToName;
     }
 
+    public final <V> V as(Function<? super P, ? extends V> transformer) {
+        return transformer.apply((P) this);
+    }
+
     public final T create() {
         return propertiesToName.apply(properties)
             .map(name -> create(name, properties))

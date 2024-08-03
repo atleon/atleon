@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  */
 public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends ConfigProvider<Mono<T>, S> {
 
-    public static final String PROCESSORS_PROPERTY = "source.processors";
+    public static final String PROCESSORS_PROPERTY = "atleon.config.processors";
 
     protected ConfigSource() {
 

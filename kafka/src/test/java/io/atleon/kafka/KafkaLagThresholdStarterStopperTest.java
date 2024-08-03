@@ -90,7 +90,8 @@ class KafkaLagThresholdStarterStopperTest {
     }
 
     private void consumeMessages(String groupId, int count) {
-        AloKafkaReceiver.<Object, String>create(KAFKA_CONFIG_SOURCE.withConsumerGroupId(groupId))
+        KAFKA_CONFIG_SOURCE.withConsumerGroupId(groupId)
+            .as(AloKafkaReceiver::<Object, String>create)
             .receiveAloValues(topic)
             .consumeAloAndGet(Alo::acknowledge)
             .take(count)

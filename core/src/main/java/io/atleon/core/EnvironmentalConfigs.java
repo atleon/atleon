@@ -7,7 +7,7 @@ import java.util.function.Function;
 
 public final class EnvironmentalConfigs implements ConfigInterceptor {
 
-    public static final String PREFIX = "atleon.config.";
+    public static final String PREFIX = "atleon.config.source.";
 
     @Override
     public Map<String, Object> intercept(String name, Map<String, Object> configs) {

@@ -10,10 +10,10 @@ import java.util.stream.Collectors;
 /**
  * Interceptor that can be used to randomize configurations contained in Config Providers. For
  * example, you might want to randomize a consumer group like the following:
- *
+ * <p>
  * group.id: my-group-id,
  * group.id.randomize: true
- *
+ * <p>
  * Upon creation of the configs, group.id will have a value of  my-group-id with a random UUID
  * appended to it, i.e. my-group-id-deadbeef-dead-dead-beef-deadcafebeef
  */
