@@ -1,4 +1,3 @@
 io.atleon.spring.AloStreamAutoConfiguration
-io.atleon.spring.AtleonConfigContextAutoConfiguration
 io.atleon.spring.AtleonConfigSourcesAutoConfiguration
 io.atleon.spring.AtleonManagementAutoConfiguration

@@ -93,7 +93,6 @@ public class IntegrationTest {
                 "atleon.config.sources[0].name=exampleKafkaConfigSource",
                 "atleon.config.sources[0].type=kafka",
                 "atleon.config.sources[0]." + CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG + "=" + BOOTSTRAP_SERVERS,
-//                "atleon.config.source.exampleKafkaConfigSource." + CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG + "=" + BOOTSTRAP_SERVERS,
                 "stream.kafka.input.topic=" + INPUT_TOPIC,
                 "stream.kafka.output.topic=" + OUTPUT_TOPIC
             );
