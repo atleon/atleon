@@ -53,6 +53,10 @@ public class RabbitMQConfig {
         return ConfigLoading.loadInt(properties, property);
     }
 
+    public Optional<String> loadString(String property) {
+        return ConfigLoading.loadString(properties, property);
+    }
+
     public <T extends Enum<T>> Optional<T> loadEnum(String property, Class<T> type) {
         return ConfigLoading.loadEnum(properties, property, type);
     }
