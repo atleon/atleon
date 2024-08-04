@@ -65,6 +65,10 @@ public class SqsConfig {
         return ConfigLoading.loadDuration(properties, key);
     }
 
+    public Optional<String> loadString(String key) {
+        return ConfigLoading.loadString(properties, key);
+    }
+
     public Optional<Integer> loadInt(String key) {
         return ConfigLoading.loadInt(properties, key);
     }
