@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.28.0]
+atleon `0.28.0` is a beta release containing updates outlined below
+
+### Additions
+* [#327] Implement extensible `SelfConfigurableAloStream` which removes the need to model `AloStreamConfig` separately from `AloStream` in cases where the stream can be managed by DI
+* [#329] Implement dynamic `ConfigSource` registration via properties in Spring applications, which removes the need to manually declare `ConfigSource` beans
+* [#330] Implement `PropertiesFileConfigProcessor`, which allows loading attributes from `.properties` files into `ConfigSource`
+
+### Removals
+* [#322] Remove `loadInstance` from `Config` implementations in favor of primitive loading
+* [#325] Removed concept of `ConfigContext` in favor of using native framework utilities
+
 # [0.27.3]
 atleon `0.27.3` is a beta release containing updates outlined below
 
