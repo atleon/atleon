@@ -1,8 +1,7 @@
 package io.atleon.examples.spring.awssnssqs.config;
 
-import io.atleon.aws.sns.SnsConfig;
-import io.atleon.aws.sqs.SqsConfig;
-import io.atleon.core.ConfigContext;
+import io.atleon.aws.sns.SnsConfigSource;
+import io.atleon.aws.sqs.SqsConfigSource;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -16,24 +15,27 @@ import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 import software.amazon.awssdk.services.sqs.model.SetQueueAttributesRequest;
 
 import java.util.Collections;
-import java.util.Map;
 import java.util.UUID;
 
 @Component
 public class SnsToSqsInitializer implements ApplicationListener<ContextRefreshedEvent>, Ordered {
 
-    private final Map<String, ?> awsProperties;
+    private final SnsConfigSource snsConfigSource;
+
+    private final SqsConfigSource sqsConfigSource;;
 
     private final String topicArn;
 
     private final String queueUrl;
 
     public SnsToSqsInitializer(
-        ConfigContext context,
+        SnsConfigSource exampleSnsConfigSource,
+        SqsConfigSource exampleSqsConfigSource,
         @Qualifier("snsInputTopicArn") String topicArn,
         @Qualifier("sqsInputQueueUrl") String queueUrl
     ) {
-        this.awsProperties = context.getPropertiesPrefixedBy("example.aws.sns.sqs");
+        this.snsConfigSource = exampleSnsConfigSource;
+        this.sqsConfigSource = exampleSqsConfigSource;
         this.topicArn = topicArn;
         this.queueUrl = queueUrl;
     }
@@ -41,7 +43,7 @@ public class SnsToSqsInitializer implements ApplicationListener<ContextRefreshed
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
         String queueArn = initializeSqsQueueArn();
-        try (SnsAsyncClient snsAsyncClient = SnsConfig.create(awsProperties).buildClient()) {
+        try (SnsAsyncClient snsAsyncClient = snsConfigSource.create().block().buildClient()) {
             subscribeSqsQueueToSnsTopic(snsAsyncClient, queueArn);
         }
     }
@@ -52,7 +54,7 @@ public class SnsToSqsInitializer implements ApplicationListener<ContextRefreshed
     }
 
     private String initializeSqsQueueArn() {
-        try (SqsAsyncClient sqsClient = SqsConfig.create(awsProperties).buildClient()) {
+        try (SqsAsyncClient sqsClient = sqsConfigSource.create().block().buildClient()) {
             return initializeSqsQueueArn(sqsClient);
         }
     }

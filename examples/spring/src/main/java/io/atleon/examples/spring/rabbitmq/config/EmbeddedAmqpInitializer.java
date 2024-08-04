@@ -6,8 +6,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
-import org.springframework.core.env.PropertySource;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -20,13 +20,16 @@ public class EmbeddedAmqpInitializer implements EnvironmentPostProcessor {
         Set<String> activeProfiles = Stream.of(environment.getActiveProfiles()).collect(Collectors.toSet());
         if (activeProfiles.contains("rabbitmq") && !activeProfiles.contains("integrationTest")) {
             EmbeddedAmqpConfig embeddedAmqpConfig = EmbeddedAmqp.start(15672);
-            PropertySource<?> propertySource = new MapPropertySource("embedded.amqp", createProperties(embeddedAmqpConfig));
-            environment.getPropertySources().addLast(propertySource);
+            environment.getPropertySources()
+                .addLast(new MapPropertySource("embedded-amqp", createProperties(embeddedAmqpConfig)));
         }
     }
 
     private static Map<String, Object> createProperties(EmbeddedAmqpConfig config) {
-        return config.asMap().entrySet().stream()
-            .collect(Collectors.toMap(entry -> "example.rabbitmq." + entry.getKey(), Map.Entry::getValue));
+        Map<String, Object> properties = new HashMap<>();
+        properties.put("atleon.config.sources[0].name", "exampleRabbitMQConfigSource");
+        properties.put("atleon.config.sources[0].type", "rabbitMQ");
+        config.asMap().forEach((key, value) -> properties.put("atleon.config.sources[0]." + key, value));
+        return properties;
     }
 }

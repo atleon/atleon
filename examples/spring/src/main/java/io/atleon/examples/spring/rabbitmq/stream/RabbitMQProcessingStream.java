@@ -1,6 +1,5 @@
 package io.atleon.examples.spring.rabbitmq.stream;
 
-import io.atleon.core.ConfigContext;
 import io.atleon.core.DefaultAloSenderResultSubscriber;
 import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.examples.spring.rabbitmq.service.NumbersService;
@@ -12,15 +11,26 @@ import io.atleon.rabbitmq.LongBodySerializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
 import io.atleon.rabbitmq.RabbitMQMessageCreator;
 import io.atleon.spring.AutoConfigureStream;
+import org.springframework.core.env.Environment;
 import reactor.core.Disposable;
 
 @AutoConfigureStream
 public class RabbitMQProcessingStream extends SelfConfigurableAloStream {
 
-    private final ConfigContext context;
+    private final RabbitMQConfigSource configSource;
 
-    public RabbitMQProcessingStream(ConfigContext context) {
-        this.context = context;
+    private final NumbersService service;
+
+    private final Environment environment;
+
+    public RabbitMQProcessingStream(
+        RabbitMQConfigSource exampleRabbitMQConfigSource,
+        NumbersService service,
+        Environment environment
+    ) {
+        this.configSource = exampleRabbitMQConfigSource;
+        this.service = service;
+        this.environment = environment;
     }
 
     @Override
@@ -28,8 +38,8 @@ public class RabbitMQProcessingStream extends SelfConfigurableAloStream {
         AloRabbitMQSender<Long> sender = buildRabbitMQLongSender();
 
         return buildRabbitMQLongReceiver()
-            .receiveAloBodies(getInputQueue())
-            .filter(getService()::isPrime)
+            .receiveAloBodies(environment.getRequiredProperty("stream.rabbitmq.input.queue"))
+            .filter(service::isPrime)
             .transform(sender.sendAloBodies(buildLongMessageCreator()))
             .resubscribeOnError(name())
             .doFinally(sender::close)
@@ -37,31 +47,19 @@ public class RabbitMQProcessingStream extends SelfConfigurableAloStream {
     }
 
     public AloRabbitMQReceiver<Long> buildRabbitMQLongReceiver() {
-        RabbitMQConfigSource configSource = RabbitMQConfigSource.named(name())
-            .withAll(context.getPropertiesPrefixedBy("example.rabbitmq"))
-            .with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName());
-        return AloRabbitMQReceiver.create(configSource);
+        return configSource.with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName())
+            .as(AloRabbitMQReceiver::create);
     }
 
     public AloRabbitMQSender<Long> buildRabbitMQLongSender() {
-        RabbitMQConfigSource configSource = RabbitMQConfigSource.named(name())
-            .withAll(context.getPropertiesPrefixedBy("example.rabbitmq"))
-            .with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, LongBodySerializer.class.getName());
-        return AloRabbitMQSender.create(configSource);
+        return configSource.with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, LongBodySerializer.class.getName())
+            .as(AloRabbitMQSender::create);
     }
 
     public RabbitMQMessageCreator<Long> buildLongMessageCreator() {
         return DefaultRabbitMQMessageCreator.minimalBasic(
-            context.getProperty("stream.rabbitmq.exchange"),
-            context.getProperty("stream.rabbitmq.output.queue")
+            environment.getRequiredProperty("stream.rabbitmq.exchange"),
+            environment.getRequiredProperty("stream.rabbitmq.output.queue")
         );
-    }
-
-    public String getInputQueue() {
-        return context.getProperty("stream.rabbitmq.input.queue");
-    }
-
-    public NumbersService getService() {
-        return context.getBean(NumbersService.class);
     }
 }

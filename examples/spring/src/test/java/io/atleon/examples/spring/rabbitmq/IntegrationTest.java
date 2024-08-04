@@ -68,11 +68,13 @@ public class IntegrationTest {
         public void initialize(ConfigurableApplicationContext applicationContext) {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
                 applicationContext,
-                "example.rabbitmq." + ConnectionFactoryConfigurator.HOST + "=" + AMQP_CONFIG.getHost(),
-                "example.rabbitmq." + ConnectionFactoryConfigurator.PORT + "=" + AMQP_CONFIG.getPort(),
-                "example.rabbitmq." + ConnectionFactoryConfigurator.VIRTUAL_HOST + "=" + AMQP_CONFIG.getVirtualHost(),
-                "example.rabbitmq." + ConnectionFactoryConfigurator.USERNAME + "=" + AMQP_CONFIG.getUsername(),
-                "example.rabbitmq." + ConnectionFactoryConfigurator.PASSWORD + "=" + AMQP_CONFIG.getPassword(),
+                "atleon.config.sources[0].name=exampleRabbitMQConfigSource",
+                "atleon.config.sources[0].type=rabbitMQ",
+                "atleon.config.sources[0]." + ConnectionFactoryConfigurator.HOST + "=" + AMQP_CONFIG.getHost(),
+                "atleon.config.sources[0]." + ConnectionFactoryConfigurator.PORT + "=" + AMQP_CONFIG.getPort(),
+                "atleon.config.sources[0]." + ConnectionFactoryConfigurator.VIRTUAL_HOST + "=" + AMQP_CONFIG.getVirtualHost(),
+                "atleon.config.sources[0]." + ConnectionFactoryConfigurator.USERNAME + "=" + AMQP_CONFIG.getUsername(),
+                "atleon.config.sources[0]." + ConnectionFactoryConfigurator.PASSWORD + "=" + AMQP_CONFIG.getPassword(),
                 "stream.rabbitmq.exchange=" + EXCHANGE,
                 "stream.rabbitmq.input.queue=" + INPUT_QUEUE,
                 "stream.rabbitmq.output.queue=" + OUTPUT_QUEUE

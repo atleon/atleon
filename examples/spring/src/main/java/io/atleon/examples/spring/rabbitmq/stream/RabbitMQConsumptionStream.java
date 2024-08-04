@@ -1,44 +1,44 @@
 package io.atleon.examples.spring.rabbitmq.stream;
 
-import io.atleon.core.ConfigContext;
 import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.examples.spring.rabbitmq.service.NumbersService;
 import io.atleon.rabbitmq.AloRabbitMQReceiver;
 import io.atleon.rabbitmq.LongBodyDeserializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
 import io.atleon.spring.AutoConfigureStream;
+import org.springframework.core.env.Environment;
 import reactor.core.Disposable;
 
 @AutoConfigureStream
 public class RabbitMQConsumptionStream extends SelfConfigurableAloStream {
 
-    private final ConfigContext context;
+    private final RabbitMQConfigSource configSource;
 
-    public RabbitMQConsumptionStream(ConfigContext context) {
-        this.context = context;
+    private final NumbersService service;
+
+    private final Environment environment;
+
+    public RabbitMQConsumptionStream(
+        RabbitMQConfigSource exampleRabbitMQConfigSource,
+        NumbersService service,
+        Environment environment
+    ) {
+        this.configSource = exampleRabbitMQConfigSource;
+        this.service = service;
+        this.environment = environment;
     }
 
     @Override
     protected Disposable startDisposable() {
         return buildRabbitMQLongReceiver()
-            .receiveAloBodies(getQueue())
-            .consume(getService()::handleNumber)
+            .receiveAloBodies(environment.getRequiredProperty("stream.rabbitmq.output.queue"))
+            .consume(service::handleNumber)
             .resubscribeOnError(name())
             .subscribe();
     }
 
     private AloRabbitMQReceiver<Long> buildRabbitMQLongReceiver() {
-        RabbitMQConfigSource configSource = RabbitMQConfigSource.named(name())
-            .withAll(context.getPropertiesPrefixedBy("example.rabbitmq"))
-            .with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName());
-        return AloRabbitMQReceiver.create(configSource);
-    }
-
-    private String getQueue() {
-        return context.getProperty("stream.rabbitmq.output.queue");
-    }
-
-    private NumbersService getService() {
-        return context.getBean(NumbersService.class);
+        return configSource.with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName())
+            .as(AloRabbitMQReceiver::create);
     }
 }

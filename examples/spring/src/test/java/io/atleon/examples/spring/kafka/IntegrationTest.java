@@ -65,12 +65,12 @@ public class IntegrationTest {
     }
 
     private boolean numberProduced(Number number, Duration timeout) {
-        KafkaConfigSource configSource = baseKafkaConfigSource()
+        return baseKafkaConfigSource()
             .withConsumerGroupId(IntegrationTest.class.getName())
             .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             .withKeyDeserializer(LongDeserializer.class)
-            .withValueDeserializer(LongDeserializer.class);
-        return AloKafkaReceiver.<Long, Long>create(configSource)
+            .withValueDeserializer(LongDeserializer.class)
+            .as(AloKafkaReceiver::<Long, Long>create)
             .receiveAloValues(OUTPUT_TOPIC)
             .consumeAloAndGet(Alo::acknowledge)
             .any(number::equals)
@@ -90,7 +90,10 @@ public class IntegrationTest {
         public void initialize(ConfigurableApplicationContext applicationContext) {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
                 applicationContext,
-                "example.kafka." + CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG + "=" + BOOTSTRAP_SERVERS,
+                "atleon.config.sources[0].name=exampleKafkaConfigSource",
+                "atleon.config.sources[0].type=kafka",
+                "atleon.config.sources[0]." + CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG + "=" + BOOTSTRAP_SERVERS,
+//                "atleon.config.source.exampleKafkaConfigSource." + CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG + "=" + BOOTSTRAP_SERVERS,
                 "stream.kafka.input.topic=" + INPUT_TOPIC,
                 "stream.kafka.output.topic=" + OUTPUT_TOPIC
             );

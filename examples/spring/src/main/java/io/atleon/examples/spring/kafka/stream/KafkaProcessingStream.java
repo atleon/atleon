@@ -1,6 +1,5 @@
 package io.atleon.examples.spring.kafka.stream;
 
-import io.atleon.core.ConfigContext;
 import io.atleon.core.DefaultAloSenderResultSubscriber;
 import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.examples.spring.kafka.service.NumbersService;
@@ -12,6 +11,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.LongSerializer;
+import org.springframework.core.env.Environment;
 import reactor.core.Disposable;
 
 import java.util.function.Function;
@@ -19,10 +19,20 @@ import java.util.function.Function;
 @AutoConfigureStream
 public class KafkaProcessingStream extends SelfConfigurableAloStream {
 
-    private final ConfigContext context;
+    private final KafkaConfigSource configSource;
 
-    public KafkaProcessingStream(ConfigContext context) {
-        this.context = context;
+    private final NumbersService service;
+
+    private final Environment environment;
+
+    public KafkaProcessingStream(
+        KafkaConfigSource exampleKafkaConfigSource,
+        NumbersService service,
+        Environment environment
+    ) {
+        this.configSource = exampleKafkaConfigSource;
+        this.service = service;
+        this.environment = environment;
     }
 
     @Override
@@ -30,45 +40,34 @@ public class KafkaProcessingStream extends SelfConfigurableAloStream {
         AloKafkaSender<Long, Long> sender = buildKafkaLongSender();
 
         return buildKafkaLongReceiver()
-            .receiveAloRecords(getInputTopic())
+            .receiveAloRecords(environment.getRequiredProperty("stream.kafka.input.topic"))
             .mapNotNull(ConsumerRecord::value)
-            .filter(getService()::isPrime)
-            .transform(sender.sendAloValues(getOutputTopic(), Function.identity()))
+            .filter(service::isPrime)
+            .transform(sender.sendAloValues(outputTopic(), Function.identity()))
             .resubscribeOnError(name())
             .doFinally(sender::close)
             .subscribeWith(new DefaultAloSenderResultSubscriber<>());
     }
 
     private AloKafkaReceiver<Long, Long> buildKafkaLongReceiver() {
-        KafkaConfigSource configSource = KafkaConfigSource.useClientIdAsName()
-            .withAll(context.getPropertiesPrefixedBy("example.kafka"))
-            .withClientId(name())
+        return configSource.withClientId(name())
             .withConsumerGroupId(KafkaProcessingStream.class.getSimpleName())
             .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             .withKeyDeserializer(LongDeserializer.class)
-            .withValueDeserializer(LongDeserializer.class);
-        return AloKafkaReceiver.create(configSource);
+            .withValueDeserializer(LongDeserializer.class)
+            .as(AloKafkaReceiver::create);
     }
 
     private AloKafkaSender<Long, Long> buildKafkaLongSender() {
-        KafkaConfigSource configSource = KafkaConfigSource.useClientIdAsName()
-            .withAll(context.getPropertiesPrefixedBy("example.kafka"))
+        return configSource.withClientId(name())
             .withClientId(name())
             .withProducerOrderingAndResiliencyConfigs()
             .withKeySerializer(LongSerializer.class)
-            .withValueSerializer(LongSerializer.class);
-        return AloKafkaSender.create(configSource);
+            .withValueSerializer(LongSerializer.class)
+            .as(AloKafkaSender::create);
     }
 
-    private String getInputTopic() {
-        return context.getProperty("stream.kafka.input.topic");
-    }
-
-    private String getOutputTopic() {
-        return context.getProperty("stream.kafka.output.topic");
-    }
-
-    private NumbersService getService() {
-        return context.getBean(NumbersService.class);
+    private String outputTopic() {
+        return environment.getRequiredProperty("stream.kafka.output.topic");
     }
 }
