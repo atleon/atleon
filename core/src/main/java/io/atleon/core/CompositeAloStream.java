@@ -111,7 +111,7 @@ public class CompositeAloStream<C extends AloStreamConfig> extends AloStream<C> 
 
         private static final String INSTANCE_ID_FIELD_NAME = "_instanceId";
 
-        private static final String DELGATE_FIELD_NAME = "_delgate";
+        private static final String DELEGATE_FIELD_NAME = "_delegate";
 
         private static final String NAME = "name";
 
@@ -121,9 +121,9 @@ public class CompositeAloStream<C extends AloStreamConfig> extends AloStream<C> 
             this.proxiedConfigType = new ByteBuddy()
                 .subclass(configType, newProxyConstructorStrategy(configType))
                 .defineField(INSTANCE_ID_FIELD_NAME, Integer.class, Visibility.PUBLIC)
-                .defineField(DELGATE_FIELD_NAME, configType, Visibility.PUBLIC)
+                .defineField(DELEGATE_FIELD_NAME, configType, Visibility.PUBLIC)
                 .method(ElementMatchers.any())
-                .intercept(MethodDelegation.toField(DELGATE_FIELD_NAME))
+                .intercept(MethodDelegation.toField(DELEGATE_FIELD_NAME))
                 .method(nameMethodMatcher())
                 .intercept(InvocationHandlerAdapter.of(this))
                 .make()
@@ -136,7 +136,7 @@ public class CompositeAloStream<C extends AloStreamConfig> extends AloStream<C> 
             try {
                 C proxiedConfig = proxiedConfigType.getDeclaredConstructor().newInstance();
                 proxiedConfigType.getDeclaredField(INSTANCE_ID_FIELD_NAME).set(proxiedConfig, id);
-                proxiedConfigType.getDeclaredField(DELGATE_FIELD_NAME).set(proxiedConfig, config);
+                proxiedConfigType.getDeclaredField(DELEGATE_FIELD_NAME).set(proxiedConfig, config);
                 return proxiedConfig;
             } catch (ReflectiveOperationException e) {
                 throw Throwing.propagate(e);
@@ -147,7 +147,7 @@ public class CompositeAloStream<C extends AloStreamConfig> extends AloStream<C> 
         public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             Class<?> proxyType = proxy.getClass();
             if (method.getName().equals(NAME)) {
-                Object delegateValue = method.invoke(proxyType.getDeclaredField(DELGATE_FIELD_NAME).get(proxy), args);
+                Object delegateValue = method.invoke(proxyType.getDeclaredField(DELEGATE_FIELD_NAME).get(proxy), args);
                 Object proxyId = proxyType.getDeclaredField(INSTANCE_ID_FIELD_NAME).get(proxy);
                 return delegateValue + "-" + proxyId;
             } else {
