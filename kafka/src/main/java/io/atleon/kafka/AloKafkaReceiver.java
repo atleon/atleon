@@ -102,16 +102,6 @@ public class AloKafkaReceiver<K, V> {
     public static final String ERROR_EMISSION_TIMEOUT_CONFIG = CONFIG_PREFIX + "error.emission.timeout";
 
     /**
-     * Subscribers may want to block request Threads on assignment of partitions AND subsequent
-     * fetching/updating of offset positions on those partitions such that all imminently
-     * produced Records to the subscribed Topics will be received by the associated Consumer
-     * Group. This can help avoid timing problems, particularly with tests, and avoids having
-     * to use `auto.offset.reset = "earliest"` to guarantee receipt of Records immediately
-     * produced by the request Thread (directly or indirectly)
-     */
-    public static final String BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG = CONFIG_PREFIX + "block.request.on.partition.positions";
-
-    /**
      * Controls the number of outstanding unacknowledged Records emitted per subscription. This is
      * helpful in controlling the number of data elements allowed in memory, particularly when
      * stream processes use any sort of buffering, windowing, or reduction operation(s).
@@ -308,10 +298,8 @@ public class AloKafkaReceiver<K, V> {
         }
 
         public Flux<Alo<ConsumerRecord<K, V>>> receive(ReceiverOptionsInitializer<K, V> optionsInitializer) {
-            CompletableFuture<Collection<ReceiverPartition>> assignment = new CompletableFuture<>();
             ErrorEmitter<Alo<ConsumerRecord<K, V>>> errorEmitter = newErrorEmitter();
-            return newReceiver(optionsInitializer, assignment::complete).receive()
-                .transform(records -> maybeBlockRequestOnPartitionPositioning(records, assignment))
+            return newReceiver(optionsInitializer).receive()
                 .transform(newAloQueueingTransformer(errorEmitter::safelyEmit))
                 .transform(errorEmitter::applyTo)
                 .transform(this::applySignalListenerFactories);
@@ -322,18 +310,14 @@ public class AloKafkaReceiver<K, V> {
             return ErrorEmitter.create(timeout);
         }
 
-        private KafkaReceiver<K, V> newReceiver(
-            ReceiverOptionsInitializer<K, V> optionsInitializer,
-            Consumer<Collection<ReceiverPartition>> onAssign
-        ) {
+        private KafkaReceiver<K, V> newReceiver(ReceiverOptionsInitializer<K, V> optionsInitializer) {
             ReceiverOptions<K, V> defaultOptions = optionsInitializer.initialize(newConsumerConfig());
             ReceiverOptions<K, V> receiverOptions = defaultOptions
                 .pollTimeout(config.loadDuration(POLL_TIMEOUT_CONFIG).orElse(defaultOptions.pollTimeout()))
                 .commitInterval(config.loadDuration(COMMIT_INTERVAL_CONFIG).orElse(defaultOptions.commitInterval()))
                 .maxCommitAttempts(config.loadInt(MAX_COMMIT_ATTEMPTS_CONFIG).orElse(defaultOptions.maxCommitAttempts()))
                 .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
-                .maxDelayRebalance(loadMaxDelayRebalance().orElse(defaultOptions.maxDelayRebalance()))
-                .addAssignListener(onAssign);
+                .maxDelayRebalance(loadMaxDelayRebalance().orElse(defaultOptions.maxDelayRebalance()));
             return KafkaReceiver.create(receiverOptions);
         }
 
@@ -354,15 +338,6 @@ public class AloKafkaReceiver<K, V> {
             return maxDelayRebalance.isPresent() || acknowledgementQueueMode == AcknowledgementQueueMode.STRICT
                 ? maxDelayRebalance
                 : Optional.of(Duration.ZERO); // By default, disable delay if acknowledgements may be skipped
-        }
-
-        private Flux<ReceiverRecord<K, V>> maybeBlockRequestOnPartitionPositioning(
-            Flux<ReceiverRecord<K, V>> records,
-            CompletableFuture<Collection<ReceiverPartition>> assignment
-        ) {
-            boolean shouldApplyBlocking = config.loadBoolean(BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG)
-                .orElse(DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS);
-            return shouldApplyBlocking ? records.mergeWith(blockRequestOnPartitionPositioning(assignment)) : records;
         }
 
         private AloQueueingTransformer<ReceiverRecord<K, V>, ConsumerRecord<K, V>>
@@ -435,21 +410,6 @@ public class AloKafkaReceiver<K, V> {
 
         private static String incrementId(String id) {
             return id + "-" + COUNTS_BY_ID.computeIfAbsent(id, __ -> new AtomicLong()).incrementAndGet();
-        }
-
-        private static <T> Mono<T>
-        blockRequestOnPartitionPositioning(CompletableFuture<Collection<ReceiverPartition>> assignment) {
-            return blockRequestOn(assignment.thenAccept(partitions -> partitions.forEach(ReceiverPartition::position)));
-        }
-
-        private static <T> Mono<T> blockRequestOn(Future<?> future) {
-            return Mono.<T>empty().doOnRequest(requested -> {
-                try {
-                    future.get();
-                } catch (Exception e) {
-                    LOGGER.error("Failed to block Request Thread on Future", e);
-                }
-            });
         }
     }
 }

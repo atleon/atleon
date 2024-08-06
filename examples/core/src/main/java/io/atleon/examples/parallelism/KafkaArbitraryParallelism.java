@@ -49,15 +49,15 @@ public class KafkaArbitraryParallelism {
             .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
             .with(ProducerConfig.ACKS_CONFIG, "all");
 
-        //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that we block our main
-        // Thread on partition positioning such that subsequently produced Records are processed
+        //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that set the auto
+        // offset reset to earliest such that subsequently produced Records are processed
         KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaArbitraryParallelism.class.getSimpleName())
             .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaArbitraryParallelism.class.getSimpleName())
+            .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
-            .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
-            .with(AloKafkaReceiver.BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG, true);
+            .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
         //Step 3) Apply stream processing to the Kafka topic we'll produce records to. The
         // "processing" in this case introduces a superficial blocking sleep which might mimic an

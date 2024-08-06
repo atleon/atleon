@@ -45,15 +45,15 @@ public class KafkaDeduplication {
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .withProducerOrderingAndResiliencyConfigs();
 
-        //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that we block our main
-        // Thread on partition assignment such that subsequently produced Records are processed
+        //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that set the auto
+        // offset reset to earliest such that subsequently produced Records are processed
         KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaDeduplication.class.getSimpleName())
             .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaDeduplication.class.getSimpleName())
+            .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
             .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
-            .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
-            .with(AloKafkaReceiver.BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG, true);
+            .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
         //Step 3) Create a deduplication config where, upon the first occurrence of an item, a
         // window with a maximum timespan of 2 seconds and a max size of 4 items is opened
