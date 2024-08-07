@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.28.1]
+atleon `0.28.1` is a beta release containing updates outlined below
+
+### Additions
+* [#335] Enable configuring stream instance count via Spring value expression
+
+### Fixes
+* [#334] Manually prohibiting interaction with Kafka Consumer after stream closes+close timeout; Avoid orphaned polling consumer
+
+### Removals
+* [#336] Removed BLOCK_REQUEST_ON_PARTITION_POSITIONS_CONFIG (`block.request.on.partition.positions`) from `AloKafkaReceiver`
+
 # [0.28.0]
 atleon `0.28.0` is a beta release containing updates outlined below
 
