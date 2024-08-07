@@ -14,13 +14,9 @@ import io.atleon.core.AloSignalListenerFactoryConfig;
 import io.atleon.core.ErrorEmitter;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverOptions;
-import reactor.kafka.receiver.ReceiverPartition;
 import reactor.kafka.receiver.ReceiverRecord;
 
 import java.time.Duration;
@@ -29,9 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -148,15 +142,11 @@ public class AloKafkaReceiver<K, V> {
 
     private static final AcknowledgementQueueMode DEFAULT_ACKNOWLEDGEMENT_QUEUE_MODE = AcknowledgementQueueMode.STRICT;
 
-    private static final boolean DEFAULT_BLOCK_REQUEST_ON_PARTITION_POSITIONS = false;
-
     private static final long DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION = 4096;
 
     private static final boolean DEFAULT_AUTO_INCREMENT_CLIENT_ID = false;
 
     private static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(30L);
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(AloKafkaReceiver.class);
 
     private static final Map<String, AtomicLong> COUNTS_BY_ID = new ConcurrentHashMap<>();
 
@@ -299,10 +289,13 @@ public class AloKafkaReceiver<K, V> {
 
         public Flux<Alo<ConsumerRecord<K, V>>> receive(ReceiverOptionsInitializer<K, V> optionsInitializer) {
             ErrorEmitter<Alo<ConsumerRecord<K, V>>> errorEmitter = newErrorEmitter();
-            return newReceiver(optionsInitializer).receive()
+            ProhibitableConsumerFactory consumerFactory = new ProhibitableConsumerFactory();
+            ReceiverOptions<K, V> options = newReceiverOptions(optionsInitializer);
+            return KafkaReceiver.create(consumerFactory, options).receive()
                 .transform(newAloQueueingTransformer(errorEmitter::safelyEmit))
                 .transform(errorEmitter::applyTo)
-                .transform(this::applySignalListenerFactories);
+                .transform(this::applySignalListenerFactories)
+                .doFinally(__ -> consumerFactory.prohibitFurtherInvocations(options.closeTimeout().plusSeconds(1)));
         }
 
         private ErrorEmitter<Alo<ConsumerRecord<K, V>>> newErrorEmitter() {
@@ -310,15 +303,14 @@ public class AloKafkaReceiver<K, V> {
             return ErrorEmitter.create(timeout);
         }
 
-        private KafkaReceiver<K, V> newReceiver(ReceiverOptionsInitializer<K, V> optionsInitializer) {
+        private ReceiverOptions<K, V> newReceiverOptions(ReceiverOptionsInitializer<K, V> optionsInitializer) {
             ReceiverOptions<K, V> defaultOptions = optionsInitializer.initialize(newConsumerConfig());
-            ReceiverOptions<K, V> receiverOptions = defaultOptions
+            return defaultOptions
                 .pollTimeout(config.loadDuration(POLL_TIMEOUT_CONFIG).orElse(defaultOptions.pollTimeout()))
                 .commitInterval(config.loadDuration(COMMIT_INTERVAL_CONFIG).orElse(defaultOptions.commitInterval()))
                 .maxCommitAttempts(config.loadInt(MAX_COMMIT_ATTEMPTS_CONFIG).orElse(defaultOptions.maxCommitAttempts()))
                 .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
                 .maxDelayRebalance(loadMaxDelayRebalance().orElse(defaultOptions.maxDelayRebalance()));
-            return KafkaReceiver.create(receiverOptions);
         }
 
         private Map<String, Object> newConsumerConfig() {
