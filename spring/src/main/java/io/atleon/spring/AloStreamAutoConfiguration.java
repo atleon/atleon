@@ -56,8 +56,10 @@ public class AloStreamAutoConfiguration {
             : context.getBeansOfType(streamType, false, true).values();
         Optional<AloStream<? super C>> compatibleStream =
             AloStreamCompatibility.findSingleCompatibleStream(registeredStreams, config);
-        int count = Contexts.parseProperty(context, annotation.instanceCountProperty(), Integer::valueOf)
-            .orElse(annotation.instanceCount());
+        int count = Contexts.parseValue(context, annotation.instanceCountValue())
+            .map(Integer::valueOf)
+            .orElseThrow(() ->
+                new IllegalArgumentException("Could not parse instance count: " + annotation.instanceCountValue()));
 
         if (compatibleStream.isPresent()) {
             AloStream<? super C> initial = compatibleStream.get();

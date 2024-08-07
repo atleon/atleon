@@ -1,6 +1,7 @@
 package io.atleon.spring;
 
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ConditionContext;
 import org.springframework.util.ClassUtils;
 
@@ -25,10 +26,8 @@ final class Contexts {
         return "false".equalsIgnoreCase(context.getEnvironment().getProperty(property));
     }
 
-    public static <T> Optional<T> parseProperty(ApplicationContext context, String property, Function<String, T> parser) {
-        return property.isEmpty()
-            ? Optional.empty()
-            : Optional.ofNullable(context.getEnvironment().getProperty(property)).map(parser);
+    public static Optional<String> parseValue(ConfigurableApplicationContext context, String expression) {
+        return Optional.ofNullable(context.getBeanFactory().resolveEmbeddedValue(expression));
     }
 
     public static boolean isClassPresent(ConditionContext context, String className) {
