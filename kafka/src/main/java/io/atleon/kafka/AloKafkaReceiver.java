@@ -262,9 +262,10 @@ public class AloKafkaReceiver<K, V> {
     }
 
     private AloFlux<ConsumerRecord<K, V>> receiveAloRecords(ReceiverOptionsInitializer<K, V> optionsInitializer) {
+        ConsumerMutexEnforcer consumerMutexEnforcer = new ConsumerMutexEnforcer();
         return configSource.create()
             .map(ReceiveResources<K, V>::new)
-            .flatMapMany(resources -> resources.receive(optionsInitializer))
+            .flatMapMany(resources -> resources.receive(optionsInitializer, consumerMutexEnforcer))
             .as(AloFlux::wrap);
     }
 
@@ -287,15 +288,16 @@ public class AloKafkaReceiver<K, V> {
             this.acknowledgementQueueMode = loadAcknowledgementQueueMode(config);
         }
 
-        public Flux<Alo<ConsumerRecord<K, V>>> receive(ReceiverOptionsInitializer<K, V> optionsInitializer) {
+        public Flux<Alo<ConsumerRecord<K, V>>>
+        receive(ReceiverOptionsInitializer<K, V> optionsInitializer, ConsumerMutexEnforcer consumerMutexEnforcer) {
             ErrorEmitter<Alo<ConsumerRecord<K, V>>> errorEmitter = newErrorEmitter();
-            ProhibitableConsumerFactory consumerFactory = new ProhibitableConsumerFactory();
             ReceiverOptions<K, V> options = newReceiverOptions(optionsInitializer);
+            ConsumerMutexEnforcer.ProhibitableConsumerFactory consumerFactory = consumerMutexEnforcer.newConsumerFactory();
             return KafkaReceiver.create(consumerFactory, options).receive()
                 .transform(newAloQueueingTransformer(errorEmitter::safelyEmit))
                 .transform(errorEmitter::applyTo)
                 .transform(this::applySignalListenerFactories)
-                .doFinally(__ -> consumerFactory.prohibitFurtherInvocations(options.closeTimeout().plusSeconds(1)));
+                .doFinally(__ -> consumerFactory.prohibitFurtherConsumption(options.closeTimeout()));
         }
 
         private ErrorEmitter<Alo<ConsumerRecord<K, V>>> newErrorEmitter() {
