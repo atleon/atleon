@@ -297,7 +297,7 @@ public class AloKafkaReceiver<K, V> {
                 .transform(newAloQueueingTransformer(errorEmitter::safelyEmit))
                 .transform(errorEmitter::applyTo)
                 .transform(this::applySignalListenerFactories)
-                .doFinally(__ -> consumerFactory.prohibitFurtherConsumption(options.closeTimeout()));
+                .doFinally(__ -> consumerFactory.prohibitFurtherConsumption(options.closeTimeout().multipliedBy(2)));
         }
 
         private ErrorEmitter<Alo<ConsumerRecord<K, V>>> newErrorEmitter() {
