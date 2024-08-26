@@ -29,9 +29,11 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
 /**
- * A {@link ConsumerFactory} which allows prohibiting the usage of all {@link Consumer} instances
- * created by it. This helps to work around observed issues with orphaned consumers still being
- * used by reactive reception resources.
+ * Enforces condition that at most one {@link Consumer} sourced from this class may be active at
+ * any given instant, and allows prohibiting further consumption after some specified grace period.
+ * This helps to work around an observed bug in Reactor Kafka where, upon re-subscription, it is
+ * possible for a Consumer and its event loop to become orphaned, yet continue to poll with paused
+ * partitions, and therefore silently occupy assigned partitions without doing any processing.
  */
 class ConsumerMutexEnforcer extends ConsumerFactory {
 
