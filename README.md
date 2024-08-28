@@ -37,6 +37,47 @@ public class MyStream extends AloStream<MyStreamConfig> {
 }
 ```
 
+In applications where it is possible for the stream to be self-configured (i.e. Spring), the above stream definition can be simplified to not require an instance of `AloStreamConfig`:
+
+```java
+import io.atleon.core.AloStream;
+import io.atleon.core.DefaultAloSenderResultSubscriber;
+import io.atleon.kafka.AloKafkaSender;
+import reactor.core.Disposable;
+
+public class MyStream extends AloStream<MyStreamConfig> {
+    
+    private final KafkaConfigSource configSource;
+    
+    private final MyService service;
+    
+    private final String sourceTopic;
+    
+    private final String destinationTopic;
+    
+    public MyStream(KafkaConfigSource configSource, MyService service, String sourceTopic, String destinationTopic) {
+        this.configSource = configSource;
+        this.service = service;
+        this.sourceTopic = sourceTopic;
+        this.destinationTopic = destinationTopic;
+    }
+
+    @Override
+    public Disposable startDisposable(MyStreamConfig config) {
+        AloKafkaSender<String, String> sender = AloKafkaSender.create(configSource);
+
+        return AloKafkaReceiver.<String, String>create(configSource)
+            .receiveAloRecords(sourceTopic)
+            .map(record -> service.transform(record.value()))
+            .filter(message -> !message.isEmpty())
+            .transform(sender.sendAloValues(destinationTopic, message -> message.substring(0, 1)))
+            .resubscribeOnError(name())
+            .doFinally(sender::close)
+            .subscribeWith(new DefaultAloSenderResultSubscriber<>());
+    }
+}
+```
+
 The [examples module](examples) contains runnable classes showing Atleon in action and intended usage.
 
 ## Building
