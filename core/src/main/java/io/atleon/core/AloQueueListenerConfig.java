@@ -29,14 +29,14 @@ public final class AloQueueListenerConfig {
 
     }
 
-    public static <T, L extends AloQueueListener> Optional<AloQueueListener>
+    public static <L extends AloQueueListener> Optional<AloQueueListener>
     load(Map<String, ?> properties, Class<L> superType) {
         List<AloQueueListener> listeners = loadExplicit(properties, superType)
             .orElseGet(() -> ConfigLoading.loadListOfConfiguredServices(superType, properties));
         return listeners.isEmpty() ? Optional.empty() : Optional.of(AloQueueListener.combine(listeners));
     }
 
-    private static <T, L extends AloQueueListener> Optional<List<AloQueueListener>>
+    private static <L extends AloQueueListener> Optional<List<AloQueueListener>>
     loadExplicit(Map<String, ?> properties, Class<L> superType) {
         return ConfigLoading.loadListOfConfiguredWithPredefinedTypes(
             properties,
@@ -46,7 +46,7 @@ public final class AloQueueListenerConfig {
         );
     }
 
-    private static <T> Optional<List<AloQueueListener>>
+    private static Optional<List<AloQueueListener>>
     instantiatePredefined(Map<String, ?> properties, Class<? extends AloQueueListener> superType, String typeName) {
         if (typeName.equalsIgnoreCase(LISTENER_TYPE_AUTO)) {
             return Optional.of(ConfigLoading.loadListOfConfiguredServices(superType, properties));
