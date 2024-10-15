@@ -27,7 +27,7 @@ class TracingAloTest {
         TracingAlo<String> tracingAlo1 = TracingAlo.start(alo1, tracerFacade, tracerFacade.newSpanBuilder("test"));
         TracingAlo<String> tracingAlo2 = TracingAlo.start(alo2, tracerFacade, tracerFacade.newSpanBuilder("test"));
 
-        AloFlux.wrap(Flux.just(tracingAlo1, tracingAlo2))
+        AloFlux.just(tracingAlo1, tracingAlo2)
             .doOnNext(string -> tracerFacade.activeSpan().ifPresent(it -> it.setTag("doneOnNext", true)))
             .filter(string -> {
                 tracerFacade.activeSpan().ifPresent(it -> it.setTag("filtered", true));
@@ -78,7 +78,7 @@ class TracingAloTest {
         TestAlo alo = new TestAlo("I said what what");
         TracingAlo<String> tracingAlo = TracingAlo.start(alo, tracerFacade, tracerFacade.newSpanBuilder("test"));
 
-        AloFlux.wrap(Flux.just(tracingAlo))
+        AloFlux.just(tracingAlo)
             .map(string -> string.substring(0, 11))
             .map(String::toUpperCase)
             .consumeAloAndGet(Alo::acknowledge)
@@ -97,7 +97,7 @@ class TracingAloTest {
         TestAlo alo = new TestAlo("I said what what");
         TracingAlo<String> tracingAlo = TracingAlo.start(alo, tracerFacade, tracerFacade.newSpanBuilder("test"));
 
-        AloFlux.wrap(Flux.just(tracingAlo))
+        AloFlux.just(tracingAlo)
             .concatMap(string -> Mono.just(string).map(it -> it.substring(0, 11)))
             .concatMap(string -> Mono.just(string).map(String::toUpperCase))
             .consumeAloAndGet(Alo::acknowledge)
@@ -116,7 +116,7 @@ class TracingAloTest {
         TestAlo alo = new TestAlo("I said what what");
         TracingAlo<String> tracingAlo = TracingAlo.start(alo, tracerFacade, tracerFacade.newSpanBuilder("test"));
 
-        AloFlux.wrap(Flux.just(tracingAlo))
+        AloFlux.just(tracingAlo)
             .concatMap(string -> Mono.just(string).map(it -> it.substring(0, 11)))
             .map(String::toUpperCase)
             .concatMap(string -> Mono.just(string).map(it -> it.substring(0, 6)))
@@ -140,7 +140,7 @@ class TracingAloTest {
         TracingAlo<String> tracingAlo1 = TracingAlo.start(alo1, tracerFacade, tracerFacade.newSpanBuilder("test"));
         TracingAlo<String> tracingAlo2 = TracingAlo.start(alo2, tracerFacade, tracerFacade.newSpanBuilder("test"));
 
-        AloFlux.wrap(Flux.just(tracingAlo1, tracingAlo2))
+        AloFlux.just(tracingAlo1, tracingAlo2)
             .bufferTimeout(2, Duration.ofNanos(Long.MAX_VALUE))
             .map(strings -> String.join(" ", strings))
             .consumeAloAndGet(Alo::acknowledge)
@@ -162,7 +162,7 @@ class TracingAloTest {
         TracingAlo<String> inner = TracingAlo.start(alo, tracerFacade, tracerFacade.newSpanBuilder("inner"));
         TracingAlo<String> outer = TracingAlo.start(inner, tracerFacade, tracerFacade.newSpanBuilder("outer"));
 
-        AloFlux.wrap(Flux.just(outer))
+        AloFlux.just(outer)
             .filter(__ -> {
                 tracerFacade.activeSpan().ifPresent(span -> span.setTag("filtered", true));
                 return true;

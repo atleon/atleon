@@ -33,11 +33,11 @@ class AloFluxTest {
     @Test
     public void alosCanBeFiltered() {
         TestAlo empty = new TestAlo("");
-        Flux.just(empty).as(AloFlux::wrap).filter(String::isEmpty).unwrap().then().block();
+        AloFlux.just(empty).filter(String::isEmpty).unwrap().then().block();
         assertFalse(empty.isAcknowledged());
 
         TestAlo nonEmpty = new TestAlo("DATA");
-        Flux.just(nonEmpty).as(AloFlux::wrap).filter(String::isEmpty).unwrap().then().block();
+        AloFlux.just(nonEmpty).filter(String::isEmpty).unwrap().then().block();
         assertTrue(nonEmpty.isAcknowledged());
     }
 
@@ -46,7 +46,7 @@ class AloFluxTest {
         GenericAlo<Object> stringAlo = new GenericAlo<>("DATA");
         GenericAlo<Object> integralAlo = new GenericAlo<>(1234);
 
-        AloFlux.wrap(Flux.just(stringAlo, integralAlo)).ofType(Integer.class).unwrap().then().block();
+        AloFlux.just(stringAlo, integralAlo).ofType(Integer.class).unwrap().then().block();
 
         assertTrue(stringAlo.isAcknowledged());
         assertFalse(integralAlo.isAcknowledged());
@@ -56,7 +56,7 @@ class AloFluxTest {
     public void acknowledgersArePropagated() {
         TestAlo alo = new TestAlo("DATA");
 
-        Alo<String> result = Flux.just(alo).as(AloFlux::wrap).map(String::toLowerCase).unwrap().blockFirst();
+        Alo<String> result = AloFlux.just(alo).map(String::toLowerCase).unwrap().blockFirst();
 
         assertNotNull(result);
         assertEquals("data", result.get());
@@ -70,7 +70,7 @@ class AloFluxTest {
     public void alosCanBeConsumed() {
         TestAlo alo = new TestAlo("DATA");
 
-        Flux.just(alo).as(AloFlux::wrap).consume(System.out::println)
+        AloFlux.just(alo).consume(System.out::println)
             .subscribe(__ -> {
                 throw new IllegalStateException("Should not emit anything");
             });
@@ -81,7 +81,7 @@ class AloFluxTest {
     @Test
     public void emptyManyMappingHasConsumerExecuted() {
         TestAlo empty = new TestAlo("");
-        Flux.just(empty).as(AloFlux::wrap).flatMapIterable(this::extractCharacters).unwrap().then().block();
+        AloFlux.just(empty).flatMapIterable(this::extractCharacters).unwrap().then().block();
         assertTrue(empty.isAcknowledged());
     }
 
@@ -90,7 +90,7 @@ class AloFluxTest {
         TestAlo alo = new TestAlo("DATA");
 
         List<Alo<String>> result =
-            Flux.just(alo).as(AloFlux::wrap).flatMapIterable(this::extractCharacters).unwrap().collectList().block();
+            AloFlux.just(alo).flatMapIterable(this::extractCharacters).unwrap().collectList().block();
 
         assertNotNull(result);
         assertEquals(4, result.size());
@@ -114,7 +114,7 @@ class AloFluxTest {
         TestAlo alo = new TestAlo("DATA");
 
         List<Alo<String>> result =
-            Flux.just(alo).as(AloFlux::wrap).flatMapIterable(this::extractCharacters).unwrap().collectList().block();
+            AloFlux.just(alo).flatMapIterable(this::extractCharacters).unwrap().collectList().block();
 
         assertNotNull(result);
         assertEquals(4, result.size());
@@ -141,7 +141,7 @@ class AloFluxTest {
         TestAlo alo = new TestAlo("DATA");
 
         List<Alo<String>> result =
-            Flux.just(alo).as(AloFlux::wrap).flatMapIterable(this::extractCharacters).unwrap().collectList().block();
+            AloFlux.just(alo).flatMapIterable(this::extractCharacters).unwrap().collectList().block();
 
         assertNotNull(result);
         assertEquals(4, result.size());
@@ -170,7 +170,7 @@ class AloFluxTest {
         Function<String, Flux<String>> stringToChars = data -> Mono.just(data.chars())
             .flatMapMany(stream -> Flux.fromStream(stream.mapToObj(character -> String.valueOf((char) character))));
 
-        AloFlux<String> aloFlux = AloFlux.wrap(Flux.just(alo))
+        AloFlux<String> aloFlux = AloFlux.just(alo)
             .groupBy(Function.identity(), Integer.MAX_VALUE)
             .flatMapAlo(it -> it.concatMap(stringToChars));
 
@@ -217,7 +217,7 @@ class AloFluxTest {
         Function<String, Flux<String>> stringToChars = data -> Mono.just(data.chars())
             .flatMapMany(stream -> Flux.fromStream(stream.mapToObj(character -> String.valueOf((char) character))));
 
-        AloFlux<String> aloFlux = AloFlux.wrap(Flux.just(alo))
+        AloFlux<String> aloFlux = AloFlux.just(alo)
             .groupBy(Function.identity(), Integer.MAX_VALUE)
             .flatMapAlo(it -> it.concatMap(stringToChars));
 
@@ -257,7 +257,7 @@ class AloFluxTest {
             .flatMapMany(stream -> Flux.fromStream(stream.mapToObj(character -> String.valueOf((char) character))))
             .take(3);
 
-        AloFlux<String> aloFlux = AloFlux.wrap(Flux.just(alo))
+        AloFlux<String> aloFlux = AloFlux.just(alo)
             .groupBy(Function.identity(), Integer.MAX_VALUE)
             .flatMapAlo(it -> it.concatMap(stringToChars));
 
@@ -296,7 +296,7 @@ class AloFluxTest {
 
         Function<String, Flux<String>> stringToFlux = data -> sink.asFlux();
 
-        AloFlux<String> aloFlux = AloFlux.wrap(Flux.just(alo))
+        AloFlux<String> aloFlux = AloFlux.just(alo)
             .groupBy(Function.identity(), Integer.MAX_VALUE)
             .flatMapAlo(it -> it.concatMap(stringToFlux));
 
@@ -324,7 +324,7 @@ class AloFluxTest {
 
         Function<String, Flux<String>> stringToFlux = data -> sink.asFlux();
 
-        AloFlux<String> aloFlux = AloFlux.wrap(Flux.just(alo))
+        AloFlux<String> aloFlux = AloFlux.just(alo)
             .groupBy(Function.identity(), Integer.MAX_VALUE)
             .flatMapAlo(it -> it.concatMap(stringToFlux));
 
@@ -352,7 +352,7 @@ class AloFluxTest {
         Function<String, Flux<String>> stringToChars = data -> Mono.just(data.chars())
             .flatMapMany(stream -> Flux.fromStream(stream.mapToObj(character -> String.valueOf((char) character))));
 
-        AloFlux<String> aloFlux = AloFlux.wrap(Flux.just(alo))
+        AloFlux<String> aloFlux = AloFlux.just(alo)
             .groupBy(Function.identity(), Integer.MAX_VALUE)
             .flatMapAlo(it -> it.concatMap(stringToChars));
 
@@ -392,7 +392,7 @@ class AloFluxTest {
         TestAlo nonEmpty = new TestAlo("data");
 
         List<String> result = new ArrayList<>();
-        AloFlux.wrap(Flux.just(empty, nonEmpty))
+        AloFlux.just(empty, nonEmpty)
             .mapNotNull((string) -> string.isEmpty() ? null : string)
             .subscribe((alo) -> result.add(alo.get()));
 
@@ -410,7 +410,7 @@ class AloFluxTest {
 
         List<String> processed = new ArrayList<>();
         List<String> discardTexts = new ArrayList<>();
-        AloFlux.wrap(Flux.just(empty, nonEmpty))
+        AloFlux.just(empty, nonEmpty)
             .filter(string -> !string.isEmpty())
             .doOnDiscard(Object.class, value -> discardTexts.add("ONE: " + value))
             .doOnDiscard(Integer.class, value -> discardTexts.add("TWO: " + value))
@@ -425,8 +425,7 @@ class AloFluxTest {
     public void errorsCanBeEmitted() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<Void> aloFlux = Flux.just(alo)
-            .as(AloFlux::wrap)
+        AloFlux<Void> aloFlux = AloFlux.just(alo)
             .consume(data -> {
                 throw new UnsupportedOperationException("Boom");
             })
@@ -442,8 +441,7 @@ class AloFluxTest {
     public void errorsCanBeEmittedWhenPublishing() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<?> aloFlux = Flux.just(alo)
-            .as(AloFlux::wrap)
+        AloFlux<?> aloFlux = AloFlux.just(alo)
             .concatMap(__ -> Mono.error(new UnsupportedOperationException("Boom")))
             .onAloErrorEmit();
 
@@ -457,8 +455,7 @@ class AloFluxTest {
     public void errorsCanBeIgnoredRatherThanEmitted() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<?> aloFlux = Flux.just(alo)
-            .as(AloFlux::wrap)
+        AloFlux<?> aloFlux = AloFlux.just(alo)
             .consume(data -> {
                 throw new UnsupportedOperationException("Boom");
             })
@@ -474,8 +471,7 @@ class AloFluxTest {
     public void errorsCanBeIgnoredRatherThanEmittedWhenPublishing() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<?> aloFlux = Flux.just(alo)
-            .as(AloFlux::wrap)
+        AloFlux<?> aloFlux = AloFlux.just(alo)
             .concatMap(__ -> Mono.error(new UnsupportedOperationException("Boom")))
             .onAloErrorEmitUnless(UnsupportedOperationException.class::isInstance);
 
@@ -489,8 +485,7 @@ class AloFluxTest {
     public void errorHandlingCanBeDelegated() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<?> aloFlux = Flux.just(alo)
-            .as(AloFlux::wrap)
+        AloFlux<?> aloFlux = AloFlux.just(alo)
             .consume(data -> {
                 throw new UnsupportedOperationException("Boom");
             })
@@ -506,8 +501,7 @@ class AloFluxTest {
     public void errorHandlingCanBeDelegatedWhenPublishing() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<?> aloFlux = Flux.just(alo)
-            .as(AloFlux::wrap)
+        AloFlux<?> aloFlux = AloFlux.just(alo)
             .concatMap(__ -> Mono.error(new UnsupportedOperationException("Boom")))
             .onAloErrorDelegate();
 
@@ -521,8 +515,7 @@ class AloFluxTest {
     public void errorsCanBeIgnoredRatherThanDelegated() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<?> aloFlux = Flux.just(alo)
-            .as(AloFlux::wrap)
+        AloFlux<?> aloFlux = AloFlux.just(alo)
             .consume(data -> {
                 throw new UnsupportedOperationException("Boom");
             })
@@ -538,8 +531,7 @@ class AloFluxTest {
     public void errorsCanBeIgnoredRatherThanDelegatedWhenPublishing() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<?> aloFlux = Flux.just(alo)
-            .as(AloFlux::wrap)
+        AloFlux<?> aloFlux = AloFlux.just(alo)
             .concatMap(__ -> Mono.error(new UnsupportedOperationException("Boom")))
             .onAloErrorDelegateUnless(UnsupportedOperationException.class::isInstance);
 
@@ -553,8 +545,7 @@ class AloFluxTest {
     public void errorsCanBeDelegatedToFluentDelegate() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<?> aloFlux = Flux.just(alo)
-            .as(AloFlux::wrap)
+        AloFlux<?> aloFlux = AloFlux.just(alo)
             .addAloErrorDelegation((string, error) -> Mono.empty())
             .consume(data -> {
                 throw new UnsupportedOperationException("Boom");
@@ -571,8 +562,7 @@ class AloFluxTest {
     public void errorsCanBeDelegatedToFluentDelegateWhichMayPropagateTheError() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<?> aloFlux = Flux.just(alo)
-            .as(AloFlux::wrap)
+        AloFlux<?> aloFlux = AloFlux.just(alo)
             .addAloErrorDelegation((string, error) -> Mono.error(error))
             .consume(data -> {
                 throw new UnsupportedOperationException("Boom");
@@ -591,8 +581,7 @@ class AloFluxTest {
     public void errorsCanBeDelegatedToFluentDelegateWhichMayConsolidateError() {
         TestAlo alo = new TestAlo("data");
 
-        AloFlux<?> aloFlux = Flux.just(alo)
-            .as(AloFlux::wrap)
+        AloFlux<?> aloFlux = AloFlux.just(alo)
             .addAloErrorDelegation((string, error) -> Mono.error(new IllegalArgumentException("Bing")))
             .consume(data -> {
                 throw new UnsupportedOperationException("Boom");

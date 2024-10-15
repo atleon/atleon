@@ -82,7 +82,7 @@ public class ReactiveAdmin implements Closeable {
      * {@link OffsetSpec}.
      *
      * @param topicPartitions The {@link TopicPartition}s to describe offsets for
-     * @param offsetSpec The criteria used to describe offsets for
+     * @param offsetSpec      The criteria used to describe offsets for
      * @return A {@link Mono} of a single {@link Map} containing offsets for the provided {@link TopicPartition}s
      */
     public Mono<Map<TopicPartition, Long>> listOffsets(Collection<TopicPartition> topicPartitions, OffsetSpec offsetSpec) {
@@ -104,7 +104,7 @@ public class ReactiveAdmin implements Closeable {
      * while applying an "adjustment" to each offset before collecting it to a result.
      *
      * @param offsetSpecs The mapped {@link OffsetSpec} for each {@link TopicPartition} to retrieve
-     * @param adjustment Modification to make to offset before collecting it to returned result
+     * @param adjustment  Modification to make to offset before collecting it to returned result
      * @return A {@link Mono} of a single {@link Map} containing offsets for the provided {@link TopicPartition}s
      */
     public Mono<Map<TopicPartition, Long>> listOffsets(

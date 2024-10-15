@@ -27,7 +27,7 @@ class ContextActivatingAloTest {
 
         Alo<String> alo = ContextActivatingAlo.create(new TestAlo("test"));
 
-        String result = AloFlux.wrap(Flux.just(alo))
+        String result = AloFlux.just(alo)
             .doOnNext(__ -> AloContext.active().set(KEY1, value))
             .map(String::toUpperCase)
             .map(string -> string + ":" + AloContext.active().get(KEY1).orElse(null))
@@ -41,7 +41,7 @@ class ContextActivatingAloTest {
     public void contextValuesAreFannedOutCorrectly() {
         Alo<String> alo = ContextActivatingAlo.create(new TestAlo("test"));
 
-        String result = AloFlux.wrap(Flux.just(alo))
+        String result = AloFlux.just(alo)
             .doOnNext(string -> AloContext.active().set(KEY1, string))
             .flatMapIterable(this::extractCharacters)
             .doOnNext(string -> AloContext.active().set(KEY2, string))
@@ -58,7 +58,7 @@ class ContextActivatingAloTest {
     public void contextValuesAreFannedInCorrectly() {
         Alo<String> alo = ContextActivatingAlo.create(new TestAlo("test"));
 
-        List<String> result = AloFlux.wrap(Flux.just(alo))
+        List<String> result = AloFlux.just(alo)
             .doOnNext(string -> AloContext.active().set(KEY1, string))
             .flatMapIterable(this::extractCharacters)
             .doOnNext(string -> AloContext.active().set(KEY2, string))

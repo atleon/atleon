@@ -39,6 +39,14 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * Create an AloFlux that emits the provided elements and then completes.
+     */
+    @SafeVarargs
+    public static <T> AloFlux<T> just(Alo<T>... alos) {
+        return wrap(Flux.just(alos));
+    }
+
+    /**
      * Wraps a Publisher of Alo elements as an AloFlux
      */
     public static <T> AloFlux<T> wrap(Publisher<? extends Alo<T>> publisher) {
