@@ -65,7 +65,7 @@ public class KafkaBoundedReceiver<K, V> {
     /**
      * Receive records from a given topic in the provided relative offset range.
      *
-     * @param topic The name of a topic to receive records from
+     * @param topic       The name of a topic to receive records from
      * @param offsetRange The relative range of offsets to receive
      * @return A bounded {@link Flux} of {@link ConsumerRecord}
      */
@@ -76,7 +76,7 @@ public class KafkaBoundedReceiver<K, V> {
     /**
      * Receive records from given topics in the provided relative offset range.
      *
-     * @param topics The topic names to receive records from
+     * @param topics      The topic names to receive records from
      * @param offsetRange The relative range of offsets to receive
      * @return A bounded {@link Flux} of {@link ConsumerRecord}
      */
@@ -88,7 +88,7 @@ public class KafkaBoundedReceiver<K, V> {
      * Receive records from a given topic based on relative offset ranges provided by the given
      * {@link OffsetRangeProvider}.
      *
-     * @param topic The topic to receive records from
+     * @param topic         The topic to receive records from
      * @param rangeProvider Provider of relative offset ranges to receive, given {@link TopicPartition}s
      * @return A bounded {@link Flux} of {@link ConsumerRecord}
      */
@@ -100,7 +100,7 @@ public class KafkaBoundedReceiver<K, V> {
      * Receive records from given topics based on relative offset ranges provided by the given
      * {@link OffsetRangeProvider}.
      *
-     * @param topics The topic names to receive records from
+     * @param topics        The topic names to receive records from
      * @param rangeProvider Provider of relative offset ranges to receive, given {@link TopicPartition}s
      * @return A bounded {@link Flux} of {@link ConsumerRecord}
      */

@@ -20,8 +20,7 @@ class AloFluxTest {
         val nacknowledged = AtomicBoolean(false)
         val alo = ComposedAlo("DATA", { acknowledged.set(true) }, { nacknowledged.set(true) })
 
-        val aloFlux = Flux.just(alo)
-            .`as` { AloFlux.wrap(it) }
+        val aloFlux = AloFlux.just(alo)
             .suspendMap { delay(100) }
 
         StepVerifier.create(aloFlux).expectComplete().verify()
@@ -36,8 +35,7 @@ class AloFluxTest {
         val nacknowledged = AtomicBoolean(false)
         val alo = ComposedAlo("DATA", { acknowledged.set(true) }, { nacknowledged.set(true) })
 
-        val aloFlux = Flux.just(alo)
-            .`as` { AloFlux.wrap(it) }
+        val aloFlux = AloFlux.just(alo)
             .suspendMap { delay(100).run { it.lowercase() } }
 
         StepVerifier.create(aloFlux).expectNextMatches { it.get() == "data" }.expectComplete().verify()
@@ -52,8 +50,7 @@ class AloFluxTest {
         val nacknowledged = AtomicBoolean(false)
         val alo = ComposedAlo("DATA", { acknowledged.set(true) }, { nacknowledged.set(true) })
 
-        val aloFlux = Flux.just(alo)
-            .`as` { AloFlux.wrap(it) }
+        val aloFlux = AloFlux.just(alo)
             .flowMap { flowOf(it).map(String::lowercase) }
 
         StepVerifier.create(aloFlux).expectNextMatches { it.get() == "data" }.expectComplete().verify()

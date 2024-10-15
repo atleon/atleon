@@ -44,7 +44,7 @@ public final class ErrorEmitter<T> {
         try {
             sink.emitError(error, Sinks.EmitFailureHandler.busyLooping(timeout));
         } catch (Sinks.EmissionException emissionException) {
-            LOGGER.info("Failed to emit error due to reason=" + emissionException.getReason());
+            LOGGER.info("Failed to emit error due to reason={}", emissionException.getReason());
         }
     }
 }

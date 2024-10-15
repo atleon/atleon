@@ -81,7 +81,7 @@ public interface OffsetRangeProvider {
     Optional<OffsetRange> forTopicPartition(TopicPartition topicPartition);
 
     /**
-     * Returns a Comparator used to sort RecordRanges such that Records are consumed in a
+     * Returns a Comparator used to sort TopicPartitions such that Records are consumed in a
      * deterministic order
      */
     default Comparator<? super TopicPartition> topicPartitionComparator() {
