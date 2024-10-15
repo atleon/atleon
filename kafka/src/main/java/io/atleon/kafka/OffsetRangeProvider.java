@@ -36,7 +36,14 @@ public interface OffsetRangeProvider {
      * Consume Records from a single TopicPartition within the provided OffsetRange
      */
     static OffsetRangeProvider inOffsetRangeFromTopicPartition(TopicPartition topicPartition, OffsetRange offsetRange) {
-        return it -> topicPartition.equals(it) ? Optional.of(offsetRange) : Optional.empty();
+        return inOffsetRangesFromTopicPartitions(Collections.singletonMap(topicPartition, offsetRange));
+    }
+
+    /**
+     * Consume Records from TopicPartitions within mapped OffsetRanges
+     */
+    static OffsetRangeProvider inOffsetRangesFromTopicPartitions(Map<TopicPartition, OffsetRange> offsetRanges) {
+        return it -> Optional.ofNullable(offsetRanges.get(it));
     }
 
     /**

@@ -7,6 +7,7 @@ import org.apache.kafka.clients.admin.TestDescribeTopicsResult;
 import org.apache.kafka.clients.admin.TestListConsumerGroupOffsetsResult;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.TopicPartitionInfo;
@@ -19,8 +20,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
@@ -101,15 +104,89 @@ class ReactiveAdminTest {
         assertEquals(groupId, results.get(0).groupId());
     }
 
+    @Test
+    public void listTopicPartitionGroupOffsets_givenEarliestResetForGroup_expectsReturnedOffsetsForPartitionsWithData() {
+        String groupId = UUID.randomUUID().toString();
+        TopicPartition topicPartition = new TopicPartition("topic", 0);
+        ListOffsetsResult.ListOffsetsResultInfo earliestOffsetsResult =
+            new ListOffsetsResult.ListOffsetsResultInfo(0L, System.currentTimeMillis(), Optional.empty());
+        ListOffsetsResult.ListOffsetsResultInfo latestOffsetsResult =
+            new ListOffsetsResult.ListOffsetsResultInfo(123456L, System.currentTimeMillis(), Optional.empty());
+
+        Map<String, KafkaFuture<Map<TopicPartition, OffsetAndMetadata>>> offsetAndMetadataFutures =
+            Collections.singletonMap(groupId, KafkaFuture.completedFuture(Collections.emptyMap()));
+        Map<TopicPartition, KafkaFuture<ListOffsetsResult.ListOffsetsResultInfo>> earliestOffsetsResultFutures =
+            Collections.singletonMap(topicPartition, KafkaFuture.completedFuture(earliestOffsetsResult));
+        Map<TopicPartition, KafkaFuture<ListOffsetsResult.ListOffsetsResultInfo>> latestOffsetsResultFutures =
+            Collections.singletonMap(topicPartition, KafkaFuture.completedFuture(latestOffsetsResult));
+
+        Admin admin = mock(Admin.class);
+        when(admin.listConsumerGroupOffsets(mapContainingKey(groupId)))
+            .thenReturn(TestListConsumerGroupOffsetsResult.create(offsetAndMetadataFutures));
+        when(admin.listOffsets(mapContaining(topicPartition, OffsetSpec.EarliestSpec.class::isInstance), any()))
+            .thenReturn(new ListOffsetsResult(earliestOffsetsResultFutures));
+        when(admin.listOffsets(mapContaining(topicPartition, OffsetSpec.LatestSpec.class::isInstance), any()))
+            .thenReturn(new ListOffsetsResult(latestOffsetsResultFutures));
+
+        Map<String, OffsetResetStrategy> groupIds = Collections.singletonMap(groupId, OffsetResetStrategy.EARLIEST);
+        List<TopicPartitionGroupOffsets> results = new ReactiveAdmin(admin)
+            .listTopicPartitionGroupOffsets(groupIds, Collections.singletonList(topicPartition))
+            .collectList()
+            .block();
+
+        assertEquals(1, results.size());
+        assertEquals(latestOffsetsResult.offset() - earliestOffsetsResult.offset(), results.get(0).estimateLag());
+        assertEquals(topicPartition, results.get(0).topicPartition());
+        assertEquals(groupId, results.get(0).groupId());
+        assertEquals(0, results.get(0).groupOffset());
+    }
+
+    @Test
+    public void listTopicPartitionGroupOffsets_givenNoResetForGroup_expectsNoReturnedOffsetsForPartitions() {
+        String groupId = UUID.randomUUID().toString();
+        TopicPartition topicPartition = new TopicPartition("topic", 0);
+        ListOffsetsResult.ListOffsetsResultInfo earliestOffsetsResult =
+            new ListOffsetsResult.ListOffsetsResultInfo(0L, System.currentTimeMillis(), Optional.empty());
+        ListOffsetsResult.ListOffsetsResultInfo latestOffsetsResult =
+            new ListOffsetsResult.ListOffsetsResultInfo(123456L, System.currentTimeMillis(), Optional.empty());
+
+        Map<String, KafkaFuture<Map<TopicPartition, OffsetAndMetadata>>> offsetAndMetadataFutures =
+            Collections.singletonMap(groupId, KafkaFuture.completedFuture(Collections.emptyMap()));
+        Map<TopicPartition, KafkaFuture<ListOffsetsResult.ListOffsetsResultInfo>> earliestOffsetsResultFutures =
+            Collections.singletonMap(topicPartition, KafkaFuture.completedFuture(earliestOffsetsResult));
+        Map<TopicPartition, KafkaFuture<ListOffsetsResult.ListOffsetsResultInfo>> latestOffsetsResultFutures =
+            Collections.singletonMap(topicPartition, KafkaFuture.completedFuture(latestOffsetsResult));
+
+        Admin admin = mock(Admin.class);
+        when(admin.listConsumerGroupOffsets(mapContainingKey(groupId)))
+            .thenReturn(TestListConsumerGroupOffsetsResult.create(offsetAndMetadataFutures));
+        when(admin.listOffsets(mapContaining(topicPartition, OffsetSpec.EarliestSpec.class::isInstance), any()))
+            .thenReturn(new ListOffsetsResult(earliestOffsetsResultFutures));
+        when(admin.listOffsets(mapContaining(topicPartition, OffsetSpec.LatestSpec.class::isInstance), any()))
+            .thenReturn(new ListOffsetsResult(latestOffsetsResultFutures));
+
+        Map<String, OffsetResetStrategy> groupIds = Collections.singletonMap(groupId, OffsetResetStrategy.NONE);
+        List<TopicPartitionGroupOffsets> results = new ReactiveAdmin(admin)
+            .listTopicPartitionGroupOffsets(groupIds, Collections.singletonList(topicPartition))
+            .collectList()
+            .block();
+
+        assertTrue(results.isEmpty());
+    }
+
     private static <T> Collection<T> collectionContaining(T t) {
-        return argThat(it -> it.contains(t));
+        return argThat(it -> it != null && it.contains(t));
     }
 
     private static <K, V> Map<K, V> mapContainingKey(K key) {
-        return argThat(it -> it.containsKey(key));
+        return argThat(it -> it != null && it.containsKey(key));
     }
 
     private static <K, V> Map<K, V> mapContaining(K key, V value) {
-        return argThat(it -> it.containsKey(key) && Objects.equals(value, it.get(key)));
+        return argThat(it -> it != null && it.containsKey(key) && Objects.equals(value, it.get(key)));
+    }
+
+    private static <K, V> Map<K, V> mapContaining(K key, Predicate<V> valuePredicate) {
+        return argThat(it -> it != null && it.containsKey(key) && valuePredicate.test(it.get(key)));
     }
 }
