@@ -40,6 +40,14 @@ public final class ErrorEmitter<T> {
         return Flux.from(publisher).mergeWith(sink.asMono());
     }
 
+    public void safelyComplete() {
+        try {
+            sink.emitEmpty(Sinks.EmitFailureHandler.busyLooping(timeout));
+        } catch (Sinks.EmissionException emissionException) {
+            LOGGER.info("Failed to emit completion due to reason={}", emissionException.getReason());
+        }
+    }
+
     public void safelyEmit(Throwable error) {
         try {
             sink.emitError(error, Sinks.EmitFailureHandler.busyLooping(timeout));
