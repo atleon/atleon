@@ -46,4 +46,8 @@ public final class TopicPartitionGroupOffsets {
     public String groupId() {
         return groupId;
     }
+
+    public long groupOffset() {
+        return groupOffset;
+    }
 }
