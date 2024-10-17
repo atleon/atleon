@@ -1,9 +1,12 @@
 package io.atleon.kafka;
 
 import org.apache.kafka.clients.admin.OffsetSpec;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -79,6 +82,9 @@ final class RecordRange {
         Map<TopicPartition, Long> rawOffsets =
             typedCriteria.getOrDefault(OffsetCriteria.Raw.class, Collections.emptyMap()).entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, it -> toRawOffset(it.getValue(), extrema)));
+        Map<TopicPartition, OffsetCriteria.ConsumerGroup> consumerGroups =
+            typedCriteria.getOrDefault(OffsetCriteria.ConsumerGroup.class, Collections.emptyMap()).entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, it -> (OffsetCriteria.ConsumerGroup) it.getValue()));
         Map<TopicPartition, OffsetSpec> timestampSpecs =
             typedCriteria.getOrDefault(OffsetCriteria.Timestamp.class, Collections.emptyMap()).entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, it -> toTimestampSpec(it.getValue(), extrema)));
@@ -90,11 +96,25 @@ final class RecordRange {
                 .collect(Collectors.toMap(Map.Entry::getKey, __ -> OffsetSpec.latest()));
 
         return Mono.just(rawOffsets)
+            .mergeWith(listConsumerGroupOffsets(admin, consumerGroups))
             .mergeWith(admin.listOffsets(timestampSpecs, offset -> offset == -1 ? Long.MAX_VALUE : offset))
             .mergeWith(admin.listOffsets(earliestSpecs, offset -> offset + (extrema == Extrema.MAX ? 1 : 0)))
             .mergeWith(admin.listOffsets(latestSpecs, offset -> offset - (extrema == Extrema.MIN ? 1 : 0)))
             .flatMapIterable(Map::entrySet)
             .collectMap(Map.Entry::getKey, Map.Entry::getValue);
+    }
+
+    private static Mono<Map<TopicPartition, Long>> listConsumerGroupOffsets(
+        ReactiveAdmin admin,
+        Map<TopicPartition, OffsetCriteria.ConsumerGroup> groups
+    ) {
+        Map<Tuple2<String, OffsetResetStrategy>, List<TopicPartition>> topicPartitions = groups.entrySet().stream()
+            .collect(Collectors.groupingBy(
+                it -> Tuples.of(it.getValue().groupId(), it.getValue().resetStrategy()),
+                Collectors.mapping(Map.Entry::getKey, Collectors.toList())));
+        return Flux.fromIterable(topicPartitions.entrySet())
+            .concatMap(it -> admin.listTopicPartitionGroupOffsets(it.getKey().getT1(), it.getKey().getT2(), it.getValue()))
+            .collectMap(TopicPartitionGroupOffsets::topicPartition, TopicPartitionGroupOffsets::groupOffset);
     }
 
     private static List<RecordRange> createRecordRanges(
