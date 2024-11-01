@@ -3,6 +3,7 @@ package io.atleon.kafka;
 import io.atleon.kafka.embedded.EmbeddedKafka;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
@@ -13,6 +14,7 @@ import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.Serializer;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -32,6 +34,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class KafkaBoundedReceiverTest {
 
     private static final String BOOTSTRAP_CONNECT = EmbeddedKafka.startAndGetBootstrapServersConnect(10092);
+
+    private final String groupId = KafkaBoundedReceiverTest.class.getSimpleName();
 
     @Test
     public void allDataCurrentlyOnATopicCanBeConsumed() {
@@ -193,6 +197,35 @@ class KafkaBoundedReceiverTest {
     }
 
     @Test
+    public void recordsCanBeConsumedBasedOnCommittedConsumerOffsets() {
+        String topic = UUID.randomUUID().toString();
+        KafkaConfigSource configSource = newProducerConfigs(LongSerializer.class, LongSerializer.class);
+        TopicPartition topicPartition = new TopicPartition(topic, 0);
+        List<Long> producedValues = produceRecordsFromValues(
+            configSource,
+            createRandomLongValues(4, Collectors.toList()),
+            value -> new ProducerRecord<>(topicPartition.topic(), topicPartition.partition(), value, value)
+        );
+
+        Mono<Void> alterGroupOffsets = Mono.usingWhen(
+            configSource.create().map(KafkaConfig::nativeProperties).map(ReactiveAdmin::create),
+            it -> it.alterRawConsumerGroupOffsets(groupId, Collections.singletonMap(topicPartition, 2L)),
+            it -> Mono.fromRunnable(it::close));
+        alterGroupOffsets.block();
+
+        OffsetCriteria consumerGroupCriteria = OffsetCriteria.consumerGroup(groupId, OffsetResetStrategy.EARLIEST);
+
+        assertEquals(
+            producedValues.subList(0, 2),
+            receiveValuesAsLongs(topic, OffsetCriteria.earliest().to(consumerGroupCriteria))
+        );
+        assertEquals(
+            producedValues.subList(2, 4),
+            receiveValuesAsLongs(topic, consumerGroupCriteria.to(OffsetCriteria.latest()))
+        );
+    }
+
+    @Test
     public void recordsCanBeConsumedFromASingleTopicPartition() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
@@ -295,7 +328,7 @@ class KafkaBoundedReceiverTest {
         Class<? extends Deserializer<?>> valueDeserializer
     ) {
         return newBaseConfigSource()
-            .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaBoundedReceiverTest.class.getSimpleName())
+            .with(ConsumerConfig.GROUP_ID_CONFIG, groupId)
             .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, keyDeserializer.getName())
             .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializer.getName());
     }
