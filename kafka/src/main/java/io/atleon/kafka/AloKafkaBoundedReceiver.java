@@ -93,7 +93,7 @@ public class AloKafkaBoundedReceiver<K, V> {
             .orElseThrow(() -> new IllegalArgumentException("Must provide Consumer Group ID"));
         OffsetResetStrategy resetStrategy = config.loadString(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)
             .map(it -> OffsetResetStrategy.valueOf(it.toUpperCase(Locale.ROOT)))
-            .orElse(OffsetResetStrategy.NONE);
+            .orElse(OffsetResetStrategy.LATEST); // Same default as Kafka Consumer Config
         return admin.listTopicPartitions(topics)
             .collectList()
             .flatMapMany(it -> admin.listTopicPartitionGroupOffsets(groupId, resetStrategy, it))
@@ -109,10 +109,10 @@ public class AloKafkaBoundedReceiver<K, V> {
         String groupId,
         RecordRange recordRange
     ) {
-        Map<TopicPartition, Long> offsets =
+        Map<TopicPartition, Long> offsetsToCommit =
             Collections.singletonMap(recordRange.topicPartition(), recordRange.maxInclusive() + 1);
         ErrorEmitter<Alo<ConsumerRecord<K, V>>> errorEmitter = ErrorEmitter.create();
-        Runnable acknowledger = () -> admin.alterRawConsumerGroupOffsets(groupId, offsets)
+        Runnable acknowledger = () -> admin.alterRawConsumerGroupOffsets(groupId, offsetsToCommit)
             .subscribe(Consuming.noOp(), errorEmitter::safelyEmit, errorEmitter::safelyComplete);
         return AloFlux.just(new ComposedAlo<>(recordRange, acknowledger, errorEmitter::safelyEmit))
             .concatMap(KafkaBoundedReceiver.<K, V>create(configSource)::receiveRecordsInRange)
