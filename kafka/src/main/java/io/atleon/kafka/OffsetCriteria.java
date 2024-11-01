@@ -1,5 +1,7 @@
 package io.atleon.kafka;
 
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+
 import java.time.Instant;
 
 /**
@@ -41,6 +43,26 @@ public abstract class OffsetCriteria {
      */
     public static OffsetCriteria timestamp(long epochMillis) {
         return new Timestamp(epochMillis);
+    }
+
+    /**
+     * Points to the Record's offset which is "around" where the provided consumer group is
+     * committed. If used as a min-criteria, points to the next record that the consumer group
+     * would consume. If used as a max-criteria, points to the last record that the group consumed.
+     */
+    public static OffsetCriteria consumerGroup(String groupId) {
+        return new ConsumerGroup(groupId, OffsetResetStrategy.NONE);
+    }
+
+    /**
+     * Points to the Record's offset which is "around" where the provided consumer group is
+     * committed. If used as a min-criteria, points to the next record that the consumer group
+     * would consume. If used as a max-criteria, points to the last record that the group consumed.
+     * If the group does not have a committed offset, then the provided {@link OffsetResetStrategy}
+     * is used to determine where consumption <i>would</i> begin.
+     */
+    public static OffsetCriteria consumerGroup(String groupId, OffsetResetStrategy resetStrategy) {
+        return new ConsumerGroup(groupId, resetStrategy);
     }
 
     /**
@@ -87,6 +109,26 @@ public abstract class OffsetCriteria {
 
         public long epochMillis() {
             return epochMillis;
+        }
+    }
+
+    public static final class ConsumerGroup extends OffsetCriteria {
+
+        private final String groupId;
+
+        private final OffsetResetStrategy resetStrategy;
+
+        private ConsumerGroup(String groupId, OffsetResetStrategy resetStrategy) {
+            this.groupId = groupId;
+            this.resetStrategy = resetStrategy;
+        }
+
+        public String groupId() {
+            return groupId;
+        }
+
+        public OffsetResetStrategy resetStrategy() {
+            return resetStrategy;
         }
     }
 
