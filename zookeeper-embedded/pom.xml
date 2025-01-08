@@ -11,12 +11,16 @@
     <artifactId>atleon-zookeeper-embedded</artifactId>
     <packaging>jar</packaging>
 
+    <properties>
+        <curator.version>5.7.1</curator.version>
+    </properties>
+
     <dependencies>
         <!--Third Party Dependencies-->
         <dependency>
             <groupId>org.apache.curator</groupId>
             <artifactId>curator-test</artifactId>
-            <version>5.1.0</version>
+            <version>${curator.version}</version>
             <exclusions>
                 <!-- Excluding to bring in managed version as runtime dependency -->
                 <exclusion>

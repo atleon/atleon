@@ -81,7 +81,7 @@ public final class EmbeddedAmqp {
         PrintWriter configWriter = new PrintWriter(configFile);
         configWriter.println("{");
         configWriter.println("    \"name\": \"broker\",");
-        configWriter.println("    \"modelVersion\": \"" + deduceQpidMajorMinorVersion() + "\",");
+        configWriter.println("    \"modelVersion\": \"" + deduceQpidConfigModelVersion() + "\",");
         configWriter.println("    \"virtualhostnodes\": [{");
         configWriter.println("        \"type\": \"Memory\",");
         configWriter.println("        \"name\": \"default\",");
@@ -120,9 +120,9 @@ public final class EmbeddedAmqp {
         return configFile;
     }
 
-    private static String deduceQpidMajorMinorVersion() {
+    private static String deduceQpidConfigModelVersion() {
         String version = SystemConfig.class.getPackage().getImplementationVersion();
         Matcher matcher = SEMVER_PATTERN.matcher(version);
-        return matcher.find() ? String.format("%s.%s", matcher.group(1), matcher.group(2)) : "7.0";
+        return matcher.find() ? String.format("%s.0", matcher.group(1)) : "7.0";
     }
 }
