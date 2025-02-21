@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.29.0]
+atleon `0.29.0` is a beta release containing updates outlined below
+
+### Additions
+* [#345] Enable KafkaBoundedReceiver to consume Alo records based on configured consumer group and offset reset strategy
+* [#347] Allow specifying consumer group as type of OffsetCriteria
+
 # [0.28.4]
 atleon `0.28.4` is a beta release containing updates outlined below
 
