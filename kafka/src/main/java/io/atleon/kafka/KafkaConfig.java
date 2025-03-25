@@ -2,6 +2,7 @@ package io.atleon.kafka;
 
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
+import org.apache.kafka.clients.CommonClientConfigs;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -20,6 +21,12 @@ public class KafkaConfig {
 
     public static KafkaConfig create(Map<String, ?> properties) {
         return new KafkaConfig(properties);
+    }
+
+    public KafkaConfig withClientIdSuffix(String delimiter, String suffix) {
+        Map<String, ?> modifiedProperties = modifyAndGetProperties(it ->
+            it.computeIfPresent(CommonClientConfigs.CLIENT_ID_CONFIG, (__, id) -> id + delimiter + suffix));
+        return new KafkaConfig(modifiedProperties);
     }
 
     public Map<String, Object> nativeProperties() {
