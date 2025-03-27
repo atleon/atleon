@@ -55,6 +55,19 @@ public class GroupFlux<K, T> {
     }
 
     /**
+     * Attach side-effect behavior to the positive acknowledgement of underlying emitted
+     * {@link Alo} elements, passing the contained data which is/was emitted at this point in each
+     * inner grouped sequence. Note that this behavior will be invoked <i>before</i> invoking the
+     * "native" acknowledger.
+     *
+     * @param onAcknowledge The side-effect to invoke upon downstream positive acknowledgement
+     * @return a transformed {@link AloFlux}
+     */
+    public GroupFlux<K, T> innerDoOnAcknowledge(Consumer<? super T> onAcknowledge) {
+        return map(group -> group.doOnAcknowledge(onAcknowledge));
+    }
+
+    /**
      * Convenience method for applying {@link AloFlux#filter(Predicate)} to each inner grouped
      * sequence.
      *
