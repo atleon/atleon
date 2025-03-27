@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.SynchronousSink;
 import reactor.util.context.ContextView;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -13,6 +14,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 /**
@@ -124,6 +126,14 @@ final class AloOps {
         };
     }
 
+    public static <T> UnaryOperator<Alo<T>> acknowledgerDecorator(Consumer<? super T> decorator) {
+        return alo -> {
+            T t = alo.get();
+            Runnable decoratedAcknowledger = combineRunnables(() -> decorator.accept(t), alo.getAcknowledger());
+            return alo.<T>propagator().create(t, decoratedAcknowledger, alo.getNacknowledger());
+        };
+    }
+
     public static <T> Alo<List<T>> fanIn(List<Alo<T>> alos) {
         Alo<T> firstAlo = alos.get(0);
         if (alos.size() == 1) {
@@ -164,5 +174,12 @@ final class AloOps {
     private static Consumer<? super Throwable>
     combineNacknowledgers(Iterable<? extends Consumer<? super Throwable>> nacknowledgers) {
         return error -> nacknowledgers.forEach(nacknowledger -> nacknowledger.accept(error));
+    }
+
+    private static Runnable combineRunnables(Runnable first, Runnable second) {
+        return () -> {
+            first.run();
+            second.run();
+        };
     }
 }

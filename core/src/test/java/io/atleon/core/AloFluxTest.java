@@ -26,9 +26,26 @@ import java.util.stream.IntStream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AloFluxTest {
+
+    @Test
+    public void sideEffectsCanBeAttachedToEmittedDataForExecutionUponPositiveAcknowledgement() {
+        TestAlo alo = new TestAlo("DATA");
+        AtomicReference<String> sideEffectSetData = new AtomicReference<>(null);
+
+        Alo<String> result = AloFlux.just(alo).doOnAcknowledge(sideEffectSetData::set).unwrap().blockFirst();
+
+        assertFalse(alo.isAcknowledged());
+        assertNull(sideEffectSetData.get());
+
+        Alo.acknowledge(result);
+
+        assertTrue(alo.isAcknowledged());
+        assertEquals(alo.get(), sideEffectSetData.get());
+    }
 
     @Test
     public void alosCanBeFiltered() {
