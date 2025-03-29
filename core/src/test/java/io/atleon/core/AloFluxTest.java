@@ -36,7 +36,7 @@ class AloFluxTest {
         TestAlo alo = new TestAlo("DATA");
         AtomicReference<String> sideEffectSetData = new AtomicReference<>(null);
 
-        Alo<String> result = AloFlux.just(alo).doOnAcknowledge(sideEffectSetData::set).unwrap().blockFirst();
+        Alo<String> result = AloFlux.just(alo).doOnAloAcknowledge(sideEffectSetData::set).unwrap().blockFirst();
 
         assertFalse(alo.isAcknowledged());
         assertNull(sideEffectSetData.get());

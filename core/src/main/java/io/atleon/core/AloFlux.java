@@ -117,11 +117,11 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * stream. Note that this behavior will be invoked <i>before</i> invoking the "native"
      * acknowledger.
      *
-     * @param onAcknowledge The side-effect to invoke upon downstream positive acknowledgement
+     * @param onAloAcknowledge The side-effect to invoke upon downstream positive acknowledgement
      * @return a transformed {@link AloFlux}
      */
-    public AloFlux<T> doOnAcknowledge(Consumer<? super T> onAcknowledge) {
-        return new AloFlux<>(wrapped.map(AloOps.acknowledgerDecorator(onAcknowledge)));
+    public AloFlux<T> doOnAloAcknowledge(Consumer<? super T> onAloAcknowledge) {
+        return new AloFlux<>(wrapped.map(AloOps.acknowledgerDecorator(onAloAcknowledge)));
     }
 
     /**

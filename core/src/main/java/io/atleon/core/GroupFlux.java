@@ -60,11 +60,11 @@ public class GroupFlux<K, T> {
      * inner grouped sequence. Note that this behavior will be invoked <i>before</i> invoking the
      * "native" acknowledger.
      *
-     * @param onAcknowledge The side-effect to invoke upon downstream positive acknowledgement
+     * @param onAloAcknowledge The side-effect to invoke upon downstream positive acknowledgement
      * @return a transformed {@link AloFlux}
      */
-    public GroupFlux<K, T> innerDoOnAcknowledge(Consumer<? super T> onAcknowledge) {
-        return map(group -> group.doOnAcknowledge(onAcknowledge));
+    public GroupFlux<K, T> innerDoOnAloAcknowledge(Consumer<? super T> onAloAcknowledge) {
+        return map(group -> group.doOnAloAcknowledge(onAloAcknowledge));
     }
 
     /**
