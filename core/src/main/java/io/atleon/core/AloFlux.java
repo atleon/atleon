@@ -139,6 +139,18 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * Convenience method for applying a mapping and casting the result to a provided type.
+     *
+     * @param clazz  The type to cast mapped values to
+     * @param mapper The mapping to apply
+     * @param <V>    The type of emitted data elements
+     * @return a transformed {@link AloFlux}
+     */
+    public <V> AloFlux<V> cast(Class<V> clazz, Function<? super T, ? super V> mapper) {
+        return map(mapper.andThen(clazz::cast));
+    }
+
+    /**
      * See {@link Flux#ofType(Class)}
      */
     public <V> AloFlux<V> ofType(Class<V> clazz) {
