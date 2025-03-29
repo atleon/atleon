@@ -12,9 +12,12 @@ import io.atleon.core.AloQueueingTransformer;
 import io.atleon.core.AloSignalListenerFactory;
 import io.atleon.core.AloSignalListenerFactoryConfig;
 import io.atleon.core.ErrorEmitter;
+import io.atleon.util.Defaults;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.receiver.ReceiverRecord;
@@ -22,6 +25,7 @@ import reactor.kafka.receiver.ReceiverRecord;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -30,6 +34,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 
 /**
  * A reactive Kafka receiver with at-least-once semantics for consuming records from topics of a
@@ -247,7 +252,8 @@ public class AloKafkaReceiver<K, V> {
      * @return A Publisher of Alo items referencing Kafka ConsumerRecords
      */
     public AloFlux<ConsumerRecord<K, V>> receiveAloRecords(Collection<String> topics) {
-        return receiveAloRecords(consumerConfig -> ReceiverOptions.<K, V>create(consumerConfig).subscription(topics));
+        ReceptionFactory<K, V> receptionFactory = ReceptionFactory.topics(topics);
+        return configSource.create().flatMapMany(receptionFactory::receive).as(AloFlux::wrap);
     }
 
     /**
@@ -258,20 +264,137 @@ public class AloKafkaReceiver<K, V> {
      * @return A Publisher of Alo items referencing Kafka ConsumerRecords
      */
     public AloFlux<ConsumerRecord<K, V>> receiveAloRecords(Pattern topicsPattern) {
-        return receiveAloRecords(consumerConfig -> ReceiverOptions.<K, V>create(consumerConfig).subscription(topicsPattern));
+        ReceptionFactory<K, V> receptionFactory = ReceptionFactory.topicsPattern(topicsPattern);
+        return configSource.create().flatMapMany(receptionFactory::receive).as(AloFlux::wrap);
     }
 
-    private AloFlux<ConsumerRecord<K, V>> receiveAloRecords(ReceiverOptionsInitializer<K, V> optionsInitializer) {
-        ConsumerMutexEnforcer consumerMutexEnforcer = new ConsumerMutexEnforcer();
+    /**
+     * Creates a Publisher of {@link Alo} items referencing Kafka {@link ConsumerRecord}s wrapped
+     * as an {@link AloFlux}. This is a special mode of reception where received records are
+     * prioritized based on the provided {@link ReceptionPrioritization}. The prioritization
+     * is used to determine how many Kafka Consumer instances will back the created {@link AloFlux},
+     * and subsequently how records from each of those consumers will be prioritized for emission.
+     * This is accomplished by first listing the partitions that will be subscribed to, mapping
+     * those to priority "levels", and then creating a Consumer for each level. In order for this
+     * to work as intended, it should be the case that each priority "level"/grouping of partitions
+     * will be mutually exclusively assigned to any given Consumer. In the case of consuming a
+     * single topic and using the partition number as the "priority", this condition is satisfied
+     * out of the box, since this method ensures there will be at least as many Consumers as there
+     * are partitions, and therefore "levels". More sophisticated use cases may require a
+     * special/custom {@link org.apache.kafka.clients.consumer.ConsumerPartitionAssignor} to ensure
+     * that partitions with different "levels" are not assigned to the same Consumer instance. In
+     * another case, it may be desirable to configure a partition assignor
+     * (like {@link SingleMachinePartitionAssignor}) that ensures all partitions are assigned to
+     * Consumer instances on a single machine, thus accomplishing a "global" prioritization of
+     * processing.
+     *
+     * @param topic          The topic to consume from
+     * @param prioritization Indicates the priority of consuming any given {@link TopicPartition}
+     * @return A Publisher of Alo items referencing prioritized Kafka ConsumerRecords
+     */
+    public AloFlux<ConsumerRecord<K, V>>
+    receivePrioritizedAloRecords(String topic, ReceptionPrioritization prioritization) {
+        return receivePrioritizedAloRecords(Collections.singleton(topic), prioritization, Defaults.PREFETCH);
+    }
+
+    /**
+     * Creates a Publisher of {@link Alo} items referencing Kafka {@link ConsumerRecord}s wrapped
+     * as an {@link AloFlux}. This is a special mode of reception where received records are
+     * prioritized based on the provided {@link ReceptionPrioritization}. The prioritization
+     * is used to determine how many Kafka Consumer instances will back the created {@link AloFlux},
+     * and subsequently how records from each of those consumers will be prioritized for emission.
+     * This is accomplished by first listing the partitions that will be subscribed to, mapping
+     * those to priority "levels", and then creating a Consumer for each level. In order for this
+     * to work as intended, it should be the case that each priority "level"/grouping of partitions
+     * will be mutually exclusively assigned to any given Consumer. In the case of consuming a
+     * single topic and using the partition number as the "priority", this condition is satisfied
+     * out of the box, since this method ensures there will be at least as many Consumers as there
+     * are partitions, and therefore "levels". More sophisticated use cases may require a
+     * special/custom {@link org.apache.kafka.clients.consumer.ConsumerPartitionAssignor} to ensure
+     * that partitions with different "levels" are not assigned to the same Consumer instance. In
+     * another case, it may be desirable to configure a partition assignor
+     * (like {@link SingleMachinePartitionAssignor}) that ensures all partitions are assigned to
+     * Consumer instances on a single machine, thus accomplishing a "global" prioritization of
+     * processing.
+     *
+     * @param topics         The topic to consume from
+     * @param prioritization Indicates the priority of consuming any given {@link TopicPartition}
+     * @param prefetch       The number of elements to prefetch from each merged sequence
+     * @return A Publisher of Alo items referencing prioritized Kafka ConsumerRecords
+     */
+    public AloFlux<ConsumerRecord<K, V>>
+    receivePrioritizedAloRecords(Collection<String> topics, ReceptionPrioritization prioritization, int prefetch) {
+        ReceptionFactory<K, V> receptionFactory = ReceptionFactory.topics(topics);
         return configSource.create()
-            .map(ReceiveResources<K, V>::new)
-            .flatMapMany(resources -> resources.receive(optionsInitializer, consumerMutexEnforcer))
+            .flatMap(it -> createOrderedConfigs(it, topics, prioritization))
+            .map(receptionFactory::receive)
+            .flatMapMany(it -> Flux.mergePriority(prefetch, toComparator(prioritization), it))
             .as(AloFlux::wrap);
+    }
+
+    private static Mono<List<KafkaConfig>>
+    createOrderedConfigs(KafkaConfig config, Collection<String> topics, ReceptionPrioritization prioritization) {
+        return listTopicPartitions(config, topics)
+            .map(prioritization::prioritize)
+            .distinct()
+            .sort(Comparator.naturalOrder())
+            .map(it -> config.withClientIdSuffix("-", it.toString()))
+            .collectList();
+    }
+
+    private static Flux<TopicPartition> listTopicPartitions(KafkaConfig config, Collection<String> topics) {
+        return Flux.using(
+            () -> ReactiveAdmin.create(config.nativeProperties()),
+            it -> it.listTopicPartitions(topics),
+            ReactiveAdmin::close);
+    }
+
+    private static <K, V> Comparator<Alo<ConsumerRecord<K, V>>> toComparator(ReceptionPrioritization prioritization) {
+        return Comparator.comparing(alo ->
+            prioritization.prioritize(ConsumerRecordExtraction.topicPartition(alo.get())));
     }
 
     private interface ReceiverOptionsInitializer<K, V> {
 
         ReceiverOptions<K, V> initialize(Map<String, Object> consumerConfig);
+    }
+
+    private static final class ReceptionFactory<K, V> {
+
+        private final ReceiverOptionsInitializer<K, V> optionsInitializer;
+
+        private final Map<Object, ConsumerMutexEnforcer> consumerMutexEnforcers = new ConcurrentHashMap<>();
+
+        private ReceptionFactory(ReceiverOptionsInitializer<K, V> optionsInitializer) {
+            this.optionsInitializer = optionsInitializer;
+        }
+
+        public static <K, V> ReceptionFactory<K, V> topics(Collection<String> topics) {
+            return new ReceptionFactory<>(config -> ReceiverOptions.<K, V>create(config).subscription(topics));
+        }
+
+        public static <K, V> ReceptionFactory<K, V> topicsPattern(Pattern topicsPattern) {
+            return new ReceptionFactory<>(config -> ReceiverOptions.<K, V>create(config).subscription(topicsPattern));
+        }
+
+        public Flux<Alo<ConsumerRecord<K, V>>> receive(KafkaConfig config) {
+            // Constant used as config key, since mutex should be maintained for single reception lifecycle
+            return receive(-1, config);
+        }
+
+        @SuppressWarnings("unchecked")
+        public Flux<Alo<ConsumerRecord<K, V>>>[] receive(List<KafkaConfig> orderedConfigs) {
+            // Config index used as config key, since mutex should be maintained per reception lifecycle
+            return IntStream.range(0, orderedConfigs.size())
+                .mapToObj(it -> receive(it, orderedConfigs.get(it)))
+                .toArray(Flux[]::new);
+        }
+
+        private Flux<Alo<ConsumerRecord<K, V>>> receive(Object configKey, KafkaConfig config) {
+            ConsumerMutexEnforcer consumerMutexEnforcer =
+                consumerMutexEnforcers.computeIfAbsent(configKey, __ -> new ConsumerMutexEnforcer());
+            return new ReceiveResources<K, V>(config).receive(optionsInitializer, consumerMutexEnforcer);
+        }
     }
 
     private static final class ReceiveResources<K, V> {
