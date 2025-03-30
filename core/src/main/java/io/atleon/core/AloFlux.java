@@ -22,6 +22,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 /**
  * A wrapper around Project Reactor's {@link Flux} for Alo elements containing data of type T.
@@ -100,8 +101,9 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     /**
      * @see Flux#doFinally(Consumer)
      */
-    public AloFlux<T> doFinally(Consumer<SignalType> onFinally) {
-        return new AloFlux<>(wrapped.doFinally(onFinally));
+    @SafeVarargs
+    public final AloFlux<T> doFinally(Consumer<SignalType> onFinally, Consumer<SignalType>... andThens) {
+        return new AloFlux<>(wrapped.doFinally(Stream.of(andThens).reduce(onFinally, Consumer::andThen)));
     }
 
     /**
