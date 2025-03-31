@@ -99,11 +99,23 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
-     * @see Flux#doFinally(Consumer)
+     * Similar to {@link #doFinally(Consumer)}, and provides the convenience being able to pass
+     * multiple callbacks to be executed in provided order.
+     *
+     * @param onFinally The first callback to execute after stream termination
+     * @param andThens  Subseuent callbacks to be executed in provided order
+     * @return a transformed {@link AloFlux}
      */
     @SafeVarargs
-    public final AloFlux<T> doFinally(Consumer<SignalType> onFinally, Consumer<SignalType>... andThens) {
-        return new AloFlux<>(wrapped.doFinally(Stream.of(andThens).reduce(onFinally, Consumer::andThen)));
+    public final AloFlux<T> doAllFinally(Consumer<SignalType> onFinally, Consumer<SignalType>... andThens) {
+        return doFinally(Stream.of(andThens).reduce(onFinally, Consumer::andThen));
+    }
+
+    /**
+     * @see Flux#doFinally(Consumer)
+     */
+    public final AloFlux<T> doFinally(Consumer<SignalType> onFinally) {
+        return new AloFlux<>(wrapped.doFinally(onFinally));
     }
 
     /**
