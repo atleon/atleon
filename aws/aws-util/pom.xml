@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.atleon</groupId>
         <artifactId>atleon-aws</artifactId>
-        <version>0.29.1-SNAPSHOT</version>
+        <version>0.30.0</version>
     </parent>
 
     <artifactId>atleon-aws-util</artifactId>
