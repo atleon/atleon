@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.30.0]
+atleon `0.30.0` is a beta release containing updates outlined below
+
+### Additions
+* [#357] New `SingleMachinePartitionAssignor` which assigns all Kafka partitions to single "machine" in a consumer group
+* [#359] Added `AloKafkaReceiver::receivePrioritizedAloRecords` which allows specifying priority of record consumption based on `TopicPartition`
+* [#361] Added `AloFlux::doOnAloAcknowledge` to attach side-effect on execution of emitted data element's positive acknowledgement
+* [#363] Added `AloFlux::cast` overload which allows composing type casting with a mapping/extraction
+* [#364] Added `AloFlux::doAllFinally` to provide convenience of passing multiple `doFinally` callbacks in a single operator
+
 # [0.29.0]
 atleon `0.29.0` is a beta release containing updates outlined below
 

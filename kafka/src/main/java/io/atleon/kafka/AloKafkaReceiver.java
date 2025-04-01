@@ -234,8 +234,8 @@ public class AloKafkaReceiver<K, V> {
     }
 
     /**
-     * Creates a Publisher of {@link Alo} items referencing values extracted from Kafka
-     * {@link ConsumerRecord}s wrapped as an {@link AloFlux}.
+     * Creates a Publisher of {@link Alo} items referencing Kafka {@link ConsumerRecord}s wrapped
+     * as an {@link AloFlux}.
      *
      * @param topic The topic to subscribe to
      * @return A Publisher of Alo items referencing Kafka ConsumerRecords
@@ -245,8 +245,8 @@ public class AloKafkaReceiver<K, V> {
     }
 
     /**
-     * Creates a Publisher of {@link Alo} items referencing values extracted from Kafka
-     * {@link ConsumerRecord}s wrapped as an {@link AloFlux}.
+     * Creates a Publisher of {@link Alo} items referencing Kafka {@link ConsumerRecord}s wrapped
+     * as an {@link AloFlux}.
      *
      * @param topics The collection of topics to subscribe to
      * @return A Publisher of Alo items referencing Kafka ConsumerRecords
@@ -257,8 +257,8 @@ public class AloKafkaReceiver<K, V> {
     }
 
     /**
-     * Creates a Publisher of {@link Alo} items referencing values extracted from Kafka
-     * {@link ConsumerRecord}s wrapped as an {@link AloFlux}.
+     * Creates a Publisher of {@link Alo} items referencing Kafka {@link ConsumerRecord}s wrapped
+     * as an {@link AloFlux}.
      *
      * @param topicsPattern The {@link Pattern} of topics to subscribe to
      * @return A Publisher of Alo items referencing Kafka ConsumerRecords
