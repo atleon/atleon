@@ -103,7 +103,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * multiple callbacks to be executed in provided order.
      *
      * @param onFinally The first callback to execute after stream termination
-     * @param andThens  Subseuent callbacks to be executed in provided order
+     * @param andThens  Subsequent callbacks to be executed in provided order
      * @return a transformed {@link AloFlux}
      */
     @SafeVarargs
@@ -631,8 +631,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
 
     /**
      * Delegates Alo failure handling to pipeline operators in <strong>upstream</strong> operators
-     * where the error does <strong>not</strong> match the provided bi-predicate which accepts the
-     * value that triggered the error and the error itself.. When the predicate <strong>is</strong>
+     * where the error does <strong>not</strong> match the provided bi-predicate (which accepts the
+     * value that triggered the error and the error itself). When the predicate <strong>is</strong>
      * matched, recovery is accomplished by acknowledging the incriminating Alo element and
      * allowing the pipeline to continue.
      * <p>
@@ -653,9 +653,9 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * downstream negative acknowledgement, the provided delegator will be invoked to produce a
      * {@link Publisher}. After subscribing to that error, successful completion of that publisher
      * implies that handling the error was delegated successfully, and the originating Alo can be
-     * acknowledged. On the other hand, if the delegator publisher errors, that error will be added
-     * as a suppressed exception to the original exception (when possible) and used to execute the
-     * originating Alo's nacknowledger.
+     * acknowledged. On the other hand, if the delegator publisher emits an error, that error will
+     * be added as a suppressed exception to the original exception (when possible) and used to
+     * execute the originating Alo's nacknowledger.
      * <p>
      * Multiple delegators may be added to a pipeline. In this case, delegators are invoked in the
      * <i>reverse</i> order that they are applied in the pipeline.

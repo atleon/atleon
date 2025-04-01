@@ -256,7 +256,7 @@ public class GroupFlux<K, T> {
     }
 
     /**
-     * Flatten each inner grouped Publisher in to a single {@link AloFlux}, allowing values to
+     * Flatten each inner grouped Publisher into a single {@link AloFlux}, allowing values to
      * interleave
      *
      * @return a new {@link AloFlux} of the merged results
@@ -267,7 +267,7 @@ public class GroupFlux<K, T> {
 
     /**
      * Transform the elements emitted by this {@link GroupFlux} asynchronously into Publishers of
-     * {@link Alo}, then flatten these inner Publishers in to a single {@link AloFlux}, which
+     * {@link Alo}, then flatten these inner Publishers into a single {@link AloFlux}, which
      * allows them to interleave
      *
      * @param mapper {@link Function} to transform each emission into {@link Publisher} of {@link Alo}
