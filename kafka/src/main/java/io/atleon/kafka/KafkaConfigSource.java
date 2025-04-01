@@ -4,6 +4,7 @@ import io.atleon.core.ConfigSource;
 import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serializer;
@@ -56,6 +57,10 @@ public class KafkaConfigSource extends ConfigSource<KafkaConfig, KafkaConfigSour
 
     public KafkaConfigSource withConsumerGroupId(String groupId) {
         return with(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+    }
+
+    public KafkaConfigSource withConsumerPartitionAssignor(Class<? extends ConsumerPartitionAssignor> assignorClass) {
+        return with(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, assignorClass.getName());
     }
 
     public KafkaConfigSource withKeySerializer(Class<? extends Serializer> serializerClass) {
