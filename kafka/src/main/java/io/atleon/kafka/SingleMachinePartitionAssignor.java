@@ -43,11 +43,16 @@ public final class SingleMachinePartitionAssignor extends AbstractPartitionAssig
         Map<String, List<String>> memberIdsToAssignByTopic = machineMemberDataByTopic.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, it -> chooseMemberIdsToAssign(it.getValue())));
 
-        return memberIdsToAssignByTopic.entrySet().stream()
+        Map<String, List<TopicPartition>> assignments = memberIdsToAssignByTopic.entrySet().stream()
                 .flatMap(it -> assign(it.getKey(), partitionCounts.getOrDefault(it.getKey(), 0), it.getValue()))
                 .collect(Collectors.groupingBy(
                         AssignedTopicPartition::memberId,
                         Collectors.mapping(AssignedTopicPartition::topicPartition, Collectors.toList())));
+
+        // Every member ID must have an assignment, even if empty
+        subscriptionsByMemberId.keySet().forEach(it -> assignments.putIfAbsent(it, Collections.emptyList()));
+
+        return assignments;
     }
 
     @Override
