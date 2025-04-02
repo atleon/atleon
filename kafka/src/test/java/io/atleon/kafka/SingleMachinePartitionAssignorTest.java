@@ -40,8 +40,9 @@ class SingleMachinePartitionAssignorTest {
 
         Map<String, List<TopicPartition>> result = assignor.assign(partitionCounts, subscriptionsByMemberId);
 
-        assertEquals(1, result.size());
+        assertEquals(2, result.size());
         assertEquals(4, result.get("old-member").size());
+        assertTrue(result.get("young-member").isEmpty());
         IntStream.range(0, numPartitions).forEach(it ->
                 assertTrue(result.get("old-member").contains(new TopicPartition(topic, it))));
     }
