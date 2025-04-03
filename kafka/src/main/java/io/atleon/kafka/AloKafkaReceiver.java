@@ -335,10 +335,10 @@ public class AloKafkaReceiver<K, V> {
     private static Mono<List<KafkaConfig>>
     createOrderedConfigs(KafkaConfig config, Collection<String> topics, ReceptionPrioritization prioritization) {
         return listTopicPartitions(config, topics)
-            .map(prioritization::prioritize)
+            .map(it -> prioritize(prioritization, it))
             .distinct()
             .sort(Comparator.naturalOrder())
-            .map(it -> config.withClientIdSuffix("-", it.toString()))
+            .map(it -> config.withClientIdSuffix("-", "p" + it))
             .collectList();
     }
 
@@ -347,6 +347,14 @@ public class AloKafkaReceiver<K, V> {
             () -> ReactiveAdmin.create(config.nativeProperties()),
             it -> it.listTopicPartitions(topics),
             ReactiveAdmin::close);
+    }
+
+    private static int prioritize(ReceptionPrioritization prioritization, TopicPartition topicPartition) {
+        int priority = prioritization.prioritize(topicPartition);
+        if (priority < 0) {
+            throw new IllegalStateException("Priority must be non-negative for topicPartition=" + topicPartition);
+        }
+        return priority;
     }
 
     private static <K, V> Comparator<Alo<ConsumerRecord<K, V>>> toComparator(ReceptionPrioritization prioritization) {

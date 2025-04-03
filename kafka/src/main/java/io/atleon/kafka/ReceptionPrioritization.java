@@ -15,7 +15,7 @@ import org.apache.kafka.common.TopicPartition;
 public interface ReceptionPrioritization {
 
     /**
-     * Returns the priority "number" for the given {@link TopicPartition}
+     * Returns the <i>non-negative</i> priority "number" for the given {@link TopicPartition}
      */
     int prioritize(TopicPartition topicPartition);
 }
