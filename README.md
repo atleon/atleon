@@ -40,12 +40,12 @@ public class MyStream extends AloStream<MyStreamConfig> {
 In applications where it is possible for the stream to be self-configured (i.e. Spring), the above stream definition can be simplified to not require an instance of `AloStreamConfig`:
 
 ```java
-import io.atleon.core.AloStream;
+import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.core.DefaultAloSenderResultSubscriber;
 import io.atleon.kafka.AloKafkaSender;
 import reactor.core.Disposable;
 
-public class MyStream extends AloStream<MyStreamConfig> {
+public class MyStream extends SelfConfigurableAloStream {
     
     private final KafkaConfigSource configSource;
     
