@@ -20,7 +20,7 @@ public abstract class SelfConfigurableAloStream extends AloStream<SelfConfigurab
     @Override
     public String name() {
         return instanceId()
-            .map(id -> AloStreamConfig.super.name() + "-" + id)
+            .map(id -> AloStreamConfig.super.name() + "-i" + id)
             .orElseGet(AloStreamConfig.super::name);
     }
 
