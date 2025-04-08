@@ -1,38 +1,32 @@
 package io.atleon.examples.spring.kafka.stream;
 
-import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.examples.spring.kafka.service.NumbersService;
 import io.atleon.kafka.AloKafkaReceiver;
 import io.atleon.kafka.KafkaConfigSource;
 import io.atleon.spring.AutoConfigureStream;
+import io.atleon.spring.SpringAloStream;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.LongDeserializer;
-import org.springframework.core.env.Environment;
+import org.springframework.context.ApplicationContext;
 import reactor.core.Disposable;
 
 @AutoConfigureStream
-public class KafkaConsumptionStream extends SelfConfigurableAloStream {
+public class KafkaConsumptionStream extends SpringAloStream {
 
     private final KafkaConfigSource configSource;
 
     private final NumbersService service;
 
-    private final Environment environment;
-
-    public KafkaConsumptionStream(
-        KafkaConfigSource exampleKafkaConfigSource,
-        NumbersService service,
-        Environment environment
-    ) {
-        this.configSource = exampleKafkaConfigSource;
-        this.service = service;
-        this.environment = environment;
+    public KafkaConsumptionStream(ApplicationContext context) {
+        super(context);
+        this.configSource = context.getBean("exampleKafkaConfigSource", KafkaConfigSource.class);
+        this.service = context.getBean(NumbersService.class);
     }
 
     @Override
     protected Disposable startDisposable() {
         return buildKafkaLongReceiver()
-            .receiveAloValues(environment.getRequiredProperty("stream.kafka.output.topic"))
+            .receiveAloValues(getRequiredProperty("stream.kafka.output.topic"))
             .consume(service::handleNumber)
             .resubscribeOnError(name())
             .subscribe();

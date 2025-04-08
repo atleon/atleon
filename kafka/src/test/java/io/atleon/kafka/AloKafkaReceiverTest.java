@@ -21,30 +21,32 @@ class AloKafkaReceiverTest {
 
     private static final String BOOTSTRAP_CONNECT = EmbeddedKafka.startAndGetBootstrapServersConnect(10092);
 
-    private static final KafkaConfigSource KAFKA_CONFIG_SOURCE = TestKafkaConfigSourceFactory.createSource(BOOTSTRAP_CONNECT);
-
     private final String topic = AloKafkaReceiverTest.class.getSimpleName() + UUID.randomUUID();
 
     @Test
     public void receiveAloRecords_givenMultipleSubscriptionAttempts_expectsEnforcementOfMutualExclusion() {
-        AloKafkaSender.create(KAFKA_CONFIG_SOURCE)
+        KafkaConfigSource configSource = TestKafkaConfigSourceFactory.createSource(BOOTSTRAP_CONNECT);
+
+        AloKafkaSender.create(configSource)
             .sendValues(Mono.just("DATA"), topic, Function.identity())
             .then()
             .block();
 
-        AloFlux<ConsumerRecord<Object, Object>> aloFlux = AloKafkaReceiver.create(KAFKA_CONFIG_SOURCE)
+        AloFlux<ConsumerRecord<Object, Object>> aloFlux = AloKafkaReceiver.create(configSource)
             .receiveAloRecords(Collections.singletonList(topic));
 
         StepVerifier.create(aloFlux)
             .consumeNextWith(Alo::acknowledge)
             .then(() -> aloFlux.unwrap().timeout(Duration.ZERO, Flux.empty()).blockFirst())
             .expectError(IllegalStateException.class)
-            .verify();
+            .verify(Duration.ofSeconds(30));
     }
 
     @Test
     public void receivePrioritizedAloRecords_givenBackupOfLowPriorityRecords_expectsReceptionOfHighPriorityRecords() {
-        AloKafkaSender<Object, Object> sender = AloKafkaSender.create(KAFKA_CONFIG_SOURCE);
+        KafkaConfigSource configSource = TestKafkaConfigSourceFactory.createSource(BOOTSTRAP_CONNECT);
+
+        AloKafkaSender<Object, Object> sender = AloKafkaSender.create(configSource);
 
         Flux.range(0, 10_000)
             .map(it -> new ProducerRecord<Object, Object>(topic, 1, it.toString(), it.toString()))
@@ -54,7 +56,7 @@ class AloKafkaReceiverTest {
 
         ProducerRecord<Object, Object> priorityRecord = new ProducerRecord<>(topic, 0, "DATA", "DATA");
 
-        AloKafkaReceiver.create(KAFKA_CONFIG_SOURCE)
+        AloKafkaReceiver.create(configSource)
             .receivePrioritizedAloRecords(topic, TopicPartition::partition)
             .map(ConsumerRecord::value)
             .consumeAloAndGet(Alo::acknowledge)
@@ -65,6 +67,6 @@ class AloKafkaReceiverTest {
             .expectNextCount(5_000)
             .expectRecordedMatches(it -> it.contains(priorityRecord.value()))
             .thenCancel()
-            .verify();
+            .verify(Duration.ofSeconds(30));
     }
 }
