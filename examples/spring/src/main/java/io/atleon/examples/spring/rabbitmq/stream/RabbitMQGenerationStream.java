@@ -1,14 +1,14 @@
 package io.atleon.examples.spring.rabbitmq.stream;
 
-import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.rabbitmq.AloRabbitMQSender;
 import io.atleon.rabbitmq.DefaultRabbitMQMessageCreator;
 import io.atleon.rabbitmq.LongBodySerializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
 import io.atleon.rabbitmq.RabbitMQMessageCreator;
 import io.atleon.spring.AutoConfigureStream;
+import io.atleon.spring.SpringAloStream;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
@@ -16,15 +16,13 @@ import java.time.Duration;
 
 @AutoConfigureStream
 @Profile("!integrationTest")
-public class RabbitMQGenerationStream extends SelfConfigurableAloStream {
+public class RabbitMQGenerationStream extends SpringAloStream {
 
     private final RabbitMQConfigSource configSource;
 
-    private final Environment environment;
-
-    public RabbitMQGenerationStream(RabbitMQConfigSource exampleRabbitMQConfigSource, Environment environment) {
-        this.configSource = exampleRabbitMQConfigSource;
-        this.environment = environment;
+    public RabbitMQGenerationStream(ApplicationContext context) {
+        super(context);
+        this.configSource = context.getBean("exampleRabbitMQConfigSource", RabbitMQConfigSource.class);
     }
 
     @Override
@@ -44,8 +42,8 @@ public class RabbitMQGenerationStream extends SelfConfigurableAloStream {
 
     private RabbitMQMessageCreator<Long> buildLongMessageCreator() {
         return DefaultRabbitMQMessageCreator.minimalBasic(
-            environment.getRequiredProperty("stream.rabbitmq.exchange"),
-            environment.getRequiredProperty("stream.rabbitmq.input.queue")
+            getRequiredProperty("stream.rabbitmq.exchange"),
+            getRequiredProperty("stream.rabbitmq.input.queue")
         );
     }
 }

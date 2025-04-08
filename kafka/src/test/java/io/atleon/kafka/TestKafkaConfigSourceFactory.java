@@ -7,6 +7,8 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 
+import java.util.UUID;
+
 public final class TestKafkaConfigSourceFactory {
 
     private TestKafkaConfigSourceFactory() {
@@ -19,7 +21,7 @@ public final class TestKafkaConfigSourceFactory {
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, "TEST_CLIENT")
             .with(AloKafkaReceiver.AUTO_INCREMENT_CLIENT_ID_CONFIG, true)
             .with(AloKafkaSender.AUTO_INCREMENT_CLIENT_ID_CONFIG, true)
-            .with(ConsumerConfig.GROUP_ID_CONFIG, "TEST_GROUP")
+            .with(ConsumerConfig.GROUP_ID_CONFIG, "TEST_GROUP-" + UUID.randomUUID())
             .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())

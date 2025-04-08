@@ -1,37 +1,31 @@
 package io.atleon.examples.spring.rabbitmq.stream;
 
-import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.examples.spring.rabbitmq.service.NumbersService;
 import io.atleon.rabbitmq.AloRabbitMQReceiver;
 import io.atleon.rabbitmq.LongBodyDeserializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
 import io.atleon.spring.AutoConfigureStream;
-import org.springframework.core.env.Environment;
+import io.atleon.spring.SpringAloStream;
+import org.springframework.context.ApplicationContext;
 import reactor.core.Disposable;
 
 @AutoConfigureStream
-public class RabbitMQConsumptionStream extends SelfConfigurableAloStream {
+public class RabbitMQConsumptionStream extends SpringAloStream {
 
     private final RabbitMQConfigSource configSource;
 
     private final NumbersService service;
 
-    private final Environment environment;
-
-    public RabbitMQConsumptionStream(
-        RabbitMQConfigSource exampleRabbitMQConfigSource,
-        NumbersService service,
-        Environment environment
-    ) {
-        this.configSource = exampleRabbitMQConfigSource;
-        this.service = service;
-        this.environment = environment;
+    public RabbitMQConsumptionStream(ApplicationContext context) {
+        super(context);
+        this.configSource = context.getBean("exampleRabbitMQConfigSource", RabbitMQConfigSource.class);
+        this.service = context.getBean(NumbersService.class);
     }
 
     @Override
     protected Disposable startDisposable() {
         return buildRabbitMQLongReceiver()
-            .receiveAloBodies(environment.getRequiredProperty("stream.rabbitmq.output.queue"))
+            .receiveAloBodies(getRequiredProperty("stream.rabbitmq.output.queue"))
             .consume(service::handleNumber)
             .resubscribeOnError(name())
             .subscribe();
