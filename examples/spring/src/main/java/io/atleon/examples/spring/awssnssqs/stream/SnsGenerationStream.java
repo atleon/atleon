@@ -4,8 +4,9 @@ import io.atleon.aws.sns.AloSnsSender;
 import io.atleon.aws.sns.ComposedSnsMessage;
 import io.atleon.aws.sns.SnsConfigSource;
 import io.atleon.aws.sns.StringBodySerializer;
-import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.spring.AutoConfigureStream;
+import io.atleon.spring.SpringAloStream;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Profile;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -14,15 +15,16 @@ import java.time.Duration;
 
 @AutoConfigureStream
 @Profile("!integrationTest")
-public class SnsGenerationStream extends SelfConfigurableAloStream {
+public class SnsGenerationStream extends SpringAloStream {
 
     private final SnsConfigSource configSource;
 
     private final String topicArn;
 
-    public SnsGenerationStream(SnsConfigSource exampleRabbitMQConfigSource, String snsInputTopicArn) {
-        this.configSource = exampleRabbitMQConfigSource;
-        this.topicArn = snsInputTopicArn;
+    public SnsGenerationStream(ApplicationContext context) {
+        super(context);
+        this.configSource = context.getBean("exampleSnsConfigSource", SnsConfigSource.class);
+        this.topicArn = context.getBean("snsInputTopicArn", String.class);
     }
 
     @Override

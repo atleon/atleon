@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.UUID;
 import java.util.function.Function;
@@ -36,6 +37,6 @@ public class EmbeddedRecordTest {
                 Alo.acknowledge(aloString);
             })
             .thenCancel()
-            .verify();
+            .verify(Duration.ofSeconds(30));
     }
 }
