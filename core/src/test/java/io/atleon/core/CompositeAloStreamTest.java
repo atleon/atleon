@@ -18,34 +18,44 @@ class CompositeAloStreamTest {
     public void nCopies_givenExtensibleConfig_expectsUniquelyCopiedStreams() {
         int copyCount = 2;
         Set<String> streamNames = new LinkedHashSet<>();
-        Set<String> customValues = new LinkedHashSet<>();
+        Set<String> customValues1 = new LinkedHashSet<>();
+        Set<String> customValues2 = new LinkedHashSet<>();
         Consumer<TestAloStreamConfig> configConsumer = it -> {
             streamNames.add(it.name());
-            customValues.add(it.customValue());
+            customValues1.add(it.customValue1());
+            customValues2.add(it.customValue2());
         };
 
         AloStream<? super TestAloStreamConfig> stream =
             CompositeAloStream.nCopies(copyCount, () -> new TestAloStream(configConsumer));
 
-        TestAloStreamConfig config = new TestAloStreamConfig("custom");
+        TestAloStreamConfig config = new TestAloStreamConfig("custom1", "custom2");
         stream.start(config);
 
         assertEquals(copyCount, streamNames.size());
-        assertTrue(streamNames.stream().allMatch(it -> it.contains(config.name())));
-        assertEquals(Collections.singleton(config.customValue()), customValues);
+        assertTrue(streamNames.stream().allMatch(it -> !it.equals(config.name()) && it.contains(config.name())));
+        assertEquals(Collections.singleton(config.customValue1()), customValues1);
+        assertEquals(Collections.singleton(config.customValue2()), customValues2);
         assertEquals(AloStream.State.STARTED, stream.state());
     }
 
     public static class TestAloStreamConfig implements AloStreamConfig {
 
-        private final String customValue;
+        private final String customValue1;
 
-        public TestAloStreamConfig(String customValue) {
-            this.customValue = customValue;
+        private final String customValue2;
+
+        public TestAloStreamConfig(String customValue1, String customValue2) {
+            this.customValue1 = customValue1;
+            this.customValue2 = customValue2;
         }
 
-        public String customValue() {
-            return customValue;
+        public String customValue1() {
+            return customValue1;
+        }
+
+        public String customValue2() {
+            return customValue2;
         }
     }
 

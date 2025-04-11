@@ -124,7 +124,7 @@ public class CompositeAloStream<C extends AloStreamConfig> extends AloStream<C> 
                 .defineField(DELEGATE_FIELD_NAME, configType, Visibility.PUBLIC)
                 .method(ElementMatchers.any())
                 .intercept(MethodDelegation.toField(DELEGATE_FIELD_NAME))
-                .method(nameMethodMatcher())
+                .method(configMethodsMatcher().or(objectMethodsMatcher()))
                 .intercept(InvocationHandlerAdapter.of(this))
                 .make()
                 .load(configType.getClassLoader())
@@ -149,7 +149,9 @@ public class CompositeAloStream<C extends AloStreamConfig> extends AloStream<C> 
             if (method.getName().equals(NAME)) {
                 Object delegateValue = method.invoke(proxyType.getDeclaredField(DELEGATE_FIELD_NAME).get(proxy), args);
                 Object proxyId = proxyType.getDeclaredField(INSTANCE_ID_FIELD_NAME).get(proxy);
-                return delegateValue + "-" + proxyId;
+                return delegateValue + "-c" + proxyId;
+            } else if (method.getName().equals("toString")) {
+                return "Proxied AloStreamConfig";
             } else {
                 throw new UnsupportedOperationException("Method not proxied: " + method);
             }
@@ -163,10 +165,17 @@ public class CompositeAloStream<C extends AloStreamConfig> extends AloStream<C> 
                 ElementMatchers.takesArguments(constructor.getParameterTypes()));
         }
 
-        private static ElementMatcher.Junction<MethodDescription> nameMethodMatcher() {
+        private static ElementMatcher.Junction<MethodDescription> configMethodsMatcher() {
             return ElementMatchers.named(NAME)
                 .and(ElementMatchers.takesNoArguments())
                 .and(ElementMatchers.returns(String.class));
+        }
+
+        private static ElementMatcher.Junction<MethodDescription> objectMethodsMatcher() {
+            return ElementMatchers.isHashCode()
+                .or(ElementMatchers.isEquals())
+                .or(ElementMatchers.isToString())
+                .or(ElementMatchers.isClone());
         }
     }
 
