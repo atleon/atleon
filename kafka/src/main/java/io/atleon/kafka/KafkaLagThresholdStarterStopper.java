@@ -57,7 +57,18 @@ public class KafkaLagThresholdStarterStopper implements StarterStopper {
      * @return A new {@link KafkaLagThresholdStarterStopper}
      */
     public static KafkaLagThresholdStarterStopper create(KafkaConfigSource configSource, String consumerGroupId) {
-        Collection<String> consumerGroupIds = Collections.singletonList(consumerGroupId);
+        return create(configSource, Collections.singleton(consumerGroupId));
+    }
+
+    /**
+     * Create a new {@link KafkaLagThresholdStarterStopper} based on the provided Config Source,
+     * and monitoring the provided consumer group IDs.
+     *
+     * @param configSource The source of configuration used to connect to Kafka
+     * @param consumerGroupIds The IDs of the consumer groups whose combined total lag are monitored
+     * @return A new {@link KafkaLagThresholdStarterStopper}
+     */
+    public static KafkaLagThresholdStarterStopper create(KafkaConfigSource configSource, Collection<String> consumerGroupIds) {
         return new KafkaLagThresholdStarterStopper(configSource, consumerGroupIds, DEFAULT_SAMPLE_INTERVAL, 0, 0);
     }
 
