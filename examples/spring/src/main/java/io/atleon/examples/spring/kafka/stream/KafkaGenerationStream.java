@@ -1,12 +1,12 @@
 package io.atleon.examples.spring.kafka.stream;
 
-import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.kafka.AloKafkaSender;
 import io.atleon.kafka.KafkaConfigSource;
 import io.atleon.spring.AutoConfigureStream;
+import io.atleon.spring.SpringAloStream;
 import org.apache.kafka.common.serialization.LongSerializer;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 
@@ -15,23 +15,22 @@ import java.util.function.Function;
 
 @AutoConfigureStream
 @Profile("!integrationTest")
-public class KafkaGenerationStream extends SelfConfigurableAloStream {
+public class KafkaGenerationStream extends SpringAloStream {
 
     private final KafkaConfigSource configSource;
 
-    private final Environment environment;
-
-    public KafkaGenerationStream(KafkaConfigSource exampleKafkaConfigSource, Environment environment) {
-        this.configSource = exampleKafkaConfigSource;
-        this.environment = environment;
+    public KafkaGenerationStream(ApplicationContext context) {
+        super(context);
+        this.configSource = context.getBean("exampleKafkaConfigSource", KafkaConfigSource.class);
     }
 
     @Override
     public Disposable startDisposable() {
         AloKafkaSender<Long, Long> sender = buildKafkaLongSender();
+        String topic = getRequiredProperty("stream.kafka.input.topic");
 
         return Flux.interval(Duration.ofMillis(100))
-            .transform(sender.sendValues(topic(), Function.identity()))
+            .transform(sender.sendValues(topic, Function.identity()))
             .doFinally(sender::close)
             .subscribe();
     }
@@ -42,9 +41,5 @@ public class KafkaGenerationStream extends SelfConfigurableAloStream {
             .withKeySerializer(LongSerializer.class)
             .withValueSerializer(LongSerializer.class)
             .as(AloKafkaSender::create);
-    }
-
-    private String topic() {
-        return environment.getRequiredProperty("stream.kafka.input.topic");
     }
 }

@@ -1,7 +1,6 @@
 package io.atleon.examples.spring.rabbitmq.stream;
 
 import io.atleon.core.DefaultAloSenderResultSubscriber;
-import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.examples.spring.rabbitmq.service.NumbersService;
 import io.atleon.rabbitmq.AloRabbitMQReceiver;
 import io.atleon.rabbitmq.AloRabbitMQSender;
@@ -11,26 +10,21 @@ import io.atleon.rabbitmq.LongBodySerializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
 import io.atleon.rabbitmq.RabbitMQMessageCreator;
 import io.atleon.spring.AutoConfigureStream;
-import org.springframework.core.env.Environment;
+import io.atleon.spring.SpringAloStream;
+import org.springframework.context.ApplicationContext;
 import reactor.core.Disposable;
 
 @AutoConfigureStream
-public class RabbitMQProcessingStream extends SelfConfigurableAloStream {
+public class RabbitMQProcessingStream extends SpringAloStream {
 
     private final RabbitMQConfigSource configSource;
 
     private final NumbersService service;
 
-    private final Environment environment;
-
-    public RabbitMQProcessingStream(
-        RabbitMQConfigSource exampleRabbitMQConfigSource,
-        NumbersService service,
-        Environment environment
-    ) {
-        this.configSource = exampleRabbitMQConfigSource;
-        this.service = service;
-        this.environment = environment;
+    public RabbitMQProcessingStream(ApplicationContext context) {
+        super(context);
+        this.configSource = context.getBean("exampleRabbitMQConfigSource", RabbitMQConfigSource.class);
+        this.service = context.getBean(NumbersService.class);
     }
 
     @Override
@@ -38,7 +32,7 @@ public class RabbitMQProcessingStream extends SelfConfigurableAloStream {
         AloRabbitMQSender<Long> sender = buildRabbitMQLongSender();
 
         return buildRabbitMQLongReceiver()
-            .receiveAloBodies(environment.getRequiredProperty("stream.rabbitmq.input.queue"))
+            .receiveAloBodies(getRequiredProperty("stream.rabbitmq.input.queue"))
             .filter(service::isPrime)
             .transform(sender.sendAloBodies(buildLongMessageCreator()))
             .resubscribeOnError(name())
@@ -58,8 +52,8 @@ public class RabbitMQProcessingStream extends SelfConfigurableAloStream {
 
     public RabbitMQMessageCreator<Long> buildLongMessageCreator() {
         return DefaultRabbitMQMessageCreator.minimalBasic(
-            environment.getRequiredProperty("stream.rabbitmq.exchange"),
-            environment.getRequiredProperty("stream.rabbitmq.output.queue")
+            getRequiredProperty("stream.rabbitmq.exchange"),
+            getRequiredProperty("stream.rabbitmq.output.queue")
         );
     }
 }
