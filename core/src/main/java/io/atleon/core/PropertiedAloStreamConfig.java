@@ -15,6 +15,6 @@ public interface PropertiedAloStreamConfig extends AloStreamConfig, StreamProper
      */
     @Override
     default int concurrency() {
-        return getStreamProperty("concurrency", Integer::valueOf, AloStreamConfig.super.concurrency());
+        return getStreamProperty("concurrency", Integer.class, AloStreamConfig.super.concurrency());
     }
 }

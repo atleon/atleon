@@ -16,19 +16,21 @@ class SpringAloStreamTest {
 
     @Test
     public void getProperty_givenExplicitAndDefaultProperties_expectsReturnedValues() {
+        Duration twoSeconds = Duration.ofSeconds(2);
+
         Environment environment = mock(Environment.class);
-        when(environment.getProperty(eq("stream.defaults.concurrency"))).thenReturn("2");
-        when(environment.getProperty(eq("stream.defaults.batch.duration"))).thenReturn("PT5S");
-        when(environment.getProperty(eq("stream.test.concurrency"))).thenReturn("4");
+        when(environment.getProperty(eq("stream.defaults.concurrency"), eq(Integer.class))).thenReturn(2);
+        when(environment.getProperty(eq("stream.defaults.batch.duration"), eq(Duration.class))).thenReturn(twoSeconds);
+        when(environment.getProperty(eq("stream.test.concurrency"), eq(Integer.class))).thenReturn(4);
 
         ApplicationContext context = mock(ApplicationContext.class);
         when(context.getEnvironment()).thenReturn(environment);
 
         TestStream stream = new TestStream(context);
 
-        assertEquals(4, stream.getStreamProperty("concurrency", Double::valueOf, 1D));
-        assertEquals(1, stream.getStreamProperty("batch.size", Integer::valueOf, 1));
-        assertEquals(Duration.ofSeconds(5), stream.getStreamProperty("batch.duration", Duration::parse, Duration.ZERO));
+        assertEquals(4, stream.getStreamProperty("concurrency", Integer.class, 1));
+        assertEquals(1, stream.getStreamProperty("batch.size", Integer.class, 1));
+        assertEquals(twoSeconds, stream.getStreamProperty("batch.duration", Duration.class, Duration.ZERO));
     }
 
     private static final class TestStream extends SpringAloStream {

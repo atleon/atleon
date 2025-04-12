@@ -62,7 +62,7 @@ public abstract class SpringAloStream extends SelfConfigurableAloStream implemen
      * Looks up the value associated with the provided key from {@link Environment}
      */
     @Override
-    public final Optional<String> getProperty(String key) {
-        return Optional.ofNullable(environment.getProperty(key));
+    public <T> Optional<T> getProperty(String key, Class<T> type) {
+        return Optional.ofNullable(environment.getProperty(key, type));
     }
 }
