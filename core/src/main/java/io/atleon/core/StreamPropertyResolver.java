@@ -2,19 +2,17 @@ package io.atleon.core;
 
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.function.Function;
 
 /**
  * Interface used to read properties within the context of configuring stream processes. This
- * interface establishes a convention of using dot-notated property keys and resolving properties
- * (first) as string values. For stream properties, a convention is established of first looking up
- * by explicit keys, followed by lookup by default-able keys, and then returning any explicitly
- * passed fallback value. Stream properties are namespaced according to the implementation of
- * {@link #streamPropertyNamespace()}, which serves as a prefix for initial stream property
- * resolution. Default properties are namespaced according to the implementation of
- * {@link #defaultablePropertyNamespace()}, which serves as a prefix for secondary stream property
- * resolution. Convenience methods are provided for accessing optional and required methods, with
- * providable parsing methods and fallback values.
+ * interface establishes a convention of using dot-notated property keys, and for stream
+ * properties, lookup is first done by explicit keys, followed by lookup by default-able keys,
+ * and then returning any explicitly passed fallback value. Stream properties are namespaced
+ * according to the implementation of {@link #streamPropertyNamespace()}, which serves as a prefix
+ * for initial stream property resolution. Default properties are namespaced according to the
+ * implementation of {@link #defaultablePropertyNamespace()}, which serves as a prefix for
+ * secondary stream property resolution. Convenience methods are provided for accessing optional
+ * and required methods, with providable parsing types and fallback values.
  */
 public interface StreamPropertyResolver {
 
@@ -23,50 +21,49 @@ public interface StreamPropertyResolver {
      * concatenating this stream's {@link #streamPropertyNamespace() property namespace} and the
      * provided key in dot-notated form (by default implementation). If a value is not found, then
      * an attempt to read a "defaulted" value is made by concatenating this stream's
-     * {@link #streamPropertyNamespace() default property namespace} and the provided key, again in
-     * dot-notated form (by default implementation). If a value is ultimately found, the provided
-     * parser is applied to in order to return a strongly typed value. If a value is not found,
-     * then the provided fallback value will be returned. For example, given a property namespace
-     * of {@code stream.magnificent.processing} and a key of {@code concurrency}, the first
-     * property looked up will be {@code stream.magnificent.processing.concurrency}, and if that
-     * property is not available, the next lookup will be {@code stream.defaults.concurrency}, and
-     * if that property is also not available, the provided fallback value will be returned.
+     * {@link #defaultablePropertyNamespace() default property namespace} and the provided key,
+     * again in dot-notated form (by default implementation). If a value is ultimately found, the
+     * provided type is applied to return a strongly typed value. If a value is not found, then the
+     * provided fallback value will be returned. For example, given a property namespace of
+     * {@code stream.magnificent.processing} and a key of {@code concurrency}, the first property
+     * lookup will be {@code stream.magnificent.processing.concurrency}, and if that property is
+     * not available, the next lookup will be {@code stream.defaults.concurrency}, and if that
+     * property is also not available, the provided fallback value will be returned.
      *
      * @param key           The stream-specific property key to query a value for
-     * @param parser        A function used to interpret available property as a typed value
+     * @param type          The type to parse available property value as
      * @param fallbackValue Value to use if neither explicit nor default property is available
      * @param <T>           The type of value that will be parsed into
      * @return The parsed property value for the given key
      */
-    default <T> T getStreamProperty(String key, Function<? super String, ? extends T> parser, T fallbackValue) {
-        return getProperty(streamPropertyNamespace() + "." + key)
-            .<T>map(parser)
-            .orElseGet(() -> getProperty(defaultablePropertyNamespace() + "." + key, parser, fallbackValue));
+    default <T> T getStreamProperty(String key, Class<T> type, T fallbackValue) {
+        return getProperty(streamPropertyNamespace() + "." + key, type)
+            .orElseGet(() -> getProperty(defaultablePropertyNamespace() + "." + key, type, fallbackValue));
     }
 
     /**
-     * Convenience method for {@link #getRequiredProperty(String, Function) getRequriedProperty(key, Function.identity())}
+     * Convenience method for {@link #getRequiredProperty(String, Class) getRequriedProperty(key, String.class)}
      */
     default String getRequiredProperty(String key) {
-        return getRequiredProperty(key, Function.identity());
+        return getRequiredProperty(key, String.class);
     }
 
     /**
-     * Returns the property value associated with the provided key, parsed using the provided
-     * function. If there is no value available for the provided key, a {@link NoSuchElementException}
-     * will be thrown.
+     * Returns the property value associated with the provided key, parsed as the provided type. If
+     * there is no value available for the provided key, a {@link NoSuchElementException} will be
+     * thrown.
      */
-    default <T> T getRequiredProperty(String key, Function<? super String, ? extends T> parser) {
-        return getProperty(key).map(parser).orElseThrow(() -> new NoSuchElementException("Missing property: " + key));
+    default <T> T getRequiredProperty(String key, Class<T> type) {
+        return getProperty(key, type).orElseThrow(() -> new NoSuchElementException("Missing property: " + key));
     }
 
     /**
-     * Returns the property value associated with the provided key, parsed using the provided
-     * function. If there is no value available for the provided key, the provided fallback value
-     * will be returned.
+     * Returns the property value associated with the provided key, parsed as the provided type. If
+     * there is no value available for the provided key, the provided default value will be
+     * returned.
      */
-    default <T> T getProperty(String key, Function<? super String, ? extends T> parser, T fallback) {
-        return getProperty(key).<T>map(parser).orElse(fallback);
+    default <T> T getProperty(String key, Class<T> type, T defaultValue) {
+        return getProperty(key, type).orElse(defaultValue);
     }
 
     /**
@@ -81,7 +78,8 @@ public interface StreamPropertyResolver {
     String defaultablePropertyNamespace();
 
     /**
-     * Returns the property value associated with the provided key, if available.
+     * Returns the property value associated with the provided key, parsed as the provided type,
+     * if available.
      */
-    Optional<String> getProperty(String key);
+    <T> Optional<T> getProperty(String key, Class<T> type);
 }
