@@ -1,5 +1,6 @@
 package io.atleon.spring;
 
+import io.atleon.core.Autostart;
 import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.core.StreamPropertyResolver;
 import org.slf4j.Logger;
@@ -31,6 +32,17 @@ public abstract class SpringAloStream extends SelfConfigurableAloStream implemen
     protected SpringAloStream(ApplicationContext context) {
         this.environment = context.getEnvironment();
         LOGGER.info("Stream properties for {} configurable under '{}'", name(), streamPropertyNamespace());
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * By default, makes autostart configurable under {@code autostart} stream property (as
+     * {@code "ENABLED"} or {@code "DISABLED}).
+     */
+    @Override
+    public Autostart autostart() {
+        return getStreamProperty("autostart", Autostart.class, super.autostart());
     }
 
     /**

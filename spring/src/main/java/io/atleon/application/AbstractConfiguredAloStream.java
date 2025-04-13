@@ -2,6 +2,7 @@ package io.atleon.application;
 
 import io.atleon.core.AloStream;
 import io.atleon.core.AloStreamConfig;
+import io.atleon.core.Autostart;
 import io.atleon.core.StarterStopper;
 import io.atleon.core.StarterStopperConfig;
 import org.slf4j.Logger;
@@ -61,15 +62,23 @@ public abstract class AbstractConfiguredAloStream<C extends AloStreamConfig> imp
     }
 
     /**
-     * Called by extensions when the application is ready to begin running a stream. In the absence
-     * of an available {@link StarterStopper}, the provided boolean flag is used to determine if
-     * the stream will start immediately, or will be (manually) started by some other means.
-     * However, if a {@link StarterStopper} <i>is</i> available, the provided flag is ignored.
-     *
-     * @param autoStart Whether to start stream immediately, in absence of {@link StarterStopper}
+     * Called by extensions when the application is ready to begin running a stream. If autostart
+     * is disabled, then stream startup is bypassed, and the stream lifecycle must be managed
+     * manually. If autostart is enabled and no {@link StarterStopper} is configured/available,
+     * then the stream will be started immediately. If a  {@link StarterStopper} <i>is</i>
+     * available, then it is subscribed to for automated stream starting and stopping.
      */
-    protected void applicationReady(boolean autoStart) {
-        doStartStop(starterStopper == null ? Flux.just(autoStart) : starterStopper.startStop());
+    protected final void applicationReady() {
+        applicationReady(true);
+    }
+
+    /**
+     * @deprecated Use {@link #applicationReady()} instead
+     */
+    @Deprecated
+    protected final void applicationReady(boolean legacyAutostartEnabled) {
+        boolean autostart = config.autostart() == Autostart.ENABLED && legacyAutostartEnabled;
+        doStartStop(autostart && starterStopper != null ? starterStopper.startStop() : Flux.just(autostart));
     }
 
     private void doStartStop(Flux<Boolean> startStop) {
