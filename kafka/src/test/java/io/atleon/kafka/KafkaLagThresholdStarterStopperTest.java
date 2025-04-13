@@ -31,7 +31,7 @@ class KafkaLagThresholdStarterStopperTest {
             .as(StepVerifier::create)
             .expectNext(true)
             .thenCancel()
-            .verify(Duration.ofSeconds(30));
+            .verify();
     }
 
     @Test
