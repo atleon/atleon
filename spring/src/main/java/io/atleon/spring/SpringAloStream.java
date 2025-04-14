@@ -38,7 +38,7 @@ public abstract class SpringAloStream extends SelfConfigurableAloStream implemen
      * {@inheritDoc}
      * <p>
      * By default, makes autostart configurable under {@code autostart} stream property (as
-     * {@code "ENABLED"} or {@code "DISABLED}).
+     * {@code "ENABLED"} or {@code "DISABLED"}).
      */
     @Override
     public Autostart autostart() {
