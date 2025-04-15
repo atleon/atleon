@@ -28,9 +28,9 @@ class SpringAloStreamTest {
 
         TestStream stream = new TestStream(context);
 
-        assertEquals(4, stream.getStreamProperty("concurrency", Integer.class, 1));
-        assertEquals(1, stream.getStreamProperty("batch.size", Integer.class, 1));
-        assertEquals(twoSeconds, stream.getStreamProperty("batch.duration", Duration.class, Duration.ZERO));
+        assertEquals(4, stream.getStreamProperty("concurrency", Integer.class).orElse(1));
+        assertEquals(1, stream.getStreamProperty("batch.size", Integer.class).orElse(1));
+        assertEquals(twoSeconds, stream.getStreamProperty("batch.duration", Duration.class).orElse(Duration.ZERO));
     }
 
     private static final class TestStream extends SpringAloStream {

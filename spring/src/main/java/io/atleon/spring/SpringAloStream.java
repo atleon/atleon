@@ -31,7 +31,7 @@ public abstract class SpringAloStream extends SelfConfigurableAloStream implemen
 
     protected SpringAloStream(ApplicationContext context) {
         this.environment = context.getEnvironment();
-        LOGGER.info("Stream properties for {} configurable under '{}'", name(), streamPropertyNamespace());
+        LOGGER.info("Stream properties for {} configurable under '{}'", name(), specificStreamPropertyNamespace());
     }
 
     /**
@@ -42,7 +42,7 @@ public abstract class SpringAloStream extends SelfConfigurableAloStream implemen
      */
     @Override
     public Autostart autostart() {
-        return getStreamProperty("autostart", Autostart.class, super.autostart());
+        return getStreamProperty("autostart", Autostart.class).orElse(super.autostart());
     }
 
     /**
@@ -51,20 +51,20 @@ public abstract class SpringAloStream extends SelfConfigurableAloStream implemen
      * By default, this method takes the name of the stream (which is conventionally kebab-cased),
      * removes any existing "-stream" suffix, converts it to dot-notation, and appends the result
      * to "stream.". So, for example, a stream named {@code MagnificentProcessingStream} would have
-     * a property namespace of {@code stream.magnificent.processing}.
+     * an explicit property namespace of {@code stream.magnificent.processing}.
      */
     @Override
-    public String streamPropertyNamespace() {
+    public String specificStreamPropertyNamespace() {
         return "stream." + name().replaceAll("-stream(-\\w?\\d+)?$", "").replace('-', '.');
     }
 
     /**
      * {@inheritDoc}
      * <p>
-     * By default, locates default properties under the namespace {@code stream.defaults}
+     * By default, locates default stream properties under the namespace {@code stream.defaults}
      */
     @Override
-    public String defaultablePropertyNamespace() {
+    public String defaultStreamPropertyNamespace() {
         return "stream.defaults";
     }
 
