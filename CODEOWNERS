@@ -12,4 +12,12 @@
 # Step 5) In GitHub, publish a release for created tag (`atleon-x.y.z`) targeting release branch
 # Step 6) Await GitHub Action execution. On success, merge PR from step (4) to main
 #
+# How to revert a release
+# Step 0) Ensure local repository is up to date:
+#         `git co main && git pull upstream main && git co x.y.z && git pull`
+# Step 1) Delete tag in local and remote repository
+#         `git tag -d atleon-x.y.z && git push --delete upstream atleon-x.y.z
+# Step 2) Create new release branch OR revert+rebase release commits as follows:
+#         `git revert --no-commit HEAD~2.. && git rebase -i main && git push -f`
+#
 * @Sage-Pierce
