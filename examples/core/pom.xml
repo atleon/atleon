@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.atleon</groupId>
         <artifactId>atleon-examples</artifactId>
-        <version>0.31.1</version>
+        <version>0.31.2-SNAPSHOT</version>
     </parent>
 
     <artifactId>atleon-examples-core</artifactId>
