@@ -7,6 +7,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.Map;
@@ -22,14 +23,17 @@ public final class AwsConfig {
     /**
      * The type of {@link AwsCredentialsProvider} to use. The "default" Provider uses a "chain" of
      * Providers which are capable of sourcing {@link AwsCredentials} from various environmental
-     * locations. When set to "static", the Credentials must be explicitly provided by setting the
-     * Access Key ID and Secret Access Key.
+     * locations. The "web-identity-token-file" Provider loads temporary credentials from
+     * Java system properties or environment variables. When set to "static", the Credentials must be
+     * explicitly provided by setting the Access Key ID and Secret Access Key.
      */
     public static final String CREDENTIALS_PROVIDER_TYPE_CONFIG = CONFIG_PREFIX + "credentials.provider.type";
 
     public static final String CREDENTIALS_PROVIDER_TYPE_DEFAULT = "default";
 
     public static final String CREDENTIALS_PROVIDER_TYPE_STATIC = "static";
+
+    public static final String CREDENTIALS_PROVIDER_TYPE_WEB_IDENTITY_TOKEN_FILE = "web-identity-token-file";
 
     /**
      * When {@link AwsCredentials} are explicitly provided, this configures their type. The default
@@ -78,6 +82,8 @@ public final class AwsConfig {
                 return DefaultCredentialsProvider.create();
             case CREDENTIALS_PROVIDER_TYPE_STATIC:
                 return StaticCredentialsProvider.create(loadAwsCredentials(configs));
+            case CREDENTIALS_PROVIDER_TYPE_WEB_IDENTITY_TOKEN_FILE:
+                return WebIdentityTokenFileCredentialsProvider.create();
             default:
                 throw new IllegalArgumentException("Cannot create AwsCredentialsProvider for type=" + type);
         }
