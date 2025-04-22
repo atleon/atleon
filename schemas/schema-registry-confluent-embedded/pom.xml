@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.atleon</groupId>
         <artifactId>atleon-schemas</artifactId>
-        <version>0.31.2-SNAPSHOT</version>
+        <version>0.31.2</version>
     </parent>
 
     <artifactId>atleon-schema-registry-confluent-embedded</artifactId>
