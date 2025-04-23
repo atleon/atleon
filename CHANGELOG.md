@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.31.3]
+atleon `0.31.3` is a beta release containing updates outlined below
+
+### Fixes
+* [#382] `software.amazon.awssdk:sts` included as `io.atleon:atleon-aws-util` transitive runtime dependency (thanks to @brandy-m)
+
 # [0.31.2]
 atleon `0.31.2` is a beta release containing updates outlined below
 
