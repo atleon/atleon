@@ -11,7 +11,8 @@ Atleon is based on [Reactive Streams](https://www.reactive-streams.org/) and bac
 ## Documentation and Getting Started
 Atleon documentation and instructions on how to get started are available in the [Wiki](../../wiki).
 
-An example message processing pipeline in Atleon looks like the following:
+### Low-level Stream Example
+A low-level example message processing pipeline in Atleon looks like the following:
 
 ```java
 import io.atleon.core.AloStream;
@@ -23,9 +24,9 @@ public class MyStream extends AloStream<MyStreamConfig> {
 
     @Override
     public Disposable startDisposable(MyStreamConfig config) {
-        AloKafkaSender<String, String> sender = config.buildKafkaMessageSender();
+        AloKafkaSender<String, String> sender = config.buildKafkaSender();
 
-        return config.buildKafkaMessageReceiver()
+        return config.buildKafkaReceiver()
             .receiveAloRecords(config.getSourceTopic())
             .map(record -> config.getService().transform(record.value()))
             .filter(message -> !message.isEmpty())
@@ -37,12 +38,17 @@ public class MyStream extends AloStream<MyStreamConfig> {
 }
 ```
 
-In applications where it is possible for the stream to be self-configured (i.e. Spring), the above stream definition can be simplified to not require an instance of `AloStreamConfig`:
+### Self-Configurable Streams
+In applications where it is possible for the stream to be self-configured, the above stream definition can be simplified to not require an instance of `AloStreamConfig`:
 
 ```java
 import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.core.DefaultAloSenderResultSubscriber;
+import io.atleon.kafka.AloKafkaReceiver;
 import io.atleon.kafka.AloKafkaSender;
+import io.atleon.kafka.KafkaConfigSource;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import reactor.core.Disposable;
 
 public class MyStream extends SelfConfigurableAloStream {
@@ -63,10 +69,10 @@ public class MyStream extends SelfConfigurableAloStream {
     }
 
     @Override
-    public Disposable startDisposable(MyStreamConfig config) {
-        AloKafkaSender<String, String> sender = AloKafkaSender.create(configSource);
+    public Disposable startDisposable() {
+        AloKafkaSender<String, String> sender = buildKafkaSender();
 
-        return AloKafkaReceiver.<String, String>create(configSource)
+        return buildKafkaReceiver()
             .receiveAloRecords(sourceTopic)
             .map(record -> service.transform(record.value()))
             .filter(message -> !message.isEmpty())
@@ -75,8 +81,99 @@ public class MyStream extends SelfConfigurableAloStream {
             .doFinally(sender::close)
             .subscribeWith(new DefaultAloSenderResultSubscriber<>());
     }
+    
+    private AloKafkaSender<String, String> buildKafkaSender() {
+        return configSource
+            .withClientId(name())
+            .withKeySerializer(StringSerializer.class)
+            .withValueSerializer(StringSerializer.class)
+            .as(AloKafkaSender::create);
+    }
+    
+    private AloKafkaReceiver<String, String> buildKafkaReceiver() {
+        return configSource
+            .withClientId(name())
+            .withKeyDeserializer(StringSerializer.class)
+            .withValueDeserializer(StringSerializer.class)
+            .as(AloKafkaReceiver::create);
+    }
 }
 ```
+
+### Spring Stream Example
+Atleon has built-in integration with Spring, where a fully configured stream looks like the following:
+
+`application.yml`:
+```yaml
+atleon:
+  config.sources:
+    - name: kafkaConfigSource
+      type: kafka
+      bootstrap.servers: localhost:9092
+
+stream:
+  kafka:
+    destination.topic: output
+    source.topic: input
+```
+
+`MyStream.java`:
+```java
+import io.atleon.core.DefaultAloSenderResultSubscriber;
+import io.atleon.kafka.AloKafkaReceiver;
+import io.atleon.kafka.AloKafkaSender;
+import io.atleon.kafka.KafkaConfigSource;
+import io.atleon.spring.SpringAloStream;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.context.ApplicationContext;
+import reactor.core.Disposable;
+
+public class MyStream extends SpringAloStream {
+
+    private final KafkaConfigSource configSource;
+
+    private final MyService service;
+
+    public MyStream(ApplicationContext context) {
+        super(context);
+        this.configSource = context.getBean("kafkaConfigSource", KafkaConfigSource.class);
+        this.service = context.getBean(MyService.class);
+    }
+
+    @Override
+    public Disposable startDisposable(MyStreamConfig config) {
+        AloKafkaSender<String, String> sender = buildKafkaSender();
+        String destinationTopic = getRequiredProperty("stream.kafka.destination.topic");
+
+        return buildKafkaReceiver()
+            .receiveAloRecords(getRequiredProperty("stream.kafka.source.topic"))
+            .map(record -> service.transform(record.value()))
+            .filter(message -> !message.isEmpty())
+            .transform(sender.sendAloValues(destinationTopic, message -> message.substring(0, 1)))
+            .resubscribeOnError(name())
+            .doFinally(sender::close)
+            .subscribeWith(new DefaultAloSenderResultSubscriber<>());
+    }
+
+    private AloKafkaSender<String, String> buildKafkaSender() {
+        return configSource
+            .withClientId(name())
+            .withKeySerializer(StringSerializer.class)
+            .withValueSerializer(StringSerializer.class)
+            .as(AloKafkaSender::create);
+    }
+
+    private AloKafkaReceiver<String, String> buildKafkaReceiver() {
+        return configSource
+            .withClientId(name())
+            .withKeyDeserializer(StringDeserializer.class)
+            .withValueDeserializer(StringDeserializer.class)
+            .as(AloKafkaReceiver::create);
+    }
+}
+```
+
 
 The [examples module](examples) contains runnable classes showing Atleon in action and intended usage.
 
