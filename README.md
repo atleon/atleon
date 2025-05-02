@@ -174,7 +174,7 @@ public class MyStream extends SpringAloStream {
 }
 ```
 
-
+### Runnable Examples
 The [examples module](examples) contains runnable classes showing Atleon in action and intended usage.
 
 ## Building
