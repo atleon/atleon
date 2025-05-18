@@ -24,7 +24,7 @@ jobs:
       - name: Publish RELEASE Artifacts
         run: ./mvnw deploy --settings ./.mvn/settings/mvn-settings.xml -B -U -P oss-release -DskipTests=true
         env:
-          SONATYPE_TOKEN_USER: ${{ secrets.SONATYPE_TOKEN_USER }}
-          SONATYPE_TOKEN_KEY: ${{ secrets.SONATYPE_TOKEN_KEY }}
+          MAVEN_CENTRAL_TOKEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_TOKEN_USERNAME }}
+          MAVEN_CENTRAL_TOKEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASSWORD }}
           GPG_KEY_NAME: ${{ secrets.GPG_KEY_NAME }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}

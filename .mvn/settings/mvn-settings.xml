@@ -2,13 +2,13 @@
     <servers>
         <server>
             <id>maven-central-snapshots</id>
-            <username>${env.SONATYPE_TOKEN_USER}</username>
-            <password>${env.SONATYPE_TOKEN_KEY}</password>
+            <username>${env.MAVEN_CENTRAL_TOKEN_USERNAME}</username>
+            <password>${env.MAVEN_CENTRAL_TOKEN_PASSWORD}</password>
         </server>
         <server>
             <id>maven-central-staging</id>
-            <username>${env.SONATYPE_TOKEN_USER}</username>
-            <password>${env.SONATYPE_TOKEN_KEY}</password>
+            <username>${env.MAVEN_CENTRAL_TOKEN_USERNAME}</username>
+            <password>${env.MAVEN_CENTRAL_TOKEN_PASSWORD}</password>
         </server>
     </servers>
     <profiles>
