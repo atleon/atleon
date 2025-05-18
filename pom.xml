@@ -180,7 +180,7 @@
                 <configuration>
                     <publishingServerId>central</publishingServerId>
                     <autoPublish>true</autoPublish>
-                    <waitUntil>publish</waitUntil>
+                    <waitUntil>published</waitUntil>
                 </configuration>
             </plugin>
         </plugins>
