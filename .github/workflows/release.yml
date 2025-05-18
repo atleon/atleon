@@ -22,7 +22,7 @@ jobs:
       - name: Import GPG Signing Key
         run: echo ${{ secrets.GPG_SIGNING_KEY }} | base64 --decode | gpg --import --batch --no-tty --yes
       - name: Publish RELEASE Artifacts
-        run: ./mvnw deploy --settings ./.mvn/settings/mvn-settings.xml -B -U -X -P oss-release -DskipTests=true
+        run: ./mvnw deploy --settings ./.mvn/settings/mvn-settings.xml -B -U -P oss-release -DskipTests=true
         env:
           SONATYPE_TOKEN_USER: ${{ secrets.SONATYPE_TOKEN_USER }}
           SONATYPE_TOKEN_KEY: ${{ secrets.SONATYPE_TOKEN_KEY }}

@@ -38,7 +38,7 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Publish SNAPSHOT Artifacts
-        run: ./mvnw deploy --settings ./.mvn/settings/mvn-settings.xml -B -U -X -P oss-snapshot -DskipTests=true
+        run: ./mvnw deploy --settings ./.mvn/settings/mvn-settings.xml -B -U -P oss-snapshot -DskipTests=true
         env:
           SONATYPE_TOKEN_USER: ${{ secrets.SONATYPE_TOKEN_USER }}
           SONATYPE_TOKEN_KEY: ${{ secrets.SONATYPE_TOKEN_KEY }}
