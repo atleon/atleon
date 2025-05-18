@@ -103,6 +103,17 @@ public class MyStream extends SelfConfigurableAloStream {
 ### Spring Stream Example
 Atleon has built-in integration with Spring, where a fully configured stream looks like the following:
 
+`pom.xml`:
+```xml
+<dependencies>
+    <dependency>
+        <groupId>io.atleon</groupId>
+        <artifactId>atleon-spring</artifactId>
+        <version>${atleon.version></version>
+    </dependency>
+</dependencies>
+```
+
 `application.yml`:
 ```yaml
 atleon:
@@ -123,12 +134,14 @@ import io.atleon.core.DefaultAloSenderResultSubscriber;
 import io.atleon.kafka.AloKafkaReceiver;
 import io.atleon.kafka.AloKafkaSender;
 import io.atleon.kafka.KafkaConfigSource;
+import io.atleon.spring.AutoConfigureStream;
 import io.atleon.spring.SpringAloStream;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.context.ApplicationContext;
 import reactor.core.Disposable;
 
+@AutoConfigureStream
 public class MyStream extends SpringAloStream {
 
     private final KafkaConfigSource configSource;
