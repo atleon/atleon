@@ -63,7 +63,7 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
     }
 
     private Mono<T> deduplicateGroup(GroupedFlux<Object, T> groupedFlux, Scheduler scheduler) {
-        return groupedFlux.take(config.getDeduplicationDuration(), scheduler)
+        return groupedFlux.take(config.getDeduplicationTimeout(), scheduler)
             .take(config.getMaxDeduplicationSize())
             .collectList()
             .map(deduplicator::deduplicate);
