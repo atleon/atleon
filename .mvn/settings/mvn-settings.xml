@@ -6,7 +6,7 @@
             <password>${env.MAVEN_CENTRAL_TOKEN_PASSWORD}</password>
         </server>
         <server>
-            <id>maven-central-staging</id>
+            <id>maven-central-publishing</id>
             <username>${env.MAVEN_CENTRAL_TOKEN_USERNAME}</username>
             <password>${env.MAVEN_CENTRAL_TOKEN_PASSWORD}</password>
         </server>
