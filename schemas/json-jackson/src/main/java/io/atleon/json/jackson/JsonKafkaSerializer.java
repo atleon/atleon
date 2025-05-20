@@ -8,6 +8,6 @@ public final class JsonKafkaSerializer<T> implements Serializer<T> {
 
     @Override
     public byte[] serialize(String topic, T data) {
-        return objectMapperFacade.writeAsBytes(data);
+        return data == null ? null : objectMapperFacade.writeAsBytes(data);
     }
 }
