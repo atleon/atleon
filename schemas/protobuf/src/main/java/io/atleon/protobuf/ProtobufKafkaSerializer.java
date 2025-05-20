@@ -7,6 +7,6 @@ public final class ProtobufKafkaSerializer<T extends Message> implements Seriali
 
     @Override
     public byte[] serialize(String topic, T data) {
-        return data.toByteArray();
+        return data == null ? null : data.toByteArray();
     }
 }
