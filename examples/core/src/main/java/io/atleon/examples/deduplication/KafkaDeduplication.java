@@ -23,7 +23,7 @@ import java.util.function.Function;
 
 /**
  * This example shows how message consumption may be de-duped via
- * {@link io.atleon.core.AloFlux#deduplicate(DeduplicationConfig, Deduplication)}.
+ * {@link io.atleon.core.AloFlux#deduplicate(Deduplication, DeduplicationConfig)}.
  * Note that this example continues to incorporate {@link io.atleon.core.Alo} acknowledgement
  * propagation such that at-least-once guarantee is maintained in the face of "aggregation", or
  * "many to one" processing transformations.
@@ -68,7 +68,7 @@ public class KafkaDeduplication {
         // duplicate methods via AloFlux::deduplicate
         Mono<List<String>> processed = AloKafkaReceiver.<Object, String>create(kafkaReceiverConfig)
             .receiveAloValues(TOPIC_1)
-            .deduplicate(deduplicationConfig, Deduplication.identity())
+            .deduplicate(Deduplication.identity(), deduplicationConfig)
             .map(String::toUpperCase)
             .transform(AloKafkaSender.<String, String>create(kafkaSenderConfig).sendAloValues(TOPIC_2, Function.identity()))
             .consumeAloAndGet(Alo::acknowledge)

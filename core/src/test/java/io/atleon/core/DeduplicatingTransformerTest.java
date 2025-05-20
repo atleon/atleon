@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -35,9 +36,9 @@ class DeduplicatingTransformerTest {
                 sink.tryEmitNext("ONE");
                 sink.tryEmitNext("ONE");
             })
-            .expectNoEvent(CONFIG.getDeduplicationDuration())
+            .expectNoEvent(CONFIG.getDeduplicationTimeout())
             .expectNext("ONE")
-            .expectNoEvent(CONFIG.getDeduplicationDuration())
+            .expectNoEvent(CONFIG.getDeduplicationTimeout())
             .thenCancel()
             .verify();
     }
@@ -47,12 +48,12 @@ class DeduplicatingTransformerTest {
         StepVerifier.withVirtualTime(() -> downstream)
             .expectSubscription()
             .then(() -> sink.tryEmitNext("ONE"))
-            .thenAwait(CONFIG.getDeduplicationDuration())
+            .thenAwait(CONFIG.getDeduplicationTimeout())
             .expectNext("ONE")
             .then(() -> sink.tryEmitNext("ONE"))
-            .thenAwait(CONFIG.getDeduplicationDuration())
+            .thenAwait(CONFIG.getDeduplicationTimeout())
             .expectNext("ONE")
-            .expectNoEvent(CONFIG.getDeduplicationDuration())
+            .expectNoEvent(CONFIG.getDeduplicationTimeout())
             .thenCancel()
             .verify();
     }
@@ -69,9 +70,9 @@ class DeduplicatingTransformerTest {
                 sink.tryEmitNext("ONE");
             })
             .expectNext("ONE")
-            .expectNoEvent(CONFIG.getDeduplicationDuration())
+            .expectNoEvent(CONFIG.getDeduplicationTimeout())
             .expectNext("ONE")
-            .expectNoEvent(CONFIG.getDeduplicationDuration())
+            .expectNoEvent(CONFIG.getDeduplicationTimeout())
             .thenCancel()
             .verify();
 
@@ -79,8 +80,9 @@ class DeduplicatingTransformerTest {
 
     @Test
     public void dataAreSequentiallyProcessed() {
-        Flux<String> invertedDownstream = sink.asFlux()
-            .transform(DeduplicatingTransformer.identity(CONFIG, new InvertedReducerDeduplication(), Schedulers.parallel()));
+        DeduplicatingTransformer<String> transformer = DeduplicatingTransformer.identity(
+            CONFIG, Deduplication.emitLast(Function.identity()), Schedulers.parallel());
+        Flux<String> invertedDownstream = sink.asFlux().transform(transformer);
 
         StepVerifier.create(invertedDownstream)
             .expectSubscription()
@@ -91,10 +93,10 @@ class DeduplicatingTransformerTest {
                 sink.tryEmitNext("TWO");
                 sink.tryEmitNext("ONE");
             })
-            .thenAwait(CONFIG.getDeduplicationDuration())
+            .thenAwait(CONFIG.getDeduplicationTimeout())
             .expectNext("ONE")
             .expectNext("TWO")
-            .expectNoEvent(CONFIG.getDeduplicationDuration())
+            .expectNoEvent(CONFIG.getDeduplicationTimeout())
             .thenCancel()
             .verify();
     }
@@ -108,7 +110,7 @@ class DeduplicatingTransformerTest {
         Flux.fromStream(Stream.iterate(randomLong(CONFIG.getDeduplicationConcurrency()), last -> randomLong(CONFIG.getDeduplicationConcurrency())))
             .flatMap(number -> Flux.concat(
                     Mono.just(number).repeat(CONFIG.getMaxDeduplicationSize() - 1),
-                    Mono.just(number).delayElement(randomDuration(CONFIG.getDeduplicationDuration().multipliedBy(2)))),
+                    Mono.just(number).delayElement(randomDuration(CONFIG.getDeduplicationTimeout().multipliedBy(2)))),
                 CONFIG.getDeduplicationConcurrency())
             .take(Duration.ofSeconds(10L))
             .doOnNext(next -> upstream.incrementAndGet())
@@ -121,8 +123,8 @@ class DeduplicatingTransformerTest {
                 }
 
                 @Override
-                public List<Long> reduceDuplicates(List<Long> t1, List<Long> t2) {
-                    return Stream.concat(t1.stream(), t2.stream()).collect(Collectors.toList());
+                public List<Long> reduceDuplicates(List<Long> first, List<Long> second) {
+                    return Stream.concat(first.stream(), second.stream()).collect(Collectors.toList());
                 }
             }, Schedulers.parallel()))
             .doOnNext(buffer -> {
@@ -144,16 +146,5 @@ class DeduplicatingTransformerTest {
 
     private static Duration randomDuration(Duration exclusiveUpperBound) {
         return Duration.ofMillis((long) (Math.random() * exclusiveUpperBound.toMillis()));
-    }
-
-    private static final class InvertedReducerDeduplication implements Deduplication<String> {
-
-        public String extractKey(String data) {
-            return data;
-        }
-
-        public String reduceDuplicates(String s1, String s2) {
-            return s2;
-        }
     }
 }

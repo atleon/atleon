@@ -314,29 +314,74 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
-     * Deduplicates emitted data items. Deduplicated items are emitted only after either the max
-     * number of duplicate items are received or the deduplication Duration has elapsed since
-     * receiving the first of any given item with a particular dedpulication key
-     *
-     * @param config        Configuration of quantitative behaviors of Deduplication
-     * @param deduplication Implementation of how to identify and deduplicate duplicate data items
-     * @return AloFlux of deduplicated items
+     * @deprecated Use either {@link #deduplicate(Deduplication, DeduplicationConfig)} or other
+     * simplified {@code deduplicate} APIs
      */
+    @Deprecated
     public AloFlux<T> deduplicate(DeduplicationConfig config, Deduplication<T> deduplication) {
         return deduplicate(config, deduplication, Schedulers.boundedElastic());
     }
 
     /**
-     * Deduplicates emitted data items. Deduplicated items are emitted only after either the max
-     * number of duplicate items are received or the deduplication Duration has elapsed since
-     * receiving the first of any given item with a particular dedpulication key
+     * @deprecated Use either {@link #deduplicate(Deduplication, DeduplicationConfig, Scheduler)}
+     * or other simplified {@code deduplicate} APIs
+     */
+    @Deprecated
+    public AloFlux<T> deduplicate(DeduplicationConfig config, Deduplication<T> deduplication, Scheduler scheduler) {
+        return new AloFlux<>(wrapped.transform(DeduplicatingTransformer.alo(config, deduplication, scheduler)));
+    }
+
+    /**
+     * Deduplicates emitted data items. For any given deduplication key, a reduced item is only
+     * emitted after the deduplication Duration has elapsed since receiving the first item with
+     * that key.
      *
-     * @param config        Configuration of quantitative behaviors of Deduplication
      * @param deduplication Implementation of how to identify and deduplicate duplicate data items
+     * @param timeout       The max duration in which to deduplicate items before emission
+     * @return AloFlux of deduplicated items
+     */
+    public AloFlux<T> deduplicate(Deduplication<T> deduplication, Duration timeout) {
+        return deduplicate(deduplication, timeout, Schedulers.boundedElastic());
+    }
+
+    /**
+     * Deduplicates emitted data items. For any given deduplication key, a reduced item is only
+     * emitted after the deduplication Duration has elapsed since receiving the first item with
+     * that key.
+     *
+     * @param deduplication Implementation of how to identify and deduplicate duplicate data items
+     * @param timeout       The max duration in which to deduplicate items before emission
      * @param scheduler     a time-capable Scheduler to run on
      * @return AloFlux of deduplicated items
      */
-    public AloFlux<T> deduplicate(DeduplicationConfig config, Deduplication<T> deduplication, Scheduler scheduler) {
+    public AloFlux<T> deduplicate(Deduplication<T> deduplication, Duration timeout, Scheduler scheduler) {
+        return deduplicate(deduplication, new DeduplicationConfig(timeout), scheduler);
+    }
+
+    /**
+     * Deduplicates emitted data items. For any given deduplication key, a reduced item is only
+     * emitted after the deduplication Duration has elapsed since receiving the first item with
+     * that key, or the max number of duplicate items have been received.
+     *
+     * @param deduplication Implementation of how to identify and deduplicate duplicate data items
+     * @param config        Configuration of quantitative behaviors of Deduplication
+     * @return AloFlux of deduplicated items
+     */
+    public AloFlux<T> deduplicate(Deduplication<T> deduplication, DeduplicationConfig config) {
+        return deduplicate(deduplication, config, Schedulers.boundedElastic());
+    }
+
+    /**
+     * Deduplicates emitted data items. For any given deduplication key, a reduced item is only
+     * emitted after the deduplication Duration has elapsed since receiving the first item with
+     * that key, or the max number of duplicate items have been received.
+     *
+     * @param deduplication Implementation of how to identify and deduplicate duplicate data items
+     * @param config        Configuration of quantitative behaviors of Deduplication
+     * @param scheduler     a time-capable Scheduler to run on
+     * @return AloFlux of deduplicated items
+     */
+    public AloFlux<T> deduplicate(Deduplication<T> deduplication, DeduplicationConfig config, Scheduler scheduler) {
         return new AloFlux<>(wrapped.transform(DeduplicatingTransformer.alo(config, deduplication, scheduler)));
     }
 
