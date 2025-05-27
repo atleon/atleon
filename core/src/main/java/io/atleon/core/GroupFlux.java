@@ -230,8 +230,19 @@ public class GroupFlux<K, T> {
      * @return a transformed {@link GroupFlux}
      */
     public GroupFlux<K, T> limitPerSecond(double limitPerSecond) {
+        return limitPerSecond(limitPerSecond, Schedulers.boundedElastic());
+    }
+
+    /**
+     * Apply a <i>cumulative</i> limit on the rate at which items are emitted across all inner
+     * grouped sequences. Especially useful when interacting with resource-constrained I/O
+     * dependencies.
+     *
+     * @return a transformed {@link GroupFlux}
+     */
+    public GroupFlux<K, T> limitPerSecond(double limitPerSecond, Scheduler scheduler) {
         RateLimitingConfig config = new RateLimitingConfig(limitPerSecond);
-        return map(new RateLimitingTransformer<>(config, Schedulers.boundedElastic()));
+        return map(new RateLimitingTransformer<>(config, scheduler));
     }
 
     /**
