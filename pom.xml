@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.atleon</groupId>
     <artifactId>atleon</artifactId>
-    <version>0.31.5-SNAPSHOT</version>
+    <version>0.31.5</version>
     <packaging>pom</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Reactive streaming library targeting continuous pipelines with at-least-once processing guarantees. Backed by Project Reactor.</description>
@@ -28,7 +28,7 @@
         <connection>scm:git:git@github.com:atleon/atleon.git</connection>
         <developerConnection>scm:git:git@github.com:atleon/atleon.git</developerConnection>
         <url>http://github.com/atleon/atleon</url>
-        <tag>HEAD</tag>
+        <tag>atleon-0.31.5</tag>
     </scm>
 
     <distributionManagement>
