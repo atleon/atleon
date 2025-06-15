@@ -1,0 +1,106 @@
+package io.atleon.kafka;
+
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.common.TopicPartition;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
+
+/**
+ * A listener interface for callbacks associated with the lifecycle of Kafka record reception.
+ * Instances of this class are created from {@link ReceptionListenerFactory#create(ConsumerInvocable)},
+ * which allows for implementations to be constructed with an on-demand handle for the underlying
+ * {@link Consumer} instance.
+ */
+public interface ReceptionListener {
+
+    /**
+     * Creates a listener that does nothing.
+     */
+    static ReceptionListener noOp() {
+        return new ReceptionListener() {};
+    }
+
+    /**
+     * Creates a listener that will seek to the specified offset on the provided partition the
+     * first time this partition is assigned.
+     */
+    static ReceptionListener seekOnce(TopicPartition topicPartition, long offset) {
+        return doOnPartitionsAssignedOnce((consumer, partitions) -> {
+            if (partitions.contains(topicPartition)) {
+                consumer.seek(topicPartition, offset);
+            }
+        });
+    }
+
+    /**
+     * Creates a listener that will seek to the beginning offset of any given partition the first
+     * time it is assigned.
+     */
+    static ReceptionListener seekToBeginningOnce() {
+        return doOnPartitionsAssignedOnce(Consumer::seekToBeginning);
+    }
+
+    /**
+     * Creates a listener that will perform some action on any given partition the first time it is
+     * assigned.
+     */
+    static ReceptionListener doOnPartitionsAssignedOnce(BiConsumer<Consumer<?, ?>, Collection<TopicPartition>> action) {
+        Set<TopicPartition> actioned = new HashSet<>();
+        return new ReceptionListener() {
+            @Override
+            public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+                Collection<TopicPartition> actionable = partitions.stream()
+                    .filter(it -> !actioned.contains(it))
+                    .collect(Collectors.toList());
+                if (!actionable.isEmpty()) {
+                    action.accept(consumer, actionable);
+                    actioned.addAll(actionable);
+                }
+            }
+        };
+    }
+
+    /**
+     * Callback invoked when it has been detected that the provided partitions have been lost.
+     *
+     * @param consumer   Consumer handle on which it is safe to invoke blocking calls
+     * @param partitions The partitions that have been lost
+     * @see org.apache.kafka.clients.consumer.ConsumerRebalanceListener#onPartitionsLost(Collection)
+     */
+    default void onPartitionsLost(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+        onPartitionsRevoked(consumer, partitions);
+    }
+
+    /**
+     * Callback invoked when the provided partitions have been revoked.
+     *
+     * @param consumer   Consumer handle on which it is safe to invoke blocking calls
+     * @param partitions The partitions that have been revoked
+     * @see org.apache.kafka.clients.consumer.ConsumerRebalanceListener#onPartitionsRevoked(Collection)
+     */
+    default void onPartitionsRevoked(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+
+    }
+
+    /**
+     * Callback invoked when the provided partitions have been assigned.
+     *
+     * @param consumer   Consumer handle on which it is safe to invoke blocking calls
+     * @param partitions The partitions that have been assigned
+     * @see org.apache.kafka.clients.consumer.ConsumerRebalanceListener#onPartitionsRevoked(Collection)
+     */
+    default void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+
+    }
+
+    /**
+     * Callback invoked when the provided consumer is about to be closed.
+     */
+    default void onClose(Consumer<?, ?> consumer) {
+
+    }
+}
