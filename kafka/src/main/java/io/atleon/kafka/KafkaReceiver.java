@@ -45,7 +45,6 @@ import java.util.stream.Collectors;
  */
 //TODO
 // - RecordReceptionListener
-// - maxActiveInFlight
 public final class KafkaReceiver<K, V> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaReceiver.class);
@@ -111,6 +110,8 @@ public final class KafkaReceiver<K, V> {
 
         private final AtomicInteger freePrefetchCapacity = new AtomicInteger(options.calculateMaxRecordsPrefetch());
 
+        private final AtomicLong freeActiveInFlightCapacity = new AtomicLong(options.maxActiveInFlight());
+
         private final AtomicLong requestOutstanding = new AtomicLong(0);
 
         private final AtomicInteger drainsInProgress = new AtomicInteger(0);
@@ -172,9 +173,13 @@ public final class KafkaReceiver<K, V> {
                 activePartition.acknowledgedOffsets()
                     .map(it -> new CommittableOffset(it, sequence))
                     .subscribe(committableOffsetQueue::addAndDrain, this::doError);
+                activePartition.deactivatedRecordCounts()
+                    .subscribe(this::handleInFlightRecordsDeactivated, this::doError);
                 assignments.put(partition, activePartition);
             });
 
+            // Newly assigned partitions may either be paused due to external control, or need
+            // pausing because there isn't enough outstanding downstream demand.
             Collection<TopicPartition> partitionsToPause = calculatePartitionsToPause(partitions);
             if (!partitionsToPause.isEmpty()) {
                 consumer.pause(partitionsToPause);
@@ -206,18 +211,19 @@ public final class KafkaReceiver<K, V> {
             } catch (WakeupException e) {
                 // Corner case - There are only three plausible causes for a wakeup here:
                 // 1. Emission of records freed up capacity for subsequent polling
-                // 2. Reception canceled before or while awaiting completion of revoked partitions
+                // 2. Reception terminated before or while awaiting revocation completion
                 // 3. Async commit(s) failed and retry was exhausted
                 // Every other theoretically possible wakeup must have come from faults in our code
-                // (errors in process subscriptions that we aren't handling, and likely should) or
-                // faulty Subscriber::onNext code (which should not throw, but rather cancel and
-                // emit). To gracefully handle the plausible wakeup causes, try committing one more
-                // time, and then re-emit the wakeup signal so the poll invocation knows about it.
+                // (errors in process subscriptions that we aren't handling, and almost certainly
+                // should) or faulty Subscriber::onNext code (which should not throw, but rather
+                // cancel and emit). To gracefully handle the plausible wakeup causes, try
+                // committing one more time, and then re-emit the wakeup signal so the poll
+                // invocation knows about it.
                 consumer.commitSync(offsetsToCommit);
                 throw e;
             } finally {
-                // Lastly, sanitize sequence counters to account for possible in-flight scheduled
-                // commits and potential future reassignment.
+                // Lastly, sanitize sequence counters to account for possible in-flight commits and
+                // potential future reassignment.
                 revokedPartitions.keySet().forEach(sequenceSet::unassigned);
             }
         }
@@ -312,6 +318,13 @@ public final class KafkaReceiver<K, V> {
             }
         }
 
+        private void handleInFlightRecordsDeactivated(long count) {
+            if (freeActiveInFlightCapacity.get() != Long.MAX_VALUE) {
+                freeActiveInFlightCapacity.addAndGet(count);
+                drain();
+            }
+        }
+
         private void drain() {
             if (drainsInProgress.getAndIncrement() != 0) {
                 return;
@@ -319,7 +332,7 @@ public final class KafkaReceiver<K, V> {
 
             int missed = 1;
             do {
-                long maxToEmit = requestOutstanding.get();
+                long maxToEmit = Math.min(freeActiveInFlightCapacity.get(), requestOutstanding.get());
                 long emitted = 0;
                 EmittableRecord<K, V> emittableRecord;
                 while (emitted < maxToEmit && !done.get() && (emittableRecord = emittableRecords.poll()) != null) {
@@ -334,12 +347,18 @@ public final class KafkaReceiver<K, V> {
                     if (activated.isPresent()) {
                         emitted++;
                     }
+
                     // Doing this after emission, since it's possible that emission may have caused
                     // cancellation, so we may avoid unnecessary wakeup.
                     if (freePrefetchCapacity.incrementAndGet() == maxPollRecords && paused.get() && !done.get()) {
                         receivingConsumer.safelyWakeup();
                     }
                 }
+
+                if (freeActiveInFlightCapacity.get() != Long.MAX_VALUE) {
+                    freeActiveInFlightCapacity.addAndGet(-emitted);
+                }
+
                 requestOutstanding.addAndGet(-emitted);
 
                 missed = drainsInProgress.addAndGet(-missed);

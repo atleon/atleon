@@ -23,7 +23,6 @@ import java.util.function.ToLongFunction;
  * A partition that is currently assigned, being actively consumed, and associated with records
  * that are being processed.
  */
-//TODO Provide emission of deactivated record counts in order to implement maxActiveInFlight
 final class ActivePartition {
 
     private final TopicPartition topicPartition;
@@ -40,6 +39,8 @@ final class ActivePartition {
     private final AtomicInteger deactivationDrainsInProgress = new AtomicInteger();
 
     private final Sinks.Many<OffsetAndMetadata> nextOffsetsOfAcknowledged = Sinks.unsafe().many().replay().latest();
+
+    private final Sinks.Many<Long> deactivatedRecordCounts = Sinks.unsafe().many().unicast().onBackpressureError();
 
     public ActivePartition(TopicPartition topicPartition, AcknowledgementQueueMode acknowledgementQueueMode) {
         this.topicPartition = topicPartition;
@@ -71,11 +72,15 @@ final class ActivePartition {
         return nextOffsetsOfAcknowledged.asFlux().map(it -> new AcknowledgedOffset(topicPartition, it));
     }
 
+    public Flux<Long> deactivatedRecordCounts() {
+        return deactivatedRecordCounts.asFlux();
+    }
+
     private Optional<Runnable> activate(OffsetAndMetadata nextOffset) {
         // If registration is successful (neither has a possible deactivation not finished, nor has
         // processing been forcibly deactivated), allow processing attempt. Else do not return
         // anything for acknowledgement, which prevents emission for processing.
-        return activated.updateAndGet(count -> count > 0 ? count + 1 : count) > 0
+        return activated.getAndUpdate(count -> count > 0 ? count + 1 : count) > 0
             ? Optional.of(() -> nextOffsetsOfAcknowledged.tryEmitNext(nextOffset))
             : Optional.empty();
     }
@@ -103,7 +108,7 @@ final class ActivePartition {
             // If previous active count was positive, termination hadn't happened yet, so magnitude
             // is guaranteed to not be equal. Therefore, the only trigger for completion will be if
             // the previous active count was exactly the negative magnitude of completed records,
-            // so we can just add the two and see if they cancel out.
+            // so we can just add the two together and see if they cancel out.
             if (completedRecords + previousActiveCount == 0) {
                 nextOffsetsOfAcknowledged.tryEmitComplete();
             }
@@ -124,7 +129,7 @@ final class ActivePartition {
     private void deactivateWithGrace() {
         enqueueAndDrain(() -> {
             if (activated.updateAndGet(count -> count > 0 ? 1 - count : count) == 0) {
-                // This call is the one that's terminating, so do it
+                // This deactivation is the one that's terminating, so emit completion
                 nextOffsetsOfAcknowledged.tryEmitComplete();
             }
             return 0L;
@@ -143,11 +148,11 @@ final class ActivePartition {
         enqueueAndDrain(() -> {
             long previousActiveCount = activated.getAndSet(0);
             if (previousActiveCount != 0) {
-                // This call is the one that's terminating, so do it and calculate the number of
-                // deactivated records based on the previous count which, if positive, means this
-                // partition had not yet been deactivated, so we need to subtract one, and if
-                // negative, means this partition had already been deactivated and we need to
-                // negate.
+                // This deactivation is the one that's terminating, so do it and calculate the
+                // number of deactivated records based on the previous count which, if positive,
+                // means this partition had not yet been deactivated, so we need to subtract one,
+                // and if negative, means this partition had already been deactivated, and we need
+                // to negate.
                 terminationEmitter.accept(nextOffsetsOfAcknowledged);
                 return previousActiveCount > 0 ? previousActiveCount - 1 : -previousActiveCount;
             } else {
@@ -165,8 +170,17 @@ final class ActivePartition {
 
         int missed = 1;
         do {
+            long deactivatedRecordCount = 0;
             while (activated.get() != 0 && (deactivation = deactivationQueue.poll()) != null) {
-                deactivation.executeAndGetDeactivatedRecordCount();
+                deactivatedRecordCount += deactivation.executeAndGetDeactivatedRecordCount();
+            }
+
+            if (deactivatedRecordCount != 0) {
+                deactivatedRecordCounts.tryEmitNext(deactivatedRecordCount);
+            }
+
+            if (activated.get() == 0) {
+                deactivatedRecordCounts.tryEmitComplete();
             }
 
             missed = deactivationDrainsInProgress.addAndGet(-missed);

@@ -25,6 +25,8 @@ public final class KafkaReceiverOptions<K, V> {
 
     private static final int DEFAULT_MAX_FULL_POLL_RECORDS_PREFETCH = 2;
 
+    private static final long DEFAULT_MAX_ACTIVE_IN_FLIGHT = 4096;
+
     private static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5); // Kafka default
 
     private static final int DEFAULT_MAX_COMMIT_ATTEMPTS = 100;
@@ -40,6 +42,8 @@ public final class KafkaReceiverOptions<K, V> {
     private final Map<String, Object> consumerProperties;
 
     private final int fullPollRecordsPrefetch;
+
+    private final long maxActiveInFlight;
 
     private final Duration pollTimeout;
 
@@ -60,6 +64,7 @@ public final class KafkaReceiverOptions<K, V> {
         ReceptionListenerFactory listenerFactory,
         Map<String, Object> consumerProperties,
         int fullPollRecordsPrefetch,
+        long maxActiveInFlight,
         Duration pollTimeout,
         AcknowledgementQueueMode acknowledgementQueueMode,
         int commitBatchSize,
@@ -72,6 +77,7 @@ public final class KafkaReceiverOptions<K, V> {
         this.listenerFactory = listenerFactory;
         this.consumerProperties = consumerProperties;
         this.fullPollRecordsPrefetch = fullPollRecordsPrefetch;
+        this.maxActiveInFlight = maxActiveInFlight;
         this.pollTimeout = pollTimeout;
         this.acknowledgementQueueMode = acknowledgementQueueMode;
         this.commitBatchSize = commitBatchSize;
@@ -141,6 +147,13 @@ public final class KafkaReceiverOptions<K, V> {
     }
 
     /**
+     * @see Builder#maxActiveInFlight(long)
+     */
+    public long maxActiveInFlight() {
+        return maxActiveInFlight;
+    }
+
+    /**
      * @see Builder#pollTimeout(Duration)
      */
     public Duration pollTimeout() {
@@ -199,6 +212,8 @@ public final class KafkaReceiverOptions<K, V> {
 
         private int fullPollRecordsPrefetch = DEFAULT_MAX_FULL_POLL_RECORDS_PREFETCH;
 
+        private long maxActiveInFlight = DEFAULT_MAX_ACTIVE_IN_FLIGHT;
+
         private Duration pollTimeout = DEFAULT_POLL_TIMEOUT;
 
         private AcknowledgementQueueMode acknowledgementQueueMode = AcknowledgementQueueMode.STRICT;
@@ -253,6 +268,15 @@ public final class KafkaReceiverOptions<K, V> {
          */
         public Builder<K, V> fullPollRecordsPrefetch(int fullPollRecordsPrefetch) {
             this.fullPollRecordsPrefetch = fullPollRecordsPrefetch;
+            return this;
+        }
+
+        /**
+         * Sets the maximum number of records that are allowed to have been activated and emitted
+         * for downstream consumption and not yet acknowledged (positively or negatively).
+         */
+        public Builder<K, V> maxActiveInFlight(long maxActiveInFlight) {
+            this.maxActiveInFlight = maxActiveInFlight;
             return this;
         }
 
@@ -334,6 +358,7 @@ public final class KafkaReceiverOptions<K, V> {
                 listenerFactory,
                 consumerProperties,
                 fullPollRecordsPrefetch,
+                maxActiveInFlight,
                 pollTimeout,
                 acknowledgementQueueMode,
                 commitBatchSize,
