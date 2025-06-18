@@ -23,7 +23,9 @@ import reactor.core.scheduler.Scheduler;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
@@ -195,10 +197,11 @@ public final class KafkaReceiver<K, V> {
             // synchronous commit is not likely to meaningfully degrade already-low throughput. As
             // load increases, so does the likelihood that there will be acknowledged uncommitted
             // offsets, and it becomes more desirable to attempt to honor that progress.
-            Map<TopicPartition, ActivePartition> revokedPartitions = partitions.stream()
-                .filter(assignments::containsKey)
-                .collect(Collectors.toMap(Function.identity(), assignments::remove));
-            Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = revokedPartitions.values().stream()
+            List<ActivePartition> revokedPartitions = partitions.stream()
+                .map(assignments::remove)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+            Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = revokedPartitions.stream()
                 .map(it -> it.deactivate(options.revocationGracePeriod(), auxiliaryScheduler, disposal.asMono()))
                 .collect(Collectors.collectingAndThen(Collectors.toList(), KafkaReceiver::mergeGreedily))
                 .collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffsetAndMetadata)
@@ -224,19 +227,20 @@ public final class KafkaReceiver<K, V> {
             } finally {
                 // Lastly, sanitize sequence counters to account for possible in-flight commits and
                 // potential future reassignment.
-                revokedPartitions.keySet().forEach(sequenceSet::unassigned);
+                revokedPartitions.forEach(it -> sequenceSet.unassigned(it.topicPartition()));
             }
         }
 
         @Override
         public void onPartitionsLost(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
             // No longer assigned, so impossible to commit, and all we can do is clean up.
-            partitions.stream()
+            List<TopicPartition> lostPartitions = partitions.stream()
                 .map(it -> Mono.justOrEmpty(assignments.remove(it)).flatMap(ActivePartition::deactivateWithoutGrace))
                 .collect(Collectors.collectingAndThen(Collectors.toList(), KafkaReceiver::mergeGreedily))
-                .doOnNext(sequenceSet::unassigned)
-                .then()
+                .collectList()
                 .block();
+
+            lostPartitions.forEach(sequenceSet::unassigned);
         }
 
         @Override

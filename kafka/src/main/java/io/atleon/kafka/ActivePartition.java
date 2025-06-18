@@ -76,6 +76,10 @@ final class ActivePartition {
         return deactivatedRecordCounts.asFlux();
     }
 
+    public TopicPartition topicPartition() {
+        return topicPartition;
+    }
+
     private Optional<Runnable> activate(OffsetAndMetadata nextOffset) {
         // If registration is successful (neither has a possible deactivation not finished, nor has
         // processing been forcibly deactivated), allow processing attempt. Else do not return
