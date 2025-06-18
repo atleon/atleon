@@ -1,6 +1,7 @@
 package io.atleon.kafka;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 
 import java.util.Optional;
 
@@ -21,5 +22,9 @@ final class EmittableRecord<K, V> {
 
     public Optional<KafkaReceiverRecord<K, V>> activateForProcessing() {
         return activePartition.activateForProcessing(consumerRecord);
+    }
+
+    public TopicPartition topicPartition() {
+        return activePartition.topicPartition();
     }
 }

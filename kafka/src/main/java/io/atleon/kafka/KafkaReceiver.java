@@ -104,6 +104,8 @@ public final class KafkaReceiver<K, V> {
 
         private final ReceivingConsumer<K, V> receivingConsumer;
 
+        private final ReceptionListener listener;
+
         private final Scheduler auxiliaryScheduler;
 
         private final Disposable periodicCommit;
@@ -141,6 +143,7 @@ public final class KafkaReceiver<K, V> {
         public Poller(AssignmentSpec assignmentSpec, Subscriber<? super KafkaReceiverRecord<K, V>> subscriber) {
             this.subscriber = subscriber;
             this.receivingConsumer = new ReceivingConsumer<>(options, this, this::doError);
+            this.listener = options.createReceptionListener();
             this.auxiliaryScheduler = KafkaSchedulers.newSingleForReception("auxiliary", options.loadClientId());
             this.periodicCommit = committableOffsets.asFlux()
                 .windowTimeout(options.commitBatchSize(), options.commitInterval(), auxiliaryScheduler)
@@ -170,12 +173,16 @@ public final class KafkaReceiver<K, V> {
                     throw new IllegalStateException("TopicPartition already assigned: " + partition);
                 }
 
+                listener.onPartitionActivated(partition);
+
                 long sequence = sequenceSet.assigned(partition);
+
                 ActivePartition activePartition = new ActivePartition(partition, options.acknowledgementQueueMode());
                 activePartition.acknowledgedOffsets()
                     .map(it -> new CommittableOffset(it, sequence))
                     .subscribe(committableOffsetQueue::addAndDrain, this::doError);
                 activePartition.deactivatedRecordCounts()
+                    .doOnNext(it -> listener.onRecordsDeactivated(partition, it))
                     .subscribe(this::handleInFlightRecordsDeactivated, this::doError);
                 assignments.put(partition, activePartition);
             });
@@ -228,6 +235,7 @@ public final class KafkaReceiver<K, V> {
                 // Lastly, sanitize sequence counters to account for possible in-flight commits and
                 // potential future reassignment.
                 revokedPartitions.forEach(it -> sequenceSet.unassigned(it.topicPartition()));
+                revokedPartitions.forEach(it -> listener.onPartitionDeactivated(it.topicPartition()));
             }
         }
 
@@ -241,6 +249,7 @@ public final class KafkaReceiver<K, V> {
                 .block();
 
             lostPartitions.forEach(sequenceSet::unassigned);
+            lostPartitions.forEach(listener::onPartitionDeactivated);
         }
 
         @Override
@@ -342,9 +351,10 @@ public final class KafkaReceiver<K, V> {
                 while (emitted < maxToEmit && !done.get() && (emittableRecord = emittableRecords.poll()) != null) {
                     Optional<KafkaReceiverRecord<K, V>> activated = emittableRecord.activateForProcessing();
                     try {
+                        listener.onRecordsActivated(emittableRecord.topicPartition(), activated.isPresent() ? 1 : 0);
                         activated.ifPresent(subscriber::onNext);
                     } catch (Throwable error) {
-                        LOGGER.error("Subscriber failed onNext emission (§2.13)", error);
+                        LOGGER.error("Emission failure (§2.13)", error);
                         doError(error);
                     }
 
@@ -448,6 +458,7 @@ public final class KafkaReceiver<K, V> {
                 receivingConsumer.safelyClose(options.closeTimeout())
                     .doOnTerminate(() -> safelyRun(periodicCommit::dispose, "periodicCommit::dispose"))
                     .doOnTerminate(() -> safelyRun(auxiliaryScheduler::dispose, "periodicScheduler::dispose"))
+                    .doOnTerminate(() -> safelyRun(listener::close, "listener::close"))
                     .doOnTerminate(onDisposed)
                     .subscribe();
             }
