@@ -62,7 +62,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     private final Disposable taskLoop;
 
-    private final ReceptionListener receptionListener;
+    private final ConsumerListener consumerListener;
 
     private final Sinks.Many<Runnable> tasks = Sinks.unsafe().many().unicast().onBackpressureError();
 
@@ -80,22 +80,22 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         this.taskLoop = tasks.asFlux()
             .publishOn(taskScheduler, Integer.MAX_VALUE)
             .subscribe(it -> safelyRun(it, errorHandler));
-        this.receptionListener = options.createReceptionListener(this);
+        this.consumerListener = options.createConsumerListener(this);
     }
 
     @Override
     public void onPartitionsLost(Collection<TopicPartition> partitions) {
-        onRebalance(receptionListener::onPartitionsLost, partitioningListener::onPartitionsLost, partitions);
+        onRebalance(consumerListener::onPartitionsLost, partitioningListener::onPartitionsLost, partitions);
     }
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-        onRebalance(receptionListener::onPartitionsRevoked, partitioningListener::onPartitionsRevoked, partitions);
+        onRebalance(consumerListener::onPartitionsRevoked, partitioningListener::onPartitionsRevoked, partitions);
     }
 
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-        onRebalance(receptionListener::onPartitionsAssigned, partitioningListener::onPartitionsAssigned, partitions);
+        onRebalance(consumerListener::onPartitionsAssigned, partitioningListener::onPartitionsAssigned, partitions);
     }
 
     @Override
@@ -103,7 +103,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         if (KafkaSchedulers.isCurrentThreadFromKafka()) {
             throw new UnsupportedOperationException("ConsumerInvocable::invokeAndGet must not be called from the" +
                 " polling thread. It should rather be the case that the Consumer is directly passed to the call site" +
-                " in some way, for example with ReceptionListener::onPartitionsAssigned.");
+                " in some way, for example with ConsumerListener::onPartitionsAssigned.");
         }
         return Mono.create(sink -> schedule(() -> {
             try {
@@ -123,7 +123,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     public Mono<Void> safelyClose(Duration timeout) {
         return Mono.create(sink -> schedule(() -> {
-            safelyRun(() -> receptionListener.onClose(consumer), "receptionListener::onClose");
+            safelyRun(() -> consumerListener.onClose(consumer), "consumerListener::onClose");
             safelyRun(() -> consumer.close(timeout), "consumer::close");
             safelyRun(taskScheduler::dispose, "taskScheduler::dispose");
             safelyRun(taskLoop::dispose, "taskLoop::dispose");

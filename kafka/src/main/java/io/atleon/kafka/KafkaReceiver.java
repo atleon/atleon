@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  * @param <V>
  */
 //TODO
-// - RecordReceptionListener
+// - EmissionListener
 public final class KafkaReceiver<K, V> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaReceiver.class);

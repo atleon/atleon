@@ -10,7 +10,7 @@ import java.util.function.Function;
  * A facade around an active {@link Consumer} instance that allows safely invoking (allowed)
  * methods from the active polling thread. NOTE: It is invalid to invoke these methods from the
  * polling thread, for example from within invocations of
- * {@link ReceptionListener#onPartitionsAssigned(Consumer, Collection)}. In such cases, it is
+ * {@link ConsumerListener#onPartitionsAssigned(Consumer, Collection)}. In such cases, it is
  * rather permissible to call methods on the explicitly provided Consumer instance, since the
  * callback is executing on the polling thread anyway.
  */

@@ -10,25 +10,25 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 /**
- * A listener interface for callbacks associated with the lifecycle of Kafka record reception.
- * Instances of this class are created from {@link ReceptionListenerFactory#create(ConsumerInvocable)},
- * which allows for implementations to be constructed with an on-demand handle for the underlying
+ * A listener interface for callbacks associated with the lifecycle of Kafka record consumption.
+ * Instances are created from {@link ConsumerListenerFactory#create(ConsumerInvocable)}, which
+ * allows for implementations to be constructed with an on-demand handle for the underlying
  * {@link Consumer} instance.
  */
-public interface ReceptionListener {
+public interface ConsumerListener {
 
     /**
      * Creates a listener that does nothing.
      */
-    static ReceptionListener noOp() {
-        return new ReceptionListener() {};
+    static ConsumerListener noOp() {
+        return new ConsumerListener() {};
     }
 
     /**
      * Creates a listener that will seek to the specified offset on the provided partition the
      * first time this partition is assigned.
      */
-    static ReceptionListener seekOnce(TopicPartition topicPartition, long offset) {
+    static ConsumerListener seekOnce(TopicPartition topicPartition, long offset) {
         return doOnPartitionsAssignedOnce((consumer, partitions) -> {
             if (partitions.contains(topicPartition)) {
                 consumer.seek(topicPartition, offset);
@@ -40,7 +40,7 @@ public interface ReceptionListener {
      * Creates a listener that will seek to the beginning offset of any given partition the first
      * time it is assigned.
      */
-    static ReceptionListener seekToBeginningOnce() {
+    static ConsumerListener seekToBeginningOnce() {
         return doOnPartitionsAssignedOnce(Consumer::seekToBeginning);
     }
 
@@ -48,9 +48,9 @@ public interface ReceptionListener {
      * Creates a listener that will perform some action on any given partition the first time it is
      * assigned.
      */
-    static ReceptionListener doOnPartitionsAssignedOnce(BiConsumer<Consumer<?, ?>, Collection<TopicPartition>> action) {
+    static ConsumerListener doOnPartitionsAssignedOnce(BiConsumer<Consumer<?, ?>, Collection<TopicPartition>> action) {
         Set<TopicPartition> actioned = new HashSet<>();
-        return new ReceptionListener() {
+        return new ConsumerListener() {
             @Override
             public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
                 Collection<TopicPartition> actionable = partitions.stream()

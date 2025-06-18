@@ -93,7 +93,7 @@ class ReceivingConsumerTest {
     public void onPartitionsAssigned_givenCallOnProxyFromNonPollingThread_expectsUnsupportedOperationException() {
         MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
 
-        ReceptionListener receptionListener = new ReceptionListener() {
+        ConsumerListener consumerListener = new ConsumerListener() {
             @Override
             public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
                 consumer.paused();
@@ -101,7 +101,7 @@ class ReceivingConsumerTest {
         };
 
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
-            .listener(receptionListener)
+            .consumerListener(consumerListener)
             .consumerProperties(Collections.singletonMap(CommonClientConfigs.CLIENT_ID_CONFIG, "test"))
             .build();
         Sinks.One<Throwable> error = Sinks.one();

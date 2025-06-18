@@ -37,7 +37,7 @@ public final class KafkaReceiverOptions<K, V> {
 
     private final Function<Map<String, Object>, Consumer<K, V>> consumerFactory;
 
-    private final ReceptionListenerFactory listenerFactory;
+    private final ConsumerListenerFactory consumerListenerFactory;
 
     private final Map<String, Object> consumerProperties;
 
@@ -61,7 +61,7 @@ public final class KafkaReceiverOptions<K, V> {
 
     private KafkaReceiverOptions(
         Function<Map<String, Object>, Consumer<K, V>> consumerFactory,
-        ReceptionListenerFactory listenerFactory,
+        ConsumerListenerFactory consumerListenerFactory,
         Map<String, Object> consumerProperties,
         int fullPollRecordsPrefetch,
         long maxActiveInFlight,
@@ -74,7 +74,7 @@ public final class KafkaReceiverOptions<K, V> {
         Duration closeTimeout
     ) {
         this.consumerFactory = consumerFactory;
-        this.listenerFactory = listenerFactory;
+        this.consumerListenerFactory = consumerListenerFactory;
         this.consumerProperties = consumerProperties;
         this.fullPollRecordsPrefetch = fullPollRecordsPrefetch;
         this.maxActiveInFlight = maxActiveInFlight;
@@ -117,10 +117,11 @@ public final class KafkaReceiverOptions<K, V> {
     }
 
     /**
-     * Creates a new reception listener based on a reactive handle to the active Consumer instance.
+     * Creates a new {@link ConsumerListener} based on a reactive handle to the active Consumer
+     * instance.
      */
-    public ReceptionListener createReceptionListener(ConsumerInvocable invocable) {
-        return listenerFactory.create(invocable);
+    public ConsumerListener createConsumerListener(ConsumerInvocable invocable) {
+        return consumerListenerFactory.create(invocable);
     }
 
     public String loadClientId() {
@@ -206,7 +207,7 @@ public final class KafkaReceiverOptions<K, V> {
 
         private final Function<Map<String, Object>, Consumer<K, V>> consumerFactory;
 
-        private ReceptionListenerFactory listenerFactory = ReceptionListenerFactory.noOp();
+        private ConsumerListenerFactory consumerListenerFactory = ConsumerListenerFactory.noOp();
 
         private Map<String, Object> consumerProperties = Collections.emptyMap();
 
@@ -233,19 +234,19 @@ public final class KafkaReceiverOptions<K, V> {
         }
 
         /**
-         * Configures a singleton {@link ReceptionListenerFactory} that wraps the provided
+         * Configures a singleton {@link ConsumerListenerFactory} that wraps the provided
          * listener.
          */
-        public Builder<K, V> listener(ReceptionListener listener) {
-            return listenerFactory(ReceptionListenerFactory.singleton(listener));
+        public Builder<K, V> consumerListener(ConsumerListener listener) {
+            return consumerListenerFactory(ConsumerListenerFactory.singleton(listener));
         }
 
         /**
-         * Configures the factory that's used to create {@link ReceptionListener} instances on a
+         * Configures the factory that's used to create {@link ConsumerListener} instances on a
          * per-reception, per-subscription basis. Defaults to no-op.
          */
-        public Builder<K, V> listenerFactory(ReceptionListenerFactory listenerFactory) {
-            this.listenerFactory = listenerFactory;
+        public Builder<K, V> consumerListenerFactory(ConsumerListenerFactory consumerListenerFactory) {
+            this.consumerListenerFactory = consumerListenerFactory;
             return this;
         }
 
@@ -355,7 +356,7 @@ public final class KafkaReceiverOptions<K, V> {
         public KafkaReceiverOptions<K, V> build() {
             return new KafkaReceiverOptions<>(
                 consumerFactory,
-                listenerFactory,
+                consumerListenerFactory,
                 consumerProperties,
                 fullPollRecordsPrefetch,
                 maxActiveInFlight,
