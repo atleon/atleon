@@ -5,6 +5,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Sinks;
 
@@ -14,8 +15,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -132,10 +135,48 @@ class ReceivingConsumerTest {
                 throw new UnsupportedOperationException("Bang");
             });
 
-        receivingConsumer.safelyClose(Duration.ofSeconds(5)).block();
+        receivingConsumer.closeSafely().block();
 
         assertInstanceOf(UnsupportedOperationException.class, error.asMono().block());
         assertTrue(mockConsumer.closed());
+    }
+
+    @Test
+    public void wakeupSafely_givenInvocationFromTaskThread_expectsNoOp() {
+        MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+
+        KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
+            .consumerProperties(Collections.singletonMap(CommonClientConfigs.CLIENT_ID_CONFIG, "test"))
+            .build();
+        Sinks.One<Throwable> error = Sinks.one();
+
+        ReceivingConsumer<String, String> receivingConsumer =
+            new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
+
+        receivingConsumer.schedule(__ -> {
+            receivingConsumer.wakeupSafely();
+            error.tryEmitEmpty();
+        });
+
+        assertNull(error.asMono().block());
+        assertDoesNotThrow(() -> mockConsumer.poll(Duration.ZERO));
+    }
+
+    @Test
+    public void wakeupSafely_givenInvocationFromNonTaskThread_expectsNoOp() {
+        MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+
+        KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
+            .consumerProperties(Collections.singletonMap(CommonClientConfigs.CLIENT_ID_CONFIG, "test"))
+            .build();
+        Sinks.One<Throwable> error = Sinks.one();
+
+        ReceivingConsumer<String, String> receivingConsumer =
+            new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
+
+        receivingConsumer.wakeupSafely();
+
+        assertThrows(WakeupException.class, () -> mockConsumer.poll(Duration.ZERO));
     }
 
     public static class NoOpPartitionListener implements ReceivingConsumer.PartitionListener {

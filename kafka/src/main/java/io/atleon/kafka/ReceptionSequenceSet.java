@@ -61,7 +61,7 @@ final class ReceptionSequenceSet {
         return commitRetries.get(partition).get();
     }
 
-    public void incrementRetry(TopicPartition partition) {
+    public void incrementCommitRetry(TopicPartition partition) {
         commitRetries.get(partition).incrementAndGet();
     }
 

@@ -29,9 +29,12 @@ final class ActivePartition {
 
     private final AcknowledgementQueue acknowledgementQueue;
 
-    // Initialized to 1, in reserve for deactivation of self. When this becomes non-positive,
-    // it means this partition has been deactivated. When it becomes zero, it means termination
-    // has been signaled to subscribers of this partition's sinks.
+    // This counter doubles as both our publishing state (via polarity: positive == ACTIVE,
+    // negative == TERMINABLE, zero == TERMINATED) and our count of activated in-flight records
+    // (via magnitude: subtract 1 if positive, negate if negative). The extra/initializing count of
+    // 1 is in reserve for deactivation of this partition (self). As such, when this becomes
+    // non-positive, it means this partition has been deactivated. When it becomes zero, it means
+    // termination has been enqueued to subscribers of this partition's sinks.
     private final AtomicLong activated = new AtomicLong(1);
 
     private final Queue<Deactivation> deactivationQueue = new ConcurrentLinkedQueue<>();
@@ -53,7 +56,7 @@ final class ActivePartition {
      */
     public <K, V> Optional<KafkaReceiverRecord<K, V>> activateForProcessing(ConsumerRecord<K, V> consumerRecord) {
         return activate(new OffsetAndMetadata(consumerRecord.offset() + 1, consumerRecord.leaderEpoch(), ""))
-            .map(it -> acknowledgementQueue.add(it, this::deactivateWithError))
+            .map(it -> acknowledgementQueue.add(it, this::deactivateWithForce))
             .map(inFlight -> KafkaReceiverRecord.create(
                 consumerRecord, () -> complete(inFlight), error -> completeExceptionally(inFlight, error)));
     }
@@ -115,23 +118,25 @@ final class ActivePartition {
     private void acknowledge(ToLongFunction<AcknowledgementQueue> completer) {
         enqueueAndDrain(() -> {
             long completedRecords = completer.applyAsLong(acknowledgementQueue);
-            long previousActiveCount = activated.getAndUpdate(count -> {
+            long previousActivated = activated.getAndUpdate(count -> {
                 if (count > 0) {
-                    // Not deactivated yet, so just subtract
+                    // Not deactivated yet, so just subtract.
                     return count - completedRecords;
                 } else if (count == 0) {
-                    // Deactivated and terminated, so do nothing
+                    // Deactivated and terminated, so do nothing.
                     return count;
                 } else {
-                    // Deactivated but not terminated yet, so add until we get to zero
+                    // Deactivated but not terminated yet, so add until we get to zero.
                     return count + completedRecords;
                 }
             });
-            // If previous active count was positive, termination hadn't happened yet, so magnitude
-            // is guaranteed to not be equal. Therefore, the only trigger for completion will be if
-            // the previous active count was exactly the negative magnitude of completed records,
-            // so we can just add the two together and see if they cancel out.
-            if (completedRecords + previousActiveCount == 0) {
+            // Only if previous count was negative (indicating eligibility for termination, but not
+            // yet terminated) may we emit completion termination. The magnitude of a negative
+            // count should be exactly equal to the number of in-flight records. Therefore, the
+            // only trigger for completion will be if the previous active count was negative and
+            // equal in magnitude to the number of completed records, so we can just check polarity
+            // and add the two together and see if they cancel out.
+            if (previousActivated < 0 && completedRecords + previousActivated == 0) {
                 nextOffsetsOfAcknowledged.tryEmitComplete();
             }
             return completedRecords;
@@ -150,15 +155,15 @@ final class ActivePartition {
 
     private void deactivateWithGrace() {
         enqueueAndDrain(() -> {
-            if (activated.updateAndGet(count -> count > 0 ? 1 - count : count) == 0) {
-                // This deactivation is the one that's terminating, so emit completion
+            if (activated.getAndUpdate(count -> count > 0 ? 1 - count : count) == 1) {
+                // This deactivation is the one that's terminating, so emit completion.
                 nextOffsetsOfAcknowledged.tryEmitComplete();
             }
             return 0L;
         });
     }
 
-    private void deactivateWithError(Throwable error) {
+    private void deactivateWithForce(Throwable error) {
         deactivateWithForce(sink -> sink.tryEmitError(error));
     }
 
@@ -168,15 +173,15 @@ final class ActivePartition {
 
     private void deactivateWithForce(java.util.function.Consumer<Sinks.Many<?>> terminationEmitter) {
         enqueueAndDrain(() -> {
-            long previousActiveCount = activated.getAndSet(0);
-            if (previousActiveCount != 0) {
+            long previousActivated = activated.getAndSet(0);
+            if (previousActivated != 0) {
                 // This deactivation is the one that's terminating, so do it and calculate the
                 // number of deactivated records based on the previous count which, if positive,
                 // means this partition had not yet been deactivated, so we need to subtract one,
                 // and if negative, means this partition had already been deactivated, and we need
                 // to negate.
                 terminationEmitter.accept(nextOffsetsOfAcknowledged);
-                return previousActiveCount > 0 ? previousActiveCount - 1 : -previousActiveCount;
+                return previousActivated > 0 ? previousActivated - 1 : -previousActivated;
             } else {
                 return 0L;
             }

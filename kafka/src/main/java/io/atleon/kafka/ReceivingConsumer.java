@@ -31,7 +31,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ReceivingConsumer.class);
 
-    private static final Set<String> ALLOWED_CONSUMER_EXTERNAL_INVOCATIONS = new HashSet<>(Arrays.asList(
+    private static final Set<String> ALLOWED_EXTERNAL_CONSUMER_INVOCATIONS = new HashSet<>(Arrays.asList(
         "assignment",
         "beginningOffsets",
         "committed",
@@ -54,7 +54,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     private final Consumer<K, V> consumer;
 
-    private final Consumer<K, V> consumerExternalProxy;
+    private final Consumer<K, V> externalConsumerProxy;
 
     private final PartitionListener partitionListener;
 
@@ -63,6 +63,8 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
     private final Disposable taskLoop;
 
     private final ConsumerListener consumerListener;
+
+    private final Duration closeTimeout;
 
     private final Sinks.Many<Runnable> tasks = Sinks.unsafe().many().unicast().onBackpressureError();
 
@@ -74,13 +76,14 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         java.util.function.Consumer<Throwable> errorHandler
     ) {
         this.consumer = options.createConsumer();
-        this.consumerExternalProxy = Proxying.interfaceMethods(Consumer.class, this::invokeConsumerFromExternal);
+        this.externalConsumerProxy = Proxying.interfaceMethods(Consumer.class, this::invokeConsumerFromExternal);
         this.partitionListener = partitionListener;
         this.taskScheduler = KafkaSchedulers.newSingleForReception("task", options.loadClientId());
         this.taskLoop = tasks.asFlux()
             .publishOn(taskScheduler, Integer.MAX_VALUE)
-            .subscribe(it -> safelyRun(it, errorHandler));
+            .subscribe(it -> runSafely(it, errorHandler));
         this.consumerListener = options.createConsumerListener(this);
+        this.closeTimeout = options.closeTimeout();
     }
 
     @Override
@@ -107,7 +110,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         }
         return Mono.create(sink -> schedule(() -> {
             try {
-                sink.success(invocation.apply(consumerExternalProxy));
+                sink.success(invocation.apply(externalConsumerProxy));
             } catch (Throwable e) {
                 sink.error(e);
             }
@@ -121,18 +124,22 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         });
     }
 
-    public Mono<Void> safelyClose(Duration timeout) {
+    public Mono<Void> closeSafely() {
         return Mono.create(sink -> schedule(() -> {
-            safelyRun(() -> consumerListener.onClose(consumer), "consumerListener::onClose");
-            safelyRun(() -> consumer.close(timeout), "consumer::close");
-            safelyRun(taskScheduler::dispose, "taskScheduler::dispose");
-            safelyRun(taskLoop::dispose, "taskLoop::dispose");
+            runSafely(() -> consumerListener.onClose(consumer), "consumerListener::onClose");
+            runSafely(() -> consumer.close(closeTimeout), "consumer::close");
+            runSafely(taskLoop::dispose, "taskLoop::dispose");
+            runSafely(taskScheduler::dispose, "taskScheduler::dispose");
             sink.success();
         }));
     }
 
-    public void safelyWakeup() {
-        safelyRun(consumer::wakeup, "consumer::wakeup");
+    public void wakeupSafely() {
+        // It does not make sense to call wakeup if we know we're executing on the only thread that
+        // could execute a long-running call (i.e. poll), so avoid unnecessary interrupt.
+        if (!KafkaSchedulers.isCurrentThreadFromKafka()) {
+            runSafely(consumer::wakeup, "consumer::wakeup");
+        }
     }
 
     public void schedule(java.util.function.Consumer<Consumer<K, V>> task) {
@@ -151,14 +158,14 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         internalHandler.accept(consumer, partitions);
 
         // Not wrapping with try-catch. If user does something naughty, let the error be emitted.
-        externalHandler.accept(consumerExternalProxy, partitions);
+        externalHandler.accept(externalConsumerProxy, partitions);
     }
 
     private Object invokeConsumerFromExternal(Method method, Object[] args) throws ReflectiveOperationException {
         if (!KafkaSchedulers.isCurrentThreadFromKafka()) {
             throw new UnsupportedOperationException("Kafka Consumer must be invoked from polling thread");
         }
-        if (!ALLOWED_CONSUMER_EXTERNAL_INVOCATIONS.contains(method.getName())) {
+        if (!ALLOWED_EXTERNAL_CONSUMER_INVOCATIONS.contains(method.getName())) {
             throw new UnsupportedOperationException("Kafka Consumer method is not supported: " + method);
         }
 
@@ -171,11 +178,11 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         return result;
     }
 
-    private static void safelyRun(Runnable task, String name) {
-        safelyRun(task, error -> LOGGER.error("Unexpected failure: name={}", name, error));
+    private static void runSafely(Runnable task, String name) {
+        runSafely(task, error -> LOGGER.error("Unexpected failure: name={}", name, error));
     }
 
-    private static void safelyRun(Runnable task, java.util.function.Consumer<Throwable> errorHandler) {
+    private static void runSafely(Runnable task, java.util.function.Consumer<Throwable> errorHandler) {
         try {
             task.run();
         } catch (Throwable e) {

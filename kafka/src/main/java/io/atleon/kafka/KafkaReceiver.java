@@ -35,6 +35,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -69,7 +70,6 @@ import java.util.stream.Collectors;
  * @param <K> The type of keys in records emitted by this receiver
  * @param <V> The type of values in records emitted by this receiver
  */
-//TODO It's possible that onNext and onError may not be serialized
 public final class KafkaReceiver<K, V> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaReceiver.class);
@@ -113,13 +113,15 @@ public final class KafkaReceiver<K, V> {
         return Flux.merge(Flux.fromIterable(sources), sources.size());
     }
 
-    private static void safelyRun(Runnable task, String name) {
+    private static void runSafely(Runnable task, String name) {
         try {
             task.run();
         } catch (Exception e) {
             LOGGER.error("Unexpected failure: name={}", name, e);
         }
     }
+
+    private enum State {ACTIVE, TERMINABLE, TERMINATED}
 
     private final class Poller implements Subscription, ReceivingConsumer.PartitionListener {
 
@@ -137,15 +139,17 @@ public final class KafkaReceiver<K, V> {
 
         private final AtomicInteger freePrefetchCapacity = new AtomicInteger(options.calculateMaxRecordsPrefetch());
 
-        private final AtomicLong freeActiveInFlightCapacity = new AtomicLong(options.maxActiveInFlight());
-
         private final AtomicLong requestOutstanding = new AtomicLong(0);
 
         private final AtomicInteger drainsInProgress = new AtomicInteger(0);
 
-        private final AtomicBoolean paused = new AtomicBoolean(false);
+        private final AtomicLong freeActiveInFlightCapacity = new AtomicLong(options.maxActiveInFlight());
 
-        private final AtomicBoolean done = new AtomicBoolean(false);
+        private final AtomicReference<State> state = new AtomicReference<>(State.ACTIVE);
+
+        private final AtomicBoolean pausedDueToBackpressure = new AtomicBoolean(false);
+
+        private final AtomicReference<Throwable> error = new AtomicReference<>();
 
         private final ReceptionSequenceSet sequenceSet = new ReceptionSequenceSet();
 
@@ -165,20 +169,20 @@ public final class KafkaReceiver<K, V> {
 
         public Poller(AssignmentSpec assignmentSpec, Subscriber<? super KafkaReceiverRecord<K, V>> subscriber) {
             this.subscriber = subscriber;
-            this.receivingConsumer = new ReceivingConsumer<>(options, this, this::doError);
+            this.receivingConsumer = new ReceivingConsumer<>(options, this, this::failSafely);
             this.listener = options.createReceptionListener();
             this.auxiliaryScheduler = options.createAuxiliaryScheduler();
             this.periodicCommit = committableOffsets.asFlux()
                 .windowTimeout(options.commitBatchSize(), options.commitInterval(), auxiliaryScheduler)
                 .concatMap(it -> it.collectMap(CommittableOffset::topicPartition, CommittableOffset::sequencedOffset))
-                .subscribe(this::scheduleCommit, this::doError);
+                .subscribe(this::scheduleCommit, this::failSafely);
 
             receivingConsumer.subscribe(assignmentSpec, this::pollAndDrain);
         }
 
         @Override
         public void request(long n) {
-            if (n > 0) {
+            if (n > 0 && requestOutstanding.get() != Long.MAX_VALUE) {
                 requestOutstanding.addAndGet(n);
                 drain();
             }
@@ -186,7 +190,9 @@ public final class KafkaReceiver<K, V> {
 
         @Override
         public void cancel() {
-            dispose(() -> LOGGER.debug("Canceled"));
+            if (state.compareAndSet(State.ACTIVE, State.TERMINABLE)) {
+                drain();
+            }
         }
 
         @Override
@@ -196,17 +202,16 @@ public final class KafkaReceiver<K, V> {
                     throw new IllegalStateException("TopicPartition already assigned: " + partition);
                 }
 
+                ActivePartition activePartition = new ActivePartition(partition, options.acknowledgementQueueMode());
                 listener.onPartitionActivated(partition);
 
                 long assignmentSequence = sequenceSet.assigned(partition);
-
-                ActivePartition activePartition = new ActivePartition(partition, options.acknowledgementQueueMode());
                 activePartition.acknowledgedOffsets()
                     .map(it -> new CommittableOffset(it, assignmentSequence))
-                    .subscribe(committableOffsetQueue::addAndDrain, this::doError);
+                    .subscribe(committableOffsetQueue::addAndDrain, this::failSafely);
                 activePartition.deactivatedRecordCounts()
                     .doOnNext(it -> listener.onRecordsDeactivated(partition, it))
-                    .subscribe(this::handleInFlightRecordsDeactivated, this::doError);
+                    .subscribe(this::handleInFlightRecordsDeactivated, this::failSafely);
                 assignments.put(partition, activePartition);
             });
 
@@ -223,7 +228,7 @@ public final class KafkaReceiver<K, V> {
             // Get the latest committable offsets for the partitions that have been revoked (with
             // possible grace period), such that we can commit them synchronously. Although it is
             // possible that these offsets may have been previously committed, it is unlikely that
-            // this redundancy is relatively significant. Under low load, the overhead of a
+            // this redundancy is significantly undesirable. Under low load, the overhead of a
             // synchronous commit is not likely to meaningfully degrade already-low throughput. As
             // load increases, so does the likelihood that there will be acknowledged uncommitted
             // offsets, and it becomes more desirable to attempt to honor that progress.
@@ -243,17 +248,19 @@ public final class KafkaReceiver<K, V> {
                     consumer.commitSync(offsetsToCommit);
                 }
             } catch (WakeupException e) {
-                // Corner case - There are only three plausible causes for a wakeup here:
-                // 1. Emission of records freed up capacity for subsequent polling
-                // 2. Reception terminated before or while awaiting revocation completion
-                // 3. Async commit(s) failed and retry was exhausted
-                // Every other theoretically possible wakeup must have come from faults in our code
-                // (errors in process subscriptions that we aren't handling, and almost certainly
-                // should) or faulty Subscriber::onNext code (which should not throw, but rather
-                // cancel and emit). In order to attempt graceful handling of the plausible wakeup
-                // causes, try committing one LAST time, and then re-emit the wakeup signal so the
-                // poll invocation knows about it.
-                consumer.commitSync(offsetsToCommit);
+                // There are two possible causes for a wakeup during partition revocation:
+                //   1. Async emission of records freed up capacity for subsequent polling
+                //   2. Async termination (without poll invocation consuming wakeup signal)
+                // In order to attempt graceful handling of either scenario, we retry the commit.
+                // Although it is not likely, it is possible that both scenarios occur (in order),
+                // with the first retry attempt being woken by the second scenario. In this case,
+                // we retry one LAST time. We then re-emit the original wakeup signal so that any
+                // possible parent poll invocation knows about it.
+                try {
+                    consumer.commitSync(offsetsToCommit);
+                } catch (WakeupException __) {
+                    consumer.commitSync(offsetsToCommit);
+                }
                 throw e;
             } finally {
                 // Lastly, sanitize sequence counters to account for possible in-flight commits and
@@ -287,6 +294,14 @@ public final class KafkaReceiver<K, V> {
         }
 
         private void pollAndDrain(Consumer<K, V> consumer) {
+            if (state.get() == State.TERMINATED) {
+                return;
+            }
+
+            // Reschedule this invocation before actually invoking poll, in order to ensure that
+            // any wakeup from freed prefetch capacity will be seen by a poll invocation.
+            receivingConsumer.schedule(this::pollAndDrain);
+
             ConsumerRecords<K, V> consumerRecords = pollWakeably(consumer);
 
             int queuedForEmission = 0;
@@ -304,21 +319,17 @@ public final class KafkaReceiver<K, V> {
                 // Doing this after draining to avoid possibly-unnecessary pausing
                 if (freePrefetchCapacity.addAndGet(-queuedForEmission) < maxPollRecords) {
                     consumer.pause(assignments.keySet());
-                    paused.set(true);
+                    pausedDueToBackpressure.set(true);
                     LOGGER.debug("Assignments paused");
                 }
-            }
-
-            if (!done.get()) {
-                receivingConsumer.schedule(this::pollAndDrain);
             }
         }
 
         private ConsumerRecords<K, V> pollWakeably(Consumer<K, V> consumer) {
             try {
-                if (paused.get() && freePrefetchCapacity.get() >= maxPollRecords) {
+                if (pausedDueToBackpressure.get() && freePrefetchCapacity.get() >= maxPollRecords) {
                     consumer.resume(resumeablePartitions());
-                    paused.set(false);
+                    pausedDueToBackpressure.set(false);
                     LOGGER.debug("Assignments resumed");
                 }
 
@@ -327,14 +338,14 @@ public final class KafkaReceiver<K, V> {
                 LOGGER.debug("Consumer polling woken");
                 // Check if this wakeup must have been caused by freeing up capacity, and if so,
                 // retry the poll.
-                return paused.get() && !done.get() && freePrefetchCapacity.get() >= maxPollRecords
+                return activelyPausedDueToBackpressure() && freePrefetchCapacity.get() >= maxPollRecords
                     ? pollWakeably(consumer)
                     : ConsumerRecords.empty();
             }
         }
 
         private Collection<TopicPartition> calculatePartitionsToPause(Collection<TopicPartition> newlyAssigned) {
-            if (paused.get()) {
+            if (pausedDueToBackpressure.get()) {
                 LOGGER.debug("Rebalance during back-pressure. Pausing...");
                 return newlyAssigned;
             } else if (externallyPausedPartitions.isEmpty()) {
@@ -355,52 +366,11 @@ public final class KafkaReceiver<K, V> {
             }
         }
 
-        private void handleInFlightRecordsDeactivated(long count) {
+        private void handleInFlightRecordsDeactivated(long deactivationCount) {
             if (freeActiveInFlightCapacity.get() != Long.MAX_VALUE) {
-                freeActiveInFlightCapacity.addAndGet(count);
+                freeActiveInFlightCapacity.addAndGet(deactivationCount);
                 drain();
             }
-        }
-
-        private void drain() {
-            if (drainsInProgress.getAndIncrement() != 0) {
-                return;
-            }
-
-            int missed = 1;
-            do {
-                long maxToEmit = Math.min(freeActiveInFlightCapacity.get(), requestOutstanding.get());
-                long emitted = 0;
-                EmittableRecord<K, V> emittableRecord;
-                while (emitted < maxToEmit && !done.get() && (emittableRecord = emittableRecords.poll()) != null) {
-                    Optional<KafkaReceiverRecord<K, V>> activated = emittableRecord.activateForProcessing();
-                    try {
-                        listener.onRecordsActivated(emittableRecord.topicPartition(), activated.isPresent() ? 1 : 0);
-                        activated.ifPresent(subscriber::onNext);
-                    } catch (Throwable error) {
-                        LOGGER.error("Emission failure (§2.13)", error);
-                        doError(error);
-                    }
-
-                    if (activated.isPresent()) {
-                        emitted++;
-                    }
-
-                    // Doing this after emission, since it's possible that emission may have caused
-                    // cancellation, so we may avoid unnecessary wakeup.
-                    if (freePrefetchCapacity.incrementAndGet() == maxPollRecords && paused.get() && !done.get()) {
-                        receivingConsumer.safelyWakeup();
-                    }
-                }
-
-                if (freeActiveInFlightCapacity.get() != Long.MAX_VALUE) {
-                    freeActiveInFlightCapacity.addAndGet(-emitted);
-                }
-
-                requestOutstanding.addAndGet(-emitted);
-
-                missed = drainsInProgress.addAndGet(-missed);
-            } while (missed != 0);
         }
 
         private void scheduleCommit(Map<TopicPartition, SequencedOffset> assignedOffsets) {
@@ -435,7 +405,7 @@ public final class KafkaReceiver<K, V> {
                     offsets.keySet().forEach(sequenceSet::resetCommitRetry);
                     return;
                 } else if (!isRetriableCommitFailure(exception)) {
-                    doError(exception);
+                    failSafely(exception);
                     return;
                 }
 
@@ -445,7 +415,7 @@ public final class KafkaReceiver<K, V> {
                 int remainingAttempts = options.maxCommitAttempts() - maxRetryCount - 1;
 
                 if (remainingAttempts == 0) {
-                    doError(new KafkaException("Retries exhausted", exception));
+                    failSafely(new KafkaException("Retries exhausted", exception));
                 } else {
                     LOGGER.warn("Retrying failed commit (remaining: {}): {}", remainingAttempts, exception.toString());
                     scheduleCommitRetry(validatedOffsets, commitSequences);
@@ -460,27 +430,96 @@ public final class KafkaReceiver<K, V> {
             receivingConsumer.schedule(consumer -> {
                 Map<TopicPartition, OffsetAndMetadata> validatedOffsets = offsets.entrySet().stream()
                     .filter(it -> commitSequences.get(it.getKey()) == sequenceSet.getCommit(it.getKey()))
-                    .peek(it -> sequenceSet.incrementRetry(it.getKey()))
+                    .peek(it -> sequenceSet.incrementCommitRetry(it.getKey()))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                 commit(consumer, validatedOffsets, commitSequences);
             });
         }
 
-        private void doError(Throwable error) {
-            dispose(() -> safelyRun(() -> subscriber.onError(error), "subscriber::onError §2.13"));
+        private void failSafely(Throwable failure) {
+            if (state.get() != State.ACTIVE || !error.compareAndSet(null, failure)) {
+                // Failures during termination and failures that don't initiate termination can be
+                // safely dropped.
+                LOGGER.debug("Ignoring failure during termination", failure);
+            } else if (state.compareAndSet(State.ACTIVE, State.TERMINABLE)) {
+                // Could be racing with cancellation, but it's not a spec violation if onError
+                // emission is concurrent with downstream cancellation.
+                drain();
+            }
         }
 
-        private void dispose(Runnable onDisposed) {
-            if (done.compareAndSet(false, true)) {
-                safelyRun(disposal::tryEmitEmpty, "disposal::tryEmitEmpty");
-                receivingConsumer.safelyWakeup();
-                receivingConsumer.safelyClose(options.closeTimeout())
-                    .doOnTerminate(() -> safelyRun(periodicCommit::dispose, "periodicCommit::dispose"))
-                    .doOnTerminate(() -> safelyRun(auxiliaryScheduler::dispose, "periodicScheduler::dispose"))
-                    .doOnTerminate(() -> safelyRun(listener::close, "listener::close"))
-                    .doOnTerminate(onDisposed)
-                    .subscribe();
+        private void drain() {
+            if (state.get() == State.TERMINATED || drainsInProgress.getAndIncrement() != 0) {
+                return;
             }
+
+            int missed = 1;
+            do {
+                // Handle onNext emission and update outstanding capacities.
+                long emitted = drainEmittable(Math.min(freeActiveInFlightCapacity.get(), requestOutstanding.get()));
+                if (freeActiveInFlightCapacity.get() != Long.MAX_VALUE) {
+                    freeActiveInFlightCapacity.addAndGet(-emitted);
+                }
+                if (requestOutstanding.get() != Long.MAX_VALUE) {
+                    requestOutstanding.addAndGet(-emitted);
+                }
+
+                // Handle termination, if now is the time to do so. Don't need CAS here since this
+                // is the only place to transition to TERMINATED.
+                if (state.get() == State.TERMINABLE) {
+                    terminateSafely();
+                    state.set(State.TERMINATED);
+                    receivingConsumer.wakeupSafely();
+                }
+
+                missed = drainsInProgress.addAndGet(-missed);
+            } while (missed != 0);
+        }
+
+        private long drainEmittable(long maxEmits) {
+            long emitted = 0;
+            EmittableRecord<K, V> emittable;
+            while (emitted < maxEmits && state.get() == State.ACTIVE && (emittable = emittableRecords.poll()) != null) {
+                Optional<KafkaReceiverRecord<K, V>> activated = emittable.activateForProcessing();
+                try {
+                    listener.onRecordsActivated(emittable.topicPartition(), activated.isPresent() ? 1 : 0);
+                    activated.ifPresent(subscriber::onNext);
+                } catch (Throwable error) {
+                    LOGGER.error("Emission failure (§2.13)", error);
+                    failSafely(error);
+                }
+
+                if (activated.isPresent()) {
+                    emitted++;
+                }
+
+                // Doing this after emission, since it's possible that emission may have caused
+                // cancellation, so we may avoid unnecessary wakeup.
+                if (freePrefetchCapacity.incrementAndGet() == maxPollRecords && activelyPausedDueToBackpressure()) {
+                    receivingConsumer.wakeupSafely();
+                }
+            }
+            return emitted;
+        }
+
+        private void terminateSafely() {
+            if (error.get() != null) {
+                runSafely(() -> subscriber.onError(error.get()), "subscriber::onError §2.13");
+                LOGGER.debug("Terminated due to error");
+            } else {
+                LOGGER.debug("Terminated due to cancel");
+            }
+
+            runSafely(disposal::tryEmitEmpty, "disposal::tryEmitEmpty");
+            receivingConsumer.closeSafely()
+                .doOnTerminate(() -> runSafely(listener::close, "listener::close"))
+                .doOnTerminate(() -> runSafely(periodicCommit::dispose, "periodicCommit::dispose"))
+                .doOnTerminate(() -> runSafely(auxiliaryScheduler::dispose, "periodicScheduler::dispose"))
+                .subscribe();
+        }
+
+        private boolean activelyPausedDueToBackpressure() {
+            return pausedDueToBackpressure.get() && state.get() == State.ACTIVE;
         }
     }
 }
