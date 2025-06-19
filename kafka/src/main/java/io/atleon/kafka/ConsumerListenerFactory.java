@@ -7,7 +7,7 @@ package io.atleon.kafka;
 public interface ConsumerListenerFactory {
 
     /**
-     * Creates a factory that always returns a no-op listener
+     * Creates a factory that always returns a no-op listener.
      */
     static ConsumerListenerFactory noOp() {
         return singleton(ConsumerListener.noOp());

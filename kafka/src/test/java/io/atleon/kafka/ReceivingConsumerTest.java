@@ -32,7 +32,7 @@ class ReceivingConsumerTest {
 
         Set<TopicPartition> paused = new HashSet<>();
         Set<TopicPartition> resumed = new HashSet<>();
-        NoOpPartitioningListener noOpPartitioningListener = new NoOpPartitioningListener() {
+        NoOpPartitionListener noOpPartitionListener = new NoOpPartitionListener() {
             @Override
             public void onPartitionsExternallyPaused(Collection<TopicPartition> partitions) {
                 paused.addAll(partitions);
@@ -47,7 +47,7 @@ class ReceivingConsumerTest {
         Sinks.One<Throwable> error = Sinks.one();
 
         ReceivingConsumer<String, String> receivingConsumer =
-            new ReceivingConsumer<>(options, noOpPartitioningListener, error::tryEmitValue);
+            new ReceivingConsumer<>(options, noOpPartitionListener, error::tryEmitValue);
         mockConsumer.assign(Collections.singletonList(topicPartition));
 
         receivingConsumer.invoke(consumer -> consumer.pause(Collections.singletonList(topicPartition))).block();
@@ -67,7 +67,7 @@ class ReceivingConsumerTest {
         Sinks.One<Throwable> error = Sinks.one();
 
         ReceivingConsumer<String, String> receivingConsumer =
-            new ReceivingConsumer<>(options, new NoOpPartitioningListener(), error::tryEmitValue);
+            new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
 
         assertThrows(UnsupportedOperationException.class, receivingConsumer.invoke(Consumer::wakeup)::block);
     }
@@ -82,7 +82,7 @@ class ReceivingConsumerTest {
         Sinks.One<Throwable> error = Sinks.one();
 
         ReceivingConsumer<String, String> receivingConsumer =
-            new ReceivingConsumer<>(options, new NoOpPartitioningListener(), error::tryEmitValue);
+            new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
 
         receivingConsumer.schedule(__ -> receivingConsumer.invokeAndGet(Consumer::paused));
 
@@ -107,7 +107,7 @@ class ReceivingConsumerTest {
         Sinks.One<Throwable> error = Sinks.one();
 
         ReceivingConsumer<String, String> receivingConsumer =
-            new ReceivingConsumer<>(options, new NoOpPartitioningListener(), error::tryEmitValue);
+            new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
 
         assertThrows(
             UnsupportedOperationException.class,
@@ -124,7 +124,7 @@ class ReceivingConsumerTest {
         Sinks.One<Throwable> error = Sinks.one();
 
         ReceivingConsumer<String, String> receivingConsumer =
-            new ReceivingConsumer<>(options, new NoOpPartitioningListener(), error::tryEmitValue);
+            new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
 
         receivingConsumer.subscribe(
             (consumer, listener) -> consumer.subscribe(Collections.singletonList("topic")),
@@ -138,7 +138,7 @@ class ReceivingConsumerTest {
         assertTrue(mockConsumer.closed());
     }
 
-    public class NoOpPartitioningListener implements ReceivingConsumer.PartitioningListener {
+    public static class NoOpPartitionListener implements ReceivingConsumer.PartitionListener {
 
         @Override
         public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {

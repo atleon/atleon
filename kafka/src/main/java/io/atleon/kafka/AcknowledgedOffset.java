@@ -4,9 +4,10 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 
 /**
- * An offset from a particular {@link TopicPartition} that has been acknowledged, and contains the
- * {@link OffsetAndMetadata} to commit, which is the offset <i>just after</i> the record for which
- * this acknowledgement is associated.
+ * An offset for a {@link org.apache.kafka.clients.consumer.ConsumerRecord} from a particular
+ * {@link TopicPartition} that has been acknowledged, and contains the {@link OffsetAndMetadata} to
+ * commit, which is the offset <i>just after</i> the record for which this acknowledgement is
+ * associated.
  */
 final class AcknowledgedOffset {
 

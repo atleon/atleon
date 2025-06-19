@@ -40,13 +40,36 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * A reactive receiver of Kafka {@link ConsumerRecord}.
+ * A reactive receiver of Kafka {@link ConsumerRecord records}, which are wrapped as
+ * {@link KafkaReceiverRecord}. A new Kafka {@link Consumer} is associated with each receiver
+ * subscription, and closed if/when that subscription is canceled or errored out. Each reception
+ * subscription takes care of keeping track of the records that have been emitted and acknowledged
+ * on a per-partition, per-assignment basis, and will only make any given record's offset available
+ * for commit (which is done with a configurable periodic interval) if/when that record and all the
+ * records that came before it in the same active partition assignment have been acknowledged. It
+ * is therefore important that every emitted record be either positively acknowledged when its
+ * processing completes normally, or negatively acknowledged ("nacknowledged"), in the case of
+ * processing failure.
+ * <p>
+ * Upon "deactivation" of any assigned partition, whether through typical revocation from a
+ * rebalance, reception error, or downstream cancellation, a strong effort is made to ensure that
+ * any offsets which can be committed are done so synchronously. The only case in which this is not
+ * true is if partitions are signaled to have been "lost", which can happen if/when a consumer is
+ * unexpectedly removed from its group (i.e. due to session timeout). Otherwise, a grace period is
+ * configurable, which configures a maximum amount of time that will be awaited for in-flight
+ * records to be acknowledged, before attempting final commitment and releasing any assigned
+ * partition(s). This grace period can be set to zero such that only record offsets acknowledged at
+ * the immediate time of partition deactivation will be committed immediately, which makes
+ * rebalancing faster at the cost of higher re-processing likelihood.
+ * <p>
+ * This receiver plays well with cooperative rebalancing by allowing polling and processing to
+ * continue during a cooperative rebalance, and taking care of cleanup if/when such rebalancing
+ * results in partition revocation.
  *
- * @param <K>
- * @param <V>
+ * @param <K> The type of keys in records emitted by this receiver
+ * @param <V> The type of values in records emitted by this receiver
  */
-//TODO
-// - EmissionListener
+//TODO It's possible that onNext and onError may not be serialized
 public final class KafkaReceiver<K, V> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KafkaReceiver.class);
@@ -98,7 +121,7 @@ public final class KafkaReceiver<K, V> {
         }
     }
 
-    private final class Poller implements Subscription, ReceivingConsumer.PartitioningListener {
+    private final class Poller implements Subscription, ReceivingConsumer.PartitionListener {
 
         private final Subscriber<? super KafkaReceiverRecord<K, V>> subscriber;
 
@@ -144,7 +167,7 @@ public final class KafkaReceiver<K, V> {
             this.subscriber = subscriber;
             this.receivingConsumer = new ReceivingConsumer<>(options, this, this::doError);
             this.listener = options.createReceptionListener();
-            this.auxiliaryScheduler = KafkaSchedulers.newSingleForReception("auxiliary", options.loadClientId());
+            this.auxiliaryScheduler = options.createAuxiliaryScheduler();
             this.periodicCommit = committableOffsets.asFlux()
                 .windowTimeout(options.commitBatchSize(), options.commitInterval(), auxiliaryScheduler)
                 .concatMap(it -> it.collectMap(CommittableOffset::topicPartition, CommittableOffset::sequencedOffset))
@@ -175,11 +198,11 @@ public final class KafkaReceiver<K, V> {
 
                 listener.onPartitionActivated(partition);
 
-                long sequence = sequenceSet.assigned(partition);
+                long assignmentSequence = sequenceSet.assigned(partition);
 
                 ActivePartition activePartition = new ActivePartition(partition, options.acknowledgementQueueMode());
                 activePartition.acknowledgedOffsets()
-                    .map(it -> new CommittableOffset(it, sequence))
+                    .map(it -> new CommittableOffset(it, assignmentSequence))
                     .subscribe(committableOffsetQueue::addAndDrain, this::doError);
                 activePartition.deactivatedRecordCounts()
                     .doOnNext(it -> listener.onRecordsDeactivated(partition, it))
@@ -188,7 +211,7 @@ public final class KafkaReceiver<K, V> {
             });
 
             // Newly assigned partitions may either be paused due to external control, or need
-            // pausing because there isn't enough outstanding downstream demand.
+            // pausing because there isn't enough outstanding downstream demand (back-pressure).
             Collection<TopicPartition> partitionsToPause = calculatePartitionsToPause(partitions);
             if (!partitionsToPause.isEmpty()) {
                 consumer.pause(partitionsToPause);
@@ -211,6 +234,7 @@ public final class KafkaReceiver<K, V> {
             Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = revokedPartitions.stream()
                 .map(it -> it.deactivate(options.revocationGracePeriod(), auxiliaryScheduler, disposal.asMono()))
                 .collect(Collectors.collectingAndThen(Collectors.toList(), KafkaReceiver::mergeGreedily))
+                .filter(it -> sequenceSet.getCommitRetry(it.topicPartition()) < options.maxCommitAttempts() - 1)
                 .collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffsetAndMetadata)
                 .block();
 
@@ -226,14 +250,14 @@ public final class KafkaReceiver<K, V> {
                 // Every other theoretically possible wakeup must have come from faults in our code
                 // (errors in process subscriptions that we aren't handling, and almost certainly
                 // should) or faulty Subscriber::onNext code (which should not throw, but rather
-                // cancel and emit). To gracefully handle the plausible wakeup causes, try
-                // committing one more time, and then re-emit the wakeup signal so the poll
-                // invocation knows about it.
+                // cancel and emit). In order to attempt graceful handling of the plausible wakeup
+                // causes, try committing one LAST time, and then re-emit the wakeup signal so the
+                // poll invocation knows about it.
                 consumer.commitSync(offsetsToCommit);
                 throw e;
             } finally {
                 // Lastly, sanitize sequence counters to account for possible in-flight commits and
-                // potential future reassignment.
+                // potential future reassignment (and signal listener about deactivation).
                 revokedPartitions.forEach(it -> sequenceSet.unassigned(it.topicPartition()));
                 revokedPartitions.forEach(it -> listener.onPartitionDeactivated(it.topicPartition()));
             }
@@ -402,36 +426,31 @@ public final class KafkaReceiver<K, V> {
             Map<TopicPartition, OffsetAndMetadata> validatedOffsets,
             Map<TopicPartition, Long> commitSequences
         ) {
-            if (!validatedOffsets.isEmpty()) {
-                consumer.commitAsync(validatedOffsets, (offsets, exception) -> {
-                    if (manageCommittedOrShouldRetry(offsets, exception)) {
-                        scheduleCommitRetry(validatedOffsets, commitSequences);
-                    }
-                });
-            }
-        }
-
-        private boolean manageCommittedOrShouldRetry(Map<TopicPartition, OffsetAndMetadata> offsets, Exception error) {
-            if (error == null) {
-                offsets.keySet().forEach(sequenceSet::resetCommitRetry);
-                return false;
-            } else if (!isRetriableCommitFailure(error)) {
-                doError(error);
-                return false;
+            if (validatedOffsets.isEmpty()) {
+                return;
             }
 
-            int maxRetryCount = offsets.keySet().stream()
-                .mapToInt(sequenceSet::getCommitRetry)
-                .reduce(0, Math::max);
-            int remainingAttempts = options.maxCommitAttempts() - maxRetryCount - 1;
+            consumer.commitAsync(validatedOffsets, (offsets, exception) -> {
+                if (exception == null) {
+                    offsets.keySet().forEach(sequenceSet::resetCommitRetry);
+                    return;
+                } else if (!isRetriableCommitFailure(exception)) {
+                    doError(exception);
+                    return;
+                }
 
-            if (remainingAttempts == 0) {
-                doError(new KafkaException("Retries exhausted", error));
-                return false;
-            } else {
-                LOGGER.warn("Retrying failed commit (remaining: {}): {}", remainingAttempts, error.toString());
-                return true;
-            }
+                int maxRetryCount = offsets.keySet().stream()
+                    .mapToInt(sequenceSet::getCommitRetry)
+                    .reduce(0, Math::max);
+                int remainingAttempts = options.maxCommitAttempts() - maxRetryCount - 1;
+
+                if (remainingAttempts == 0) {
+                    doError(new KafkaException("Retries exhausted", exception));
+                } else {
+                    LOGGER.warn("Retrying failed commit (remaining: {}): {}", remainingAttempts, exception.toString());
+                    scheduleCommitRetry(validatedOffsets, commitSequences);
+                }
+            });
         }
 
         private void scheduleCommitRetry(

@@ -6,8 +6,8 @@ import org.apache.kafka.common.TopicPartition;
 import java.util.function.Consumer;
 
 /**
- * A wrapper around a Kafka {@link ConsumerRecord} that has been received and is awaiting
- * acknowledgement.
+ * A wrapper around a received Kafka {@link ConsumerRecord} that has been emitted and should be
+ * acknowledged, either positively or negatively (with a {@link Throwable} error).
  *
  * @param <K> The type of key contained in this record's ConsumerRecord
  * @param <V> The type of value contained in this record's ConsumerRecord
@@ -30,7 +30,7 @@ public final class KafkaReceiverRecord<K, V> {
         this.nacknowledger = nacknowledger;
     }
 
-    static <K, V> KafkaReceiverRecord<K, V> create(
+    public static <K, V> KafkaReceiverRecord<K, V> create(
         ConsumerRecord<K, V> consumerRecord,
         Runnable acknowledger,
         Consumer<Throwable> nacknowledger

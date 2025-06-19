@@ -6,15 +6,18 @@ import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
- * Configuration options used to configure the reactive reception of records from Kafka.
+ * Options used to configure the reactive reception of records from Kafka.
  *
  * @param <K> The type of keys in received records
  * @param <V> The type of values in received records
@@ -31,7 +34,7 @@ public final class KafkaReceiverOptions<K, V> {
 
     private static final int DEFAULT_MAX_COMMIT_ATTEMPTS = 100;
 
-    private static final Duration DEFAULT_REVOCATION_GRACE_PERIOD = Duration.ofSeconds(30);
+    private static final Duration DEFAULT_REVOCATION_GRACE_PERIOD = Duration.ofSeconds(20);
 
     private static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(30L); // Kafka default
 
@@ -40,6 +43,8 @@ public final class KafkaReceiverOptions<K, V> {
     private final ConsumerListenerFactory consumerListenerFactory;
 
     private final ReceptionListenerFactory receptionListenerFactory;
+
+    private final Supplier<Scheduler> auxiliarySchedulerSupplier;
 
     private final Map<String, Object> consumerProperties;
 
@@ -65,6 +70,7 @@ public final class KafkaReceiverOptions<K, V> {
         Function<Map<String, Object>, Consumer<K, V>> consumerFactory,
         ConsumerListenerFactory consumerListenerFactory,
         ReceptionListenerFactory receptionListenerFactory,
+        Supplier<Scheduler> auxiliarySchedulerSupplier,
         Map<String, Object> consumerProperties,
         int fullPollRecordsPrefetch,
         long maxActiveInFlight,
@@ -79,6 +85,7 @@ public final class KafkaReceiverOptions<K, V> {
         this.consumerFactory = consumerFactory;
         this.consumerListenerFactory = consumerListenerFactory;
         this.receptionListenerFactory = receptionListenerFactory;
+        this.auxiliarySchedulerSupplier = auxiliarySchedulerSupplier;
         this.consumerProperties = consumerProperties;
         this.fullPollRecordsPrefetch = fullPollRecordsPrefetch;
         this.maxActiveInFlight = maxActiveInFlight;
@@ -133,6 +140,13 @@ public final class KafkaReceiverOptions<K, V> {
      */
     public ReceptionListener createReceptionListener() {
         return receptionListenerFactory.create();
+    }
+
+    /**
+     * @see Builder#auxiliarySchedulerSupplier(Supplier)
+     */
+    public Scheduler createAuxiliaryScheduler() {
+        return auxiliarySchedulerSupplier.get();
     }
 
     public String loadClientId() {
@@ -222,6 +236,8 @@ public final class KafkaReceiverOptions<K, V> {
 
         private ReceptionListenerFactory receptionListenerFactory = ReceptionListenerFactory.noOp();
 
+        private Supplier<Scheduler> auxiliarySchedulerSupplier = Schedulers::parallel;
+
         private Map<String, Object> consumerProperties = Collections.emptyMap();
 
         private int fullPollRecordsPrefetch = DEFAULT_MAX_FULL_POLL_RECORDS_PREFETCH;
@@ -277,6 +293,15 @@ public final class KafkaReceiverOptions<K, V> {
          */
         public Builder<K, V> receptionListenerFactory(ReceptionListenerFactory receptionListenerFactory) {
             this.receptionListenerFactory = receptionListenerFactory;
+            return this;
+        }
+
+        /**
+         * Configures the supplier of an "auxiliary" {@link Scheduler}, which is created and used
+         * for non-blocking periodic and timeout tasks (and therefore must be time-capable).
+         */
+        public Builder<K, V> auxiliarySchedulerSupplier(Supplier<Scheduler> auxiliarySchedulerSupplier) {
+            this.auxiliarySchedulerSupplier = auxiliarySchedulerSupplier;
             return this;
         }
 
@@ -388,6 +413,7 @@ public final class KafkaReceiverOptions<K, V> {
                 consumerFactory,
                 consumerListenerFactory,
                 receptionListenerFactory,
+                auxiliarySchedulerSupplier,
                 consumerProperties,
                 fullPollRecordsPrefetch,
                 maxActiveInFlight,

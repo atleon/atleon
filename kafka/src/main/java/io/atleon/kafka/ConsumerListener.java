@@ -91,7 +91,7 @@ public interface ConsumerListener {
      *
      * @param consumer   Consumer handle on which it is safe to invoke blocking calls
      * @param partitions The partitions that have been assigned
-     * @see org.apache.kafka.clients.consumer.ConsumerRebalanceListener#onPartitionsRevoked(Collection)
+     * @see org.apache.kafka.clients.consumer.ConsumerRebalanceListener#onPartitionsAssigned(Collection)
      */
     default void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
 

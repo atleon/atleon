@@ -56,7 +56,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     private final Consumer<K, V> consumerExternalProxy;
 
-    private final PartitioningListener partitioningListener;
+    private final PartitionListener partitionListener;
 
     private final Scheduler taskScheduler;
 
@@ -70,12 +70,12 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     public ReceivingConsumer(
         KafkaReceiverOptions<K, V> options,
-        PartitioningListener partitioningListener,
+        PartitionListener partitionListener,
         java.util.function.Consumer<Throwable> errorHandler
     ) {
         this.consumer = options.createConsumer();
         this.consumerExternalProxy = Proxying.interfaceMethods(Consumer.class, this::invokeConsumerFromExternal);
-        this.partitioningListener = partitioningListener;
+        this.partitionListener = partitionListener;
         this.taskScheduler = KafkaSchedulers.newSingleForReception("task", options.loadClientId());
         this.taskLoop = tasks.asFlux()
             .publishOn(taskScheduler, Integer.MAX_VALUE)
@@ -85,17 +85,17 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     @Override
     public void onPartitionsLost(Collection<TopicPartition> partitions) {
-        onRebalance(consumerListener::onPartitionsLost, partitioningListener::onPartitionsLost, partitions);
+        onRebalance(partitionListener::onPartitionsLost, consumerListener::onPartitionsLost, partitions);
     }
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-        onRebalance(consumerListener::onPartitionsRevoked, partitioningListener::onPartitionsRevoked, partitions);
+        onRebalance(partitionListener::onPartitionsRevoked, consumerListener::onPartitionsRevoked, partitions);
     }
 
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-        onRebalance(consumerListener::onPartitionsAssigned, partitioningListener::onPartitionsAssigned, partitions);
+        onRebalance(partitionListener::onPartitionsAssigned, consumerListener::onPartitionsAssigned, partitions);
     }
 
     @Override
@@ -144,14 +144,14 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
     }
 
     private void onRebalance(
-        BiConsumer<Consumer<?, ?>, Collection<TopicPartition>> externalHandler,
         BiConsumer<Consumer<?, ?>, Collection<TopicPartition>> internalHandler,
+        BiConsumer<Consumer<?, ?>, Collection<TopicPartition>> externalHandler,
         Collection<TopicPartition> partitions
     ) {
+        internalHandler.accept(consumer, partitions);
+
         // Not wrapping with try-catch. If user does something naughty, let the error be emitted.
         externalHandler.accept(consumerExternalProxy, partitions);
-
-        internalHandler.accept(consumer, partitions);
     }
 
     private Object invokeConsumerFromExternal(Method method, Object[] args) throws ReflectiveOperationException {
@@ -164,9 +164,9 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
         Object result = method.invoke(consumer, args);
         if (method.getName().equals("pause")) {
-            partitioningListener.onPartitionsExternallyPaused((Collection<TopicPartition>) args[0]);
+            partitionListener.onPartitionsExternallyPaused((Collection<TopicPartition>) args[0]);
         } else if (method.getName().equals("resume")) {
-            partitioningListener.onPartitionsExternallyResumed((Collection<TopicPartition>) args[0]);
+            partitionListener.onPartitionsExternallyResumed((Collection<TopicPartition>) args[0]);
         }
         return result;
     }
@@ -183,7 +183,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         }
     }
 
-    public interface PartitioningListener {
+    public interface PartitionListener {
 
         void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions);
 

@@ -20,8 +20,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToLongFunction;
 
 /**
- * A partition that is currently assigned, being actively consumed, and associated with records
- * that are being processed.
+ * A partition that is currently assigned, being actively consumed, and may be associated with
+ * records that are being processed.
  */
 final class ActivePartition {
 
@@ -47,6 +47,10 @@ final class ActivePartition {
         this.acknowledgementQueue = AcknowledgementQueue.create(acknowledgementQueueMode);
     }
 
+    /**
+     * Activates a {@link ConsumerRecord} for processing, which is a prerequisite for emission.
+     * This will only return a non-empty result if this partition has not yet been deactivated.
+     */
     public <K, V> Optional<KafkaReceiverRecord<K, V>> activateForProcessing(ConsumerRecord<K, V> consumerRecord) {
         return activate(new OffsetAndMetadata(consumerRecord.offset() + 1, consumerRecord.leaderEpoch(), ""))
             .map(it -> acknowledgementQueue.add(it, this::deactivateWithError))
@@ -54,6 +58,12 @@ final class ActivePartition {
                 consumerRecord, () -> complete(inFlight), error -> completeExceptionally(inFlight, error)));
     }
 
+    /**
+     * Deactivates this partition with possible grace period, and returns the last acknowledged
+     * offset which may be committed. If the grace period is non-positive, deactivation will be
+     * signaled as soon as possible. A short-circuiting disposal signal may be provided such as
+     * to manually timeout, which is useful if termination is requested from downstream.
+     */
     public Mono<AcknowledgedOffset> deactivate(Duration gracePeriod, Scheduler scheduler, Mono<?> disposed) {
         Mono<Void> deactivated = gracePeriod.isZero() || gracePeriod.isNegative()
             ? Mono.fromRunnable(this::deactivateWithForce)
@@ -61,13 +71,18 @@ final class ActivePartition {
         return deactivated.then(acknowledgedOffsets().onErrorComplete().takeLast(1).next());
     }
 
+    /**
+     * Deactivates this partition as soon as possible, and returns the {@link TopicPartition}
+     * associated with this partition.
+     */
     public Mono<TopicPartition> deactivateWithoutGrace() {
         deactivateWithForce();
-        return nextOffsetsOfAcknowledged.asFlux()
-            .onErrorComplete()
-            .then(Mono.just(topicPartition));
+        return nextOffsetsOfAcknowledged.asFlux().onErrorComplete().then(Mono.just(topicPartition));
     }
 
+    /**
+     * Returns a publisher of offsets that have been acknowledged and may be directly committed.
+     */
     public Flux<AcknowledgedOffset> acknowledgedOffsets() {
         return nextOffsetsOfAcknowledged.asFlux().map(it -> new AcknowledgedOffset(topicPartition, it));
     }
@@ -102,10 +117,13 @@ final class ActivePartition {
             long completedRecords = completer.applyAsLong(acknowledgementQueue);
             long previousActiveCount = activated.getAndUpdate(count -> {
                 if (count > 0) {
+                    // Not deactivated yet, so just subtract
                     return count - completedRecords;
                 } else if (count == 0) {
+                    // Deactivated and terminated, so do nothing
                     return count;
                 } else {
+                    // Deactivated but not terminated yet, so add until we get to zero
                     return count + completedRecords;
                 }
             });
@@ -168,7 +186,7 @@ final class ActivePartition {
     private void enqueueAndDrain(Deactivation deactivation) {
         deactivationQueue.add(deactivation);
 
-        if (deactivationDrainsInProgress.getAndIncrement() != 0) {
+        if (activated.get() != 0 && deactivationDrainsInProgress.getAndIncrement() != 0) {
             return;
         }
 
