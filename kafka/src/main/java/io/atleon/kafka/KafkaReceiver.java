@@ -121,8 +121,6 @@ public final class KafkaReceiver<K, V> {
         }
     }
 
-    private enum State {ACTIVE, TERMINABLE, TERMINATED}
-
     private final class Poller implements Subscription, ReceivingConsumer.PartitionListener {
 
         private final Subscriber<? super KafkaReceiverRecord<K, V>> subscriber;
@@ -143,9 +141,12 @@ public final class KafkaReceiver<K, V> {
 
         private final AtomicInteger drainsInProgress = new AtomicInteger(0);
 
+        // This counter doubles as both our publishing state (via polarity: non-negative == ACTIVE,
+        // negative == TERMINABLE or TERMINATED) and our count of activated in-flight records (when
+        // positive). As such, when this first becomes negative, it means we have entered a
+        // TERMINABLE state (error or cancellation). When it is set to Long.MIN_VALUE it means
+        // we've reached TERMINATED state and termination has been enqueued.
         private final AtomicLong freeActiveInFlightCapacity = new AtomicLong(options.maxActiveInFlight());
-
-        private final AtomicReference<State> state = new AtomicReference<>(State.ACTIVE);
 
         private final AtomicBoolean pausedDueToBackpressure = new AtomicBoolean(false);
 
@@ -190,7 +191,7 @@ public final class KafkaReceiver<K, V> {
 
         @Override
         public void cancel() {
-            if (state.compareAndSet(State.ACTIVE, State.TERMINABLE)) {
+            if (freeActiveInFlightCapacity.getAndUpdate(count -> count >= 0 ? -1 : count) >= 0) {
                 drain();
             }
         }
@@ -294,7 +295,7 @@ public final class KafkaReceiver<K, V> {
         }
 
         private void pollAndDrain(Consumer<K, V> consumer) {
-            if (state.get() == State.TERMINATED) {
+            if (freeActiveInFlightCapacity.get() == Long.MIN_VALUE) {
                 return;
             }
 
@@ -368,7 +369,7 @@ public final class KafkaReceiver<K, V> {
 
         private void handleInFlightRecordsDeactivated(long deactivationCount) {
             if (freeActiveInFlightCapacity.get() != Long.MAX_VALUE) {
-                freeActiveInFlightCapacity.addAndGet(deactivationCount);
+                freeActiveInFlightCapacity.updateAndGet(count -> count >= 0 ? count + deactivationCount : count);
                 drain();
             }
         }
@@ -437,11 +438,11 @@ public final class KafkaReceiver<K, V> {
         }
 
         private void failSafely(Throwable failure) {
-            if (state.get() != State.ACTIVE || !error.compareAndSet(null, failure)) {
+            if (!active() || !error.compareAndSet(null, failure)) {
                 // Failures during termination and failures that don't initiate termination can be
                 // safely dropped.
                 LOGGER.debug("Ignoring failure during termination", failure);
-            } else if (state.compareAndSet(State.ACTIVE, State.TERMINABLE)) {
+            } else if (freeActiveInFlightCapacity.getAndUpdate(count -> count >= 0 ? -1 : count) >= 0) {
                 // Could be racing with cancellation, but it's not a spec violation if onError
                 // emission is concurrent with downstream cancellation.
                 drain();
@@ -449,7 +450,7 @@ public final class KafkaReceiver<K, V> {
         }
 
         private void drain() {
-            if (state.get() == State.TERMINATED || drainsInProgress.getAndIncrement() != 0) {
+            if (freeActiveInFlightCapacity.get() == Long.MIN_VALUE || drainsInProgress.getAndIncrement() != 0) {
                 return;
             }
 
@@ -466,9 +467,9 @@ public final class KafkaReceiver<K, V> {
 
                 // Handle termination, if now is the time to do so. Don't need CAS here since this
                 // is the only place to transition to TERMINATED.
-                if (state.get() == State.TERMINABLE) {
+                if (freeActiveInFlightCapacity.get() < 0 && freeActiveInFlightCapacity.get() != Long.MIN_VALUE) {
                     terminateSafely();
-                    state.set(State.TERMINATED);
+                    freeActiveInFlightCapacity.set(Long.MIN_VALUE);
                     receivingConsumer.wakeupSafely();
                 }
 
@@ -476,10 +477,10 @@ public final class KafkaReceiver<K, V> {
             } while (missed != 0);
         }
 
-        private long drainEmittable(long maxEmits) {
+        private long drainEmittable(long maxToEmit) {
             long emitted = 0;
             EmittableRecord<K, V> emittable;
-            while (emitted < maxEmits && state.get() == State.ACTIVE && (emittable = emittableRecords.poll()) != null) {
+            while (emitted < maxToEmit && active() && (emittable = emittableRecords.poll()) != null) {
                 Optional<KafkaReceiverRecord<K, V>> activated = emittable.activateForProcessing();
                 try {
                     listener.onRecordsActivated(emittable.topicPartition(), activated.isPresent() ? 1 : 0);
@@ -519,7 +520,11 @@ public final class KafkaReceiver<K, V> {
         }
 
         private boolean activelyPausedDueToBackpressure() {
-            return pausedDueToBackpressure.get() && state.get() == State.ACTIVE;
+            return pausedDueToBackpressure.get() && active();
+        }
+
+        private boolean active() {
+            return freeActiveInFlightCapacity.get() >= 0;
         }
     }
 }
