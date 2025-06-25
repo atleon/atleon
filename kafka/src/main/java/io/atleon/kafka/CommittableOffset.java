@@ -1,5 +1,6 @@
 package io.atleon.kafka;
 
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 
 /**
@@ -9,11 +10,14 @@ final class CommittableOffset {
 
     private final TopicPartition topicPartition;
 
-    private final SequencedOffset sequencedOffset;
+    private final OffsetAndMetadata offsetAndMetadata;
+
+    private final long sequence;
 
     public CommittableOffset(AcknowledgedOffset acknowledgedOffset, long sequence) {
         this.topicPartition = acknowledgedOffset.topicPartition();
-        this.sequencedOffset = new SequencedOffset(acknowledgedOffset.nextOffsetAndMetadata(), sequence);
+        this.offsetAndMetadata = acknowledgedOffset.nextOffsetAndMetadata();
+        this.sequence = sequence;
     }
 
     public TopicPartition topicPartition() {
@@ -21,6 +25,6 @@ final class CommittableOffset {
     }
 
     public SequencedOffset sequencedOffset() {
-        return sequencedOffset;
+        return new SequencedOffset(offsetAndMetadata, sequence);
     }
 }

@@ -56,12 +56,12 @@ import java.util.stream.Collectors;
  * rebalance, reception error, or downstream cancellation, a strong effort is made to ensure that
  * any offsets which can be committed are done so synchronously. The only case in which this is not
  * true is if partitions are signaled to have been "lost", which can happen if/when a consumer is
- * unexpectedly removed from its group (i.e. due to session timeout). Otherwise, a grace period is
- * configurable, which configures a maximum amount of time that will be awaited for in-flight
- * records to be acknowledged, before attempting final commitment and releasing any assigned
- * partition(s). This grace period can be set to zero such that only record offsets acknowledged at
- * the immediate time of partition deactivation will be committed immediately, which makes
- * rebalancing faster at the cost of higher re-processing likelihood.
+ * unexpectedly removed from its group (i.e. due to session timeout). For revocation due to typical
+ * rebalance, a grace period is configurable, which sets a maximum amount of time that will be
+ * awaited for in-flight records to be acknowledged, before attempting final commitment and
+ * releasing any assigned partition(s). This grace period can be set to zero such that only record
+ * offsets acknowledged at the immediate time of partition deactivation will be committed
+ * immediately, which makes rebalancing faster at the cost of higher reprocessing likelihood.
  * <p>
  * This receiver plays well with cooperative rebalancing by allowing polling and processing to
  * continue during a cooperative rebalance, and taking care of cleanup if/when such rebalancing
@@ -110,6 +110,8 @@ public final class KafkaReceiver<K, V> {
     }
 
     private static <T> Flux<T> mergeGreedily(Collection<? extends Publisher<? extends T>> sources) {
+        // Use merge method that takes explicit concurrency so that all provided publishers are
+        // immediately (i.e. "greedily") subscribed.
         return Flux.merge(Flux.fromIterable(sources), sources.size());
     }
 
@@ -127,9 +129,9 @@ public final class KafkaReceiver<K, V> {
 
         private final ReceivingConsumer<K, V> receivingConsumer;
 
-        private final ReceptionListener listener;
-
         private final Scheduler auxiliaryScheduler;
+
+        private final ReceptionListener listener;
 
         private final Disposable periodicCommit;
 
@@ -142,8 +144,8 @@ public final class KafkaReceiver<K, V> {
         private final AtomicInteger drainsInProgress = new AtomicInteger(0);
 
         // This counter doubles as both our publishing state (via polarity: non-negative == ACTIVE,
-        // negative == TERMINABLE or TERMINATED) and our count of activated in-flight records (when
-        // positive). As such, when this first becomes negative, it means we have entered a
+        // negative == TERMINABLE or TERMINATED) and (when positive) our count of activated
+        // in-flight records. As such, when this first becomes negative, it means we have entered a
         // TERMINABLE state (error or cancellation). When it is set to Long.MIN_VALUE it means
         // we've reached TERMINATED state and termination has been enqueued.
         private final AtomicLong freeActiveInFlightCapacity = new AtomicLong(options.maxActiveInFlight());
@@ -160,7 +162,7 @@ public final class KafkaReceiver<K, V> {
 
         private final Queue<EmittableRecord<K, V>> emittableRecords = new ConcurrentLinkedQueue<>();
 
-        private final Sinks.Empty<Void> disposal = Sinks.empty();
+        private final Sinks.Empty<Void> disposal = Sinks.unsafe().empty();
 
         private final Sinks.Many<CommittableOffset> committableOffsets =
             Sinks.unsafe().many().unicast().onBackpressureError();
@@ -171,10 +173,10 @@ public final class KafkaReceiver<K, V> {
         public Poller(AssignmentSpec assignmentSpec, Subscriber<? super KafkaReceiverRecord<K, V>> subscriber) {
             this.subscriber = subscriber;
             this.receivingConsumer = new ReceivingConsumer<>(options, this, this::failSafely);
-            this.listener = options.createReceptionListener();
             this.auxiliaryScheduler = options.createAuxiliaryScheduler();
+            this.listener = options.createReceptionListener();
             this.periodicCommit = committableOffsets.asFlux()
-                .windowTimeout(options.commitBatchSize(), options.commitInterval(), auxiliaryScheduler)
+                .windowTimeout(options.commitBatchSize(), options.commitPeriod(), auxiliaryScheduler)
                 .concatMap(it -> it.collectMap(CommittableOffset::topicPartition, CommittableOffset::sequencedOffset))
                 .subscribe(this::scheduleCommit, this::failSafely);
 
@@ -248,7 +250,7 @@ public final class KafkaReceiver<K, V> {
                 if (!offsetsToCommit.isEmpty()) {
                     consumer.commitSync(offsetsToCommit);
                 }
-            } catch (WakeupException e) {
+            } catch (WakeupException wakeup) {
                 // There are two possible causes for a wakeup during partition revocation:
                 //   1. Async emission of records freed up capacity for subsequent polling
                 //   2. Async termination (without poll invocation consuming wakeup signal)
@@ -262,7 +264,7 @@ public final class KafkaReceiver<K, V> {
                 } catch (WakeupException __) {
                     consumer.commitSync(offsetsToCommit);
                 }
-                throw e;
+                throw wakeup;
             } finally {
                 // Lastly, sanitize sequence counters to account for possible in-flight commits and
                 // potential future reassignment (and signal listener about deactivation).
@@ -299,10 +301,6 @@ public final class KafkaReceiver<K, V> {
                 return;
             }
 
-            // Reschedule this invocation before actually invoking poll, in order to ensure that
-            // any wakeup from freed prefetch capacity will be seen by a poll invocation.
-            receivingConsumer.schedule(this::pollAndDrain);
-
             ConsumerRecords<K, V> consumerRecords = pollWakeably(consumer);
 
             int queuedForEmission = 0;
@@ -324,6 +322,8 @@ public final class KafkaReceiver<K, V> {
                     LOGGER.debug("Assignments paused");
                 }
             }
+
+            receivingConsumer.schedule(this::pollAndDrain);
         }
 
         private ConsumerRecords<K, V> pollWakeably(Consumer<K, V> consumer) {
@@ -380,10 +380,10 @@ public final class KafkaReceiver<K, V> {
             Map<TopicPartition, Long> commitSequences = assignedOffsets.keySet().stream()
                 .collect(Collectors.toMap(Function.identity(), sequenceSet::incrementAndGetCommit));
             receivingConsumer.schedule(consumer -> {
-                // Only need to check assignment sequence number on initial commit scheduling,
-                // because we are now executing on the polling thread, and therefore any assignment
-                // changes are guaranteed to visibly increase associated commit sequence
-                // counter(s), so we can rely on that for invalidation (i.e. on retries).
+                // Only need to check assignment sequence number on initial commit attempt, because
+                // we are now executing on the polling thread, and therefore any assignment changes
+                // are guaranteed to visibly increase associated commit sequence counter(s), so we
+                // can rely on that for invalidation (i.e. on retries).
                 Map<TopicPartition, OffsetAndMetadata> validatedOffsets = assignedOffsets.entrySet().stream()
                     .filter(it -> it.getValue().sequence() == sequenceSet.getAssignment(it.getKey()))
                     .filter(it -> commitSequences.get(it.getKey()) == sequenceSet.getCommit(it.getKey()))
@@ -465,8 +465,8 @@ public final class KafkaReceiver<K, V> {
                     requestOutstanding.addAndGet(-emitted);
                 }
 
-                // Handle termination, if now is the time to do so. Don't need CAS here since this
-                // is the only place to transition to TERMINATED.
+                // Handle termination if now is the time to do so. Don't need CAS here since this
+                // is the only place to transition to TERMINATED (Long.MIN_VALUE).
                 if (freeActiveInFlightCapacity.get() < 0 && freeActiveInFlightCapacity.get() != Long.MIN_VALUE) {
                     terminateSafely();
                     freeActiveInFlightCapacity.set(Long.MIN_VALUE);
@@ -481,24 +481,21 @@ public final class KafkaReceiver<K, V> {
             long emitted = 0;
             EmittableRecord<K, V> emittable;
             while (emitted < maxToEmit && active() && (emittable = emittableRecords.poll()) != null) {
+                if (freePrefetchCapacity.incrementAndGet() == maxPollRecords && activelyPausedDueToBackpressure()) {
+                    receivingConsumer.wakeupSafely();
+                }
+
                 Optional<KafkaReceiverRecord<K, V>> activated = emittable.activateForProcessing();
+                int activationCount = activated.isPresent() ? 1 : 0;
                 try {
-                    listener.onRecordsActivated(emittable.topicPartition(), activated.isPresent() ? 1 : 0);
+                    listener.onRecordsActivated(emittable.topicPartition(), activationCount);
                     activated.ifPresent(subscriber::onNext);
                 } catch (Throwable error) {
                     LOGGER.error("Emission failure (§2.13)", error);
                     failSafely(error);
                 }
 
-                if (activated.isPresent()) {
-                    emitted++;
-                }
-
-                // Doing this after emission, since it's possible that emission may have caused
-                // cancellation, so we may avoid unnecessary wakeup.
-                if (freePrefetchCapacity.incrementAndGet() == maxPollRecords && activelyPausedDueToBackpressure()) {
-                    receivingConsumer.wakeupSafely();
-                }
+                emitted += activationCount;
             }
             return emitted;
         }

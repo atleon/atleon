@@ -58,7 +58,7 @@ public final class KafkaReceiverOptions<K, V> {
 
     private final int commitBatchSize;
 
-    private final Duration commitInterval;
+    private final Duration commitPeriod;
 
     private final int maxCommitAttempts;
 
@@ -77,7 +77,7 @@ public final class KafkaReceiverOptions<K, V> {
         Duration pollTimeout,
         AcknowledgementQueueMode acknowledgementQueueMode,
         int commitBatchSize,
-        Duration commitInterval,
+        Duration commitPeriod,
         int maxCommitAttempts,
         Duration revocationGracePeriod,
         Duration closeTimeout
@@ -92,7 +92,7 @@ public final class KafkaReceiverOptions<K, V> {
         this.pollTimeout = pollTimeout;
         this.acknowledgementQueueMode = acknowledgementQueueMode;
         this.commitBatchSize = commitBatchSize;
-        this.commitInterval = commitInterval;
+        this.commitPeriod = commitPeriod;
         this.maxCommitAttempts = maxCommitAttempts;
         this.revocationGracePeriod = revocationGracePeriod;
         this.closeTimeout = closeTimeout;
@@ -201,10 +201,10 @@ public final class KafkaReceiverOptions<K, V> {
     }
 
     /**
-     * @see Builder#commitInterval(Duration)
+     * @see Builder#commitPeriod(Duration)
      */
-    public Duration commitInterval() {
-        return commitInterval;
+    public Duration commitPeriod() {
+        return commitPeriod;
     }
 
     /**
@@ -250,7 +250,7 @@ public final class KafkaReceiverOptions<K, V> {
 
         private int commitBatchSize = Integer.MAX_VALUE;
 
-        private Duration commitInterval = DEFAULT_COMMIT_INTERVAL;
+        private Duration commitPeriod = DEFAULT_COMMIT_INTERVAL;
 
         private int maxCommitAttempts = DEFAULT_MAX_COMMIT_ATTEMPTS;
 
@@ -365,12 +365,17 @@ public final class KafkaReceiverOptions<K, V> {
         }
 
         /**
-         * Sets the frequency at which acknowledged offsets will be scheduled for commit. Longer
-         * intervals may result in higher re-processing on rebalance, whereas as shorter intervals
+         * Sets the period of processing acknowledgement after which records acknowledged during a
+         * given period will be committed. Every commit period starts with the (positive)
+         * acknowledgement of a record and will terminate after the provided period has elapsed, at
+         * which point any partitions with records acknowledged during the period will have the
+         * latest acknowledged offsets committed. The next period begins with the next
+         * acknowledgement of a record, and the process repeats. Note that longer periods may
+         * result in higher re-processing likelihood on rebalance(s), whereas as shorter periods
          * may cause observable Consumer overhead due to frequent commits. Defaults to 5 seconds.
          */
-        public Builder<K, V> commitInterval(Duration commitInterval) {
-            this.commitInterval = commitInterval;
+        public Builder<K, V> commitPeriod(Duration commitPeriod) {
+            this.commitPeriod = commitPeriod;
             return this;
         }
 
@@ -420,7 +425,7 @@ public final class KafkaReceiverOptions<K, V> {
                 pollTimeout,
                 acknowledgementQueueMode,
                 commitBatchSize,
-                commitInterval,
+                commitPeriod,
                 maxCommitAttempts,
                 revocationGracePeriod,
                 closeTimeout);
