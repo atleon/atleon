@@ -64,13 +64,13 @@ final class ActivePartition {
     /**
      * Deactivates this partition with possible grace period, and returns the last acknowledged
      * offset which may be committed. If the grace period is non-positive, deactivation will be
-     * signaled as soon as possible. A short-circuiting disposal signal may be provided such as
-     * to manually timeout, which is useful if termination is requested from downstream.
+     * signaled as soon as possible. A short-circuiting "force timeout" signal may be provided such
+     * as to manually timeout, which is useful if termination is requested from downstream.
      */
-    public Mono<AcknowledgedOffset> deactivate(Duration gracePeriod, Scheduler scheduler, Mono<?> disposed) {
+    public Mono<AcknowledgedOffset> deactivate(Duration gracePeriod, Scheduler scheduler, Mono<?> forceTimeout) {
         Mono<Void> deactivated = gracePeriod.isZero() || gracePeriod.isNegative()
             ? Mono.fromRunnable(this::deactivateWithForce)
-            : deactivateWithGrace(gracePeriod, scheduler, disposed);
+            : deactivateWithGrace(gracePeriod, scheduler, forceTimeout);
         return deactivated.then(acknowledgedOffsets().onErrorComplete().takeLast(1).next());
     }
 
@@ -150,13 +150,13 @@ final class ActivePartition {
         });
     }
 
-    private Mono<Void> deactivateWithGrace(Duration gracePeriod, Scheduler scheduler, Mono<?> disposed) {
+    private Mono<Void> deactivateWithGrace(Duration gracePeriod, Scheduler scheduler, Mono<?> forceTimeout) {
         deactivateWithGrace();
         return nextOffsetsOfAcknowledged.asFlux()
             .onErrorComplete()
             .then()
             .timeout(gracePeriod, scheduler)
-            .timeout(disposed)
+            .timeout(forceTimeout)
             .onErrorResume(TimeoutException.class, __ -> Mono.fromRunnable(this::deactivateWithForce));
     }
 
