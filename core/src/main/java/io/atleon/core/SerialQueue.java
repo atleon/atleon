@@ -35,7 +35,7 @@ public final class SerialQueue<T> {
      * submission of operations on the provided resource (as {@link Consumer}).
      *
      * @param resource The resource on which operations are serialized
-     * @param <T> The type of resource operated on
+     * @param <T>      The type of resource operated on
      * @return A new SerialQueue
      */
     public static <T> SerialQueue<Consumer<T>> on(T resource) {
@@ -48,11 +48,25 @@ public final class SerialQueue<T> {
      * externally and not serialized with the created Queue.
      *
      * @param sink The sink into which queued items will be emitted
-     * @param <T> The type of items emitted in to the sink
+     * @param <T>  The type of items emitted in to the sink
      * @return A new SerialQueue
      */
     public static <T> SerialQueue<T> onEmitNext(Sinks.Many<T> sink) {
-        return new SerialQueue<>(t -> sink.emitNext(t, Sinks.EmitFailureHandler.FAIL_FAST));
+        return onEmitNext(sink, Sinks.EmitFailureHandler.FAIL_FAST);
+    }
+
+    /**
+     * Creates a {@link SerialQueue} that wraps the emissions of next items on a
+     * {@link Sinks.Many}. Any next emissions that fail will delegate to the provided
+     * {@link Sinks.EmitFailureHandler}.
+     *
+     * @param sink               The sink into which queued items will be emitted
+     * @param emitFailureHandler Handler to which next emission failures are delegated
+     * @param <T>                The type of items emitted in to the sink
+     * @return A new SerialQueue
+     */
+    public static <T> SerialQueue<T> onEmitNext(Sinks.Many<T> sink, Sinks.EmitFailureHandler emitFailureHandler) {
+        return new SerialQueue<>(t -> sink.emitNext(t, emitFailureHandler));
     }
 
     /**
