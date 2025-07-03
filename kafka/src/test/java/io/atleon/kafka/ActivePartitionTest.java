@@ -189,7 +189,7 @@ class ActivePartitionTest {
     }
 
     @Test
-    public void deactivate_givenNoInFlightRecords_expectsTerminationWithLastAcknowledgedOffset() {
+    public void deactivateLatest_givenNoInFlightRecords_expectsTerminationWithLastAcknowledgedOffset() {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
         AtomicReference<Throwable> acknowledgedOffsetsError = new AtomicReference<>();
         AtomicBoolean acknowledgedOffsetsCompleted = new AtomicBoolean(false);
@@ -213,7 +213,7 @@ class ActivePartitionTest {
         receiverRecord.acknowledge();
 
         AcknowledgedOffset lastAcknowledgedOffset =
-            activePartition.deactivate(Duration.ofDays(1), Schedulers.parallel(), Mono.never()).block();
+            activePartition.deactivateLatest(Duration.ofDays(1), Schedulers.parallel(), Mono.never()).block();
 
         assertNotNull(lastAcknowledgedOffset);
         assertEquals(Collections.singletonList(lastAcknowledgedOffset), acknowledgedOffsets);
@@ -225,7 +225,7 @@ class ActivePartitionTest {
     }
 
     @Test
-    public void deactivate_givenGracePeriod_expectsTerminationAfterLastAcknowledgement() {
+    public void deactivateLatest_givenGracePeriod_expectsTerminationAfterLastAcknowledgement() {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
         AtomicReference<Throwable> acknowledgedOffsetsError = new AtomicReference<>();
         AtomicBoolean acknowledgedOffsetsCompleted = new AtomicBoolean(false);
@@ -249,7 +249,7 @@ class ActivePartitionTest {
             activePartition.activateForProcessing(newConsumerRecord(0)).get();
 
         AtomicReference<AcknowledgedOffset> lastAcknowledgedOffset = new AtomicReference<>();
-        activePartition.deactivate(Duration.ofDays(1), Schedulers.parallel(), Mono.never())
+        activePartition.deactivateLatest(Duration.ofDays(1), Schedulers.parallel(), Mono.never())
             .subscribe(lastAcknowledgedOffset::set);
 
         assertTrue(acknowledgedOffsets.isEmpty());
@@ -275,7 +275,7 @@ class ActivePartitionTest {
     }
 
     @Test
-    public void deactivate_givenManualTimeout_expectsImmediateTerminationWithLastAcknowledgedOffset() {
+    public void deactivateLatest_givenManualTimeout_expectsImmediateTerminationWithLastAcknowledgedOffset() {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
         AtomicReference<Throwable> acknowledgedOffsetsError = new AtomicReference<>();
         AtomicBoolean acknowledgedOffsetsCompleted = new AtomicBoolean(false);
@@ -300,7 +300,7 @@ class ActivePartitionTest {
 
         Sinks.Empty<Void> disposal = Sinks.one();
         AtomicReference<AcknowledgedOffset> lastAcknowledgedOffset = new AtomicReference<>();
-        activePartition.deactivate(Duration.ofDays(1), Schedulers.parallel(), disposal.asMono())
+        activePartition.deactivateLatest(Duration.ofDays(1), Schedulers.parallel(), disposal.asMono())
             .subscribe(lastAcknowledgedOffset::set);
         receiverRecord1.acknowledge();
         disposal.tryEmitEmpty();
@@ -316,7 +316,7 @@ class ActivePartitionTest {
     }
 
     @Test
-    public void deactivate_givenNoGracePeriod_expectsImmediateTerminationWithLastAcknowledgedOffset() {
+    public void deactivateLatest_givenNoGracePeriod_expectsImmediateTerminationWithLastAcknowledgedOffset() {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
         AtomicReference<Throwable> acknowledgedOffsetsError = new AtomicReference<>();
         AtomicBoolean acknowledgedOffsetsCompleted = new AtomicBoolean(false);
@@ -345,7 +345,7 @@ class ActivePartitionTest {
         receiverRecord1.acknowledge();
 
         AtomicReference<AcknowledgedOffset> lastAcknowledgedOffset = new AtomicReference<>();
-        activePartition.deactivate(Duration.ZERO, Schedulers.parallel(), Mono.never())
+        activePartition.deactivateLatest(Duration.ZERO, Schedulers.parallel(), Mono.never())
             .subscribe(lastAcknowledgedOffset::set);
         receiverRecord2.acknowledge();
 

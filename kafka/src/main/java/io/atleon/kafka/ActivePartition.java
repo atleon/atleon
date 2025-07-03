@@ -67,11 +67,32 @@ final class ActivePartition {
      * signaled as soon as possible. A short-circuiting "force timeout" signal may be provided such
      * as to manually timeout, which is useful if termination is requested from downstream.
      */
-    public Mono<AcknowledgedOffset> deactivate(Duration gracePeriod, Scheduler scheduler, Mono<?> forceTimeout) {
-        Mono<Void> deactivated = gracePeriod.isZero() || gracePeriod.isNegative()
-            ? Mono.fromRunnable(this::deactivateWithForce)
-            : deactivateWithGrace(gracePeriod, scheduler, forceTimeout);
-        return deactivated.then(acknowledgedOffsets().onErrorComplete().takeLast(1).next());
+    public Mono<AcknowledgedOffset> deactivateLatest(Duration gracePeriod, Scheduler scheduler, Mono<?> forcedTimeout) {
+        return deactivateTimeout(gracePeriod, scheduler, forcedTimeout)
+            .onErrorComplete(GracelessTimeoutException.class)
+            .onErrorResume(TimeoutException.class, __ -> deactivateWithForce())
+            .then(acknowledgedOffsets().onErrorComplete().takeLast(1).next());
+    }
+
+    /**
+     * Deactivates this partition with possible grace period, returning nothing as data, but
+     * possibly emitting {@link TimeoutException} if either the provided grace period elapses OR
+     * the provided forced timeout signal emits before deactivation of in-flight records is
+     * completed. If the grace period is non-positive, deactivation will be immediately forced, and
+     * a {@link TimeoutException} will be emitted if there were any remaining in-flight records.
+     */
+    public <T> Mono<T> deactivateTimeout(Duration gracePeriod, Scheduler scheduler, Mono<?> forcedTimeout) {
+        if (gracePeriod.isZero() || gracePeriod.isNegative()) {
+            return deactivateWithForce()
+                .flatMap(it -> it > 0 ? Mono.error(new GracelessTimeoutException()) : Mono.empty());
+        } else {
+            Mono<T> acknowledgementCompletion = nextOffsetsOfAcknowledged.asFlux()
+                .onErrorComplete()
+                .then(Mono.<T>empty())
+                .timeout(gracePeriod, scheduler)
+                .timeout(forcedTimeout);
+            return deactivateWithGrace().then(acknowledgementCompletion);
+        }
     }
 
     /**
@@ -79,8 +100,7 @@ final class ActivePartition {
      * associated with this partition.
      */
     public Mono<TopicPartition> deactivateWithoutGrace() {
-        deactivateWithForce();
-        return nextOffsetsOfAcknowledged.asFlux().onErrorComplete().then(Mono.just(topicPartition));
+        return deactivateWithForce().thenReturn(topicPartition);
     }
 
     /**
@@ -106,7 +126,7 @@ final class ActivePartition {
             Runnable acknowledger = () -> nextOffsetsOfAcknowledged.tryEmitNext(nextOffset);
             Consumer<Throwable> nacknowledger = error -> {
                 nextOffsetsOfAcknowledged.tryEmitError(error);
-                deactivateWithForce();
+                deactivateWithForce().subscribe();
             };
             return Optional.of(acknowledgementQueue.add(acknowledger, nacknowledger));
         } else {
@@ -150,30 +170,21 @@ final class ActivePartition {
         });
     }
 
-    private Mono<Void> deactivateWithGrace(Duration gracePeriod, Scheduler scheduler, Mono<?> forceTimeout) {
-        deactivateWithGrace();
-        return nextOffsetsOfAcknowledged.asFlux()
-            .onErrorComplete()
-            .then()
-            .timeout(gracePeriod, scheduler)
-            .timeout(forceTimeout)
-            .onErrorResume(TimeoutException.class, __ -> Mono.fromRunnable(this::deactivateWithForce));
-    }
-
-    private void deactivateWithGrace() {
-        enqueueAndDrain(() -> {
+    private Mono<Void> deactivateWithGrace() {
+        return Mono.create(sink -> enqueueAndDrain(() -> {
             if (activated.getAndUpdate(count -> count > 0 ? 1 - count : count) == 1) {
                 // This deactivation is eligible to trigger termination, so attempt to do so,
                 // knowing that this could be a no-op if any in-flight records have been negatively
                 // acknowledged.
                 nextOffsetsOfAcknowledged.tryEmitComplete();
             }
+            sink.success();
             return 0L;
-        });
+        }));
     }
 
-    private void deactivateWithForce() {
-        enqueueAndDrain(() -> {
+    private Mono<Long> deactivateWithForce() {
+        return Mono.create(sink -> enqueueAndDrain(() -> {
             // Ensure that the activation count is updated to reflect TERMINATED state and then
             // ensure termination of next offset emission, which may be a no-op if any in-flight
             // records have been negatively acknowledged. Finally, calculate the number of
@@ -181,22 +192,24 @@ final class ActivePartition {
             // partition had not yet been deactivated, so we need to subtract one, and if negative,
             // means this partition had already been deactivated, and we need to negate.
             long previousActivated = activated.getAndSet(0);
+            long deactivatedRecordCount = previousActivated > 0 ? previousActivated - 1 : -previousActivated;
             nextOffsetsOfAcknowledged.tryEmitComplete();
-            return previousActivated > 0 ? previousActivated - 1 : -previousActivated;
-        });
+            sink.success(deactivatedRecordCount);
+            return deactivatedRecordCount;
+        }));
     }
 
     private void enqueueAndDrain(Deactivation deactivation) {
         deactivationQueue.add(deactivation);
 
-        if (activated.get() == 0 || deactivationDrainsInProgress.getAndIncrement() != 0) {
+        if (deactivationDrainsInProgress.getAndIncrement() != 0) {
             return;
         }
 
         int missed = 1;
         do {
             long deactivatedRecordCount = 0;
-            while (activated.get() != 0 && (deactivation = deactivationQueue.poll()) != null) {
+            while ((deactivation = deactivationQueue.poll()) != null) {
                 deactivatedRecordCount += deactivation.executeAndGetDeactivatedRecordCount();
             }
 
@@ -210,6 +223,10 @@ final class ActivePartition {
 
             missed = deactivationDrainsInProgress.addAndGet(-missed);
         } while (missed != 0);
+    }
+
+    private static final class GracelessTimeoutException extends TimeoutException {
+
     }
 
     private interface Deactivation {
