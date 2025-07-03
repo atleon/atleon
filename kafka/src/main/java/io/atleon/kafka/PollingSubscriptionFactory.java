@@ -17,7 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Scheduler;
@@ -37,7 +36,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -79,11 +77,11 @@ final class PollingSubscriptionFactory<K, V> {
 
     private abstract class Poller implements Subscription, ReceivingConsumer.PartitionListener {
 
-        protected final Subscriber<? super KafkaReceiverRecord<K, V>> subscriber;
-
         protected final ReceivingConsumer<K, V> receivingConsumer;
 
         protected final Scheduler auxiliaryScheduler;
+
+        private final Subscriber<? super KafkaReceiverRecord<K, V>> subscriber;
 
         private final ReceptionListener listener;
 
@@ -113,16 +111,16 @@ final class PollingSubscriptionFactory<K, V> {
         private final Queue<EmittableRecord<K, V>> emittableRecords = new ConcurrentLinkedQueue<>();
 
         public Poller(AssignmentSpec assignmentSpec, Subscriber<? super KafkaReceiverRecord<K, V>> subscriber) {
-            this.subscriber = subscriber;
             this.receivingConsumer = new ReceivingConsumer<>(options, this, this::failSafely);
             this.auxiliaryScheduler = options.createAuxiliaryScheduler();
+            this.subscriber = subscriber;
             this.listener = options.createReceptionListener();
 
             receivingConsumer.subscribe(assignmentSpec, this::pollAndDrain);
         }
 
         @Override
-        public void request(long n) {
+        public final void request(long n) {
             if (n > 0 && requestOutstanding.get() != Long.MAX_VALUE) {
                 requestOutstanding.addAndGet(n);
                 drain();
@@ -130,26 +128,25 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         @Override
-        public void cancel() {
+        public final void cancel() {
             if (freeActiveInFlightCapacity.getAndUpdate(count -> count >= 0 ? -1 : count) >= 0) {
                 drain();
             }
         }
 
         @Override
-        public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+        public final void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
             partitions.forEach(partition -> {
                 if (assignments.containsKey(partition)) {
                     throw new IllegalStateException("TopicPartition already assigned: " + partition);
                 }
 
                 ActivePartition activePartition = new ActivePartition(partition, options.acknowledgementQueueMode());
-                onPartitionActivated(activePartition);
+                onPartitionActivated(consumer, activePartition);
                 listener.onPartitionActivated(partition);
 
                 activePartition.deactivatedRecordCounts()
-                    .doOnNext(it -> listener.onRecordsDeactivated(partition, it))
-                    .subscribe(this::handleInFlightRecordsDeactivated, this::failSafely);
+                    .subscribe(it -> handleRecordsDeactivated(partition, it), this::failSafely);
                 assignments.put(partition, activePartition);
             });
 
@@ -162,11 +159,8 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         @Override
-        public void onPartitionsRevoked(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-            List<ActivePartition> revokedPartitions = partitions.stream()
-                .map(assignments::remove)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+        public final void onPartitionsRevoked(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+            List<ActivePartition> revokedPartitions = removeAssignedPartitions(partitions);
 
             try {
                 onActivePartitionsRevoked(consumer, revokedPartitions);
@@ -176,10 +170,10 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         @Override
-        public void onPartitionsLost(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+        public final void onPartitionsLost(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
             // No longer assigned, so impossible to commit, and all we can do is clean up.
-            List<TopicPartition> lostPartitions = partitions.stream()
-                .map(it -> Mono.justOrEmpty(assignments.remove(it)).flatMap(ActivePartition::deactivateWithoutGrace))
+            List<TopicPartition> lostPartitions = removeAssignedPartitions(partitions).stream()
+                .map(ActivePartition::deactivateWithoutGrace)
                 .collect(Collectors.collectingAndThen(Collectors.toList(), PollingSubscriptionFactory::mergeGreedily))
                 .collectList()
                 .block();
@@ -192,36 +186,71 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         @Override
-        public void onPartitionsExternallyPaused(Collection<TopicPartition> partitions) {
+        public final void onPartitionsExternallyPaused(Collection<TopicPartition> partitions) {
             externallyPausedPartitions.addAll(partitions);
         }
 
         @Override
-        public void onPartitionsExternallyResumed(Collection<TopicPartition> partitions) {
+        public final void onPartitionsExternallyResumed(Collection<TopicPartition> partitions) {
             externallyPausedPartitions.removeAll(partitions);
         }
 
-        protected abstract void onPartitionActivated(ActivePartition partition);
+        protected abstract void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition partition);
 
         protected abstract void onActivePartitionsRevoked(Consumer<?, ?> consumer, List<ActivePartition> partitions);
 
         protected abstract void onActivePartitionsLost(List<TopicPartition> partitions);
 
-        protected abstract long emitActivated(long maxToEmit, BiConsumer<TopicPartition, Long> onActivation);
+        protected final void drain() {
+            if (drainsInProgress.getAndIncrement() != 0) {
+                return;
+            }
+
+            int missed = 1;
+            do {
+                // Handle onNext emission and update outstanding capacities.
+                long maxToEmit = prepareForActiveEmit();
+                long activeEmitted = maxToEmit > 0 ? emitActivatedRecords(maxToEmit) : 0L;
+                if (freeActiveInFlightCapacity.get() != Long.MAX_VALUE) {
+                    freeActiveInFlightCapacity.addAndGet(-activeEmitted);
+                }
+                if (requestOutstanding.get() != Long.MAX_VALUE) {
+                    requestOutstanding.addAndGet(-activeEmitted);
+                }
+
+                // Handle termination if now is the time to do so. Don't need CAS here since this
+                // is the only place to transition to TERMINATED (Long.MIN_VALUE).
+                if (freeActiveInFlightCapacity.get() < 0 && freeActiveInFlightCapacity.get() != Long.MIN_VALUE) {
+                    terminateSafely();
+                    freeActiveInFlightCapacity.set(Long.MIN_VALUE);
+                    receivingConsumer.wakeupSafely();
+                }
+
+                missed = drainsInProgress.addAndGet(-missed);
+            } while (missed != 0);
+        }
+
+        protected long prepareForActiveEmit() {
+            return Math.min(freeActiveInFlightCapacity.get(), requestOutstanding.get());
+        }
+
+        protected boolean mayContinueActiveEmit() {
+            return active();
+        }
+
+        protected void handleRecordsActivated(TopicPartition topicPartition, long count) {
+            listener.onRecordsActivated(topicPartition, count);
+        }
+
+        protected void handleRecordsDeactivated(TopicPartition topicPartition, long count) {
+            listener.onRecordsDeactivated(topicPartition, count);
+            if (freeActiveInFlightCapacity.get() != Long.MAX_VALUE) {
+                freeActiveInFlightCapacity.updateAndGet(it -> it >= 0 ? it + count : it);
+            }
+            drain();
+        }
 
         protected abstract void terminate();
-
-        protected final EmittableRecord<K, V> pollEmittableRecord() {
-            EmittableRecord<K, V> emittable = active() ? emittableRecords.poll() : null;
-            if (emittable == null) {
-                return null;
-            }
-
-            if (freePrefetchCapacity.incrementAndGet() == maxPollRecords && activelyPausedDueToBackpressure()) {
-                receivingConsumer.wakeupSafely();
-            }
-            return emittable;
-        }
 
         protected final void failSafely(Throwable failure) {
             if (!active() || !error.compareAndSet(null, failure)) {
@@ -284,6 +313,10 @@ final class PollingSubscriptionFactory<K, V> {
             }
         }
 
+        private List<ActivePartition> removeAssignedPartitions(Collection<TopicPartition> partitions) {
+            return partitions.stream().map(assignments::remove).filter(Objects::nonNull).collect(Collectors.toList());
+        }
+
         private Collection<TopicPartition> calculatePartitionsToPause(Collection<TopicPartition> newlyAssigned) {
             if (pausedDueToBackpressure.get()) {
                 LOGGER.debug("Rebalance during back-pressure. Pausing...");
@@ -306,40 +339,27 @@ final class PollingSubscriptionFactory<K, V> {
             }
         }
 
-        private void handleInFlightRecordsDeactivated(long deactivationCount) {
-            if (freeActiveInFlightCapacity.get() != Long.MAX_VALUE) {
-                freeActiveInFlightCapacity.updateAndGet(count -> count >= 0 ? count + deactivationCount : count);
-                drain();
-            }
-        }
-
-        private void drain() {
-            if (freeActiveInFlightCapacity.get() == Long.MIN_VALUE || drainsInProgress.getAndIncrement() != 0) {
-                return;
-            }
-
-            int missed = 1;
-            do {
-                // Handle onNext emission and update outstanding capacities.
-                long maxToEmit = Math.min(freeActiveInFlightCapacity.get(), requestOutstanding.get());
-                long activeEmitted = maxToEmit > 0 ? emitActivated(maxToEmit, listener::onRecordsActivated) : 0L;
-                if (freeActiveInFlightCapacity.get() != Long.MAX_VALUE) {
-                    freeActiveInFlightCapacity.addAndGet(-activeEmitted);
-                }
-                if (requestOutstanding.get() != Long.MAX_VALUE) {
-                    requestOutstanding.addAndGet(-activeEmitted);
-                }
-
-                // Handle termination if now is the time to do so. Don't need CAS here since this
-                // is the only place to transition to TERMINATED (Long.MIN_VALUE).
-                if (freeActiveInFlightCapacity.get() < 0 && freeActiveInFlightCapacity.get() != Long.MIN_VALUE) {
-                    terminateSafely();
-                    freeActiveInFlightCapacity.set(Long.MIN_VALUE);
+        private long emitActivatedRecords(long maxToEmit) {
+            long emitted = 0;
+            EmittableRecord<K, V> emittable;
+            while (emitted < maxToEmit && mayContinueActiveEmit() && (emittable = emittableRecords.poll()) != null) {
+                if (freePrefetchCapacity.incrementAndGet() == maxPollRecords && activelyPausedDueToBackpressure()) {
                     receivingConsumer.wakeupSafely();
                 }
 
-                missed = drainsInProgress.addAndGet(-missed);
-            } while (missed != 0);
+                Optional<KafkaReceiverRecord<K, V>> activated = emittable.activateForProcessing();
+                try {
+                    TopicPartition topicPartition = emittable.topicPartition();
+                    activated.ifPresent(it -> {
+                        handleRecordsActivated(topicPartition, 1L);
+                        subscriber.onNext(it);
+                    });
+                } catch (Throwable error) {
+                    LOGGER.error("Emission failure (§2.13)", error);
+                    failSafely(error);
+                }
+            }
+            return emitted;
         }
 
         private void terminateSafely() {
@@ -393,7 +413,7 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         @Override
-        protected void onPartitionActivated(ActivePartition partition) {
+        protected void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition partition) {
             long assignmentSequence = sequenceSet.assigned(partition.topicPartition());
             partition.acknowledgedOffsets()
                 .map(it -> new CommittableOffset(it, assignmentSequence))
@@ -410,7 +430,7 @@ final class PollingSubscriptionFactory<K, V> {
             // load increases, so does the likelihood that there will be acknowledged uncommitted
             // offsets, and it becomes more desirable to attempt to honor that progress.
             Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = partitions.stream()
-                .map(it -> it.deactivate(options.revocationGracePeriod(), auxiliaryScheduler, disposal.asMono()))
+                .map(it -> it.deactivateLatest(options.revocationGracePeriod(), auxiliaryScheduler, disposal.asMono()))
                 .collect(Collectors.collectingAndThen(Collectors.toList(), PollingSubscriptionFactory::mergeGreedily))
                 .filter(it -> sequenceSet.getCommitRetry(it.topicPartition()) < options.maxCommitAttempts() - 1)
                 .collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffsetAndMetadata)
@@ -427,7 +447,7 @@ final class PollingSubscriptionFactory<K, V> {
                 // In order to attempt graceful handling of either scenario, we retry the commit.
                 // Although it is not likely, it is possible that both scenarios occur (in order),
                 // with the first retry attempt being woken by the second scenario. In this case,
-                // we retry one LAST time. We then re-emit the original wakeup signal so that any
+                // we retry one LAST time. We then re-emit the original wakeup signal so that the
                 // possible parent poll invocation knows about it.
                 try {
                     consumer.commitSync(offsetsToCommit);
@@ -445,26 +465,6 @@ final class PollingSubscriptionFactory<K, V> {
         @Override
         protected void onActivePartitionsLost(List<TopicPartition> partitions) {
             partitions.forEach(sequenceSet::unassigned);
-        }
-
-        @Override
-        protected long emitActivated(long maxToEmit, BiConsumer<TopicPartition, Long> onActivation) {
-            long emitted = 0;
-            EmittableRecord<K, V> emittable;
-            while (emitted < maxToEmit && (emittable = pollEmittableRecord()) != null) {
-                Optional<KafkaReceiverRecord<K, V>> activated = emittable.activateForProcessing();
-                try {
-                    TopicPartition topicPartition = emittable.topicPartition();
-                    activated.ifPresent(it -> {
-                        onActivation.accept(topicPartition, 1L);
-                        subscriber.onNext(it);
-                    });
-                } catch (Throwable error) {
-                    LOGGER.error("Emission failure (§2.13)", error);
-                    failSafely(error);
-                }
-            }
-            return emitted;
         }
 
         @Override
