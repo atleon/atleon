@@ -1,6 +1,7 @@
 package io.atleon.kafka;
 
 import io.atleon.core.SerialQueue;
+import io.atleon.core.ShouldBeTerminatedEmitFailureHandler;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -17,7 +18,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.SignalType;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Scheduler;
 
@@ -256,7 +256,7 @@ final class PollingSubscriptionFactory<K, V> {
             if (!active() || !error.compareAndSet(null, failure)) {
                 // Failures during termination and failures that don't initiate termination can be
                 // safely dropped.
-                LOGGER.debug("Ignoring failure during termination", failure);
+                LOGGER.info("Ignoring failure during termination", failure);
             } else if (freeActiveInFlightCapacity.getAndUpdate(count -> count >= 0 ? -1 : count) >= 0) {
                 // Could be racing with cancellation, but it's not a spec violation if onError
                 // emission is concurrent with downstream cancellation.
@@ -398,8 +398,10 @@ final class PollingSubscriptionFactory<K, V> {
         private final Sinks.Many<CommittableOffset> committableOffsets =
             Sinks.unsafe().many().unicast().onBackpressureError();
 
+        // Only reason emission failure could/should happen is if/when we're terminating with
+        // concurrent committable offset emission, hence provided failure handler.
         private final SerialQueue<CommittableOffset> committableOffsetQueue =
-            SerialQueue.onEmitNext(committableOffsets, this::handleCommittableOffsetEmissionFailure);
+            SerialQueue.onEmitNext(committableOffsets, new ShouldBeTerminatedEmitFailureHandler(LOGGER));
 
         public PeriodicCommitPoller(
             AssignmentSpec assignmentSpec,
@@ -472,13 +474,6 @@ final class PollingSubscriptionFactory<K, V> {
             // Stop commit scheduling, then force disposal of in-progress deactivations.
             periodicCommit.dispose();
             disposal.tryEmitEmpty();
-        }
-
-        private boolean handleCommittableOffsetEmissionFailure(SignalType signalType, Sinks.EmitResult emitResult) {
-            // Only reason this should happen is if/when we're terminating with concurrent
-            // committable offset emission.
-            LOGGER.debug("Committable offset emission failed. Must mean termination: {}-{}", signalType, emitResult);
-            return false;
         }
 
         private void scheduleCommit(Map<TopicPartition, SequencedOffset> assignedOffsets) {

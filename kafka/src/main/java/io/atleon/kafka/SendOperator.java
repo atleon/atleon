@@ -1,7 +1,6 @@
 package io.atleon.kafka;
 
 import io.atleon.core.SerialQueue;
-import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.common.errors.AuthenticationException;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
@@ -31,7 +30,7 @@ final class SendOperator<K, V, T> implements Publisher<KafkaSenderResult<T>> {
         this.sender = sender;
     }
 
-    public static <K, V, T> SendOperator<K, V, T> immediate(
+    public static <K, V, T> SendOperator<K, V, T> immediateError(
         KafkaSenderOptions<K, V> options,
         SendingProducer<K, V> producer,
         Publisher<KafkaSenderRecord<K, V, T>> senderRecords
@@ -136,7 +135,7 @@ final class SendOperator<K, V, T> implements Publisher<KafkaSenderResult<T>> {
             }
 
             T correlationMetadata = senderRecord.correlationMetadata();
-            Callback callback = (recordMetadata, exception) -> {
+            producer.sendSafely(senderRecord, (recordMetadata, exception) -> {
                 if (exception == null) {
                     enqueueNext(KafkaSenderResult.success(recordMetadata, correlationMetadata));
                 } else if (shouldEmitFailureAsResult(exception) && !isFatalSendFailure(exception)) {
@@ -145,12 +144,7 @@ final class SendOperator<K, V, T> implements Publisher<KafkaSenderResult<T>> {
                     cancel();
                     onError(exception);
                 }
-            };
-            try {
-                producer.send(senderRecord, callback);
-            } catch (Exception error) {
-                callback.onCompletion(null, error);
-            }
+            });
         }
 
         @Override

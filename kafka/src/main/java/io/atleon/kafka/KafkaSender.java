@@ -23,7 +23,9 @@ public final class KafkaSender<K, V> {
     private KafkaSender(KafkaSenderOptions<K, V> options) {
         this.options = options;
         this.futureProducer = Mono.fromSupplier(() -> new SendingProducer<>(options))
-            .cacheInvalidateWhen(__ -> closeSink.asFlux().next().then(), SendingProducer::close);
+            .cacheInvalidateWhen(
+                it -> Mono.firstWithSignal(closeSink.asFlux().next().then(), it.closed()),
+                SendingProducer::closeSafelyAsync);
     }
 
     public static <K, V> KafkaSender<K, V> create(KafkaSenderOptions<K, V> options) {
@@ -35,7 +37,7 @@ public final class KafkaSender<K, V> {
     }
 
     public <T> Flux<KafkaSenderResult<T>> send(Publisher<KafkaSenderRecord<K, V, T>> senderRecords) {
-        return futureProducer.flatMapMany(producer -> SendOperator.immediate(options, producer, senderRecords));
+        return futureProducer.flatMapMany(producer -> SendOperator.immediateError(options, producer, senderRecords));
     }
 
     public <T> Flux<KafkaSenderResult<T>> sendDelayError(Publisher<KafkaSenderRecord<K, V, T>> senderRecords) {

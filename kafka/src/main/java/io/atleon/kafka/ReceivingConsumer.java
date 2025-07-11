@@ -78,7 +78,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         this.consumer = options.createConsumer();
         this.externalConsumerProxy = Proxying.interfaceMethods(Consumer.class, this::invokeConsumerFromExternal);
         this.partitionListener = partitionListener;
-        this.taskScheduler = KafkaSchedulers.newSingleForReception("task", options.loadClientId());
+        this.taskScheduler = KafkaSchedulers.newSingleForReceiving("task", options.loadClientId());
         this.taskLoop = tasks.asFlux()
             .publishOn(taskScheduler, Integer.MAX_VALUE)
             .subscribe(it -> runSafely(it, errorHandler));

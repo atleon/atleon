@@ -1,8 +1,12 @@
 package io.atleon.kafka;
 
+import io.atleon.util.ConfigLoading;
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import reactor.util.concurrent.Queues;
 
 import java.time.Duration;
@@ -28,6 +32,8 @@ public final class KafkaSenderOptions<K, V> {
 
     private final int maxInFlight;
 
+    private final boolean sendImmediate;
+
     private final Duration closeTimeout;
 
     private KafkaSenderOptions(
@@ -35,12 +41,14 @@ public final class KafkaSenderOptions<K, V> {
         ProducerListenerFactory producerListenerFactory,
         Map<String, Object> producerProperties,
         int maxInFlight,
+        boolean sendImmediate,
         Duration closeTimeout
     ) {
         this.producerFactory = producerFactory;
         this.producerListenerFactory = producerListenerFactory;
         this.producerProperties = producerProperties;
         this.maxInFlight = maxInFlight;
+        this.sendImmediate = sendImmediate;
         this.closeTimeout = closeTimeout;
     }
 
@@ -75,11 +83,22 @@ public final class KafkaSenderOptions<K, V> {
         return producerListenerFactory.create(invocable);
     }
 
+    public String loadClientId() {
+        return ConfigLoading.loadStringOrThrow(producerProperties, CommonClientConfigs.CLIENT_ID_CONFIG);
+    }
+
     /**
      * @see Builder#maxInFlight(int)
      */
     public int maxInFlight() {
         return maxInFlight;
+    }
+
+    /**
+     * @see Builder#sendImmediate(boolean)
+     */
+    public boolean sendImmediate() {
+        return sendImmediate;
     }
 
     /**
@@ -98,6 +117,8 @@ public final class KafkaSenderOptions<K, V> {
         private Map<String, Object> producerProperties = Collections.emptyMap();
 
         private int maxInFlight = Queues.SMALL_BUFFER_SIZE;
+
+        private boolean sendImmediate = false;
 
         private Duration closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
@@ -141,6 +162,24 @@ public final class KafkaSenderOptions<K, V> {
         }
 
         /**
+         * By default, invocations of {@link Producer#send(ProducerRecord, Callback)} have their
+         * execution serialized (using a single-threaded {@link reactor.core.scheduler.Scheduler})
+         * in a Producer-specific task loop. In general, this isolation is desirable because it is
+         * possible for send invocations to block. For example:
+         * - Waiting on metadata (for up to {@link ProducerConfig#MAX_BLOCK_MS_CONFIG})
+         * - I/O-bound serialization (e.g. Avro schema registry integration)
+         * - Waiting to append to outbound record buffer
+         * In some cases, it may be safe and optimal to skip the task loop and immediately invoke
+         * send(s) on sending/publishing threads, for example if those threads are already amenable
+         * to blocking (i.e. "elastic" threads). This optimization may increase throughput capacity
+         * by leveraging the underlying Producer's ability to support multithreaded invocation.
+         */
+        public Builder<K, V> sendImmediate(boolean sendImmediate) {
+            this.sendImmediate = sendImmediate;
+            return this;
+        }
+
+        /**
          * Sets the timeout used on invocations to {@link Producer#close(Duration)}.
          */
         public Builder<K, V> closeTimeout(Duration closeTimeout) {
@@ -154,6 +193,7 @@ public final class KafkaSenderOptions<K, V> {
                 producerListenerFactory,
                 producerProperties,
                 maxInFlight,
+                sendImmediate,
                 closeTimeout
             );
         }
