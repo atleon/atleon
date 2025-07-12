@@ -1,7 +1,6 @@
 package io.atleon.kafka;
 
 import io.atleon.core.SerialQueue;
-import org.apache.kafka.common.errors.AuthenticationException;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -60,7 +59,10 @@ final class SendOperator<K, V, T> implements Publisher<KafkaSenderResult<T>> {
     }
 
     private static boolean isFatalSendFailure(Exception exception) {
-        return exception instanceof AuthenticationException;
+        // All known fatal send failures are a subset of fatal Producer errors, which will result
+        // in the underlying Producer being closed. Upon closure, all following errors will be
+        // of type IllegalStateException indicating closed state, so this can be our only check.
+        return exception instanceof IllegalStateException;
     }
 
     private static void runSafely(Runnable task, String name) {

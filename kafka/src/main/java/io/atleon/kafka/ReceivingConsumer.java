@@ -1,16 +1,12 @@
 package io.atleon.kafka;
 
-import io.atleon.core.SerialQueue;
 import io.atleon.util.Proxying;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.Sinks;
-import reactor.core.scheduler.Scheduler;
 
 import java.lang.reflect.Method;
 import java.time.Duration;
@@ -58,17 +54,11 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     private final PartitionListener partitionListener;
 
-    private final Scheduler taskScheduler;
-
-    private final Disposable taskLoop;
+    private final TaskLoop taskLoop;
 
     private final ConsumerListener consumerListener;
 
     private final Duration closeTimeout;
-
-    private final Sinks.Many<Runnable> tasks = Sinks.unsafe().many().unicast().onBackpressureError();
-
-    private final SerialQueue<Runnable> taskQueue = SerialQueue.onEmitNext(tasks);
 
     public ReceivingConsumer(
         KafkaReceiverOptions<K, V> options,
@@ -78,10 +68,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         this.consumer = options.createConsumer();
         this.externalConsumerProxy = Proxying.interfaceMethods(Consumer.class, this::invokeConsumerFromExternal);
         this.partitionListener = partitionListener;
-        this.taskScheduler = KafkaSchedulers.newSingleForReceiving("task", options.loadClientId());
-        this.taskLoop = tasks.asFlux()
-            .publishOn(taskScheduler, Integer.MAX_VALUE)
-            .subscribe(it -> runSafely(it, errorHandler));
+        this.taskLoop = TaskLoop.startWithErrorHandling(options.loadConsumerTaskLoopName(), errorHandler);
         this.consumerListener = options.createConsumerListener(this);
         this.closeTimeout = options.closeTimeout();
     }
@@ -103,12 +90,12 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     @Override
     public <T> Mono<T> invokeAndGet(Function<? super Consumer<?, ?>, T> invocation) {
-        if (KafkaSchedulers.isCurrentThreadFromKafka()) {
+        if (taskLoop.isSourceOfCurrentThread()) {
             throw new UnsupportedOperationException("ConsumerInvocable::invokeAndGet must not be called from the" +
                 " polling thread. It should rather be the case that the Consumer is directly passed to the call site" +
                 " in some way, for example with ConsumerListener::onPartitionsAssigned.");
         }
-        return Mono.create(sink -> schedule(() -> {
+        return Mono.create(sink -> taskLoop.schedule(() -> {
             try {
                 sink.success(invocation.apply(externalConsumerProxy));
             } catch (Throwable e) {
@@ -118,18 +105,17 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
     }
 
     public void subscribe(AssignmentSpec assignmentSpec, java.util.function.Consumer<Consumer<K, V>> andThen) {
-        schedule(() -> {
+        taskLoop.schedule(() -> {
             assignmentSpec.apply(consumer, this);
             andThen.accept(consumer);
         });
     }
 
     public Mono<Void> closeSafely() {
-        return Mono.create(sink -> schedule(() -> {
+        return Mono.create(sink -> taskLoop.schedule(() -> {
             runSafely(() -> consumerListener.onClose(consumer), "consumerListener::onClose");
             runSafely(() -> consumer.close(closeTimeout), "consumer::close");
-            runSafely(taskLoop::dispose, "taskLoop::dispose");
-            runSafely(taskScheduler::dispose, "taskScheduler::dispose");
+            taskLoop.disposeSafely();
             sink.success();
         }));
     }
@@ -137,17 +123,13 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
     public void wakeupSafely() {
         // It does not make sense to call wakeup if we know we're executing on the only thread that
         // could execute a long-running call (i.e. poll), so avoid unnecessary interrupt.
-        if (!KafkaSchedulers.isCurrentThreadFromKafka()) {
+        if (!taskLoop.isSourceOfCurrentThread()) {
             runSafely(consumer::wakeup, "consumer::wakeup");
         }
     }
 
     public void schedule(java.util.function.Consumer<Consumer<K, V>> task) {
-        schedule(() -> task.accept(consumer));
-    }
-
-    private void schedule(Runnable task) {
-        taskQueue.addAndDrain(task);
+        taskLoop.schedule(() -> task.accept(consumer));
     }
 
     private void onRebalance(
@@ -162,7 +144,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
     }
 
     private Object invokeConsumerFromExternal(Method method, Object[] args) throws ReflectiveOperationException {
-        if (!KafkaSchedulers.isCurrentThreadFromKafka()) {
+        if (!taskLoop.isSourceOfCurrentThread()) {
             throw new UnsupportedOperationException("Kafka Consumer must be invoked from polling thread");
         }
         if (!ALLOWED_EXTERNAL_CONSUMER_INVOCATIONS.contains(method.getName())) {

@@ -149,6 +149,10 @@ public final class KafkaReceiverOptions<K, V> {
         return auxiliarySchedulerSupplier.get();
     }
 
+    public String loadConsumerTaskLoopName() {
+        return "atleon-kafka-receive-consumer-" + loadClientId();
+    }
+
     public String loadClientId() {
         return ConfigLoading.loadStringOrThrow(consumerProperties, CommonClientConfigs.CLIENT_ID_CONFIG);
     }

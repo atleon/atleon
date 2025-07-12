@@ -83,6 +83,10 @@ public final class KafkaSenderOptions<K, V> {
         return producerListenerFactory.create(invocable);
     }
 
+    public String loadProducerTaskLoopName() {
+        return "atleon-kafka-send-producer-" + loadClientId();
+    }
+
     public String loadClientId() {
         return ConfigLoading.loadStringOrThrow(producerProperties, CommonClientConfigs.CLIENT_ID_CONFIG);
     }
