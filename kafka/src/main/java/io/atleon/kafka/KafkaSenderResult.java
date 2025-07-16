@@ -20,6 +20,14 @@ public final class KafkaSenderResult<T> implements SenderResult {
         this.correlationMetadata = correlationMetadata;
     }
 
+    static <T> KafkaSenderResult<T> success(RecordMetadata recordMetadata, T correlationMetadata) {
+        return new KafkaSenderResult<>(recordMetadata, null, correlationMetadata);
+    }
+
+    static <T> KafkaSenderResult<T> failure(Exception exception, T correlationMetadata) {
+        return new KafkaSenderResult<>(null, exception, correlationMetadata);
+    }
+
     static <T> KafkaSenderResult<T> fromSenderResult(reactor.kafka.sender.SenderResult<T> senderResult) {
         return new KafkaSenderResult<>(senderResult.recordMetadata(), senderResult.exception(), senderResult.correlationMetadata());
     }

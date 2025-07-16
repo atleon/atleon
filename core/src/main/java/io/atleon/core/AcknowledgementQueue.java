@@ -15,7 +15,7 @@ import java.util.function.Predicate;
  * thread-safe, and may or may not result in the execution of the associated {@link InFlight},
  * along with other {@link InFlight}s that have come before it.
  */
-final class AcknowledgementQueue {
+public final class AcknowledgementQueue {
 
     private static final AtomicReferenceFieldUpdater<AcknowledgementQueue, InFlight> TAIL =
         AtomicReferenceFieldUpdater.newUpdater(AcknowledgementQueue.class, InFlight.class, "tail");
@@ -124,7 +124,7 @@ final class AcknowledgementQueue {
         return mode == AcknowledgementQueueMode.COMPACT ? nonHead.tryCompact() : 0L;
     }
 
-    static final class InFlight {
+    public static final class InFlight {
 
         private enum State {IN_PROCESS, COMPLETED, EXECUTED}
 

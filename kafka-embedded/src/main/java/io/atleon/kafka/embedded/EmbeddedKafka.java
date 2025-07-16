@@ -60,6 +60,8 @@ public final class EmbeddedKafka {
         kafkaBrokerConfig.put(KafkaConfig.NumPartitionsProp(), 10);
         kafkaBrokerConfig.put(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
         kafkaBrokerConfig.put(KafkaConfig.LogDirProp(), createLogDirectory().toString());
+        kafkaBrokerConfig.put(KafkaConfig.TransactionsTopicReplicationFactorProp(), "1");
+        kafkaBrokerConfig.put(KafkaConfig.TransactionsTopicMinISRProp(), "1");
         return kafkaBrokerConfig;
     }
 
