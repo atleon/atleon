@@ -6,6 +6,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TaskLoopTest {
@@ -20,6 +21,20 @@ class TaskLoopTest {
         assertNotEquals(Thread.currentThread(), executionThread.join());
 
         taskLoop.disposeSafely();
+    }
+
+    @Test
+    public void schedule_givenTaskThrowsUncaughtException_expectsContinuedExecutionOfSubsequentTasks() {
+        TaskLoop taskLoop = TaskLoop.start("test");
+
+        taskLoop.schedule(() -> {
+            throw new UnsupportedOperationException("Boom");
+        });
+
+        CompletableFuture<Void> completed = new CompletableFuture<>();
+        assertTrue(taskLoop.schedule(() -> completed.complete(null)));
+
+        assertNull(completed.join());
     }
 
     @Test
