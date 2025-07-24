@@ -3,8 +3,6 @@ package io.atleon.kafka;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 import reactor.core.publisher.Flux;
-import reactor.kafka.receiver.KafkaReceiver;
-import reactor.kafka.receiver.ReceiverOptions;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -107,14 +105,17 @@ public class KafkaBoundedReceiver<K, V> {
     }
 
     private Flux<ConsumerRecord<K, V>> receiveRecordsInRange(KafkaConfig kafkaConfig, RecordRange recordRange) {
-        ReceiverOptions<K, V> receiverOptions = ReceiverOptions.<K, V>create(kafkaConfig.nativeProperties())
-            .assignment(Collections.singletonList(recordRange.topicPartition()))
+        KafkaReceiverOptions<K, V> receiverOptions = KafkaReceiverOptions.<K, V>newBuilder()
+            .consumerListener(ConsumerListener.seekOnce(recordRange.topicPartition(), recordRange.minInclusive()))
+            .consumerProperties(kafkaConfig.nativeProperties())
+            .commitlessOffsets(true)
             .pollTimeout(kafkaConfig.loadDuration(POLL_TIMEOUT_CONFIG).orElse(DEFAULT_POLL_TIMEOUT))
             .closeTimeout(kafkaConfig.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
-            .addAssignListener(partitions -> partitions.forEach(it -> it.seek(recordRange.minInclusive())));
+            .build();
 
-        return KafkaReceiver.create(receiverOptions).receive()
-            .<ConsumerRecord<K, V>>map(Function.identity())
+        return KafkaReceiver.create(receiverOptions)
+            .receiveAutoAckWithAssignment(Collections.singletonList(recordRange.topicPartition()))
+            .concatMap(Function.identity())
             .takeWhile(it -> it.offset() <= recordRange.maxInclusive())
             .takeUntil(it -> it.offset() == recordRange.maxInclusive());
     }
