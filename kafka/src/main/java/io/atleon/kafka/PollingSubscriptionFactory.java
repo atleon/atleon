@@ -87,6 +87,8 @@ final class PollingSubscriptionFactory<K, V> {
 
         protected final Scheduler auxiliaryScheduler;
 
+        private final AssignmentSpec assignmentSpec;
+
         private final Subscriber<? super KafkaReceiverRecord<K, V>> subscriber;
 
         private final ReceptionListener listener;
@@ -95,7 +97,8 @@ final class PollingSubscriptionFactory<K, V> {
 
         private final AtomicInteger freePrefetchCapacity = new AtomicInteger(options.calculateMaxRecordsPrefetch());
 
-        private final AtomicLong requested = new AtomicLong(0);
+        // Initialized as negative to indicate "no initial request (yet)"
+        private final AtomicLong requested = new AtomicLong(Long.MIN_VALUE);
 
         private final AtomicInteger drainsInProgress = new AtomicInteger(0);
 
@@ -119,15 +122,21 @@ final class PollingSubscriptionFactory<K, V> {
         public Poller(AssignmentSpec assignmentSpec, Subscriber<? super KafkaReceiverRecord<K, V>> subscriber) {
             this.receivingConsumer = new ReceivingConsumer<>(options, this, this::failSafely);
             this.auxiliaryScheduler = options.createAuxiliaryScheduler();
+            this.assignmentSpec = assignmentSpec;
             this.subscriber = subscriber;
             this.listener = options.createReceptionListener();
-
-            receivingConsumer.subscribe(assignmentSpec, this::pollAndDrain);
         }
 
         @Override
         public final void request(long n) {
-            if (Operators.validate(n) && requested.getAndUpdate(it -> Operators.addCap(it, n)) == 0) {
+            if (!Operators.validate(n)) {
+                return;
+            }
+
+            long previousRequested = requested.getAndUpdate(it -> it == Long.MIN_VALUE ? n : Operators.addCap(it, n));
+            if (previousRequested == Long.MIN_VALUE) {
+                receivingConsumer.subscribe(assignmentSpec, this::pollAndDrain);
+            } else if (previousRequested == 0) {
                 drain();
             }
         }
