@@ -28,6 +28,11 @@ public final class KafkaSenderResult<T> implements SenderResult {
         return new KafkaSenderResult<>(null, exception, correlationMetadata);
     }
 
+    static <T> Alo<KafkaSenderResult<T>> invertAlo(KafkaSenderResult<Alo<T>> senderResult) {
+        return senderResult.correlationMetadata().map(correlationMetadata ->
+            new KafkaSenderResult<>(senderResult.recordMetadata, senderResult.exception, correlationMetadata));
+    }
+
     static <T> KafkaSenderResult<T> fromSenderResult(reactor.kafka.sender.SenderResult<T> senderResult) {
         return new KafkaSenderResult<>(senderResult.recordMetadata(), senderResult.exception(), senderResult.correlationMetadata());
     }
