@@ -16,7 +16,6 @@ import org.apache.kafka.common.Uuid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.kafka.receiver.ReceiverOptions;
-import reactor.kafka.receiver.internals.ConsumerFactory;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -36,7 +35,7 @@ import java.util.regex.Pattern;
  * possible for a Consumer and its event loop to become orphaned, yet continue to poll with paused
  * partitions, and therefore silently occupy assigned partitions without doing any processing.
  */
-class ConsumerMutexEnforcer extends ConsumerFactory {
+class ConsumerMutexEnforcer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ConsumerMutexEnforcer.class);
 
@@ -50,7 +49,7 @@ class ConsumerMutexEnforcer extends ConsumerFactory {
         return new KafkaConsumer<>(options.consumerProperties(), options.keyDeserializer(), options.valueDeserializer());
     }
 
-    final class ProhibitableConsumerFactory extends ConsumerFactory {
+    final class ProhibitableConsumerFactory extends reactor.kafka.receiver.internals.ConsumerFactory {
 
         private final int ticket;
 

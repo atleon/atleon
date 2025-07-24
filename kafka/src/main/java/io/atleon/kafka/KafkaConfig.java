@@ -39,6 +39,14 @@ public class KafkaConfig {
         return modifiedProperties;
     }
 
+    public <T> Optional<T> loadInstanceWithPredefinedTypes(
+        String key,
+        Class<? extends T> type,
+        Function<String, Optional<T>> predefinedTypeInstantiator
+    ) {
+        return ConfigLoading.loadInstanceWithPredefinedTypes(properties, key, type, predefinedTypeInstantiator);
+    }
+
     public <T extends Configurable> Optional<T> loadConfiguredWithPredefinedTypes(
         String key,
         Class<? extends T> type,
