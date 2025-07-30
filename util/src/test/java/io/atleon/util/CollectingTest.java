@@ -19,6 +19,10 @@ class CollectingTest {
         assertEquals(
             Collections.singletonList(Collections.singletonList(0)),
             Collecting.binaryStrides(Collections.singletonList(0), ArrayList::new));
+        assertEquals(
+            Arrays.asList(Collections.singletonList(0), Collections.singletonList(1)),
+            Collecting.binaryStrides(Arrays.asList(0, 1), ArrayList::new)
+        );
     }
 
     @Test
@@ -42,11 +46,13 @@ class CollectingTest {
 
         List<List<Integer>> result = Collecting.binaryStrides(collection, ArrayList::new);
 
-        assertEquals(4, result.size());
+        assertEquals(6, result.size());
         assertEquals(Arrays.asList(0, 2, 4, 6), result.get(0));
         assertEquals(Arrays.asList(1, 3, 5), result.get(1));
         assertEquals(Arrays.asList(0, 1, 4, 5), result.get(2));
         assertEquals(Arrays.asList(2, 3, 6), result.get(3));
+        assertEquals(Arrays.asList(0, 1, 2, 3), result.get(4));
+        assertEquals(Arrays.asList(4, 5, 6), result.get(5));
     }
 
     @Test
@@ -90,10 +96,10 @@ class CollectingTest {
         assertEquals(6, result.size());
         assertEquals(Arrays.asList(0, 2, 4, 6, 8, 10), result.get(0));
         assertEquals(Arrays.asList(1, 3, 5, 7, 9), result.get(1));
-        assertEquals(Arrays.asList(0, 1, 4, 5, 8, 10), result.get(2));
-        assertEquals(Arrays.asList(2, 3, 6, 7, 9), result.get(3));
-        assertEquals(Arrays.asList(0, 1, 2, 3, 8, 10), result.get(4));
-        assertEquals(Arrays.asList(4, 5, 6, 7, 9), result.get(5));
+        assertEquals(Arrays.asList(0, 1, 4, 5, 8, 9), result.get(2));
+        assertEquals(Arrays.asList(2, 3, 6, 7, 10), result.get(3));
+        assertEquals(Arrays.asList(0, 1, 2, 3, 8, 9), result.get(4));
+        assertEquals(Arrays.asList(4, 5, 6, 7, 10), result.get(5));
     }
 
     @Test

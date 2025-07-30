@@ -127,7 +127,7 @@ public final class Collecting {
 
         int remaining = source.size() - stopIndex;
         if (remaining > 1) {
-            int maxCycle = totalBinaryStrides(remaining / 2) + parity;
+            int maxCycle = totalBinaryStrides(remaining) - 2 + parity;
             binaryStride(source.subList(stopIndex, source.size()), Math.min(cycle, maxCycle), accumulator);
         } else if (remaining == 1 && parity == 0) {
             accumulator.accept(source.get(stopIndex));
@@ -135,6 +135,6 @@ public final class Collecting {
     }
 
     private static int totalBinaryStrides(int size) {
-        return 2 * Calculation.binaryLogOf(size);
+        return 2 * Calculation.binaryLogOf(size + 1);
     }
 }
