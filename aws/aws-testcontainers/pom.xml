@@ -9,6 +9,7 @@
 
     <artifactId>atleon-aws-testcontainers</artifactId>
     <packaging>jar</packaging>
+    <name>${project.groupId}:${project.artifactId}</name>
 
     <dependencies>
         <!-- Third Party Compile Dependencies -->

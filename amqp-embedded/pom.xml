@@ -10,6 +10,7 @@
 
     <artifactId>atleon-amqp-embedded</artifactId>
     <packaging>jar</packaging>
+    <name>${project.groupId}:${project.artifactId}</name>
 
     <properties>
         <qpid.version>9.2.0</qpid.version>

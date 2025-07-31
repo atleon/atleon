@@ -10,6 +10,7 @@
 
     <artifactId>atleon-context-auto</artifactId>
     <packaging>jar</packaging>
+    <name>${project.groupId}:${project.artifactId}</name>
 
     <dependencies>
         <!-- Project Provided Dependencies -->

@@ -10,6 +10,7 @@
 
     <artifactId>atleon-schemas</artifactId>
     <packaging>pom</packaging>
+    <name>${project.groupId}:${project.artifactId}</name>
 
     <modules>
         <module>avro</module>

@@ -9,6 +9,7 @@
 
     <artifactId>atleon-json-jackson</artifactId>
     <packaging>jar</packaging>
+    <name>${project.groupId}:${project.artifactId}</name>
 
     <dependencies>
         <!-- Third Party Compile Dependencies -->
