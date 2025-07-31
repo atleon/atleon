@@ -18,6 +18,6 @@
 # Step 1) Delete tag in local and remote repository
 #         `git tag -d atleon-x.y.z && git push --delete upstream atleon-x.y.z
 # Step 2) Create new release branch OR revert+rebase release commits as follows:
-#         `git revert --no-commit HEAD~2.. && git rebase -i main && git push -f`
+#         `git reset --hard HEAD^^ && git push -f`
 #
 * @Sage-Pierce

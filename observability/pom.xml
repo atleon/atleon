@@ -10,6 +10,7 @@
 
     <artifactId>atleon-observability</artifactId>
     <packaging>pom</packaging>
+    <name>${project.groupId}:${project.artifactId}</name>
 
     <modules>
         <module>micrometer</module>
