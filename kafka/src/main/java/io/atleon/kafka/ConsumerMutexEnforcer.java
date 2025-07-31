@@ -12,6 +12,7 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.Uuid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.kafka.receiver.ReceiverOptions;
@@ -215,6 +216,11 @@ class ConsumerMutexEnforcer extends ConsumerFactory {
             @Override
             public Map<TopicPartition, OffsetAndMetadata> committed(Set<TopicPartition> partitions, Duration timeout) {
                 return delegate.committed(partitions, timeout);
+            }
+
+            @Override
+            public Uuid clientInstanceId(Duration duration) {
+                return delegate.clientInstanceId(duration);
             }
 
             @Override

@@ -109,9 +109,8 @@ public abstract class RegistrySerializer<T, S> extends RegistrySerDe implements 
             int schemaId = register(subject, schema);
             return new RegisteredSchema(schemaId, schema);
         } else if (useLatestVersion) {
-            ParsedSchema latestSchema = lookupLatestVersion(subject, schema, latestCompatibilityStrict);
-            int schemaId = schemaRegistry.getId(subject, latestSchema);
-            return new RegisteredSchema(schemaId, latestSchema);
+            ExtendedSchema latestSchema = lookupLatestVersion(subject, schema, latestCompatibilityStrict);
+            return new RegisteredSchema(latestSchema.getId(), latestSchema.getSchema());
         } else {
             int schemaId = schemaRegistry.getId(subject, schema);
             return new RegisteredSchema(schemaId, schema);

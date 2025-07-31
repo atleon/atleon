@@ -22,10 +22,12 @@ public class EmbeddedKafkaConfig {
     }
 
     public String getSecurityProtocol() {
-        return Objects.toString(kafkaConfigValues.get(KafkaConfig.InterBrokerSecurityProtocolProp()));
+        // Config key from org.apache.kafka.server.config.ReplicationConfigs
+        return Objects.toString(kafkaConfigValues.get("security.inter.broker.protocol"));
     }
 
     public String getConnect() {
-        return Objects.toString(kafkaConfigValues.get(KafkaConfig.ListenersProp()));
+        // Config key from org.apache.kafka.network.SocketServerConfigs
+        return Objects.toString(kafkaConfigValues.get("advertised.listeners"));
     }
 }
