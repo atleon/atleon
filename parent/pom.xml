@@ -127,11 +127,6 @@
             </dependency>
             <dependency>
                 <groupId>io.atleon</groupId>
-                <artifactId>atleon-schema-registry-confluent-embedded</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.atleon</groupId>
                 <artifactId>atleon-util</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -422,16 +417,6 @@
             </dependency>
 
             <!-- Third Party Transitive Dependencies (Satisfy Upper Bounds) -->
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-annotations</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.datatype</groupId>
-                <artifactId>jackson-datatype-jdk8</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-buffer</artifactId>
