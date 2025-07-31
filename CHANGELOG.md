@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.32.0]
+atleon `0.32.0` is a beta release containing updates outlined below
+
+### Additions
+* [#396] Refactors and utility code additions to support upcoming migration to optimized Kafka receiver and sender
+
+### Fixes
+* [#401] Upgraded Kafka from 3.6.1 to 3.9.1; Addressed associated transitive dependency upgrades
+
+### Removals
+* [#402] Removed Embedded Confluent Schema Registry support
+
 # [0.31.6]
 atleon `0.31.6` is a beta release containing updates outlined below
 
