@@ -13,11 +13,11 @@
 
     <properties>
         <amazon-sdk.version>2.21.3</amazon-sdk.version>
-        <apache-kafka.version>3.9.1</apache-kafka.version>
-        <apache-kafka-doc.version>36</apache-kafka-doc.version>
+        <apache-kafka.version>3.7.1</apache-kafka.version>
+        <apache-kafka-doc.version>37</apache-kafka-doc.version>
         <avro.version>1.11.4</avro.version>
         <bytebuddy.version>1.12.19</bytebuddy.version>
-        <confluent.version>7.9.2</confluent.version> <!-- https://docs.confluent.io/platform/current/installation/versions-interoperability.html -->
+        <confluent.version>7.7.4</confluent.version> <!-- https://docs.confluent.io/platform/current/installation/versions-interoperability.html -->
         <guava.version>32.0.1-jre</guava.version>
         <jackson.version>2.16.2</jackson.version>
         <jetbrains-annotations.version>23.0.0</jetbrains-annotations.version>
