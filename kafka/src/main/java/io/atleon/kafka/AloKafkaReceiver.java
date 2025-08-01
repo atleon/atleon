@@ -2,25 +2,19 @@ package io.atleon.kafka;
 
 import io.atleon.core.AcknowledgementQueueMode;
 import io.atleon.core.Alo;
-import io.atleon.core.AloComponentExtractor;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
 import io.atleon.core.AloFlux;
-import io.atleon.core.AloQueueListener;
 import io.atleon.core.AloQueueListenerConfig;
-import io.atleon.core.AloQueueingTransformer;
 import io.atleon.core.AloSignalListenerFactory;
 import io.atleon.core.AloSignalListenerFactoryConfig;
-import io.atleon.core.ErrorEmitter;
 import io.atleon.util.Defaults;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.kafka.receiver.KafkaReceiver;
 import reactor.kafka.receiver.ReceiverOptions;
-import reactor.kafka.receiver.ReceiverRecord;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -32,7 +26,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
@@ -83,6 +76,23 @@ public class AloKafkaReceiver<K, V> {
     public static final String ACKNOWLEDGEMENT_QUEUE_MODE_CONFIG = CONFIG_PREFIX + "acknowledgement.queue.mode";
 
     /**
+     * Configures the type of strategy to use for polling. Some simple types are available that
+     * target static constructors, like {@value #POLL_STRATEGY_FACTORY_TYPE_NATURAL},
+     * {@value #POLL_STRATEGY_FACTORY_TYPE_BINARY_STRIDES}, and
+     * {@value #POLL_STRATEGY_FACTORY_TYPE_GREATEST_BATCH_LAG}. Any other non-predefined value is
+     * treated as a qualified class name of an implementation of {@link PollStrategyFactory}.
+     *
+     * @see PollStrategyFactory
+     */
+    public static final String POLL_STRATEGY_FACTORY_CONFIG = CONFIG_PREFIX + "poll.strategy.factory";
+
+    public static final String POLL_STRATEGY_FACTORY_TYPE_NATURAL = "natural";
+
+    public static final String POLL_STRATEGY_FACTORY_TYPE_BINARY_STRIDES = "binary-strides";
+
+    public static final String POLL_STRATEGY_FACTORY_TYPE_GREATEST_BATCH_LAG = "greatest-batch-lag";
+
+    /**
      * Configures the behavior of negatively acknowledging received records. Some simple types are
      * available, including {@value #NACKNOWLEDGER_TYPE_EMIT}, where the associated error is
      * emitted in to the pipeline. Any other non-predefined value is treated as a qualified class
@@ -115,6 +125,14 @@ public class AloKafkaReceiver<K, V> {
     public static final String AUTO_INCREMENT_CLIENT_ID_CONFIG = CONFIG_PREFIX + "auto.increment.client.id";
 
     /**
+     * Directly controls the maximum number records that may be prefetched in memory for subsequent
+     * emission (which is independent of the number of in-flight records per subscription). The
+     * maximum number of prefetched records is calculated based on the product of this and Kafka's
+     * native {@link org.apache.kafka.clients.consumer.ConsumerConfig#MAX_POLL_RECORDS_CONFIG}.
+     */
+    public static final String FULL_POLL_RECORDS_PREFETCH_CONFIG = CONFIG_PREFIX + "full.poll.records.prefetch";
+
+    /**
      * Controls timeouts of polls to Kafka. This config can be increased if a Kafka cluster is
      * slow to respond. Specified as ISO-8601 Duration, e.g. PT10S
      */
@@ -142,8 +160,24 @@ public class AloKafkaReceiver<K, V> {
     /**
      * When rebalances occur, this configures the maximum duration that will be awaited for
      * in-flight records to be acknowledged before allowing the rebalance to complete.
+     *
+     * @deprecated Use {@link #REVOCATION_GRACE_PERIOD_CONFIG}
      */
+    @Deprecated
     public static final String MAX_DELAY_REBALANCE_CONFIG = CONFIG_PREFIX + "max.delay.rebalance";
+
+    /**
+     * Upon rebalancing, this configuration controls how long to wait for in-flight records from
+     * any given revoked partition to be acknowledged before letting the rebalance continue.
+     */
+    public static final String REVOCATION_GRACE_PERIOD_CONFIG = CONFIG_PREFIX + "revocation.grace.period";
+
+    /**
+     * This is a temporary configuration to enable and test usage of re-optimized Kafka receiver.
+     * Set to "OPTIMIZED" to enable.
+     */
+    @Deprecated
+    public static final String RECEPTION_TYPE_CONFIG = CONFIG_PREFIX + "reception.type";
 
     private static final AcknowledgementQueueMode DEFAULT_ACKNOWLEDGEMENT_QUEUE_MODE = AcknowledgementQueueMode.STRICT;
 
@@ -362,32 +396,37 @@ public class AloKafkaReceiver<K, V> {
             prioritization.prioritize(ConsumerRecordExtraction.topicPartition(alo.get())));
     }
 
-    private interface ReceiverOptionsInitializer<K, V> {
+    private interface ReceptionInvocation<K, V> {
 
-        ReceiverOptions<K, V> initialize(Map<String, Object> consumerConfig);
+        Flux<KafkaReceiverRecord<K, V>> invoke(KafkaReceiver<K, V> receiver);
     }
 
     private static final class ReceptionFactory<K, V> {
 
-        private final ReceiverOptionsInitializer<K, V> optionsInitializer;
+        private final ReceptionInvocation<K, V> receptionInvocation;
+
+        private final LegacyReceiveResources.OptionsInitializer<K, V> optionsInitializer;
 
         private final Map<Object, ConsumerMutexEnforcer> consumerMutexEnforcers = new ConcurrentHashMap<>();
 
-        private ReceptionFactory(ReceiverOptionsInitializer<K, V> optionsInitializer) {
+        private ReceptionFactory(
+            ReceptionInvocation<K, V> receptionInvocation,
+            LegacyReceiveResources.OptionsInitializer<K, V> optionsInitializer
+        ) {
+            this.receptionInvocation = receptionInvocation;
             this.optionsInitializer = optionsInitializer;
         }
 
         public static <K, V> ReceptionFactory<K, V> topics(Collection<String> topics) {
-            return new ReceptionFactory<>(config -> ReceiverOptions.<K, V>create(config).subscription(topics));
+            return new ReceptionFactory<>(
+                receiver -> receiver.receiveManual(topics),
+                config -> ReceiverOptions.<K, V>create(config).subscription(topics));
         }
 
         public static <K, V> ReceptionFactory<K, V> topicsPattern(Pattern topicsPattern) {
-            return new ReceptionFactory<>(config -> ReceiverOptions.<K, V>create(config).subscription(topicsPattern));
-        }
-
-        public Flux<Alo<ConsumerRecord<K, V>>> receive(KafkaConfig config) {
-            // Constant used as config key, since mutex should be maintained for single reception lifecycle
-            return receive(-1, config);
+            return new ReceptionFactory<>(
+                receiver -> receiver.receiveManual(topicsPattern),
+                config -> ReceiverOptions.<K, V>create(config).subscription(topicsPattern));
         }
 
         @SuppressWarnings("unchecked")
@@ -398,10 +437,19 @@ public class AloKafkaReceiver<K, V> {
                 .toArray(Flux[]::new);
         }
 
+        public Flux<Alo<ConsumerRecord<K, V>>> receive(KafkaConfig config) {
+            // Constant used as config key, since mutex should be maintained for single reception lifecycle
+            return receive(-1, config);
+        }
+
         private Flux<Alo<ConsumerRecord<K, V>>> receive(Object configKey, KafkaConfig config) {
-            ConsumerMutexEnforcer consumerMutexEnforcer =
-                consumerMutexEnforcers.computeIfAbsent(configKey, __ -> new ConsumerMutexEnforcer());
-            return new ReceiveResources<K, V>(config).receive(optionsInitializer, consumerMutexEnforcer);
+            if (config.loadString(RECEPTION_TYPE_CONFIG).orElse("LEGACY").equalsIgnoreCase("OPTIMIZED")) {
+                return new ReceiveResources<K, V>(config).receive(receptionInvocation);
+            } else {
+                ConsumerMutexEnforcer consumerMutexEnforcer =
+                    consumerMutexEnforcers.computeIfAbsent(configKey, __ -> new ConsumerMutexEnforcer());
+                return new LegacyReceiveResources<K, V>(config).receive(optionsInitializer, consumerMutexEnforcer);
+            }
         }
     }
 
@@ -409,41 +457,46 @@ public class AloKafkaReceiver<K, V> {
 
         private final KafkaConfig config;
 
-        private final NacknowledgerFactory<K, V> nacknowledgerFactory;
+        private final PollStrategyFactory pollStrategyFactory;
 
         private final AcknowledgementQueueMode acknowledgementQueueMode;
 
+        private final NacknowledgerFactory<K, V> nacknowledgerFactory;
+
+        private final AloFactory<ConsumerRecord<K, V>> aloFactory;
+
         public ReceiveResources(KafkaConfig config) {
             this.config = config;
-            this.nacknowledgerFactory = createNacknowledgerFactory(config);
+            this.pollStrategyFactory = createPollStrategyFactory(config);
             this.acknowledgementQueueMode = loadAcknowledgementQueueMode(config);
+            this.nacknowledgerFactory = createNacknowledgerFactory(config);
+            this.aloFactory = loadAloFactory(config);
         }
 
-        public Flux<Alo<ConsumerRecord<K, V>>>
-        receive(ReceiverOptionsInitializer<K, V> optionsInitializer, ConsumerMutexEnforcer consumerMutexEnforcer) {
-            ErrorEmitter<Alo<ConsumerRecord<K, V>>> errorEmitter = newErrorEmitter();
-            ReceiverOptions<K, V> options = newReceiverOptions(optionsInitializer);
-            ConsumerMutexEnforcer.ProhibitableConsumerFactory consumerFactory = consumerMutexEnforcer.newConsumerFactory();
-            return KafkaReceiver.create(consumerFactory, options).receive()
-                .transform(newAloQueueingTransformer(errorEmitter::safelyEmit))
-                .transform(errorEmitter::applyTo)
-                .transform(this::applySignalListenerFactories)
-                .doFinally(__ -> consumerFactory.prohibitFurtherConsumption(options.closeTimeout().multipliedBy(2)));
+        public Flux<Alo<ConsumerRecord<K, V>>> receive(ReceptionInvocation<K, V> receptionInvocation) {
+            KafkaReceiverOptions<K, V> options = newReceiverOptions();
+            return receptionInvocation.invoke(KafkaReceiver.create(options))
+                .map(this::toAloConsumerRecord)
+                .transform(this::applySignalListenerFactories);
         }
 
-        private ErrorEmitter<Alo<ConsumerRecord<K, V>>> newErrorEmitter() {
-            Duration timeout = config.loadDuration(ERROR_EMISSION_TIMEOUT_CONFIG).orElse(ErrorEmitter.DEFAULT_TIMEOUT);
-            return ErrorEmitter.create(timeout);
-        }
-
-        private ReceiverOptions<K, V> newReceiverOptions(ReceiverOptionsInitializer<K, V> optionsInitializer) {
-            ReceiverOptions<K, V> defaultOptions = optionsInitializer.initialize(newConsumerConfig());
-            return defaultOptions
+        private KafkaReceiverOptions<K, V> newReceiverOptions() {
+            KafkaReceiverOptions<K, V> defaultOptions = KafkaReceiverOptions.defaultOptions();
+            return KafkaReceiverOptions.<K, V>newBuilder()
+                .consumerProperties(newConsumerConfig())
+                .receptionListener(loadReceptionListener())
+                .pollStrategyFactory(pollStrategyFactory)
+                .fullPollRecordsPrefetch(config.loadInt(FULL_POLL_RECORDS_PREFETCH_CONFIG)
+                    .orElse(defaultOptions.fullPollRecordsPrefetch()))
+                .maxActiveInFlight(config.loadLong(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG)
+                    .orElse(DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION))
                 .pollTimeout(config.loadDuration(POLL_TIMEOUT_CONFIG).orElse(defaultOptions.pollTimeout()))
-                .commitInterval(config.loadDuration(COMMIT_INTERVAL_CONFIG).orElse(defaultOptions.commitInterval()))
+                .acknowledgementQueueMode(acknowledgementQueueMode)
+                .commitPeriod(config.loadDuration(COMMIT_INTERVAL_CONFIG).orElse(defaultOptions.commitPeriod()))
                 .maxCommitAttempts(config.loadInt(MAX_COMMIT_ATTEMPTS_CONFIG).orElse(defaultOptions.maxCommitAttempts()))
+                .revocationGracePeriod(loadRevocationGracePeriod().orElse(defaultOptions.revocationGracePeriod()))
                 .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
-                .maxDelayRebalance(loadMaxDelayRebalance().orElse(defaultOptions.maxDelayRebalance()));
+                .build();
         }
 
         private Map<String, Object> newConsumerConfig() {
@@ -458,45 +511,27 @@ public class AloKafkaReceiver<K, V> {
             });
         }
 
-        private Optional<Duration> loadMaxDelayRebalance() {
-            Optional<Duration> maxDelayRebalance = config.loadDuration(MAX_DELAY_REBALANCE_CONFIG);
-            return maxDelayRebalance.isPresent() || acknowledgementQueueMode == AcknowledgementQueueMode.STRICT
-                ? maxDelayRebalance
+        private Optional<Duration> loadRevocationGracePeriod() {
+            Optional<Duration> revocationGracePeriod = config.loadDuration(REVOCATION_GRACE_PERIOD_CONFIG);
+            revocationGracePeriod = revocationGracePeriod.isPresent()
+                ? revocationGracePeriod
+                : config.loadDuration(MAX_DELAY_REBALANCE_CONFIG);
+            return revocationGracePeriod.isPresent() || acknowledgementQueueMode == AcknowledgementQueueMode.STRICT
+                ? revocationGracePeriod
                 : Optional.of(Duration.ZERO); // By default, disable delay if acknowledgements may be skipped
         }
 
-        private AloQueueingTransformer<ReceiverRecord<K, V>, ConsumerRecord<K, V>>
-        newAloQueueingTransformer(Consumer<Throwable> errorEmitter) {
-            return AloQueueingTransformer.create(newComponentExtractor(errorEmitter))
-                .withGroupExtractor(record -> record.receiverOffset().topicPartition())
-                .withQueueMode(acknowledgementQueueMode)
-                .withListener(loadQueueListener())
-                .withFactory(loadAloFactory())
-                .withMaxInFlight(loadMaxInFlightPerSubscription());
-        }
-
-        private AloComponentExtractor<ReceiverRecord<K, V>, ConsumerRecord<K, V>>
-        newComponentExtractor(Consumer<Throwable> errorEmitter) {
-            return AloComponentExtractor.composed(
-                record -> record.receiverOffset()::acknowledge,
-                record -> nacknowledgerFactory.create(record, errorEmitter),
-                Function.identity()
-            );
-        }
-
-        private AloQueueListener loadQueueListener() {
+        private ReceptionListener loadReceptionListener() {
             Map<String, Object> listenerConfig = config.modifyAndGetProperties(properties -> {});
             return AloQueueListenerConfig.load(listenerConfig, AloKafkaQueueListener.class)
-                .orElseGet(AloQueueListener::noOp);
+                .<ReceptionListener>map(AloQueueReceptionListener::new)
+                .orElseGet(ReceptionListener::noOp);
         }
 
-        private AloFactory<ConsumerRecord<K, V>> loadAloFactory() {
-            Map<String, Object> factoryConfig = config.modifyAndGetProperties(properties -> {});
-            return AloFactoryConfig.loadDecorated(factoryConfig, AloKafkaConsumerRecordDecorator.class);
-        }
-
-        private long loadMaxInFlightPerSubscription() {
-            return config.loadLong(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG).orElse(DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION);
+        private Alo<ConsumerRecord<K, V>> toAloConsumerRecord(KafkaReceiverRecord<K, V> receiverRecord) {
+            Consumer<Throwable> nacknowledger =
+                nacknowledgerFactory.create(receiverRecord.consumerRecord(), receiverRecord.nacknowledger());
+            return aloFactory.create(receiverRecord.consumerRecord(), receiverRecord.acknowledger(), nacknowledger);
         }
 
         private Flux<Alo<ConsumerRecord<K, V>>> applySignalListenerFactories(Flux<Alo<ConsumerRecord<K, V>>> aloRecords) {
@@ -507,6 +542,27 @@ public class AloKafkaReceiver<K, V> {
                 aloRecords = aloRecords.tap(factory);
             }
             return aloRecords;
+        }
+
+        private static PollStrategyFactory createPollStrategyFactory(KafkaConfig config) {
+            Optional<PollStrategyFactory> pollStrategyFactory1 = config.loadInstanceWithPredefinedTypes(
+                POLL_STRATEGY_FACTORY_CONFIG,
+                PollStrategyFactory.class,
+                ReceiveResources::newPredefinedPollStrategyFactory
+            );
+            return pollStrategyFactory1.orElseGet(PollStrategyFactory::natural);
+        }
+
+        private static Optional<PollStrategyFactory> newPredefinedPollStrategyFactory(String typeName) {
+            if (typeName.equalsIgnoreCase(POLL_STRATEGY_FACTORY_TYPE_NATURAL)) {
+                return Optional.of(PollStrategyFactory.natural());
+            } else if (typeName.equalsIgnoreCase(POLL_STRATEGY_FACTORY_TYPE_BINARY_STRIDES)) {
+                return Optional.of(PollStrategyFactory.binaryStrides());
+            } else if (typeName.equalsIgnoreCase(POLL_STRATEGY_FACTORY_TYPE_GREATEST_BATCH_LAG)) {
+                return Optional.of(PollStrategyFactory.greatestBatchLag());
+            } else {
+                return Optional.empty();
+            }
         }
 
         private static <K, V> NacknowledgerFactory<K, V> createNacknowledgerFactory(KafkaConfig config) {
@@ -526,6 +582,11 @@ public class AloKafkaReceiver<K, V> {
             } else {
                 return Optional.empty();
             }
+        }
+
+        private static <K, V> AloFactory<ConsumerRecord<K, V>> loadAloFactory(KafkaConfig config) {
+            Map<String, Object> factoryConfig = config.modifyAndGetProperties(properties -> {});
+            return AloFactoryConfig.loadDecorated(factoryConfig, AloKafkaConsumerRecordDecorator.class);
         }
 
         private static AcknowledgementQueueMode loadAcknowledgementQueueMode(KafkaConfig config) {

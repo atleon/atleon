@@ -4,6 +4,7 @@ import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
 import io.atleon.core.SenderResult;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -11,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
-import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
 
@@ -62,6 +62,15 @@ public class AloKafkaSender<K, V> implements Closeable {
     public static final String MAX_IN_FLIGHT_PER_SEND_CONFIG = CONFIG_PREFIX + "max.in.flight.per.send";
 
     /**
+     * Whether to schedule underlying sends on the Kafka producer using serialized task loop (with
+     * dedicated Scheduler) or to invoke sends immediately on publishing/sending threads. This may
+     * increase outbound throughput when publishing/sending threads are already amenable to
+     * blocking, which send invocation may incur, due to waiting for metadata, serializing with a
+     * schema registry, etc.
+     */
+    public static final String SEND_IMMEDIATE_CONFIG = CONFIG_PREFIX + "send.immediate";
+
+    /**
      * Upon occurrence of synchronous Exceptions (i.e. serialization), sent Publishers are
      * immediately fatally errored/canceled. Upon asynchronous Exceptions (i.e. network issue),
      * We allow configuring whether to "stop" (aka error-out) the sent Publisher. Therefore, if
@@ -73,6 +82,13 @@ public class AloKafkaSender<K, V> implements Closeable {
      * if this is enabled.
      */
     public static final String STOP_ON_ERROR_CONFIG = CONFIG_PREFIX + "stop.on.error";
+
+    /**
+     * This is a temporary configuration to enable and test usage of re-optimized Kafka sender.
+     * Set to "OPTIMIZED" to enable.
+     */
+    @Deprecated
+    public static final String SENDING_TYPE_CONFIG = CONFIG_PREFIX + "sending.type";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloKafkaSender.class);
 
@@ -329,42 +345,86 @@ public class AloKafkaSender<K, V> implements Closeable {
 
     private static final class SendResources<K, V> {
 
-        private final KafkaSender<K, V> sender;
+        private final reactor.kafka.sender.KafkaSender<K, V> legacySender;
 
-        private SendResources(KafkaSender<K, V> sender) {
-            this.sender = sender;
+        private final KafkaSender<K, V> optimizedSender;
+
+        private final boolean stopOnError;
+
+        private final boolean optimized;
+
+        private SendResources(
+            reactor.kafka.sender.KafkaSender<K, V> legacySender,
+            KafkaSender<K, V> optimizedSender,
+            boolean stopOnError,
+            boolean optimized
+        ) {
+            this.legacySender = legacySender;
+            this.optimizedSender = optimizedSender;
+            this.stopOnError = stopOnError;
+            this.optimized = optimized;
         }
 
         public static <K, V> SendResources<K, V> fromConfig(KafkaConfig config) {
-            SenderOptions<K, V> defaultOptions = SenderOptions.create(newProducerConfig(config));
-            SenderOptions<K, V> senderOptions = defaultOptions
+            boolean stopOnError = config.loadBoolean(STOP_ON_ERROR_CONFIG).orElse(DEFAULT_STOP_ON_ERROR);
+
+            SenderOptions<K, V> defaultLegacyOptions = SenderOptions.create(newProducerConfig(config));
+            SenderOptions<K, V> legacyOptions = defaultLegacyOptions
+                .maxInFlight(config.loadInt(MAX_IN_FLIGHT_PER_SEND_CONFIG).orElse(defaultLegacyOptions.maxInFlight()))
+                .stopOnError(stopOnError);
+
+            KafkaSenderOptions<K, V> defaultOptions = KafkaSenderOptions.defaultOptions();
+            KafkaSenderOptions<K, V> options = KafkaSenderOptions
+                .<K, V>newBuilder(properties -> new ContextualProducer<>(new KafkaProducer<>(properties)))
+                .producerProperties(newProducerConfig(config))
                 .maxInFlight(config.loadInt(MAX_IN_FLIGHT_PER_SEND_CONFIG).orElse(defaultOptions.maxInFlight()))
-                .stopOnError(config.loadBoolean(STOP_ON_ERROR_CONFIG).orElse(DEFAULT_STOP_ON_ERROR));
-            return new SendResources<>(KafkaSender.create(ContextualProducerFactory.INSTANCE, senderOptions));
+                .sendImmediate(config.loadBoolean(SEND_IMMEDIATE_CONFIG).orElse(defaultOptions.sendImmediate()))
+                .build();
+
+            return new SendResources<>(
+                reactor.kafka.sender.KafkaSender.create(ContextualProducerFactory.INSTANCE, legacyOptions),
+                KafkaSender.create(options),
+                stopOnError,
+                config.loadString(SENDING_TYPE_CONFIG).orElse("LEGACY").equalsIgnoreCase("OPTIMIZED")
+            );
         }
 
         public <T> Flux<KafkaSenderResult<T>> send(
             Publisher<T> publisher,
             Function<T, ProducerRecord<K, V>> recordCreator
         ) {
-            return Flux.from(publisher)
-                .map(item -> SenderRecord.create(recordCreator.apply(item), item))
-                .transform(sender::send)
-                .map(KafkaSenderResult::fromSenderResult);
+            if (optimized) {
+                return Flux.from(publisher)
+                    .map(item -> KafkaSenderRecord.create(recordCreator.apply(item), item))
+                    .transform(stopOnError ? optimizedSender::send : optimizedSender::sendDelayError);
+            } else {
+                return Flux.from(publisher)
+                    .map(item -> SenderRecord.create(recordCreator.apply(item), item))
+                    .transform(legacySender::send)
+                    .map(KafkaSenderResult::fromSenderResult);
+            }
         }
 
         public <T> Flux<Alo<KafkaSenderResult<T>>> sendAlos(
             Publisher<Alo<T>> alos,
             Function<T, ProducerRecord<K, V>> recordCreator
         ) {
-            return AloFlux.toFlux(alos)
-                .map(alo -> SenderRecord.create(recordCreator.apply(alo.get()), alo))
-                .transform(sender::send)
-                .map(KafkaSenderResult::fromSenderResultOfAlo);
+            if (optimized) {
+                return AloFlux.toFlux(alos)
+                    .map(alo -> KafkaSenderRecord.create(recordCreator.apply(alo.get()), alo))
+                    .transform(stopOnError ? optimizedSender::send : optimizedSender::sendDelegateError)
+                    .map(KafkaSenderResult::invertAlo);
+            } else {
+                return AloFlux.toFlux(alos)
+                    .map(alo -> SenderRecord.create(recordCreator.apply(alo.get()), alo))
+                    .transform(legacySender::send)
+                    .map(KafkaSenderResult::fromSenderResultOfAlo);
+            }
         }
 
         public void close() {
-            sender.close();
+            legacySender.close();
+            optimizedSender.close();
         }
 
         private static Map<String, Object> newProducerConfig(KafkaConfig config) {
