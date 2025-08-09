@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Operators;
+import reactor.util.context.Context;
 
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
@@ -88,6 +89,8 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
 
         private final SendingProducer<K, V> producer;
 
+        private final Context subscriberContext;
+
         private final SerialQueue<Consumer<Subscriber<? super KafkaSenderResult<T>>>> emissionQueue;
 
         private Subscription parent;
@@ -110,11 +113,17 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
         protected Send(
             KafkaSenderOptions<K, V> options,
             SendingProducer<K, V> producer,
-            Subscriber<? super KafkaSenderResult<T>> actual
+            CoreSubscriber<? super KafkaSenderResult<T>> actual
         ) {
             this.options = options;
             this.producer = producer;
+            this.subscriberContext = actual.currentContext();
             this.emissionQueue = SerialQueue.on(actual);
+        }
+
+        @Override
+        public Context currentContext() {
+            return subscriberContext;
         }
 
         @Override
@@ -272,7 +281,7 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
             Subscriber<? super KafkaSenderResult<T>> actual,
             boolean emitFailuresAsResults
         ) {
-            super(options, producer, actual);
+            super(options, producer, Operators.toCoreSubscriber(actual));
             this.emitFailuresAsResults = emitFailuresAsResults;
         }
 
@@ -299,7 +308,7 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
             SendingProducer<K, V> producer,
             Subscriber<? super KafkaSenderResult<T>> actual
         ) {
-            super(options, producer, actual);
+            super(options, producer, Operators.toCoreSubscriber(actual));
         }
 
         @Override
