@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import reactor.util.context.Context;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,6 +30,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class KafkaSenderTest {
 
     private static final String BOOTSTRAP_CONNECT = EmbeddedKafka.startAndGetBootstrapServersConnect(10092);
+
+    @Test
+    public void send_givenDownstreamContext_expectsPropagationToUpstream() {
+        KafkaSenderOptions<String, String> senderOptions = KafkaSenderOptions.<String, String>newBuilder()
+            .producerProperties(newProducerProperties())
+            .build();
+        KafkaSender<String, String> sender = KafkaSender.create(senderOptions);
+
+        Flux<KafkaSenderRecord<String, String, Object>> senderRecords = Flux.deferContextual(context -> {
+            assertEquals("context", context.get(String.class));
+            return Flux.empty();
+        });
+
+        Mono<Void> result = sender.send(senderRecords)
+            .contextWrite(Context.of(String.class, "context"))
+            .then();
+
+        assertDoesNotThrow(() -> result.block());
+
+        sender.close();
+    }
 
     @Test
     public void send_givenSuccessfulSend_expectsProducedRecord() {
