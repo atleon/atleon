@@ -131,7 +131,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         }
     }
 
-    public void schedule(java.util.function.Consumer<Consumer<K, V>> task) {
+    public void schedule(java.util.function.Consumer<? super Consumer<K, V>> task) {
         taskLoop.schedule(() -> task.accept(consumer));
     }
 

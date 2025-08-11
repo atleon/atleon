@@ -31,7 +31,9 @@ public final class KafkaReceiverOptions<K, V> {
 
     private static final long DEFAULT_MAX_ACTIVE_IN_FLIGHT = 4096;
 
-    private static final Duration DEFAULT_COMMIT_INTERVAL = Duration.ofSeconds(5L); // Kafka default
+    private static final Duration DEFAULT_COMMIT_PERIOD = Duration.ofSeconds(5L); // Kafka default
+
+    private static final Duration DEFAULT_COMMIT_TIMEOUT = Duration.ofSeconds(60L); // Kafka default
 
     private static final int DEFAULT_MAX_COMMIT_ATTEMPTS = 100;
 
@@ -63,6 +65,8 @@ public final class KafkaReceiverOptions<K, V> {
 
     private final Duration commitPeriod;
 
+    private final Duration commitTimeout;
+
     private final int maxCommitAttempts;
 
     private final boolean commitlessOffsets;
@@ -84,6 +88,7 @@ public final class KafkaReceiverOptions<K, V> {
         AcknowledgementQueueMode acknowledgementQueueMode,
         int commitBatchSize,
         Duration commitPeriod,
+        Duration commitTimeout,
         int maxCommitAttempts,
         boolean commitlessOffsets,
         Duration revocationGracePeriod,
@@ -101,6 +106,7 @@ public final class KafkaReceiverOptions<K, V> {
         this.acknowledgementQueueMode = acknowledgementQueueMode;
         this.commitBatchSize = commitBatchSize;
         this.commitPeriod = commitPeriod;
+        this.commitTimeout = commitTimeout;
         this.maxCommitAttempts = maxCommitAttempts;
         this.commitlessOffsets = commitlessOffsets;
         this.revocationGracePeriod = revocationGracePeriod;
@@ -229,6 +235,13 @@ public final class KafkaReceiverOptions<K, V> {
     }
 
     /**
+     * @see Builder#commitTimeout(Duration)
+     */
+    public Duration commitTimeout() {
+        return commitTimeout;
+    }
+
+    /**
      * @see Builder#maxCommitAttempts(int)
      */
     public int maxCommitAttempts() {
@@ -311,7 +324,9 @@ public final class KafkaReceiverOptions<K, V> {
 
         private int commitBatchSize = Integer.MAX_VALUE;
 
-        private Duration commitPeriod = DEFAULT_COMMIT_INTERVAL;
+        private Duration commitPeriod = DEFAULT_COMMIT_PERIOD;
+
+        private Duration commitTimeout = DEFAULT_COMMIT_TIMEOUT;
 
         private int maxCommitAttempts = DEFAULT_MAX_COMMIT_ATTEMPTS;
 
@@ -465,6 +480,14 @@ public final class KafkaReceiverOptions<K, V> {
         }
 
         /**
+         * Sets the timeout applied to <i>synchronous</i> commit attempts. Defaults to 60 seconds.
+         */
+        public Builder<K, V> commitTimeout(Duration commitTimeout) {
+            this.commitTimeout = commitTimeout;
+            return this;
+        }
+
+        /**
          * Sets the maximum number of attempts that will be made to acknowledge offsets for any
          * given assigned partition. This is a consecutive commit attempt measurement, so upon
          * successful offset committing, the attempt count for the associated partition(s) is
@@ -521,6 +544,7 @@ public final class KafkaReceiverOptions<K, V> {
                 acknowledgementQueueMode,
                 commitBatchSize,
                 commitPeriod,
+                commitTimeout,
                 maxCommitAttempts,
                 commitlessOffsets,
                 revocationGracePeriod,
