@@ -99,6 +99,33 @@ class PollingSubscriptionFactoryTest {
             .verify();
     }
 
+    @Test
+    public void rebalance_givenNoConsumedRecords_expectsNoError() {
+        String topic = "topic";
+        Map<TopicPartition, Long> beginningOffsets = Collections.singletonMap(new TopicPartition(topic, 0), 0L);
+        Sinks.Many<Long> polled = Sinks.many().multicast().directBestEffort();
+
+        MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+        mockConsumer.updateBeginningOffsets(beginningOffsets);
+        mockConsumer.schedulePollTask(() -> mockConsumer.rebalance(beginningOffsets.keySet()));
+        schedulePollEventing(mockConsumer, polled);
+
+        KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
+            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+            .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)
+            .fullPollRecordsPrefetch(1)
+            .build();
+
+        KafkaReceiver.create(options)
+            .receiveManual(Collections.singletonList(topic))
+            .as(it -> StepVerifier.create(it, 1))
+            .then(polled.asFlux().take(5).then()::block)
+            .then(() -> mockConsumer.rebalance(Collections.emptyList()))
+            .then(polled.asFlux().take(5).then()::block)
+            .thenCancel()
+            .verify();
+    }
+
     private static void schedulePollEventing(MockConsumer<String, String> mockConsumer, Sinks.Many<Long> polled) {
         mockConsumer.schedulePollTask(() -> {
             polled.tryEmitNext(System.currentTimeMillis());

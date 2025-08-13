@@ -71,7 +71,7 @@ final class PollingSubscriptionFactory<K, V> {
     private static <T> Flux<T> mergeGreedily(Collection<? extends Publisher<? extends T>> sources) {
         // Use merge method that takes explicit concurrency so that all provided publishers are
         // immediately (i.e. "greedily") subscribed.
-        return Flux.merge(Flux.fromIterable(sources), sources.size());
+        return Flux.merge(Flux.fromIterable(sources), Math.max(1, sources.size()));
     }
 
     private abstract class Poller implements Subscription, ReceivingConsumer.PartitionListener {
