@@ -93,6 +93,7 @@ public class MyStream extends SelfConfigurableAloStream {
     private AloKafkaReceiver<String, String> buildKafkaReceiver() {
         return configSource
             .withClientId(name())
+            .withConsumerGroupId("consumer-group-id")
             .withKeyDeserializer(StringSerializer.class)
             .withValueDeserializer(StringSerializer.class)
             .as(AloKafkaReceiver::create);
@@ -109,7 +110,7 @@ Atleon has built-in integration with Spring, where a fully configured stream loo
     <dependency>
         <groupId>io.atleon</groupId>
         <artifactId>atleon-spring</artifactId>
-        <version>${atleon.version></version>
+        <version>${atleon.version}</version>
     </dependency>
 </dependencies>
 ```
@@ -180,6 +181,7 @@ public class MyStream extends SpringAloStream {
     private AloKafkaReceiver<String, String> buildKafkaReceiver() {
         return configSource
             .withClientId(name())
+            .withConsumerGroupId("consumer-group-id")
             .withKeyDeserializer(StringDeserializer.class)
             .withValueDeserializer(StringDeserializer.class)
             .as(AloKafkaReceiver::create);
