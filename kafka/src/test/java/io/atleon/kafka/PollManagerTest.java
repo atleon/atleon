@@ -15,7 +15,7 @@ import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -45,17 +45,19 @@ class PollManagerTest {
     }
 
     @Test
-    public void activateAssigned_givenAlreadyAssignedPartition_expectsException() {
-        TopicPartition partition = new TopicPartition("topic", 0);
+    public void activateAssigned_givenAlreadyAssignedPartition_expectsRetainment() {
+        TopicPartition original = new TopicPartition("topic", 0);
+        TopicPartition duplicate = new TopicPartition("topic", 0);
         Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
         PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
 
-        pollManager.activateAssigned(consumer, Collections.singletonList(partition), Function.identity());
+        pollManager.activateAssigned(consumer, Collections.singletonList(original), Function.identity());
 
-        assertThrows(IllegalStateException.class, () ->
-            pollManager.activateAssigned(consumer, Collections.singletonList(partition), Function.identity())
-        );
+        pollManager.activateAssigned(consumer, Collections.singletonList(duplicate), Function.identity());
+
+        assertSame(original, pollManager.activated(original));
+        assertSame(original, pollManager.activated(duplicate));
     }
 
     @Test
