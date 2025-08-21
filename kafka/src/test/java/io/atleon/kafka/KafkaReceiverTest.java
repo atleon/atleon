@@ -30,6 +30,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -443,7 +444,7 @@ class KafkaReceiverTest {
             .verify();
 
         verify(txManager, times(1)).begin();
-        verify(txManager, times(1)).abort();
+        verify(txManager, timeout(1000).times(1)).abort();
     }
 
     @SafeVarargs
