@@ -60,9 +60,10 @@ final class PollManager<T> {
     ) {
         partitions.forEach(partition -> {
             if (assignments.containsKey(partition)) {
-                throw new IllegalStateException("TopicPartition already assigned: " + partition);
+                LOGGER.info("Skipping reactivation of partition={}", partition);
+            } else {
+                assignments.put(partition, activator.apply(partition));
             }
-            assignments.put(partition, activator.apply(partition));
         });
 
         // Newly assigned partitions may either be paused due to external control, or need pausing

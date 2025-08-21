@@ -77,17 +77,29 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     @Override
     public void onPartitionsLost(Collection<TopicPartition> partitions) {
+        LOGGER.info("Notifying listeners of lost partitions={}", partitions);
         onRebalance(partitionListener::onPartitionsLost, consumerListener::onPartitionsLost, partitions);
     }
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        LOGGER.info("Notifying listeners of revoked partitions={}", partitions);
         onRebalance(partitionListener::onPartitionsRevoked, consumerListener::onPartitionsRevoked, partitions);
     }
 
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-        onRebalance(partitionListener::onPartitionsAssigned, consumerListener::onPartitionsAssigned, partitions);
+        Collection<TopicPartition> allPartitions = consumer.assignment();
+
+        if (partitions.size() != allPartitions.size()) {
+            LOGGER.info("Assignment appears incremental for partitions={}", partitions);
+        }
+
+        // Due to an observed bug encountered when paused partitions are revoked and reassigned in
+        // the same rebalance cycle, we pass the full set of assigned partitions to the assignment
+        // callbacks. For more info: https://github.com/atleon/atleon/issues/422
+        LOGGER.info("Notifying listeners of assigned partitions={}", allPartitions);
+        onRebalance(partitionListener::onPartitionsAssigned, consumerListener::onPartitionsAssigned, allPartitions);
     }
 
     @Override
