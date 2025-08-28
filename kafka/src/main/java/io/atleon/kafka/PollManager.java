@@ -117,7 +117,7 @@ final class PollManager<T> {
 
             return consumer.poll(pollTimeout);
         } catch (WakeupException wakeup) {
-            LOGGER.debug("Consumer polling woken");
+            LOGGER.info("Consumer polling woken");
             // Check if wakeup was likely caused by freeing up capacity, and if so, retry
             return mayResumeAndPollOnWakeup.getAsBoolean() && freeCapacitySupplier.getAsInt() >= maxPollRecords
                 ? pollWakeably(consumer, freeCapacitySupplier, mayResumeAndPollOnWakeup)
