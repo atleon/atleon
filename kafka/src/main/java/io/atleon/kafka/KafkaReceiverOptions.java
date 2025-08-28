@@ -37,7 +37,7 @@ public final class KafkaReceiverOptions<K, V> {
 
     private static final int DEFAULT_MAX_COMMIT_ATTEMPTS = 100;
 
-    private static final Duration DEFAULT_REVOCATION_GRACE_PERIOD = Duration.ofSeconds(15L);
+    private static final Duration DEFAULT_REVOCATION_GRACE_PERIOD = Duration.ofSeconds(5L);
 
     private static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(30L); // Kafka default
 

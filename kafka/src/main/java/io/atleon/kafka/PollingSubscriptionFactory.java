@@ -134,7 +134,7 @@ final class PollingSubscriptionFactory<K, V> {
 
         @Override
         public final void cancel() {
-            if (freeActiveInFlightCapacity.getAndUpdate(it -> it >= 0 ? -1 : it) >= 0) {
+            if (enterTerminableState()) {
                 drain();
             }
         }
@@ -265,7 +265,7 @@ final class PollingSubscriptionFactory<K, V> {
                 // Failures during termination and failures that don't initiate termination can be
                 // safely dropped.
                 LOGGER.info("Ignoring failure during termination", failure);
-            } else if (freeActiveInFlightCapacity.getAndUpdate(it -> it >= 0 ? -1 : it) >= 0) {
+            } else if (enterTerminableState()) {
                 // Could be racing with cancellation, but it's not a spec violation if onError
                 // emission is concurrent with downstream cancellation.
                 drain();
@@ -319,6 +319,10 @@ final class PollingSubscriptionFactory<K, V> {
                 }
             }
             return emitted;
+        }
+
+        private boolean enterTerminableState() {
+            return freeActiveInFlightCapacity.getAndUpdate(it -> it >= 0 ? -1 : it) >= 0;
         }
 
         private void terminateSafely() {
