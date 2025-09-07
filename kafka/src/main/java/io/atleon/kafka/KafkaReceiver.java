@@ -77,8 +77,8 @@ import java.util.regex.Pattern;
  * delivery semantics and ensure that no offset is made eligible for commitment until all preceding
  * records in the actively assigned partition have been acknowledged):
  * <ul>
- * <li><b>STRICT Mode:</b> The default mode where each acknowledged record's offset becomes
- * eligible for commitment individually.</li>
+ * <li><b>STRICT Mode (Default):</b> The default mode where each acknowledged record's offset
+ * becomes eligible for commitment individually.</li>
  * <li><b>COMPACT Mode:</b> An optimization where acknowledgement tracking may be consolidated when
  * multiple sequential records are acknowledged but not yet eligible for commitment, reducing the
  * granularity of offset eligibility tracking. This mode is particularly beneficial for
@@ -104,6 +104,10 @@ import java.util.regex.Pattern;
  * <li><b>Greatest Batch Lag:</b> Prioritizes partitions with the highest lag in units of the
  * polling batch size. This strategy is useful when prioritizing uniform lag across all assigned
  * partitions</li>
+ * <li><b>PriorityLagCutoff:</b> Prioritizes polling from partitions as indicated by a provided
+ * {@link java.util.Comparator}, cutting off the selection of lower-priority partitions if/when
+ * the lag for a higher-priority partition meets-or-exceeds a specified threshold. This is useful
+ * for priority based messaging where partition numbers represent "priority".</li>
  * </ul>
  * <p>
  * Polling strategies can be configured via 

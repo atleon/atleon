@@ -92,7 +92,7 @@ public interface OffsetRangeProvider {
      * deterministic order
      */
     default Comparator<? super TopicPartition> topicPartitionComparator() {
-        return Comparator.comparing(TopicPartition::topic).thenComparing(TopicPartition::partition);
+        return KafkaComparators.topicThenPartition();
     }
 
     final class StartingFromRawOffsetInTopicPartition implements OffsetRangeProvider {

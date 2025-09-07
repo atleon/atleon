@@ -32,7 +32,7 @@ class PollManagerTest {
         TopicPartition partition2 = new TopicPartition("topic", 1);
 
         Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
-        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
+        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
         pollManager.forcePause(Collections.singletonList(partition1));
 
@@ -49,7 +49,7 @@ class PollManagerTest {
         TopicPartition original = new TopicPartition("topic", 0);
         TopicPartition duplicate = new TopicPartition("topic", 0);
         Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
-        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
+        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
 
         pollManager.activateAssigned(consumer, Collections.singletonList(original), Function.identity());
@@ -63,7 +63,7 @@ class PollManagerTest {
     @Test
     public void unassigned_givenNonAssignedPartition_expectsEmptyResult() {
         TopicPartition partition = new TopicPartition("topic", 0);
-        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
+        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
 
         Collection<TopicPartition> result = pollManager.unassigned(Collections.singletonList(partition));
@@ -77,7 +77,7 @@ class PollManagerTest {
         TopicPartition partition2 = new TopicPartition("topic", 1);
 
         Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
-        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
+        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
         pollManager.activateAssigned(consumer, Arrays.asList(partition1, partition2), Function.identity());
 
@@ -94,7 +94,7 @@ class PollManagerTest {
         Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
         when(consumer.poll(any())).thenReturn(ConsumerRecords.empty());
 
-        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
+        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
 
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
 
@@ -111,7 +111,7 @@ class PollManagerTest {
         Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
         when(consumer.poll(any())).thenReturn(ConsumerRecords.empty());
 
-        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
+        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
 
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
 
@@ -128,7 +128,7 @@ class PollManagerTest {
         Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
         when(consumer.poll(any())).thenThrow(new WakeupException());
 
-        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
+        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
 
         ConsumerRecords<?, ?> records = pollManager.pollWakeably(consumer, () -> 1, () -> false);
@@ -144,7 +144,7 @@ class PollManagerTest {
             .thenThrow(new WakeupException())
             .thenReturn(ConsumerRecords.empty());
 
-        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
+        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
 
         ConsumerRecords<?, ?> records = pollManager.pollWakeably(consumer, () -> 1, () -> true);
@@ -159,7 +159,7 @@ class PollManagerTest {
         Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
         when(consumer.poll(any())).thenReturn(ConsumerRecords.empty());
 
-        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
+        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 2, Duration.ZERO);
         pollManager.activateAssigned(consumer, Collections.singletonList(partition), Function.identity());
 
@@ -174,7 +174,7 @@ class PollManagerTest {
 
     @Test
     public void shouldWakeupOnSingularCapacityReclamation_givenCorrectConditions_expectsTrue() {
-        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
+        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 5, Duration.ZERO);
 
         // Simulate being paused due to backpressure
@@ -189,7 +189,7 @@ class PollManagerTest {
     @Test
     public void forcePause_givenPartitions_expectsCoordination() {
         TopicPartition partition = new TopicPartition("topic", 0);
-        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
+        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
 
         pollManager.forcePause(Collections.singletonList(partition));
@@ -200,7 +200,7 @@ class PollManagerTest {
     @Test
     public void allowResumption_givenPartitions_expectsCoordination() {
         TopicPartition partition = new TopicPartition("topic", 0);
-        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
+        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
 
         pollManager.forcePause(Collections.singletonList(partition));
