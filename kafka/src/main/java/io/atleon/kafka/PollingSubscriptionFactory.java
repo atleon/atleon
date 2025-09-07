@@ -3,6 +3,7 @@ package io.atleon.kafka;
 import io.atleon.core.SerialQueue;
 import io.atleon.core.ShouldBeTerminatedEmitFailureHandler;
 import io.atleon.util.Consuming;
+import io.atleon.util.Publishing;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -10,7 +11,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
-import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
@@ -66,12 +66,6 @@ final class PollingSubscriptionFactory<K, V> {
         } catch (Exception e) {
             LOGGER.error("Unexpected failure: name={}", name, e);
         }
-    }
-
-    private static <T> Flux<T> mergeGreedily(Collection<? extends Publisher<? extends T>> sources) {
-        // Use merge method that takes explicit concurrency so that all provided publishers are
-        // immediately (i.e. "greedily") subscribed.
-        return Flux.merge(Flux.fromIterable(sources), Math.max(1, sources.size()));
     }
 
     private abstract class Poller implements Subscription, ReceivingConsumer.PartitionListener {
@@ -169,7 +163,7 @@ final class PollingSubscriptionFactory<K, V> {
             // No longer assigned, so impossible to commit, and all we can do is clean up.
             Map<TopicPartition, Long> lostPartitionRecordCounts = pollManager.unassigned(partitions).stream()
                 .map(it -> it.deactivateForcefully().map(recordCount -> Tuples.of(it.topicPartition(), recordCount)))
-                .collect(Collectors.collectingAndThen(Collectors.toList(), PollingSubscriptionFactory::mergeGreedily))
+                .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
                 .collectMap(Tuple2::getT1, Tuple2::getT2)
                 .block();
 
@@ -384,7 +378,7 @@ final class PollingSubscriptionFactory<K, V> {
             // offsets, and it becomes more desirable to attempt to honor that progress.
             Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = partitions.stream()
                 .map(it -> it.deactivateLatest(options.revocationGracePeriod(), auxiliaryScheduler, disposal.asMono()))
-                .collect(Collectors.collectingAndThen(Collectors.toList(), PollingSubscriptionFactory::mergeGreedily))
+                .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
                 .filter(it -> !asyncOffsetCommitter.isCommitTrialExhausted(it.topicPartition()))
                 .collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffsetAndMetadata)
                 .block();
@@ -482,7 +476,7 @@ final class PollingSubscriptionFactory<K, V> {
             Mono<TxOffsetsState> txClosure = offsetsState(TxOffsetsState.INACTIVE).next().cache();
             partitions.stream()
                 .map(it -> it.deactivateTimeout(options.revocationGracePeriod(), auxiliaryScheduler))
-                .collect(Collectors.collectingAndThen(Collectors.toList(), PollingSubscriptionFactory::mergeGreedily))
+                .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
                 .onErrorMap(TimeoutException.class, __ -> new TimeoutException("Timed out on revocation deactivation"))
                 .takeUntilOther(txClosure)
                 .then(txClosure.timeout(options.closeTimeout(), auxiliaryScheduler))

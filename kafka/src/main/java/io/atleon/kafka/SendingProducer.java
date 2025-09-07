@@ -2,6 +2,7 @@ package io.atleon.kafka;
 
 import io.atleon.core.TaskLoop;
 import io.atleon.util.Proxying;
+import io.atleon.util.Publishing;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
@@ -11,7 +12,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.Signal;
 import reactor.core.publisher.Sinks;
 
 import java.lang.reflect.Method;
@@ -55,7 +55,7 @@ final class SendingProducer<K, V> implements ProducerInvocable {
     private final Sinks.Empty<Void> closed = Sinks.unsafe().empty();
 
     // Only cache first success. Until then, let client know about errors
-    private final Mono<Void> initTransactionsCache = cacheSuccess(doOnProducer(Producer::initTransactions));
+    private final Mono<Void> initTransactionsCache = Publishing.cacheSuccess(doOnProducer(Producer::initTransactions));
 
     public SendingProducer(KafkaSenderOptions<K, V> options) {
         this.producer = options.createProducer();
@@ -198,9 +198,5 @@ final class SendingProducer<K, V> implements ProducerInvocable {
         } catch (Throwable e) {
             errorHandler.accept(e);
         }
-    }
-
-    private static <T> Mono<T> cacheSuccess(Mono<T> mono) {
-        return mono.materialize().cacheInvalidateIf(Signal::hasError).dematerialize();
     }
 }
