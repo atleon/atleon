@@ -127,6 +127,19 @@ class CollectingTest {
     }
 
     @Test
+    public void takeUntil_givenCollectionAndPredicate_expectsResultContainingUpToAndIncludingMatchingElement() {
+        List<String> strings = Arrays.asList("one", "two", "three", "three", "four", "one");
+
+        assertEquals(
+            Arrays.asList("one"),
+            Collecting.takeUntil(strings, it -> it.equals("one"), ArrayList::new));
+        assertEquals(
+            Arrays.asList("one", "two", "three"),
+            Collecting.takeUntil(strings, it -> it.equals("three"), ArrayList::new));
+        assertEquals(strings, Collecting.takeUntil(strings, __ -> false, ArrayList::new));
+    }
+
+    @Test
     public void difference_givenCollections_expectsSubtractedResult() {
         assertEquals(Collections.emptyList(), Collecting.difference(Collections.emptyList(), Collections.emptyList()));
         assertEquals(Arrays.asList(1, 2, 3), Collecting.difference(Arrays.asList(1, 2, 3), Collections.emptyList()));
