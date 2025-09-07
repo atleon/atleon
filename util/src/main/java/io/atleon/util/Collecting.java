@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -87,6 +88,34 @@ public final class Collecting {
                 result.add(element);
             } else if (comparison == 0) {
                 result.add(element);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Collects the elements from a provided collection, up-to-and-including the first element that
+     * matches the provided predicate, into a new collection as initialized by the provided
+     * {@link Supplier}. The "first" element is determined by the encounter order of the source
+     * collection.
+     *
+     * @param <T>                the type of elements in the input collection
+     * @param <C>                the type of collection to return
+     * @param collection         the source collection to evaluate
+     * @param predicate          the predicate on which detect terminating element
+     * @param collectionSupplier supplier that creates the result collection instance
+     * @return A <i>new</i> collection containing elements up-to-and-including matching element
+     */
+    public static <T, C extends Collection<T>> C takeUntil(
+        Collection<T> collection,
+        Predicate<? super T> predicate,
+        Supplier<C> collectionSupplier
+    ) {
+        C result = collectionSupplier.get();
+        for (T element : collection) {
+            result.add(element);
+            if (predicate.test(element)) {
+                return result;
             }
         }
         return result;

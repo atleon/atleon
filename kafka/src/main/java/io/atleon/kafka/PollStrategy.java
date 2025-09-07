@@ -1,12 +1,15 @@
 package io.atleon.kafka;
 
 import io.atleon.util.Collecting;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +66,31 @@ public interface PollStrategy {
     }
 
     /**
+     * Creates a polling strategy that "prioritizes" polling based topic-partition ordering, with
+     * any non-zero lag triggering polling priority cutoff.
+     *
+     * @return A polling strategy that selects prioritized partitions with non-zero lag cutoff
+     * @see PollStrategy#priorityCutoffOnLag(Comparator, int)
+     */
+    static PollStrategy priorityCutoffOnLag() {
+        return priorityCutoffOnLag(KafkaComparators.topicThenPartition(), 1);
+    }
+
+    /**
+     * Creates a polling strategy that "prioritizes" polling based on the provided comparator. The
+     * comparator is used to order assigned partitions, and for each polling cycle, the partitions
+     * to select for polling are chosen in that order, up-to-and-including any partition whose lag
+     * is greater than or equal to the provided threshold.
+     *
+     * @param comparator The comparator used to determine priority of partitions
+     * @param threshold  The threshold of lag that triggers polling priority cutoff
+     * @return A polling strategy that selects prioritized partitions with lag based cutoff
+     */
+    static PollStrategy priorityCutoffOnLag(Comparator<TopicPartition> comparator, int threshold) {
+        return new PriorityCutoffOnLag(comparator, threshold);
+    }
+
+    /**
      * Called when partitions become permissible for polling. This allows the strategy to update
      * its internal state to include the newly permitted partitions.
      *
@@ -92,6 +120,23 @@ public interface PollStrategy {
      */
     void prepareForPoll(PollSelectionContext context);
 
+    /**
+     * Called after a poll operation has been completed to allow the strategy to post-process
+     * polled consumer records. This method provides an opportunity for the strategy to reorder,
+     * filter, or otherwise transform the records before downstream processing.
+     * <p>
+     * The default implementation returns the records unchanged, maintaining the original
+     * ordering and content as returned by the Kafka consumer.
+     *
+     * @param <K>             the type of the record keys
+     * @param <V>             the type of the record values
+     * @param consumerRecords the records returned from the consumer poll operation
+     * @return the post-processed consumer records
+     */
+    default <K, V> ConsumerRecords<K, V> onPoll(ConsumerRecords<K, V> consumerRecords) {
+        return consumerRecords;
+    }
+
     final class Natural implements PollStrategy {
 
         private Natural() {
@@ -106,8 +151,7 @@ public interface PollStrategy {
 
     final class BinaryStrides implements PollStrategy {
 
-        private final SortedSet<TopicPartition> sortedPartitions =
-            new TreeSet<>(Comparator.comparing(TopicPartition::topic).thenComparing(TopicPartition::partition));
+        private final SortedSet<TopicPartition> sortedPartitions = new TreeSet<>(KafkaComparators.topicThenPartition());
 
         private List<Set<TopicPartition>> selections = Collections.emptyList();
 
@@ -173,6 +217,52 @@ public interface PollStrategy {
                 Map<TopicPartition, Long> lag = context.currentBatchLag(permittedPartitions, Long.MAX_VALUE);
                 context.selectExclusively(Collecting.greatest(permittedPartitions, lag::get, HashSet::new));
             }
+        }
+    }
+
+    final class PriorityCutoffOnLag implements PollStrategy {
+
+        private final SortedSet<TopicPartition> permittedPartitions;
+
+        private final int lagCutoffThreshold;
+
+        private PriorityCutoffOnLag(Comparator<TopicPartition> comparator, int lagCutoffThreshold) {
+            this.permittedPartitions = new TreeSet<>(comparator);
+            this.lagCutoffThreshold = lagCutoffThreshold;
+        }
+
+        @Override
+        public void onPollingPermitted(Collection<TopicPartition> partitions) {
+            permittedPartitions.addAll(partitions);
+        }
+
+        @Override
+        public void onPollingProhibited(Collection<TopicPartition> partitions) {
+            permittedPartitions.removeAll(partitions);
+        }
+
+        @Override
+        public void prepareForPoll(PollSelectionContext context) {
+            Map<TopicPartition, Long> lag = context.currentLag(permittedPartitions, 0);
+            context.selectExclusively(
+                Collecting.takeUntil(permittedPartitions, it -> lag.get(it) >= lagCutoffThreshold, HashSet::new));
+        }
+
+        @Override
+        public <K, V> ConsumerRecords<K, V> onPoll(ConsumerRecords<K, V> consumerRecords) {
+            if (consumerRecords.isEmpty()) {
+                return consumerRecords;
+            }
+
+            // Ensure polled records are emitted with ordering that matches priority
+            Map<TopicPartition, List<ConsumerRecord<K, V>>> sortedRecords = new LinkedHashMap<>();
+            for (TopicPartition partition : permittedPartitions) {
+                List<ConsumerRecord<K, V>> records = consumerRecords.records(partition);
+                if (!records.isEmpty()) {
+                    sortedRecords.put(partition, records);
+                }
+            }
+            return new ConsumerRecords<>(sortedRecords);
         }
     }
 }

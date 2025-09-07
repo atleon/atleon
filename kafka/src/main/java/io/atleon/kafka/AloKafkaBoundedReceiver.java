@@ -100,7 +100,7 @@ public class AloKafkaBoundedReceiver<K, V> {
             .collectMap(TopicPartitionGroupOffsets::topicPartition, it -> toOffsetRange(it.groupOffset(), maxInclusive))
             .flatMapMany(it -> RecordRange.list(admin, it))
             .filter(RecordRange::hasNonNegativeLength)
-            .sort(Comparator.comparing(RecordRange::topicPartition, topicPartitionComparator()))
+            .sort(Comparator.comparing(RecordRange::topicPartition, KafkaComparators.topicThenPartition()))
             .concatMap(it -> receiveAndCommitRecordsInRange(admin, groupId, it));
     }
 
@@ -121,9 +121,5 @@ public class AloKafkaBoundedReceiver<K, V> {
 
     private static OffsetRange toOffsetRange(long rawMinInclusive, OffsetCriteria maxInclusive) {
         return OffsetCriteria.raw(rawMinInclusive).to(maxInclusive);
-    }
-
-    private static Comparator<TopicPartition> topicPartitionComparator() {
-        return Comparator.comparing(TopicPartition::topic).thenComparing(TopicPartition::partition);
     }
 }

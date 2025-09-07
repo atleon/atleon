@@ -115,7 +115,7 @@ final class PollManager<T> {
                 LOGGER.debug("{} back-pressure", shouldBePausedDueToBackpressure ? "Paused due to" : "Resumed from");
             }
 
-            return consumer.poll(pollTimeout);
+            return pollStrategy.onPoll(consumer.poll(pollTimeout));
         } catch (WakeupException wakeup) {
             LOGGER.info("Consumer polling woken");
             // Check if wakeup was likely caused by freeing up capacity, and if so, retry
@@ -171,10 +171,7 @@ final class PollManager<T> {
 
         @Override
         public void selectExclusively(Set<TopicPartition> partitions) {
-            if (!forcePaused.isEmpty() && partitions.stream().anyMatch(forcePaused::contains)) {
-                throw new IllegalArgumentException("Cannot select prohibited partitions: " + partitions);
-            }
-
+            validatePermissibility(partitions, "select");
             consumer.pause(Collecting.difference(assignments.keySet(), partitions));
             consumer.resume(partitions);
         }
@@ -190,11 +187,15 @@ final class PollManager<T> {
         }
 
         @Override
-        public Map<TopicPartition, Long> currentBatchLag(Set<TopicPartition> partitions, long defaultValue) {
-            if (!forcePaused.isEmpty() && partitions.stream().anyMatch(forcePaused::contains)) {
-                throw new IllegalArgumentException("Cannot request metadata for prohibited partitions: " + partitions);
-            }
+        public Map<TopicPartition, Long> currentLag(Set<TopicPartition> partitions, long defaultValue) {
+            validatePermissibility(partitions, "request metadata for");
+            return partitions.stream()
+                .collect(Collectors.toMap(Function.identity(), it -> consumer.currentLag(it).orElse(defaultValue)));
+        }
 
+        @Override
+        public Map<TopicPartition, Long> currentBatchLag(Set<TopicPartition> partitions, long defaultValue) {
+            validatePermissibility(partitions, "request metadata for");
             return partitions.stream()
                 .collect(Collectors.toMap(Function.identity(), it -> currentBatchLag(it, defaultValue)));
         }
@@ -202,6 +203,13 @@ final class PollManager<T> {
         private long currentBatchLag(TopicPartition topicPartition, long defaultValue) {
             long currentLag = consumer.currentLag(topicPartition).orElse(Long.MAX_VALUE);
             return currentLag == Long.MAX_VALUE ? defaultValue : (currentLag / maxPollRecords);
+        }
+
+        private void validatePermissibility(Set<TopicPartition> partitions, String action) {
+            if (!forcePaused.isEmpty() && partitions.stream().anyMatch(forcePaused::contains)) {
+                throw new IllegalArgumentException(
+                    String.format("Cannot %s prohibited partitions: %s", action, partitions));
+            }
         }
     }
 }
