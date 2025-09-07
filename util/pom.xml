@@ -19,6 +19,11 @@
             <artifactId>reactor-core</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>org.reactivestreams</groupId>
+            <artifactId>reactive-streams</artifactId>
+            <scope>provided</scope>
+        </dependency>
 
         <!-- Third Party Test Dependencies -->
         <dependency>
