@@ -97,7 +97,7 @@ public class KafkaBoundedReceiver<K, V> {
         return configSource.create()
             .flatMapMany(it -> listRecordRanges(it, topics, rangeProvider))
             .filter(RecordRange::hasNonNegativeLength)
-            .concatMap(this::receiveRecordsInRange);
+            .flatMap(this::receiveRecordsInRange, rangeProvider.maxConcurrentTopicPartitions());
     }
 
     Flux<ConsumerRecord<K, V>> receiveRecordsInRange(RecordRange recordRange) {

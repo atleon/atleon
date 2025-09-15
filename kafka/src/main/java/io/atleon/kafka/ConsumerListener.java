@@ -6,7 +6,9 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
@@ -31,9 +33,20 @@ public interface ConsumerListener {
      * first time this partition is assigned.
      */
     static ConsumerListener seekOnce(TopicPartition topicPartition, long offset) {
+        return seekOnce(Collections.singletonMap(topicPartition, offset));
+    }
+
+    /**
+     * Creates a listener that will seek to the specified offsets on each mapped partition the
+     * first time such a provided partition is assigned.
+     */
+    static ConsumerListener seekOnce(Map<TopicPartition, Long> offsets) {
         return doOnPartitionsAssignedOnce((consumer, partitions) -> {
-            if (partitions.contains(topicPartition)) {
-                consumer.seek(topicPartition, offset);
+            for (TopicPartition partition : partitions) {
+                Long offset = offsets.get(partition);
+                if (offset != null) {
+                    consumer.seek(partition, offset);
+                }
             }
         });
     }
