@@ -132,6 +132,26 @@ public final class KafkaReceiverOptions<K, V> {
         return new Builder<>(consumerFactory);
     }
 
+    public KafkaReceiverOptions.Builder<K, V> toBuilder() {
+        return new Builder<>(consumerFactory)
+            .consumerListenerFactory(consumerListenerFactory)
+            .receptionListenerFactory(receptionListenerFactory)
+            .pollStrategyFactory(pollStrategyFactory)
+            .auxiliarySchedulerSupplier(auxiliarySchedulerSupplier)
+            .consumerProperties(consumerProperties)
+            .fullPollRecordsPrefetch(fullPollRecordsPrefetch)
+            .maxActiveInFlight(maxActiveInFlight)
+            .pollTimeout(pollTimeout)
+            .acknowledgementQueueMode(acknowledgementQueueMode)
+            .commitBatchSize(commitBatchSize)
+            .commitPeriod(commitPeriod)
+            .commitTimeout(commitTimeout)
+            .maxCommitAttempts(maxCommitAttempts)
+            .commitlessOffsets(commitlessOffsets)
+            .revocationGracePeriod(revocationGracePeriod)
+            .closeTimeout(closeTimeout);
+    }
+
     /**
      * Creates a new Consumer instance that will be used when subscribing to receiver records.
      */
@@ -267,6 +287,11 @@ public final class KafkaReceiverOptions<K, V> {
      */
     public Duration closeTimeout() {
         return closeTimeout;
+    }
+
+    //FUTURE Consider making ReactiveAdmin abstract and allow clients to set factory method
+    ReactiveAdmin createAdmin() {
+        return ReactiveAdmin.create(consumerProperties);
     }
 
     private void validate() {

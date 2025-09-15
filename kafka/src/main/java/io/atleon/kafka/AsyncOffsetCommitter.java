@@ -182,7 +182,9 @@ final class AsyncOffsetCommitter {
     }
 
     private int calculateRemainingCommitAttempts(TopicPartition partition) {
-        return maxAttempts - commitRetries.get(partition).get() - 1;
+        AtomicInteger commitRetryCounter = commitRetries.get(partition);
+        int commitRetryCount = commitRetryCounter == null ? 0 : commitRetryCounter.get();
+        return maxAttempts - commitRetryCount - 1;
     }
 
     private void incrementCommitRetry(TopicPartition partition) {

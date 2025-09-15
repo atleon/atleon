@@ -120,14 +120,15 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     public void subscribe(ConsumptionSpec consumptionSpec, java.util.function.Consumer<Consumer<K, V>> andThen) {
         taskLoop.schedule(() -> {
-            consumptionSpec.apply(consumer, this);
+            consumptionSpec.onConsume(consumer, this);
             andThen.accept(consumer);
         });
     }
 
-    public Mono<Void> closeSafely() {
+    public Mono<Void> closeSafely(ConsumptionSpec consumptionSpec) {
         return Mono.create(sink -> taskLoop.schedule(() -> {
-            runSafely(() -> consumerListener.onClose(consumer), "consumerListener::onClose");
+            runSafely(() -> consumptionSpec.onClose(consumer, this), "consumptionSpec::onClose");
+            runSafely(() -> consumerListener.onClose(externalConsumerProxy), "consumerListener::onClose");
             runSafely(() -> consumer.close(closeTimeout), "consumer::close");
             runSafely(consumerListener::close, "consumerListener::close");
             taskLoop.disposeSafely();
