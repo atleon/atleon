@@ -22,11 +22,24 @@ interface ConsumptionSpec {
     }
 
     static ConsumptionSpec assign(Collection<TopicPartition> topicPartitions) {
-        return (consumer, rebalanceListener) -> {
-            consumer.assign(topicPartitions);
-            rebalanceListener.onPartitionsAssigned(topicPartitions);
+        return new ConsumptionSpec() {
+            @Override
+            public void onConsume(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener) {
+                consumer.assign(topicPartitions);
+                rebalanceListener.onPartitionsAssigned(topicPartitions);
+            }
+
+            @Override
+            public void onClose(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener) {
+                // Only necessary for partition-specific consumption
+                rebalanceListener.onPartitionsRevoked(topicPartitions);
+            }
         };
     }
 
-    void apply(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener);
+    void onConsume(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener);
+
+    default void onClose(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener) {
+
+    }
 }

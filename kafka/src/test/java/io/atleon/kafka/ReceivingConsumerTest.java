@@ -156,13 +156,12 @@ class ReceivingConsumerTest {
         ReceivingConsumer<String, String> receivingConsumer =
             new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
 
-        receivingConsumer.subscribe(
-            ConsumptionSpec.subscribe(Collections.singletonList("topic")),
-            consumer -> {
-                throw new UnsupportedOperationException("Bang");
-            });
+        ConsumptionSpec consumptionSpec = ConsumptionSpec.subscribe(Collections.singletonList("topic"));
+        receivingConsumer.subscribe(consumptionSpec, consumer -> {
+            throw new UnsupportedOperationException("Bang");
+        });
 
-        receivingConsumer.closeSafely().block();
+        receivingConsumer.closeSafely(consumptionSpec).block();
 
         assertInstanceOf(UnsupportedOperationException.class, error.asMono().block());
         assertTrue(mockConsumer.closed());

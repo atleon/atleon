@@ -329,7 +329,7 @@ final class PollingSubscriptionFactory<K, V> {
             }
 
             runSafely(this::terminate, "this::terminate");
-            receivingConsumer.closeSafely()
+            receivingConsumer.closeSafely(consumptionSpec)
                 .doOnTerminate(() -> runSafely(listener::close, "listener::close"))
                 .doOnTerminate(() -> runSafely(auxiliaryScheduler::dispose, "periodicScheduler::dispose"))
                 .subscribe();

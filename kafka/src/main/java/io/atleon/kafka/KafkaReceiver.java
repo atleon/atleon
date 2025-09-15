@@ -9,7 +9,10 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
 
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * A reactive receiver of Kafka {@link ConsumerRecord records}, which may be wrapped as
@@ -71,6 +74,25 @@ import java.util.regex.Pattern;
  * acknowledgement.</li>
  * </ul>
  * <p>
+ * <b>Stream Cardinality:</b> This receiver provides methods that produce streams with different
+ * cardinalities of emission:
+ * <ul>
+ * <li><b>Infinite Cardinality:</b> The standard reception methods (such as
+ * {@link #receiveManual(Collection)}, {@link #receiveAutoAck(Collection)}, and
+ * {@link #receiveTxManual(Publisher, Collection))}) produce infinite streams that continue
+ * consuming records as they become available in the assigned partitions. These streams run
+ * indefinitely until explicitly canceled, or an error occurs. They are suitable for continuous,
+ * long-running data processing scenarios where the application needs to process records as they
+ * arrive.</li>
+ * <li><b>Finite Cardinality:</b> Methods qualified with "InRanges" (such as
+ * {@link #receiveManualInRanges(Collection, OffsetRangeProvider)}) produce finite streams that
+ * consume only records within specified offset ranges on a per-partition basis. These streams
+ * automatically complete once all records within the configured ranges have been consumed and
+ * processed/acknowledged. They are ideal for batch processing scenarios, data migration tasks,
+ * or reprocessing historical data within specific boundaries. The finite nature ensures
+ * predictable completion and resource cleanup.</li>
+ * </ul>
+ * <p>
  * <b>Acknowledgement Queueing Modes:</b> This receiver maintains acknowledgement queues to ensure
  * proper offset commitment ordering within each topic-partition. Two modes control how
  * acknowledged offsets become eligible for commitment (both maintain identical at-least-once
@@ -110,7 +132,7 @@ import java.util.regex.Pattern;
  * for priority based messaging where partition numbers represent "priority".</li>
  * </ul>
  * <p>
- * Polling strategies can be configured via 
+ * Polling strategies can be configured via
  * {@link KafkaReceiverOptions.Builder#pollStrategyFactory(PollStrategyFactory)}. Custom strategies
  * can be implemented by providing a {@link PollStrategyFactory} that creates instances of
  * {@link PollStrategy}.
@@ -120,10 +142,10 @@ import java.util.regex.Pattern;
  */
 public final class KafkaReceiver<K, V> {
 
-    private final PollingSubscriptionFactory<K, V> subscriptionFactory;
+    private final KafkaReceiverOptions<K, V> options;
 
     private KafkaReceiver(KafkaReceiverOptions<K, V> options) {
-        this.subscriptionFactory = new PollingSubscriptionFactory<>(options);
+        this.options = options;
     }
 
     public static <K, V> KafkaReceiver<K, V> create(KafkaReceiverOptions<K, V> options) {
@@ -237,24 +259,105 @@ public final class KafkaReceiver<K, V> {
         return Mono.from(txManager).flatMapMany(it -> receiveTxManual(it, ConsumptionSpec.subscribe(topicsPattern)));
     }
 
+    /**
+     * Receive records from the given topics that were produced in ranges as indicated by the
+     * given provider on a per-partition basis, with automatic acknowledgment.
+     * <p>
+     * Each {@link ConsumerRecord} is wrapped as a {@link Mono}, which, upon successful emission
+     * completion (i.e., {@link reactor.core.publisher.SignalType#ON_COMPLETE}), will result in
+     * automatically acknowledging the originating {@link KafkaReceiverRecord}. Note that
+     * downstream errors typically result in cancellation.
+     * <p>
+     * <b>Important</b>: This mode of reception does <i>not</i> guarantee processing (at least
+     * once) in the presence of downstream asynchronous boundaries.
+     *
+     * @param topics   The topics to subscribe to
+     * @param provider Provider of per-partition "ranges" that specify consumption bounds
+     * @return A {@link Flux} of {@link Mono} instances, each wrapping a {@link ConsumerRecord}
+     * with automatic acknowledgment behavior
+     */
+    public Flux<Mono<ConsumerRecord<K, V>>> receiveAutoAckInRanges(
+        Collection<String> topics,
+        OffsetRangeProvider provider
+    ) {
+        return receiveManualInRanges(topics, provider).map(KafkaReceiver::toAutoAck);
+    }
+
+    /**
+     * Receive records from the given topics that were produced in ranges as indicated by the
+     * given provider on a per-partition basis, with manual acknowledgement.
+     *
+     * @param topics   The topics to subscribe to
+     * @param provider Provider of per-partition "ranges" that specify consumption bounds
+     * @return A <i>finite</i> stream of records that require manual acknowledgment
+     */
+    public Flux<KafkaReceiverRecord<K, V>> receiveManualInRanges(
+        Collection<String> topics,
+        OffsetRangeProvider provider
+    ) {
+        Comparator<RecordRange> recordRangeComparator =
+            Comparator.comparing(RecordRange::topicPartition, provider.topicPartitionComparator());
+
+        return Flux.using(options::createAdmin, it -> RecordRange.list(it, topics, provider), ReactiveAdmin::close)
+            .filter(RecordRange::hasNonNegativeLength)
+            .collectSortedList(recordRangeComparator)
+            .filter(it -> !it.isEmpty())
+            .flatMapMany(it -> receiveManualInRanges(it, provider.maxConcurrentTopicPartitions()));
+    }
+
     private Flux<Mono<ConsumerRecord<K, V>>> receiveAutoAck(ConsumptionSpec consumptionSpec) {
-        return receiveManual(consumptionSpec).map(receiverRecord -> {
-            Runnable acknowledger = receiverRecord.acknowledger();
-            return Mono.just(receiverRecord.consumerRecord()).doFinally(signalType -> {
-                if (signalType == SignalType.ON_COMPLETE) {
-                    acknowledger.run();
-                }
-            });
-        });
+        return receiveManual(consumptionSpec).map(KafkaReceiver::toAutoAck);
     }
 
     @SuppressWarnings("ReactiveStreamsPublisherImplementation")
     private Flux<KafkaReceiverRecord<K, V>> receiveManual(ConsumptionSpec consumptionSpec) {
-        return Flux.from(it -> it.onSubscribe(subscriptionFactory.periodicCommit(consumptionSpec, it)));
+        return receiveManual(new PollingSubscriptionFactory<>(options), consumptionSpec);
     }
 
     @SuppressWarnings("ReactiveStreamsPublisherImplementation")
     private Flux<KafkaReceiverRecord<K, V>> receiveTxManual(KafkaTxManager txManager, ConsumptionSpec consumptionSpec) {
+        return receiveTxManual(txManager, consumptionSpec, new PollingSubscriptionFactory<>(options));
+    }
+
+    private Flux<KafkaReceiverRecord<K, V>> receiveManualInRanges(List<RecordRange> recordRanges, int maxConcurrency) {
+        BoundedPolling boundedPolling = new BoundedPolling(recordRanges, maxConcurrency);
+
+        KafkaReceiverOptions<K, V> boundedOptions = options.toBuilder()
+            .consumerListener(boundedPolling)
+            .receptionListener(boundedPolling)
+            .pollStrategyFactory(() -> boundedPolling)
+            .build();
+
+        ConsumptionSpec consumptionSpec = recordRanges.stream()
+            .map(RecordRange::topicPartition)
+            .collect(Collectors.collectingAndThen(Collectors.toList(), ConsumptionSpec::assign));
+
+        return receiveManual(new PollingSubscriptionFactory<>(boundedOptions), consumptionSpec)
+            .takeUntilOther(boundedPolling.pollingAndProcessingCompleted())
+            .concatWith(boundedPolling.closed());
+    }
+
+    private static <K, V> Flux<KafkaReceiverRecord<K, V>> receiveManual(
+        PollingSubscriptionFactory<K, V> subscriptionFactory,
+        ConsumptionSpec consumptionSpec
+    ) {
+        return Flux.from(it -> it.onSubscribe(subscriptionFactory.periodicCommit(consumptionSpec, it)));
+    }
+
+    private static <K, V> Flux<KafkaReceiverRecord<K, V>> receiveTxManual(
+        KafkaTxManager txManager,
+        ConsumptionSpec consumptionSpec,
+        PollingSubscriptionFactory<K, V> subscriptionFactory
+    ) {
         return Flux.from(it -> it.onSubscribe(subscriptionFactory.transactional(txManager, consumptionSpec, it)));
+    }
+
+    private static <K, V> Mono<ConsumerRecord<K, V>> toAutoAck(KafkaReceiverRecord<K, V> receiverRecord) {
+        Runnable acknowledger = receiverRecord.acknowledger();
+        return Mono.just(receiverRecord.consumerRecord()).doFinally(signalType -> {
+            if (signalType == SignalType.ON_COMPLETE) {
+                acknowledger.run();
+            }
+        });
     }
 }
