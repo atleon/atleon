@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.atleon</groupId>
         <artifactId>atleon-observability</artifactId>
-        <version>0.33.5-SNAPSHOT</version>
+        <version>0.34.0</version>
     </parent>
 
     <artifactId>atleon-micrometer-auto</artifactId>
