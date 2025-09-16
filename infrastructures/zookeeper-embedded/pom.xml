@@ -3,36 +3,39 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.atleon</groupId>
-        <artifactId>atleon-parent</artifactId>
+        <artifactId>atleon-infrastructures</artifactId>
         <version>0.33.5-SNAPSHOT</version>
-        <relativePath>../parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>atleon-amqp-embedded</artifactId>
+    <artifactId>atleon-zookeeper-embedded</artifactId>
     <packaging>jar</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
 
     <properties>
-        <qpid.version>9.2.0</qpid.version>
+        <curator.version>5.7.1</curator.version>
     </properties>
 
     <dependencies>
-        <!-- Third Party Compile Dependencies -->
+        <!--Third Party Dependencies-->
         <dependency>
-            <groupId>org.apache.qpid</groupId>
-            <artifactId>qpid-broker-core</artifactId>
-            <version>${qpid.version}</version>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-test</artifactId>
+            <version>${curator.version}</version>
             <exclusions>
                 <!-- Excluding to bring in managed version as runtime dependency -->
                 <exclusion>
                     <groupId>com.google.guava</groupId>
                     <artifactId>guava</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
             </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
         </dependency>
 
         <!-- Third Party Runtime Dependencies -->
@@ -41,22 +44,11 @@
             <artifactId>guava</artifactId>
             <scope>runtime</scope>
         </dependency>
+        <!-- log4j:log4j is excluded from above due to ban-hammer -->
+        <!-- Include this dependency such that logging works      -->
         <dependency>
-            <groupId>org.apache.qpid</groupId>
-            <artifactId>qpid-broker-plugins-amqp-0-8-protocol</artifactId>
-            <version>${qpid.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.qpid</groupId>
-            <artifactId>qpid-broker-plugins-amqp-1-0-protocol</artifactId>
-            <version>${qpid.version}</version>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.qpid</groupId>
-            <artifactId>qpid-broker-plugins-memory-store</artifactId>
-            <version>${qpid.version}</version>
+            <groupId>org.slf4j</groupId>
+            <artifactId>log4j-over-slf4j</artifactId>
             <scope>runtime</scope>
         </dependency>
     </dependencies>

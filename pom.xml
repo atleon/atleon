@@ -52,22 +52,16 @@
     </repositories>
 
     <modules>
-        <module>amqp-embedded</module>
         <module>bom</module>
         <module>context-auto</module>
         <module>core</module>
         <module>infrastructures</module>
-        <module>kafka</module>
-        <module>kafka-embedded</module>
         <module>kotlin</module>
         <module>observability</module>
         <module>parent</module>
-        <module>polling</module>
-        <module>rabbitmq</module>
         <module>schemas</module>
         <module>spring</module>
         <module>util</module>
-        <module>zookeeper-embedded</module>
     </modules>
 
     <properties>
