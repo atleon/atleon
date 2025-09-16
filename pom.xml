@@ -53,10 +53,10 @@
 
     <modules>
         <module>amqp-embedded</module>
-        <module>aws</module>
         <module>bom</module>
         <module>context-auto</module>
         <module>core</module>
+        <module>infrastructures</module>
         <module>kafka</module>
         <module>kafka-embedded</module>
         <module>kotlin</module>

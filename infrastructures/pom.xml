@@ -8,7 +8,7 @@
         <relativePath>../parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>atleon-aws</artifactId>
+    <artifactId>atleon-infrastructures</artifactId>
     <packaging>pom</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
 
