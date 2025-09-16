@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.atleon</groupId>
-        <artifactId>atleon-aws</artifactId>
+        <artifactId>atleon-infrastructures</artifactId>
         <version>0.33.5-SNAPSHOT</version>
     </parent>
 
