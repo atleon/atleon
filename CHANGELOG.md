@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.34.0]
+atleon `0.34.0` is a beta release containing updates outlined below
+
+### Fixes
+* [#425] Kafka: Default revocation grace period reduced from 15s to 5s
+* [#429] Relocated all infrastructure modules to `infrastructures` parent module
+
+### Additions
+* [#427] Kafka: Enable and implement strategic prioritized polling
+* [#430] Kafka: Relocate/Consolidate finite/bounded reception to `KafkaReceiver`
+
 # [0.33.4]
 atleon `0.33.4` is a beta release containing updates outlined below
 
