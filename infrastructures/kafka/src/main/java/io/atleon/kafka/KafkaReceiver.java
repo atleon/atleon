@@ -79,7 +79,7 @@ import java.util.stream.Collectors;
  * <ul>
  * <li><b>Infinite Cardinality:</b> The standard reception methods (such as
  * {@link #receiveManual(Collection)}, {@link #receiveAutoAck(Collection)}, and
- * {@link #receiveTxManual(Publisher, Collection))}) produce infinite streams that continue
+ * {@link #receiveTxManual(Publisher, Collection)}) produce infinite streams that continue
  * consuming records as they become available in the assigned partitions. These streams run
  * indefinitely until explicitly canceled, or an error occurs. They are suitable for continuous,
  * long-running data processing scenarios where the application needs to process records as they
