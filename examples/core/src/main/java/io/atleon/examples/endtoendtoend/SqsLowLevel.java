@@ -15,7 +15,6 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.CreateQueueRequest;
 
-import java.io.IOException;
 import java.time.Duration;
 
 /**
@@ -25,7 +24,7 @@ public class SqsLowLevel {
 
     private static final AtleonLocalStackContainer CONTAINER = AtleonLocalStackContainer.createAndStart();
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         //Step 1) Create queue
         String queueUrl = createQueueAndGetUrl("my-queue");
 
@@ -42,7 +41,7 @@ public class SqsLowLevel {
             .subscribe(SqsReceiverMessage::delete);
 
         //Step 5) Wait for user to terminate, then dispose of resources (stop stream processes)
-        awaitTerminationByUser();
+        System.in.read();
         production.dispose();
         processing.dispose();
     }
@@ -58,7 +57,7 @@ public class SqsLowLevel {
         //Step 1) Specify sending options
         SqsSenderOptions options = SqsSenderOptions.defaultOptions(SqsLowLevel::createClient);
 
-        //Step 2) Create Sender, and messages periodically
+        //Step 2) Create Sender, and send messages periodically
         SqsSender sender = SqsSender.create(options);
         return Flux.interval(period)
             .map(number -> SqsSenderMessage.newBuilder().body("This is message #" + (number + 1)).build())
@@ -74,13 +73,5 @@ public class SqsLowLevel {
             .endpointOverride(CONTAINER.getSqsEndpointOverride())
             .credentialsProvider(StaticCredentialsProvider.create(credentials))
             .build();
-    }
-
-    private static void awaitTerminationByUser() {
-        try {
-            System.in.read();
-        } catch (IOException e) {
-            System.err.println("Failed to await termination by user: " + e);
-        }
     }
 }
