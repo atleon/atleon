@@ -10,7 +10,8 @@ import io.atleon.kafka.embedded.EmbeddedKafka;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.LongDeserializer;
+import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import reactor.core.Disposable;
@@ -28,14 +29,14 @@ public class KafkaLowLevel {
         String topic = "my-topic";
 
         //Step 2) Periodically produce messages asynchronously
-        Disposable production = periodicallyProduceMessages(BOOTSTRAP_SERVERS, topic, Duration.ofMillis(100));
+        Disposable production = periodicallyProduceMessages(BOOTSTRAP_SERVERS, topic, Duration.ofMillis(500));
 
         //Step 3) Specify reception options
-        KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.<String, String>newBuilder()
+        KafkaReceiverOptions<Long, String> options = KafkaReceiverOptions.<Long, String>newBuilder()
             .consumerProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "client-id")
             .consumerProperty(CommonClientConfigs.GROUP_ID_CONFIG, "group-id")
-            .consumerProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
+            .consumerProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer.class.getName())
             .consumerProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
             .build();
 
@@ -54,18 +55,17 @@ public class KafkaLowLevel {
 
     private static Disposable periodicallyProduceMessages(String bootstrapServers, String topic, Duration period) {
         //Step 1) Specify sending options
-        KafkaSenderOptions<String, String> options = KafkaSenderOptions.<String, String>newBuilder()
+        KafkaSenderOptions<Long, String> options = KafkaSenderOptions.<Long, String>newBuilder()
             .producerProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
             .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "client-id")
-            .producerProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
+            .producerProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer.class.getName())
             .producerProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .build();
 
         //Step 2) Create Sender, and messages periodically
-        KafkaSender<String, String> sender = KafkaSender.create(options);
+        KafkaSender<Long, String> sender = KafkaSender.create(options);
         return Flux.interval(period)
-            .map(number -> new ProducerRecord<>(topic, number.toString(), "This is message #" + (number + 1)))
-            .map(producerRecord -> KafkaSenderRecord.create(producerRecord, null))
+            .map(number -> KafkaSenderRecord.create(topic, number, "This is message #" + number, null))
             .transform(sender::send)
             .doFinally(__ -> sender.close())
             .subscribe();

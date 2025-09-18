@@ -60,7 +60,7 @@ public class SqsLowLevel {
         //Step 2) Create Sender, and send messages periodically
         SqsSender sender = SqsSender.create(options);
         return Flux.interval(period)
-            .map(number -> SqsSenderMessage.newBuilder().body("This is message #" + (number + 1)).build())
+            .map(number -> SqsSenderMessage.newBuilder().body("This is message #" + number).build())
             .transform(messages -> sender.send(messages, queueUrl))
             .doFinally(__ -> sender.close())
             .subscribe();
