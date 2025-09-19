@@ -28,22 +28,31 @@ public class SqsLowLevel {
         //Step 1) Create queue
         String queueUrl = createQueueAndGetUrl("my-queue");
 
-        //Step 2) Periodically produce messages asynchronously
-        Disposable production = periodicallyProduceMessages(queueUrl, Duration.ofMillis(500));
+        //Step 2) Specify sending options
+        SqsSenderOptions senderOptions = SqsSenderOptions.defaultOptions(SqsLowLevel::createClient);
 
-        //Step 3) Specify reception options
-        SqsReceiverOptions options = SqsReceiverOptions.defaultOptions(SqsLowLevel::createClient);
+        //Step 3) Create Sender, and send messages periodically
+        SqsSender sender = SqsSender.create(senderOptions);
+        Disposable production = Flux.interval(Duration.ofMillis(500))
+            .map(number -> SqsSenderMessage.newBuilder().body("This is message #" + number).build())
+            .transform(messages -> sender.send(messages, queueUrl))
+            .doFinally(__ -> sender.close())
+            .subscribe();
 
-        //Step 4) Create Receiver, then apply consumption
-        Disposable processing = SqsReceiver.create(options)
+        //Step 4) Specify reception options
+        SqsReceiverOptions receiverOptions = SqsReceiverOptions.defaultOptions(SqsLowLevel::createClient);
+
+        //Step 5) Create Receiver, then apply consumption
+        Disposable processing = SqsReceiver.create(receiverOptions)
             .receiveManual(queueUrl)
             .doOnNext(message -> System.out.println("Received message: " + message.body()))
             .subscribe(SqsReceiverMessage::delete);
 
-        //Step 5) Wait for user to terminate, then dispose of resources (stop stream processes)
+        //Step 6) Wait for user to terminate, then dispose of resources (stop stream processes)
         System.in.read();
         production.dispose();
         processing.dispose();
+        System.exit(0);
     }
 
     private static String createQueueAndGetUrl(String name) {
@@ -51,19 +60,6 @@ public class SqsLowLevel {
             CreateQueueRequest request = CreateQueueRequest.builder().queueName(name).build();
             return client.createQueue(request).join().queueUrl();
         }
-    }
-
-    private static Disposable periodicallyProduceMessages(String queueUrl, Duration period) {
-        //Step 1) Specify sending options
-        SqsSenderOptions options = SqsSenderOptions.defaultOptions(SqsLowLevel::createClient);
-
-        //Step 2) Create Sender, and send messages periodically
-        SqsSender sender = SqsSender.create(options);
-        return Flux.interval(period)
-            .map(number -> SqsSenderMessage.newBuilder().body("This is message #" + number).build())
-            .transform(messages -> sender.send(messages, queueUrl))
-            .doFinally(__ -> sender.close())
-            .subscribe();
     }
 
     private static SqsAsyncClient createClient() {
