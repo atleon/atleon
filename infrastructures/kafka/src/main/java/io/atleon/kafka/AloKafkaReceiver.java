@@ -443,7 +443,7 @@ public class AloKafkaReceiver<K, V> {
         }
 
         private Flux<Alo<ConsumerRecord<K, V>>> receive(Object configKey, KafkaConfig config) {
-            if (config.loadString(RECEPTION_TYPE_CONFIG).orElse("LEGACY").equalsIgnoreCase("OPTIMIZED")) {
+            if (config.loadString(RECEPTION_TYPE_CONFIG).orElse("OPTIMIZED").equalsIgnoreCase("OPTIMIZED")) {
                 return new ReceiveResources<K, V>(config).receive(receptionInvocation);
             } else {
                 ConsumerMutexEnforcer consumerMutexEnforcer =

@@ -1,5 +1,9 @@
 package io.atleon.kafka;
 
+import org.apache.kafka.common.TopicPartition;
+
+import java.util.Comparator;
+
 /**
  * Factory that provides instances of {@link PollStrategy} upon beginning the consumption of
  * records from Kafka.
@@ -31,6 +35,24 @@ public interface PollStrategyFactory {
      */
     static PollStrategyFactory greatestBatchLag() {
         return PollStrategy::greatestBatchLag;
+    }
+
+    /**
+     * Creates a factory that always returns a "priority cutoff on lag" polling strategy.
+     *
+     * @see PollStrategy#priorityCutoffOnLag()
+     */
+    static PollStrategyFactory priorityCutoffOnLog() {
+        return PollStrategy::priorityCutoffOnLag;
+    }
+
+    /**
+     * Creates a factory that always returns a "priority cutoff on lag" polling strategy.
+     *
+     * @see PollStrategy#priorityCutoffOnLag(Comparator, int)
+     */
+    static PollStrategyFactory priorityCutoffOnLag(Comparator<TopicPartition> comparator, int threshold) {
+        return () -> PollStrategy.priorityCutoffOnLag(comparator, threshold);
     }
 
     PollStrategy create();
