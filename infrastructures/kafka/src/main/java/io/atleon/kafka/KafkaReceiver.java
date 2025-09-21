@@ -126,10 +126,10 @@ import java.util.stream.Collectors;
  * <li><b>Greatest Batch Lag:</b> Prioritizes partitions with the highest lag in units of the
  * polling batch size. This strategy is useful when prioritizing uniform lag across all assigned
  * partitions</li>
- * <li><b>PriorityLagCutoff:</b> Prioritizes polling from partitions as indicated by a provided
- * {@link java.util.Comparator}, cutting off the selection of lower-priority partitions if/when
- * the lag for a higher-priority partition meets-or-exceeds a specified threshold. This is useful
- * for priority based messaging where partition numbers represent "priority".</li>
+ * <li><b>Priority Cutoff on Lag:</b> Prioritizes polling from partitions as indicated by a
+ * provided {@link java.util.Comparator}, cutting off the selection of lower-priority partitions
+ * if/when the lag for a higher-priority partition meets-or-exceeds a specified threshold. This is
+ * useful for prioritized consumption where partitions are the discriminator of "priority".</li>
  * </ul>
  * <p>
  * Polling strategies can be configured via
