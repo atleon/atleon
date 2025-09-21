@@ -92,6 +92,8 @@ public class AloKafkaReceiver<K, V> {
 
     public static final String POLL_STRATEGY_FACTORY_TYPE_GREATEST_BATCH_LAG = "greatest-batch-lag";
 
+    public static final String POLL_STRATEGY_FACTORY_TYPE_PRIORITY_CUTOFF_ON_LAG = "priority-cutoff-on-lag";
+
     /**
      * Configures the behavior of negatively acknowledging received records. Some simple types are
      * available, including {@value #NACKNOWLEDGER_TYPE_EMIT}, where the associated error is
@@ -560,6 +562,8 @@ public class AloKafkaReceiver<K, V> {
                 return Optional.of(PollStrategyFactory.binaryStrides());
             } else if (typeName.equalsIgnoreCase(POLL_STRATEGY_FACTORY_TYPE_GREATEST_BATCH_LAG)) {
                 return Optional.of(PollStrategyFactory.greatestBatchLag());
+            } else if (typeName.equalsIgnoreCase(POLL_STRATEGY_FACTORY_TYPE_PRIORITY_CUTOFF_ON_LAG)) {
+                return Optional.of(PollStrategyFactory.priorityCutoffOnLog());
             } else {
                 return Optional.empty();
             }
