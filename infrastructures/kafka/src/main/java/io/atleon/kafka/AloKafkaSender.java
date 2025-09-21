@@ -385,7 +385,7 @@ public class AloKafkaSender<K, V> implements Closeable {
                 reactor.kafka.sender.KafkaSender.create(ContextualProducerFactory.INSTANCE, legacyOptions),
                 KafkaSender.create(options),
                 stopOnError,
-                config.loadString(SENDING_TYPE_CONFIG).orElse("LEGACY").equalsIgnoreCase("OPTIMIZED")
+                config.loadString(SENDING_TYPE_CONFIG).orElse("OPTIMIZED").equalsIgnoreCase("OPTIMIZED")
             );
         }
 
