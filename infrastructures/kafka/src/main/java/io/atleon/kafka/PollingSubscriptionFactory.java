@@ -118,8 +118,8 @@ final class PollingSubscriptionFactory<K, V> {
 
             long previousRequested = requested.getAndUpdate(it -> it == Long.MIN_VALUE ? n : Operators.addCap(it, n));
             if (previousRequested == Long.MIN_VALUE) {
-                // Initial request, so subscribe and begin polling.
-                receivingConsumer.subscribe(consumptionSpec, this::pollAndDrain);
+                // Initial request, so initialize with consumption spec and begin polling.
+                receivingConsumer.init(consumptionSpec, this::pollAndDrain);
             } else if (previousRequested == 0) {
                 // Request had been exhausted and could have been limiting emission, so must drain.
                 drain();

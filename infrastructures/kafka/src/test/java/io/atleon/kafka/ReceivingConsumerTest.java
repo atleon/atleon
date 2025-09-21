@@ -145,7 +145,7 @@ class ReceivingConsumerTest {
     }
 
     @Test
-    public void subscribe_givenSubscriptionError_expectsContinuationOfTaskLoop() {
+    public void init_givenConsumptionError_expectsContinuationOfTaskLoop() {
         MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
 
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
@@ -157,7 +157,7 @@ class ReceivingConsumerTest {
             new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
 
         ConsumptionSpec consumptionSpec = ConsumptionSpec.subscribe(Collections.singletonList("topic"));
-        receivingConsumer.subscribe(consumptionSpec, consumer -> {
+        receivingConsumer.init(consumptionSpec, consumer -> {
             throw new UnsupportedOperationException("Bang");
         });
 

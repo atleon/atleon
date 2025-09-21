@@ -118,9 +118,9 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         }));
     }
 
-    public void subscribe(ConsumptionSpec consumptionSpec, java.util.function.Consumer<Consumer<K, V>> andThen) {
+    public void init(ConsumptionSpec consumptionSpec, java.util.function.Consumer<Consumer<K, V>> andThen) {
         taskLoop.schedule(() -> {
-            consumptionSpec.onConsume(consumer, this);
+            consumptionSpec.onInit(consumer, this);
             andThen.accept(consumer);
         });
     }
