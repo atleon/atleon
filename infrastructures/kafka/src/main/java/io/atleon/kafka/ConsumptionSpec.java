@@ -24,7 +24,7 @@ interface ConsumptionSpec {
     static ConsumptionSpec assign(Collection<TopicPartition> topicPartitions) {
         return new ConsumptionSpec() {
             @Override
-            public void onConsume(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener) {
+            public void onInit(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener) {
                 consumer.assign(topicPartitions);
                 rebalanceListener.onPartitionsAssigned(topicPartitions);
             }
@@ -37,7 +37,7 @@ interface ConsumptionSpec {
         };
     }
 
-    void onConsume(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener);
+    void onInit(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener);
 
     default void onClose(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener) {
 
