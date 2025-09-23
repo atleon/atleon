@@ -26,13 +26,14 @@ public class KafkaPart1 {
             .with(ProducerConfig.CLIENT_ID_CONFIG, KafkaPart1.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .withProducerOrderingAndResiliencyConfigs();
+            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1);
 
         //Step 2) Send some Record values to a hardcoded topic, using values as Record keys
-        AloKafkaSender.<String, String>create(kafkaSenderConfig)
-            .sendValues(Flux.just("Test"), TOPIC, Function.identity())
+        AloKafkaSender<String, String> sender = AloKafkaSender.create(kafkaSenderConfig);
+        sender.sendValues(Flux.just("Test"), TOPIC, Function.identity())
             .collectList()
             .doOnNext(senderResults -> System.out.println("senderResults: " + senderResults))
+            .doFinally(sender::close)
             .block();
 
         System.exit(0);

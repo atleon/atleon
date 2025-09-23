@@ -43,7 +43,7 @@ public class KafkaDeduplication {
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaDeduplication.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .withProducerOrderingAndResiliencyConfigs();
+            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1);
 
         //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that set the auto
         // offset reset to earliest such that subsequently produced Records are processed
@@ -66,11 +66,12 @@ public class KafkaDeduplication {
         // limit the time for which we take items (`take(Duration)`), or else this Flow would
         // never complete. Deduplication is applied early in the stream to limit the processing of
         // duplicate methods via AloFlux::deduplicate
+        AloKafkaSender<String, String> sender = AloKafkaSender.create(kafkaSenderConfig);
         Mono<List<String>> processed = AloKafkaReceiver.<Object, String>create(kafkaReceiverConfig)
             .receiveAloValues(TOPIC_1)
             .deduplicate(Deduplication.identity(), deduplicationConfig)
             .map(String::toUpperCase)
-            .transform(AloKafkaSender.<String, String>create(kafkaSenderConfig).sendAloValues(TOPIC_2, Function.identity()))
+            .transform(sender.sendAloValues(TOPIC_2, Function.identity()))
             .consumeAloAndGet(Alo::acknowledge)
             .map(KafkaSenderResult::correlationMetadata)
             .doOnNext(next -> System.out.println("Processed next=" + next))
@@ -92,9 +93,7 @@ public class KafkaDeduplication {
         List<String> values = Arrays.asList("TWO", "TWO", "ONE", "TWO", "THREE", "TWO", "ONE", "TWO", "TWO");
 
         //Step 6) Send the above values to the Kafka topic we're processing
-        AloKafkaSender.create(kafkaSenderConfig)
-            .sendValues(Flux.fromIterable(values), TOPIC_1, Function.identity())
-            .subscribe();
+        sender.sendValues(Flux.fromIterable(values), TOPIC_1, Function.identity()).subscribe();
 
         //Step 7) Await consumption of the results
         List<String> result = processed.block();

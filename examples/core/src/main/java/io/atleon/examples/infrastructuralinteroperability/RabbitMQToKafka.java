@@ -49,16 +49,28 @@ public class RabbitMQToKafka {
             .with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName())
             .with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, StringBodyDeserializer.class.getName());
 
-        //Step 2) Create Kafka Config for Producer that backs Sender
+        //Step 2) Producing to RabbitMQ requires that we declare a Queue to serve as the destination
+        // and source of messages that we want to send/receive
+        RoutingInitializer.using(rabbitMQConfig.createConnectionFactoryNow())
+            .addQueueDeclaration(QueueDeclaration.named(QUEUE))
+            .run();
+
+        //Step 3) Produce some messages to the RabbitMQ Queue we declared
+        AloRabbitMQSender<String> rabbitMQSender = AloRabbitMQSender.create(rabbitMQConfig);
+        rabbitMQSender.sendBodies(Flux.just("Test"), DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(QUEUE))
+            .collectList()
+            .doOnNext(senderResults -> System.out.println("Sender results: " + senderResults))
+            .doFinally(__ -> rabbitMQSender.close())
+            .block();
+
+        //Step 4) Create Kafka Config for Producer that backs Sender
         KafkaConfigSource kafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, RabbitMQToKafka.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
-            .with(ProducerConfig.ACKS_CONFIG, "all");
+            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-        //Step 3) Create Kafka Config for Consumer that backs Receiver. Note that we use an Auto
+        //Step 5) Create Kafka Config for Consumer that backs Receiver. Note that we use an Auto
         // Offset Reset of 'earliest' to ensure we receive Records produced before subscribing with
         // our new consumer group
         KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
@@ -69,28 +81,17 @@ public class RabbitMQToKafka {
             .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
             .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
-        //Step 4) Producing to RabbitMQ requires that we declare a Queue to serve as the destination
-        // and source of messages that we want to send/receive
-        RoutingInitializer.using(rabbitMQConfig.createConnectionFactoryNow())
-            .addQueueDeclaration(QueueDeclaration.named(QUEUE))
-            .run();
-
-        //Step 5) Produce some messages to the RabbitMQ Queue we declared
-        AloRabbitMQSender.<String>create(rabbitMQConfig)
-            .sendBodies(Flux.just("Test"), DefaultRabbitMQMessageCreator.minimalBasicToDefaultExchange(QUEUE))
-            .collectList()
-            .doOnNext(outboundMessageResults -> System.out.println("outboundMessageResults: " + outboundMessageResults))
-            .block();
-
         //Step 6) Apply a streaming process over a RabbitMQ -> Kafka pairing
+        AloKafkaSender<String, String> kafkaSender = AloKafkaSender.create(kafkaSenderConfig);
         AloRabbitMQReceiver.<String>create(rabbitMQConfig)
             .receiveAloBodies(QUEUE)
             .map(String::toUpperCase)
-            .transform(AloKafkaSender.<String, String>create(kafkaSenderConfig).sendAloValues(TOPIC, Function.identity()))
+            .transform(kafkaSender.sendAloValues(TOPIC, Function.identity()))
             .consumeAloAndGet(Alo::acknowledge)
             .take(1)
             .collectList()
-            .doOnNext(processedSenderResults -> System.out.println("processedSenderResults: " + processedSenderResults))
+            .doOnNext(senderResults -> System.out.println("Processed sender results: " + senderResults))
+            .doFinally(__ -> kafkaSender.close())
             .block();
 
         //Step 7) Consume the downstream results of the messages we processed
@@ -99,7 +100,7 @@ public class RabbitMQToKafka {
             .consumeAloAndGet(Alo::acknowledge)
             .take(1)
             .collectList()
-            .doOnNext(downstreamResults -> System.out.println("downstreamResults: " + downstreamResults))
+            .doOnNext(downstreamResults -> System.out.println("Downstream results: " + downstreamResults))
             .block();
 
         System.exit(0);

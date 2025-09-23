@@ -40,9 +40,7 @@ public class KafkaOpentracing {
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaOpentracing.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
-            .with(ProducerConfig.ACKS_CONFIG, "all");
+            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
         //Step 2) Create Kafka Config for Consumer that backs Receiver
         KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()

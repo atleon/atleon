@@ -47,7 +47,6 @@ public class KafkaMicrometer {
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
-            .with(ProducerConfig.ACKS_CONFIG, "all")
             .with(ProducerConfig.METRIC_REPORTER_CLASSES_CONFIG, AloKafkaMetricsReporter.class.getName());
 
         //Step 2) Create Kafka Config for Consumer that backs Receiver. Note we are adding a

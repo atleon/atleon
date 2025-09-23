@@ -49,8 +49,7 @@ public class KafkaErrorHandling {
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
-            .with(ProducerConfig.ACKS_CONFIG, "all");
+            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1);
 
         //Step 2) Create "faulty" Kafka Config where the second value we try to process will throw
         // an Exception at serialization time
@@ -59,8 +58,7 @@ public class KafkaErrorHandling {
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, SecondTimeFailingSerializer.class.getName())
-            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1)
-            .with(ProducerConfig.ACKS_CONFIG, "all");
+            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1);
 
         //Step 3) Create Kafka Config for Consumer that backs Receiver
         KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
@@ -81,7 +79,7 @@ public class KafkaErrorHandling {
         // BOTH records and successfully process them
         CountDownLatch latch = new CountDownLatch(1);
         List<String> successfullyProcessed = new CopyOnWriteArrayList<>();
-        AloKafkaSender<String, String> sender = AloKafkaSender.create(faultyKafkaSenderConfig);
+        AloKafkaSender<String, String> faultySender = AloKafkaSender.create(faultyKafkaSenderConfig);
         AloKafkaReceiver.<Object, String>create(kafkaReceiverConfig)
             .receiveAloValues(TOPIC_1)
             .groupBy(Function.identity(), Integer.MAX_VALUE)
@@ -96,22 +94,25 @@ public class KafkaErrorHandling {
                     System.err.println("Unexpected failure=" + e);
                 }
             })
-            .flatMapAlo(sender.sendAloValues(TOPIC_2, Function.identity()))
+            .flatMapAlo(faultySender.sendAloValues(TOPIC_2, Function.identity()))
             .doOnNext(next -> latch.countDown())
             .doOnNext(senderResult -> {
-                if (!senderResult.failureCause().isPresent()) {
+                if (!senderResult.isFailure()) {
                     successfullyProcessed.add(senderResult.correlationMetadata());
                 }
             })
             .resubscribeOnError(KafkaErrorHandling.class.getSimpleName(), Duration.ofSeconds(2L))
+            .doFinally(faultySender::close)
             .subscribe(new DefaultAloSenderResultSubscriber<>());
 
         //Step 5) Produce the records to be consumed above. Note that we are using the same record
         // key for each data item, which will cause these items to show up in the order we emit
         // them on the same topic-partition
+        AloKafkaSender<String, String> sender = AloKafkaSender.create(kafkaSenderConfig);
         Flux.just("test_1", "test_2")
             .subscribeOn(Schedulers.boundedElastic())
-            .transform(AloKafkaSender.<String, String>create(kafkaSenderConfig).sendValues(TOPIC_1, string -> "KEY"))
+            .transform(sender.sendValues(TOPIC_1, string -> "KEY"))
+            .doFinally(sender::close)
             .subscribe();
 
         //Step 6) Await the successful completion of the data we emitted. There should be exactly

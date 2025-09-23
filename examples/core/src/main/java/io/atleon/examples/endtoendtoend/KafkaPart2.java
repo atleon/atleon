@@ -31,7 +31,7 @@ public class KafkaPart2 {
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaPart2.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .withProducerOrderingAndResiliencyConfigs();
+            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1);
 
         //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that we use an Auto
         // Offset Reset of 'earliest' to ensure we receive Records produced before subscribing with
@@ -45,10 +45,11 @@ public class KafkaPart2 {
             .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
         //Step 3) Send some Record values to a hardcoded topic, using values as Record keys
-        AloKafkaSender.<String, String>create(kafkaReceiverConfig)
-            .sendValues(Flux.just("Test"), TOPIC, Function.identity())
+        AloKafkaSender<String, String> sender = AloKafkaSender.create(kafkaReceiverConfig);
+        sender.sendValues(Flux.just("Test"), TOPIC, Function.identity())
             .collectList()
             .doOnNext(senderResults -> System.out.println("senderResults: " + senderResults))
+            .doFinally(sender::close)
             .block();
 
         //Step 4) Subscribe to the same topic we produced previous values to. Note that we must

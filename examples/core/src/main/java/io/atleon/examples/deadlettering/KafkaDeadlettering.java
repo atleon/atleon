@@ -29,7 +29,7 @@ public class KafkaDeadlettering {
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaDeadlettering.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
             .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .withProducerOrderingAndResiliencyConfigs();
+            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1);
 
         //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that we use an Auto
         // Offset Reset of 'earliest' to ensure we receive Records produced before subscribing with
@@ -57,7 +57,7 @@ public class KafkaDeadlettering {
             .composeData(string -> new ProducerRecord<>(DEADLETTER_TOPIC, "key", string));
 
         //Step 6) Apply consumption of the main topic we've produced data to as a stream process.
-        // When we encounter "bad" data that causes an error, we will "deadletter" it using the
+        // When we encounter "bad" data that causes an error, we will "dead-letter" it using the
         // previously-defined delegator. We also use onAloErrorDelegate to activate error delegation
         AloKafkaReceiver.<Object, String>create(kafkaReceiverConfig)
             .receiveAloValues(MAIN_TOPIC)
@@ -76,7 +76,7 @@ public class KafkaDeadlettering {
             .doOnNext(receivedValues -> System.out.println("receivedValues: " + receivedValues))
             .block();
 
-        //Step 7) Receive the values that were deadlettered
+        //Step 7) Receive the values that were dead-lettered
         AloKafkaReceiver.<Object, String>create(kafkaReceiverConfig)
             .receiveAloValues(DEADLETTER_TOPIC)
             .consumeAloAndGet(Alo::acknowledge)
