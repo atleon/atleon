@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.stream.Collectors;
@@ -91,11 +90,7 @@ final class PollManager<T> {
         return unassigned.values();
     }
 
-    public <K, V> ConsumerRecords<K, V> pollWakeably(
-        Consumer<K, V> consumer,
-        IntSupplier freeCapacitySupplier,
-        BooleanSupplier mayResumeAndPollOnWakeup
-    ) {
+    public <K, V> ConsumerRecords<K, V> pollWakeably(Consumer<K, V> consumer, IntSupplier freeCapacitySupplier) {
         boolean shouldBePausedDueToBackpressure = freeCapacitySupplier.getAsInt() < maxPollRecords;
         boolean backpressureStateChange = shouldBePausedDueToBackpressure != pausedDueToBackpressure.get();
         try {
@@ -118,15 +113,13 @@ final class PollManager<T> {
             return pollStrategy.onPoll(consumer.poll(pollTimeout));
         } catch (WakeupException wakeup) {
             LOGGER.info("Consumer polling woken");
-            // Check if wakeup was likely caused by freeing up capacity, and if so, retry
-            return mayResumeAndPollOnWakeup.getAsBoolean() && freeCapacitySupplier.getAsInt() >= maxPollRecords
-                ? pollWakeably(consumer, freeCapacitySupplier, mayResumeAndPollOnWakeup)
-                : ConsumerRecords.empty();
+            // Not necessary to retry; If woken due to capacity reclamation, re-poll is imminent.
+            return ConsumerRecords.empty();
         }
     }
 
-    public boolean shouldWakeupOnSingularCapacityReclamation(int updatedCapacity) {
-        return updatedCapacity == maxPollRecords && pausedDueToBackpressure.get();
+    public boolean shouldWakeupOnSingularCapacityReclamation(int updatedFreeCapacity) {
+        return updatedFreeCapacity == maxPollRecords && pausedDueToBackpressure.get();
     }
 
     public void forcePause(Collection<TopicPartition> partitions) {

@@ -37,7 +37,7 @@ public final class KafkaReceiverOptions<K, V> {
 
     private static final int DEFAULT_MAX_COMMIT_ATTEMPTS = 100;
 
-    private static final Duration DEFAULT_REVOCATION_GRACE_PERIOD = Duration.ofSeconds(5L);
+    private static final Duration DEFAULT_REVOCATION_GRACE_PERIOD = Duration.ofSeconds(60L); // Legacy Reactor default
 
     private static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(30L); // Kafka default
 
@@ -301,10 +301,6 @@ public final class KafkaReceiverOptions<K, V> {
         validatePositive(commitPeriod, "commitPeriod");
         validatePositive(maxCommitAttempts, "maxCommitAttempts");
         validateNonNegative(revocationGracePeriod, "revocationGracePeriod");
-
-        if (revocationGracePeriod.compareTo(closeTimeout) > 0) {
-            throw new IllegalArgumentException("revocationGracePeriod must be less than or equal to closeTimeout");
-        }
     }
 
     private static void validateNonNegative(Duration value, String name) {

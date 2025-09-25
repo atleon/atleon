@@ -272,8 +272,7 @@ final class PollingSubscriptionFactory<K, V> {
             }
 
             //FUTURE Could wrap this in protected "poll" method, override to support at-most-once
-            ConsumerRecords<K, V> consumerRecords =
-                pollManager.pollWakeably(consumer, freePrefetchCapacity::get, this::active);
+            ConsumerRecords<K, V> consumerRecords = pollManager.pollWakeably(consumer, freePrefetchCapacity::get);
 
             int queuedForEmission = 0;
             for (TopicPartition partition : consumerRecords.partitions()) {
@@ -385,9 +384,11 @@ final class PollingSubscriptionFactory<K, V> {
 
             try {
                 if (!offsetsToCommit.isEmpty() && !options.commitlessOffsets()) {
+                    LOGGER.info("Commiting offsets on revocation: {}", offsetsToCommit);
                     consumer.commitSync(offsetsToCommit, options.commitTimeout());
                 }
             } catch (WakeupException wakeup) {
+                LOGGER.info("Consumer commit-on-revocation woken");
                 // There are two possible causes for a wakeup during partition revocation:
                 //   1. Async emission of records freed up capacity for subsequent polling
                 //   2. Async termination (without poll invocation consuming wakeup signal)
@@ -399,6 +400,7 @@ final class PollingSubscriptionFactory<K, V> {
                 try {
                     consumer.commitSync(offsetsToCommit, options.commitTimeout());
                 } catch (WakeupException __) {
+                    LOGGER.info("Consumer commit-on-revocation woken (last attempt)");
                     consumer.commitSync(offsetsToCommit, options.commitTimeout());
                 }
                 throw wakeup;
