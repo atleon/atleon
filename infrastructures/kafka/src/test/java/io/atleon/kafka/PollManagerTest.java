@@ -20,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -98,7 +97,7 @@ class PollManagerTest {
 
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
 
-        ConsumerRecords<?, ?> records = pollManager.pollWakeably(consumer, () -> 1, () -> true);
+        ConsumerRecords<?, ?> records = pollManager.pollWakeably(consumer, () -> 1);
 
         assertEquals(ConsumerRecords.empty(), records);
         verify(pollStrategy).prepareForPoll(any());
@@ -115,7 +114,7 @@ class PollManagerTest {
 
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
 
-        ConsumerRecords<?, ?> records = pollManager.pollWakeably(consumer, () -> 0, () -> true);
+        ConsumerRecords<?, ?> records = pollManager.pollWakeably(consumer, () -> 0);
 
         assertEquals(ConsumerRecords.empty(), records);
         verify(pollStrategy, never()).prepareForPoll(any());
@@ -131,26 +130,10 @@ class PollManagerTest {
         PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
 
-        ConsumerRecords<?, ?> records = pollManager.pollWakeably(consumer, () -> 1, () -> false);
+        ConsumerRecords<?, ?> records = pollManager.pollWakeably(consumer, () -> 1);
 
         assertEquals(ConsumerRecords.empty(), records);
         verify(consumer).poll(any());
-    }
-
-    @Test
-    public void pollWakeably_givenWakeupExceptionAndCanRetry_expectsRecursiveCall() {
-        Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
-        when(consumer.poll(any()))
-            .thenThrow(new WakeupException())
-            .thenReturn(ConsumerRecords.empty());
-
-        PollStrategy pollStrategy = Mockito.mock(PollStrategy.class, Mockito.CALLS_REAL_METHODS);
-        PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
-
-        ConsumerRecords<?, ?> records = pollManager.pollWakeably(consumer, () -> 1, () -> true);
-
-        assertEquals(ConsumerRecords.empty(), records);
-        verify(consumer, times(2)).poll(any());
     }
 
     @Test
@@ -164,11 +147,11 @@ class PollManagerTest {
         pollManager.activateAssigned(consumer, Collections.singletonList(partition), Function.identity());
 
         // First call with sufficient capacity
-        pollManager.pollWakeably(consumer, () -> 2, () -> true);
+        pollManager.pollWakeably(consumer, () -> 2);
         verify(consumer, never()).pause(any());
 
         // Second call with insufficient capacity - should pause
-        pollManager.pollWakeably(consumer, () -> 1, () -> true);
+        pollManager.pollWakeably(consumer, () -> 1);
         verify(consumer).pause(argThat(partitions -> partitions.contains(partition)));
     }
 
@@ -180,7 +163,7 @@ class PollManagerTest {
         // Simulate being paused due to backpressure
         Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
         when(consumer.poll(any())).thenReturn(ConsumerRecords.empty());
-        pollManager.pollWakeably(consumer, () -> 1, () -> true);
+        pollManager.pollWakeably(consumer, () -> 1);
 
         assertTrue(pollManager.shouldWakeupOnSingularCapacityReclamation(5));
         assertFalse(pollManager.shouldWakeupOnSingularCapacityReclamation(4));
