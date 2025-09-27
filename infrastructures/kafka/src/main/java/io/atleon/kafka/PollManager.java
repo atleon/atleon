@@ -112,7 +112,7 @@ final class PollManager<T> {
 
             return pollStrategy.onPoll(consumer.poll(pollTimeout));
         } catch (WakeupException wakeup) {
-            LOGGER.info("Consumer polling woken");
+            LOGGER.debug("Consumer polling woken");
             // Not necessary to retry; If woken due to capacity reclamation, re-poll is imminent.
             return ConsumerRecords.empty();
         }
