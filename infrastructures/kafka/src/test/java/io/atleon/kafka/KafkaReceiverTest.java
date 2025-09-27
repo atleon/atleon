@@ -344,6 +344,38 @@ class KafkaReceiverTest {
             .verify();
     }
 
+    @Test
+    public void receiveManual_givenAcknowledgementWithinTerminationGracePeriod_expectsCommitment() {
+        String topic = UUID.randomUUID().toString();
+        String groupId = UUID.randomUUID().toString();
+
+        sendStrings(KafkaSenderRecord.create(topic, "key", "value1", null));
+
+        ConsumerListener.Closure closureListener = ConsumerListener.closure();
+        KafkaReceiverOptions<String, String> receiverOptions = KafkaReceiverOptions.<String, String>newBuilder()
+            .consumerListener(closureListener)
+            .consumerProperties(newStringConsumerProperties(groupId))
+            .terminationGracePeriod(Duration.ofSeconds(1L))
+            .build();
+
+        Duration ackDelay = receiverOptions.terminationGracePeriod().dividedBy(2);
+        KafkaReceiver.create(receiverOptions)
+            .receiveManual(Collections.singletonList(topic))
+            .as(StepVerifier::create)
+            .consumeNextWith(it -> Mono.fromRunnable(it::acknowledge).delaySubscription(ackDelay).subscribe())
+            .thenCancel()
+            .verify();
+
+        assertNull(closureListener.closed().block());
+
+        try (ReactiveAdmin admin = ReactiveAdmin.create(newKafkaProperties())) {
+            Long maxOffset = admin.listTopicPartitionGroupOffsets(groupId)
+                .reduce(0L, (max, next) -> Math.max(max, next.groupOffset()))
+                .block();
+            assertEquals(1, maxOffset);
+        }
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
     public void receiveTxManual_givenCommitmentBatchTriggering_expectsTransactionExecution(boolean commitlessOffsets) {

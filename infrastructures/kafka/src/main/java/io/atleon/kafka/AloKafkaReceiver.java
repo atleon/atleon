@@ -99,8 +99,7 @@ public class AloKafkaReceiver<K, V> {
      * available, including {@value #NACKNOWLEDGER_TYPE_EMIT}, where the associated error is
      * emitted in to the pipeline. Any other non-predefined value is treated as a qualified class
      * name of an implementation of {@link NacknowledgerFactory} which allows more fine-grained
-     * control over what happens when an SQS Message is negatively acknowledged. Defaults to
-     * "emit".
+     * control over what happens when a record is negatively acknowledged. Defaults to "emit".
      */
     public static final String NACKNOWLEDGER_TYPE_CONFIG = CONFIG_PREFIX + "nacknowledger.type";
 
@@ -173,6 +172,14 @@ public class AloKafkaReceiver<K, V> {
      * any given revoked partition to be acknowledged before letting the rebalance continue.
      */
     public static final String REVOCATION_GRACE_PERIOD_CONFIG = CONFIG_PREFIX + "revocation.grace.period";
+
+    /**
+     * Upon termination, this configuration controls how long to wait for in-flight records from
+     * any given assigned partition to be acknowledged before allowing the termination to complete.
+     * This can be useful for allowing blocking operations time to finish before those assigned
+     * partitions are assigned to a possibly different consumer instance.
+     */
+    public static final String TERMINATION_GRACE_PERIOD_CONFIG = CONFIG_PREFIX + "termination.grace.period";
 
     /**
      * This is a temporary configuration to enable and test usage of re-optimized Kafka receiver.
@@ -497,6 +504,8 @@ public class AloKafkaReceiver<K, V> {
                 .commitPeriod(config.loadDuration(COMMIT_INTERVAL_CONFIG).orElse(defaultOptions.commitPeriod()))
                 .maxCommitAttempts(config.loadInt(MAX_COMMIT_ATTEMPTS_CONFIG).orElse(defaultOptions.maxCommitAttempts()))
                 .revocationGracePeriod(loadRevocationGracePeriod().orElse(defaultOptions.revocationGracePeriod()))
+                .terminationGracePeriod(config.loadDuration(TERMINATION_GRACE_PERIOD_CONFIG)
+                    .orElse(defaultOptions.terminationGracePeriod()))
                 .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
                 .build();
         }
