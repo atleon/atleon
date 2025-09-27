@@ -320,6 +320,13 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         private void terminateSafely() {
+            runSafely(this::terminate, "this::terminate");
+            receivingConsumer.closeSafely(consumptionSpec)
+                .doOnTerminate(() -> runSafely(listener::close, "listener::close"))
+                .doOnTerminate(() -> runSafely(auxiliaryScheduler::dispose, "auxiliaryScheduler::dispose"))
+                .subscribe();
+
+            // Error emission after termination scheduling matches legacy Reactor behavior
             Throwable errorToEmit = error.get();
             if (errorToEmit != null) {
                 runSafely(() -> subscriber.onError(errorToEmit), "subscriber::onError §2.13");
@@ -327,12 +334,6 @@ final class PollingSubscriptionFactory<K, V> {
             } else {
                 LOGGER.debug("Terminated due to cancel");
             }
-
-            runSafely(this::terminate, "this::terminate");
-            receivingConsumer.closeSafely(consumptionSpec)
-                .doOnTerminate(() -> runSafely(listener::close, "listener::close"))
-                .doOnTerminate(() -> runSafely(auxiliaryScheduler::dispose, "periodicScheduler::dispose"))
-                .subscribe();
         }
 
         private boolean active() {
