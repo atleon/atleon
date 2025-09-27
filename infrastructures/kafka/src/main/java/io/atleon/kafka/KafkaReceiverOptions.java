@@ -73,6 +73,8 @@ public final class KafkaReceiverOptions<K, V> {
 
     private final Duration revocationGracePeriod;
 
+    private final Duration terminationGracePeriod;
+
     private final Duration closeTimeout;
 
     private KafkaReceiverOptions(
@@ -92,6 +94,7 @@ public final class KafkaReceiverOptions<K, V> {
         int maxCommitAttempts,
         boolean commitlessOffsets,
         Duration revocationGracePeriod,
+        Duration terminationGracePeriod,
         Duration closeTimeout
     ) {
         this.consumerFactory = consumerFactory;
@@ -110,6 +113,7 @@ public final class KafkaReceiverOptions<K, V> {
         this.maxCommitAttempts = maxCommitAttempts;
         this.commitlessOffsets = commitlessOffsets;
         this.revocationGracePeriod = revocationGracePeriod;
+        this.terminationGracePeriod = terminationGracePeriod;
         this.closeTimeout = closeTimeout;
         validate();
     }
@@ -149,6 +153,7 @@ public final class KafkaReceiverOptions<K, V> {
             .maxCommitAttempts(maxCommitAttempts)
             .commitlessOffsets(commitlessOffsets)
             .revocationGracePeriod(revocationGracePeriod)
+            .terminationGracePeriod(terminationGracePeriod)
             .closeTimeout(closeTimeout);
     }
 
@@ -283,6 +288,13 @@ public final class KafkaReceiverOptions<K, V> {
     }
 
     /**
+     * @see Builder#terminationGracePeriod(Duration)
+     */
+    public Duration terminationGracePeriod() {
+        return terminationGracePeriod;
+    }
+
+    /**
      * @see Builder#closeTimeout(Duration)
      */
     public Duration closeTimeout() {
@@ -301,6 +313,10 @@ public final class KafkaReceiverOptions<K, V> {
         validatePositive(commitPeriod, "commitPeriod");
         validatePositive(maxCommitAttempts, "maxCommitAttempts");
         validateNonNegative(revocationGracePeriod, "revocationGracePeriod");
+
+        if (!terminationGracePeriod.isZero() && terminationGracePeriod.compareTo(closeTimeout) >= 0) {
+            throw new IllegalArgumentException("Non-zero terminationGracePeriod must be less than closeTimeout");
+        }
     }
 
     private static void validateNonNegative(Duration value, String name) {
@@ -354,6 +370,8 @@ public final class KafkaReceiverOptions<K, V> {
         private boolean commitlessOffsets = false;
 
         private Duration revocationGracePeriod = DEFAULT_REVOCATION_GRACE_PERIOD;
+
+        private Duration terminationGracePeriod = Duration.ZERO;
 
         private Duration closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
@@ -543,6 +561,21 @@ public final class KafkaReceiverOptions<K, V> {
         }
 
         /**
+         * Configures the maximum amount of time that will be awaited for in-flight records to be
+         * acknowledged from a partition during reception termination (cancellation or error). In
+         * addition to allowing for further processing completion to be committed, this also
+         * provides a delay for any in-flight non-reactive operations to complete upon termination.
+         * This is useful if the stream applies blocking operations that may not be interrupted or
+         * otherwise terminated due to stream termination. In the presence of such operations, if
+         * processing order is important, it is recommended to set this duration at least as long
+         * as the longest blocking operation is expected to take.
+         */
+        public Builder<K, V> terminationGracePeriod(Duration terminationGracePeriod) {
+            this.terminationGracePeriod = terminationGracePeriod;
+            return this;
+        }
+
+        /**
          * Configures the timeout used on invocations to {@link Consumer#close(Duration)}, which is
          * invoked upon either downstream cancellation or reception errors.
          */
@@ -569,6 +602,7 @@ public final class KafkaReceiverOptions<K, V> {
                 maxCommitAttempts,
                 commitlessOffsets,
                 revocationGracePeriod,
+                terminationGracePeriod,
                 closeTimeout);
         }
     }

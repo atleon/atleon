@@ -24,6 +24,7 @@ import reactor.core.scheduler.Scheduler;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Queue;
@@ -345,7 +346,7 @@ final class PollingSubscriptionFactory<K, V> {
 
         private final Disposable periodicOffsetCommit;
 
-        private final Sinks.Empty<Void> disposal = Sinks.empty();
+        private final Sinks.Empty<Void> termination = Sinks.empty();
 
         public PeriodicCommitPoller(
             ConsumptionSpec consumptionSpec,
@@ -375,8 +376,9 @@ final class PollingSubscriptionFactory<K, V> {
             // synchronous commit is not likely to meaningfully degrade already-low throughput. As
             // load increases, so does the likelihood that there will be acknowledged uncommitted
             // offsets, and it becomes more desirable to attempt to honor that progress.
+            Duration gracePeriod = options.revocationGracePeriod();
             Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = partitions.stream()
-                .map(it -> it.deactivateLatest(options.revocationGracePeriod(), auxiliaryScheduler, disposal.asMono()))
+                .map(it -> it.deactivateLatest(gracePeriod, auxiliaryScheduler, termination.asMono()))
                 .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
                 .filter(it -> !asyncOffsetCommitter.isCommitTrialExhausted(it.topicPartition()))
                 .collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffsetAndMetadata)
@@ -418,9 +420,17 @@ final class PollingSubscriptionFactory<K, V> {
 
         @Override
         protected void terminate() {
-            // Stop commit scheduling, then force disposal of in-progress deactivations.
+            // Stop commit scheduling, then schedule termination of in-progress deactivations.
             periodicOffsetCommit.dispose();
-            disposal.tryEmitEmpty();
+
+            Duration gracePeriod = options.terminationGracePeriod();
+            if (gracePeriod.isZero() || gracePeriod.isNegative()) {
+                termination.tryEmitEmpty();
+            } else {
+                Mono.fromRunnable(termination::tryEmitEmpty)
+                    .delaySubscription(gracePeriod, auxiliaryScheduler)
+                    .subscribe();
+            }
         }
     }
 
