@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.35.2]
+atleon `0.35.2` is a beta release containing updates outlined below
+
+### Additions
+* [#442] Kafka: Implemented configurable reception termination grace period
+
+### Fixes
+* [#425] Kafka: Re-ordered reception error emission after termination scheduling; downgrade poll wakeup log to DEBUG 
+
 # [0.35.1]
 atleon `0.35.1` is a beta release containing updates outlined below
 
