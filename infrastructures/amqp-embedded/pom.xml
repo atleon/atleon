@@ -4,7 +4,7 @@
     <parent>
         <groupId>io.atleon</groupId>
         <artifactId>atleon-infrastructures</artifactId>
-        <version>0.35.3</version>
+        <version>0.35.4-SNAPSHOT</version>
     </parent>
 
     <artifactId>atleon-amqp-embedded</artifactId>
