@@ -398,15 +398,14 @@ final class PollingSubscriptionFactory<K, V> {
                 // In order to attempt graceful handling of either scenario, we retry the commit.
                 // Although it is not likely, it is possible that both scenarios occur (in order),
                 // with the first retry attempt being woken by the second scenario. In this case,
-                // we retry one LAST time. We then re-emit the original wakeup signal so that the
-                // possible parent poll invocation knows about it.
+                // we retry one LAST time. Note that the wakeup signal is not re-emitted, such as
+                // to let the rebalance continue as normal.
                 try {
                     consumer.commitSync(offsetsToCommit, options.commitTimeout());
                 } catch (WakeupException __) {
                     LOGGER.info("Consumer commit-on-revocation woken (last attempt)");
                     consumer.commitSync(offsetsToCommit, options.commitTimeout());
                 }
-                throw wakeup;
             } finally {
                 // Lastly, sanitize sequence counters to account for possible in-flight commits and
                 // potential future reassignment (and signal listener about deactivation).
