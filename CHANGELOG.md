@@ -1,8 +1,13 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+# [0.35.3]
+atleon `0.35.3` is a beta release containing updates outlined below
+
+### Fixes
+* [#445] Kafka: Removed tolerance of improper partition reactivation; Avoid wakeup re-throw during rebalance
 
 # [0.35.2]
 atleon `0.35.2` is a beta release containing updates outlined below
