@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * A facade around an active {@link Consumer} being used for reception.
@@ -62,6 +63,8 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     private final Duration closeTimeout;
 
+    private final Set<TopicPartition> validAssignment = new HashSet<>();
+
     public ReceivingConsumer(
         KafkaReceiverOptions<K, V> options,
         PartitionListener partitionListener,
@@ -77,29 +80,49 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     @Override
     public void onPartitionsLost(Collection<TopicPartition> partitions) {
+        validAssignment.removeAll(partitions);
         LOGGER.info("Notifying listeners of lost partitions={}", partitions);
         onRebalance(partitionListener::onPartitionsLost, consumerListener::onPartitionsLost, partitions);
     }
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+        validAssignment.removeAll(partitions);
         LOGGER.info("Notifying listeners of revoked partitions={}", partitions);
         onRebalance(partitionListener::onPartitionsRevoked, consumerListener::onPartitionsRevoked, partitions);
     }
 
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-        Collection<TopicPartition> allPartitions = consumer.assignment();
+        validAssignment.addAll(partitions);
+        Collection<TopicPartition> assignment = consumer.assignment();
 
-        if (partitions.size() != allPartitions.size()) {
-            LOGGER.info("Assignment appears incremental for partitions={}", partitions);
+        // Detect a known issue where partition (re)assignment is not properly handled by the
+        // underlying Kafka Consumer implementation, and fail fatally if detected. This condition
+        // appears to be possible when paused partitions are revoked and reassigned in an
+        // interrupted rebalance cycle (due to wakeup), and can otherwise lead to non-consumption
+        // of assigned partitions, and/or skipping of records. For more info:
+        // - https://github.com/atleon/atleon/issues/422
+        // - https://github.com/atleon/atleon/issues/445
+        Collection<TopicPartition> invalidAssignment = assignment.stream()
+            .filter(it -> !validAssignment.contains(it))
+            .collect(Collectors.toList());
+        if (!invalidAssignment.isEmpty()) {
+            throw new IllegalStateException("After rebalancing, there are partitions currently assigned that are" +
+                " missing from the onPartitionsAssigned callback. These partitions have either never been assigned to" +
+                " this consumer, or (more likely) were just recently revoked. This is suspected to be a bug in the" +
+                " Kafka Consumer implementation that could lead to skipped records due to improper position" +
+                " management on partition reassignment. For future debugging, this condition tends to be correlated" +
+                " with paused partitions being revoked, followed by interruption to the rebalance process due to" +
+                " invoking Consumer.wakeup(). The affected partitions are: " + invalidAssignment);
         }
 
-        // Due to an observed bug encountered when paused partitions are revoked and reassigned in
-        // the same rebalance cycle, we pass the full set of assigned partitions to the assignment
-        // callbacks. For more info: https://github.com/atleon/atleon/issues/422
-        LOGGER.info("Notifying listeners of assigned partitions={}", allPartitions);
-        onRebalance(partitionListener::onPartitionsAssigned, consumerListener::onPartitionsAssigned, allPartitions);
+        if (partitions.size() != assignment.size()) {
+            LOGGER.info("Assignment appears incremental for assignment={}", assignment);
+        }
+
+        LOGGER.info("Notifying listeners of assigned partitions={}", partitions);
+        onRebalance(partitionListener::onPartitionsAssigned, consumerListener::onPartitionsAssigned, partitions);
     }
 
     @Override
