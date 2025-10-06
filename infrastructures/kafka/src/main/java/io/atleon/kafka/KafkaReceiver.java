@@ -7,6 +7,7 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
+import reactor.core.scheduler.Scheduler;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -332,8 +333,10 @@ public final class KafkaReceiver<K, V> {
             .map(RecordRange::topicPartition)
             .collect(Collectors.collectingAndThen(Collectors.toList(), ConsumptionSpec::assign));
 
+        Scheduler timer = options.createAuxiliaryScheduler();
         return receiveManual(new PollingSubscriptionFactory<>(boundedOptions), consumptionSpec)
-            .takeUntilOther(boundedPolling.pollingAndProcessingCompleted())
+            .takeUntilOther(boundedPolling.pollingAndProcessingCompleted(options.revocationGracePeriod(), timer))
+            .doFinally(__ -> timer.dispose())
             .concatWith(boundedPolling.closed());
     }
 

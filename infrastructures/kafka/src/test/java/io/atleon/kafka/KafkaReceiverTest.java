@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collector;
@@ -490,7 +491,7 @@ class KafkaReceiverTest {
     }
 
     @Test
-    public void receiveManualInRange_givenEarliestToLatestRange_expectsConsumptionOfAllData() {
+    public void receiveManualInRanges_givenEarliestToLatestRange_expectsConsumptionOfAllData() {
         String topic = UUID.randomUUID().toString();
         Set<Long> producedValues = sendLongs(
             createRandomLongValues(1000, Collectors.toSet()),
@@ -504,7 +505,7 @@ class KafkaReceiverTest {
     }
 
     @Test
-    public void receiveManualInRange_givenSingletonEarliestCriteria_expectsConsumptionOfEarliestRecord() {
+    public void receiveManualInRanges_givenSingletonEarliestCriteria_expectsConsumptionOfEarliestRecord() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = sendLongs(
             createRandomLongValues(4, Collectors.toList()),
@@ -517,7 +518,7 @@ class KafkaReceiverTest {
     }
 
     @Test
-    public void receiveManualInRange_givenSingletonLatestCriteria_expectsConsumptionOfLatestRecord() {
+    public void receiveManualInRanges_givenSingletonLatestCriteria_expectsConsumptionOfLatestRecord() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = sendLongs(
             createRandomLongValues(4, Collectors.toList()),
@@ -530,7 +531,7 @@ class KafkaReceiverTest {
     }
 
     @Test
-    public void receiveManualInRange_givenSingletonRawOffsetCriteria_expectsConsumptionOfRecordAtOffset() {
+    public void receiveManualInRanges_givenSingletonRawOffsetCriteria_expectsConsumptionOfRecordAtOffset() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = sendLongs(
             createRandomLongValues(4, Collectors.toList()),
@@ -543,7 +544,7 @@ class KafkaReceiverTest {
     }
 
     @Test
-    public void receiveManualInRange_givenRawOffsetRanges_expectsConsumptionOfRecordsInOffsetRange() {
+    public void receiveManualInRanges_givenRawOffsetRanges_expectsConsumptionOfRecordsInOffsetRange() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = sendLongs(
             createRandomLongValues(4, Collectors.toList()),
@@ -569,7 +570,7 @@ class KafkaReceiverTest {
     }
 
     @Test
-    public void receiveManualInRange_givenSingletonTimestampCriteria_expectsConsumptionOfRecordAtTimestamp() {
+    public void receiveManualInRanges_givenSingletonTimestampCriteria_expectsConsumptionOfRecordAtTimestamp() {
         String topic = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
         List<Long> producedTimestamps = sendLongs(
@@ -583,7 +584,7 @@ class KafkaReceiverTest {
     }
 
     @Test
-    public void receiveManualInRange_givenTimestampRanges_expectsConsumptionOfRecordsInTimestampRange() {
+    public void receiveManualInRanges_givenTimestampRanges_expectsConsumptionOfRecordsInTimestampRange() {
         String topic = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
         List<Long> producedTimestamps = sendLongs(
@@ -642,7 +643,7 @@ class KafkaReceiverTest {
     }
 
     @Test
-    public void receiveManualInRange_givenCriteriaBasedOnConsumerGroup_expects() {
+    public void receiveManualInRanges_givenCriteriaBasedOnConsumerGroup_expects() {
         TopicPartition topicPartition = new TopicPartition(UUID.randomUUID().toString(), 0);
         String groupId = UUID.randomUUID().toString();
         List<Long> producedValues = sendLongs(
@@ -669,7 +670,7 @@ class KafkaReceiverTest {
     }
 
     @Test
-    public void receiveManualInRange_givenConsecutiveConsumerGroupEarliestToLatestRanges_expectsResumption() {
+    public void receiveManualInRanges_givenConsecutiveConsumerGroupEarliestToLatestRanges_expectsResumption() {
         String topic = UUID.randomUUID().toString();
         String groupId = UUID.randomUUID().toString();
         Set<Long> firstValues = sendLongs(
@@ -698,7 +699,7 @@ class KafkaReceiverTest {
     }
 
     @Test
-    public void receiveManualInRange_givenRangesOverASinglePartition_expectsConsumptionOfRecordsInRangeOnPartition() {
+    public void receiveManualInRanges_givenRangesOverASinglePartition_expectsConsumptionOfRecordsInRangeOnPartition() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = sendLongs(
             LongStream.range(0, 6).boxed().collect(Collectors.toList()),
@@ -718,7 +719,7 @@ class KafkaReceiverTest {
     }
 
     @Test
-    public void receiveManualInRange_givenStartingOffsetRangeProvider_expectsResumptionOfConsumption() {
+    public void receiveManualInRanges_givenStartingOffsetRangeProvider_expectsResumptionOfConsumption() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = sendLongs(
             LongStream.range(0, 6).boxed().collect(Collectors.toList()),
@@ -735,7 +736,7 @@ class KafkaReceiverTest {
     }
 
     @Test
-    public void receiveManualInRange_givenRawOffsetsInSinglePartition_expectsConsumptionOfRecordsInRawOffsetRange() {
+    public void receiveManualInRanges_givenRawOffsetsInSinglePartition_expectsConsumptionOfRecordsInRawOffsetRange() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = sendLongs(
             LongStream.range(0, 6).boxed().collect(Collectors.toList()),
@@ -748,6 +749,29 @@ class KafkaReceiverTest {
         );
 
         assertEquals(producedValues.subList(1, 3), receiveLongValues(topic, recordsInFirstPartition));
+    }
+
+    @Test
+    public void receiveManualInRanges_givenLackOfAcknowledgementWithinGracePeriod_expectsTimeoutException() {
+        String topic = UUID.randomUUID().toString();
+        List<Long> producedValues = sendLongs(
+            LongStream.range(0, 1).boxed().collect(Collectors.toList()),
+            value -> KafkaSenderRecord.create(topic, (int) (value / 3), value, value, value)
+        );
+
+        KafkaReceiverOptions<Long, Long> receiverOptions = newLongReceiverOptionsBuilder()
+            .revocationGracePeriod(Duration.ofMillis(100))
+            .build();
+
+        OffsetRangeProvider rangeProvider = OffsetRangeProvider.earliestToLatestFromAllTopicPartitions();
+        KafkaReceiver.create(receiverOptions)
+            .receiveManualInRanges(Collections.singletonList(topic), rangeProvider)
+            .map(KafkaReceiverRecord::value)
+            .buffer(1)
+            .as(StepVerifier::create)
+            .expectNext(producedValues)
+            .expectError(TimeoutException.class)
+            .verify();
     }
 
     @SafeVarargs
