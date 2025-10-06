@@ -8,7 +8,9 @@ import org.apache.kafka.common.TopicPartition;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.core.scheduler.Scheduler;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -16,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 /**
@@ -118,14 +121,22 @@ final class BoundedPolling implements ConsumerListener, ReceptionListener, PollS
         return new ConsumerRecords<>(truncatedConsumerRecords);
     }
 
-    public Mono<Long> pollingAndProcessingCompleted() {
+    public Mono<Long> pollingAndProcessingCompleted(Duration processingGracePeriod, Scheduler timer) {
         return polledRecordCounts.asFlux()
             .reduce(0L, Long::sum)
-            .delayUntil(total -> deactivatedRecordCountTotals.takeUntil(total::equals).then());
+            .delayUntil(pollTotal -> awaitProcessingCompletion(pollTotal, processingGracePeriod, timer));
     }
 
     public <T> Mono<T> closed() {
         return closed.asMono().then(Mono.empty());
+    }
+
+    private Mono<Void> awaitProcessingCompletion(Long pollTotal, Duration timeout, Scheduler timer) {
+        String timeoutMessage = "Processing timed out. You must acknowledge received records within timeout=" + timeout;
+        return deactivatedRecordCountTotals.takeUntil(pollTotal::equals)
+            .then()
+            .timeout(timeout, timer)
+            .onErrorMap(TimeoutException.class, __ -> new TimeoutException(timeoutMessage));
     }
 
     private static <K, V> List<ConsumerRecord<K, V>> truncate(
