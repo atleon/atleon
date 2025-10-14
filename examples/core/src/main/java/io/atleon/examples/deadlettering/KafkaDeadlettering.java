@@ -28,8 +28,7 @@ public class KafkaDeadlettering {
             .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaDeadlettering.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1);
+            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
         //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that we use an Auto
         // Offset Reset of 'earliest' to ensure we receive Records produced before subscribing with

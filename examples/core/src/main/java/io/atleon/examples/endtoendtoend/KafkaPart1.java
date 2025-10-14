@@ -25,8 +25,7 @@ public class KafkaPart1 {
             .with(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
             .with(ProducerConfig.CLIENT_ID_CONFIG, KafkaPart1.class.getSimpleName())
             .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1);
+            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
         //Step 2) Send some Record values to a hardcoded topic, using values as Record keys
         AloKafkaSender<String, String> sender = AloKafkaSender.create(kafkaSenderConfig);

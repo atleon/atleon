@@ -12,6 +12,7 @@ import reactor.util.concurrent.Queues;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -74,7 +75,19 @@ public final class KafkaSenderOptions<K, V> {
      * Creates a new Producer instance that will be used to send records to Kafka.
      */
     public Producer<K, V> createProducer() {
-        return producerFactory.apply(producerProperties);
+        Map<String, Object> sanitized = new LinkedHashMap<>(producerProperties);
+        // #452: The default/intended usage of reactive senders is in the context of order-assuming
+        // stream processes, and it is therefore desirable to ensure ordering maintenance in
+        // production by default. It used to be the case that this required setting
+        // ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION to 1; However, the introduction of
+        // idempotence and its defaulting to true in Kafka 3.0 made it such that ordering is
+        // maintained by default, even if the max in flight requests is (up to) its default value
+        // (historically, 5). However, this behavior is not maintained if idempotence is not
+        // explicitly enabled and the max in flight requests is greater than its default value, so
+        // we ensure that this condition is caught by ensuring idempotence is explicitly set by
+        // default.
+        sanitized.putIfAbsent(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+        return producerFactory.apply(sanitized);
     }
 
     /**
