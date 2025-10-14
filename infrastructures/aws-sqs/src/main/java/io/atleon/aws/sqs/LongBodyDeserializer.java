@@ -1,6 +1,6 @@
 package io.atleon.aws.sqs;
 
-public class LongBodyDeserializer implements BodyDeserializer<Long> {
+public final class LongBodyDeserializer implements BodyDeserializer<Long> {
 
     @Override
     public Long deserialize(String data) {
