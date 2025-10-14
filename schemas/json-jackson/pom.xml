@@ -39,6 +39,11 @@
             <artifactId>atleon-rabbitmq</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-util</artifactId>
+            <scope>provided</scope>
+        </dependency>
 
         <!-- Third Party Provided Dependencies -->
         <dependency>

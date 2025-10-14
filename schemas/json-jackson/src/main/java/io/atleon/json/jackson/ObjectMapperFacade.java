@@ -37,6 +37,22 @@ final class ObjectMapperFacade {
         }
     }
 
+    public <T> T readAs(byte[] data, Class<? extends T> type) {
+        try {
+            return objectMapper.readValue(data, type);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Failed to read JSON data.", e);
+        }
+    }
+
+    public <T> T readAs(String data, Class<? extends T> type) {
+        try {
+            return objectMapper.readValue(data, type);
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Failed to read JSON data.", e);
+        }
+    }
+
     public JsonNode readAsNode(byte[] data) {
         try {
             return objectMapper.readTree(data);
