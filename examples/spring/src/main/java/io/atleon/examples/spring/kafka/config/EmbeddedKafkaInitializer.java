@@ -1,7 +1,6 @@
 package io.atleon.examples.spring.kafka.config;
 
 import io.atleon.kafka.embedded.EmbeddedKafka;
-import org.apache.kafka.clients.CommonClientConfigs;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
 import org.springframework.core.env.ConfigurableEnvironment;
@@ -21,15 +20,13 @@ public class EmbeddedKafkaInitializer implements EnvironmentPostProcessor {
         if (activeProfiles.contains("kafka") && !activeProfiles.contains("integrationTest")) {
             String bootstrapServers = EmbeddedKafka.startAndGetBootstrapServersConnect();
             environment.getPropertySources()
-                .addLast(new MapPropertySource("embedded-kafka", createProperties(bootstrapServers)));
+                .addFirst(new MapPropertySource("embedded-kafka", createProperties(bootstrapServers)));
         }
     }
 
     private static Map<String, Object> createProperties(String bootstrapServers) {
         Map<String, Object> properties = new HashMap<>();
-        properties.put("atleon.config.sources[0].name", "exampleKafkaConfigSource");
-        properties.put("atleon.config.sources[0].type", "kafka");
-        properties.put("atleon.config.sources[0]." + CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        properties.put("vars.kafka.bootstrap.servers", bootstrapServers);
         return properties;
     }
 }

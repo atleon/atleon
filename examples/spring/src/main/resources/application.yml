@@ -1,0 +1,77 @@
+# Variables used for substitution in following config blocks, which can also be overridden in order
+# to run against embedded resources and/or in integration testing
+vars:
+  kafka:
+    bootstrap.servers: localhost:9092
+  aws:
+    region: us-east-1
+    credentials.provider.type: static
+    credentials.access.key.id: test
+    credentials.secret.access.key: test
+  sns:
+    endpoint.override: http://localhost:32831
+  sqs:
+    endpoint.override: http://localhost:32831
+  rabbitmq:
+    host: localhost
+    port: 5672
+    virtual.host: /
+    username: test
+    password: test
+
+# Atleon-specific Spring resource variables
+atleon:
+  management:
+    # Configuration for REST-based management
+    rest:
+      enabled: true
+  config.sources:
+    # Example Kafka Config Source - Configurable with all properties supported by native client
+    # library, including properties from org.apache.kafka.clients.CommonClientConfigs,
+    # org.apache.kafka.clients.producer.ProducerConfig, and
+    # org.apache.kafka.clients.consumer.ConsumerConfig.
+    - type: kafka
+      name: exampleKafkaConfigSource
+      bootstrap.servers: ${vars.kafka.bootstrap.servers}
+    # Example SNS Config Source - Configurable with all properties supported by low level clients,
+    # including those from io.atleon.aws.util.AwsConfig and io.atleon.aws.sns.SnsConfig
+    - type: sns
+      name: exampleSnsConfigSource
+      aws.region: ${vars.aws.region}
+      aws.credentials.provider.type: ${vars.aws.credentials.provider.type}
+      aws.credentials.access.key.id: ${vars.aws.credentials.access.key.id}
+      aws.credentials.secret.access.key: ${vars.aws.credentials.secret.access.key}
+      sns.endpoint.override: ${vars.sns.endpoint.override} # Usually only necessary for local runs
+    # Example SQS Config Source - Configurable with all properties supported by low level clients,
+    # including those from io.atleon.aws.util.AwsConfig and io.atleon.aws.sqs.SqsConfig
+    - type: sqs
+      name: exampleSqsConfigSource
+      aws.region: ${vars.aws.region}
+      aws.credentials.provider.type: ${vars.aws.credentials.provider.type}
+      aws.credentials.access.key.id: ${vars.aws.credentials.access.key.id}
+      aws.credentials.secret.access.key: ${vars.aws.credentials.secret.access.key}
+      sqs.endpoint.override: ${vars.sqs.endpoint.override} # Usually only necessary for local runs
+    # Example Rabbit MQ Config Source - Configurable with all properties supported by native client
+    # library, including properties from com.rabbitmq.client.ConnectionFactoryConfigurator
+    - type: rabbitMQ
+      name: exampleRabbitMQConfigSource
+      host: ${vars.rabbitmq.host}
+      port: ${vars.rabbitmq.port}
+      virtual.host: ${vars.rabbitmq.virtual.host}
+      username: ${vars.rabbitmq.username}
+      password: ${vars.rabbitmq.password}
+
+# Stream-specific configuration variables
+stream:
+  kafka:
+    input.topic: example-kafka-input-topic
+    output.topic: example-kafka-output-topic
+  rabbitmq:
+    exchange: example-rabbitmq-exchange
+    input.queue: example-rabbitmq-input-queue
+    output.queue: example-rabbitmq-output-queue
+  sns:
+    input.topic.name: example-sns-input-topic
+  sqs:
+    input.queue.name: example-sqs-input-queue
+    output.queue.name: example-sqs-output-queue

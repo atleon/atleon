@@ -5,7 +5,6 @@ import io.atleon.kafka.AloKafkaReceiver;
 import io.atleon.kafka.AloKafkaSender;
 import io.atleon.kafka.KafkaConfigSource;
 import io.atleon.kafka.embedded.EmbeddedKafka;
-import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.LongDeserializer;
@@ -90,9 +89,7 @@ public class IntegrationTest {
         public void initialize(ConfigurableApplicationContext applicationContext) {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
                 applicationContext,
-                "atleon.config.sources[0].name=exampleKafkaConfigSource",
-                "atleon.config.sources[0].type=kafka",
-                "atleon.config.sources[0]." + CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG + "=" + BOOTSTRAP_SERVERS,
+                "vars.kafka.bootstrap.servers=" + BOOTSTRAP_SERVERS,
                 "stream.kafka.input.topic=" + INPUT_TOPIC,
                 "stream.kafka.output.topic=" + OUTPUT_TOPIC
             );

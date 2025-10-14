@@ -1,6 +1,5 @@
 package io.atleon.examples.spring.rabbitmq;
 
-import com.rabbitmq.client.ConnectionFactoryConfigurator;
 import com.rabbitmq.client.MessageProperties;
 import io.atleon.amqp.embedded.EmbeddedAmqp;
 import io.atleon.amqp.embedded.EmbeddedAmqpConfig;
@@ -68,13 +67,11 @@ public class IntegrationTest {
         public void initialize(ConfigurableApplicationContext applicationContext) {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
                 applicationContext,
-                "atleon.config.sources[0].name=exampleRabbitMQConfigSource",
-                "atleon.config.sources[0].type=rabbitMQ",
-                "atleon.config.sources[0]." + ConnectionFactoryConfigurator.HOST + "=" + AMQP_CONFIG.getHost(),
-                "atleon.config.sources[0]." + ConnectionFactoryConfigurator.PORT + "=" + AMQP_CONFIG.getPort(),
-                "atleon.config.sources[0]." + ConnectionFactoryConfigurator.VIRTUAL_HOST + "=" + AMQP_CONFIG.getVirtualHost(),
-                "atleon.config.sources[0]." + ConnectionFactoryConfigurator.USERNAME + "=" + AMQP_CONFIG.getUsername(),
-                "atleon.config.sources[0]." + ConnectionFactoryConfigurator.PASSWORD + "=" + AMQP_CONFIG.getPassword(),
+                "vars.rabbitmq.host=" + AMQP_CONFIG.getHost(),
+                "vars.rabbitmq.port=" + AMQP_CONFIG.getPort(),
+                "vars.rabbitmq.virtual.host=" + AMQP_CONFIG.getVirtualHost(),
+                "vars.rabbitmq.username=" + AMQP_CONFIG.getUsername(),
+                "vars.rabbitmq.password=" + AMQP_CONFIG.getPassword(),
                 "stream.rabbitmq.exchange=" + EXCHANGE,
                 "stream.rabbitmq.input.queue=" + INPUT_QUEUE,
                 "stream.rabbitmq.output.queue=" + OUTPUT_QUEUE

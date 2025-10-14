@@ -23,28 +23,19 @@ public class LocalStackInitializer implements EnvironmentPostProcessor {
         if (activeProfiles.contains("aws") && !activeProfiles.contains("integrationTest")) {
             AtleonLocalStackContainer container = AtleonLocalStackContainer.createAndStart();
             environment.getPropertySources()
-                .addLast(new MapPropertySource("local-stack", createProperties(container)));
+                .addFirst(new MapPropertySource("local-stack", createProperties(container)));
         }
     }
 
     private static Map<String, Object> createProperties(AtleonLocalStackContainer container) {
         Map<String, Object> properties = new HashMap<>();
 
-        properties.put("atleon.config.sources[0].name", "exampleSnsConfigSource");
-        properties.put("atleon.config.sources[0].type", "sns");
-        properties.put("atleon.config.sources[0]." + AwsConfig.REGION_CONFIG, container.getRegion());
-        properties.put("atleon.config.sources[0]." + AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC);
-        properties.put("atleon.config.sources[0]." + AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, container.getAccessKey());
-        properties.put("atleon.config.sources[0]." + AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, container.getSecretKey());
-        properties.put("atleon.config.sources[0]." + SnsConfig.ENDPOINT_OVERRIDE_CONFIG, container.getSnsEndpointOverride().toString());
-
-        properties.put("atleon.config.sources[1].name", "exampleSqsConfigSource");
-        properties.put("atleon.config.sources[1].type", "sqs");
-        properties.put("atleon.config.sources[1]." + AwsConfig.REGION_CONFIG, container.getRegion());
-        properties.put("atleon.config.sources[1]." + AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC);
-        properties.put("atleon.config.sources[1]." + AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, container.getAccessKey());
-        properties.put("atleon.config.sources[1]." + AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, container.getSecretKey());
-        properties.put("atleon.config.sources[1]." + SqsConfig.ENDPOINT_OVERRIDE_CONFIG, container.getSqsEndpointOverride().toString());
+        properties.put("vars.aws.region", container.getRegion());
+        properties.put("vars.aws.credentials.provider.type", AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC);
+        properties.put("vars.aws.credentials.access.key.id", container.getAccessKey());
+        properties.put("vars.aws.credentials.secret.access.key", container.getSecretKey());
+        properties.put("vars.sns.endpoint.override", container.getSnsEndpointOverride().toString());
+        properties.put("vars.sqs.endpoint.override", container.getSqsEndpointOverride().toString());
 
         return properties;
     }

@@ -21,15 +21,13 @@ public class EmbeddedAmqpInitializer implements EnvironmentPostProcessor {
         if (activeProfiles.contains("rabbitmq") && !activeProfiles.contains("integrationTest")) {
             EmbeddedAmqpConfig embeddedAmqpConfig = EmbeddedAmqp.start(15672);
             environment.getPropertySources()
-                .addLast(new MapPropertySource("embedded-amqp", createProperties(embeddedAmqpConfig)));
+                .addFirst(new MapPropertySource("embedded-amqp", createProperties(embeddedAmqpConfig)));
         }
     }
 
     private static Map<String, Object> createProperties(EmbeddedAmqpConfig config) {
         Map<String, Object> properties = new HashMap<>();
-        properties.put("atleon.config.sources[0].name", "exampleRabbitMQConfigSource");
-        properties.put("atleon.config.sources[0].type", "rabbitMQ");
-        config.asMap().forEach((key, value) -> properties.put("atleon.config.sources[0]." + key, value));
+        config.asMap().forEach((key, value) -> properties.put("vars.rabbitmq." + key, value));
         return properties;
     }
 }

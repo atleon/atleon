@@ -7,7 +7,6 @@ import io.atleon.aws.sns.SnsConfig;
 import io.atleon.aws.sns.SnsConfigSource;
 import io.atleon.aws.sns.SnsMessage;
 import io.atleon.aws.sns.StringBodySerializer;
-import io.atleon.aws.sqs.SqsConfig;
 import io.atleon.aws.testcontainers.AtleonLocalStackContainer;
 import io.atleon.aws.util.AwsConfig;
 import org.junit.jupiter.api.Test;
@@ -76,20 +75,12 @@ public class IntegrationTest {
         public void initialize(ConfigurableApplicationContext applicationContext) {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
                 applicationContext,
-                "atleon.config.sources[0].name=exampleSnsConfigSource",
-                "atleon.config.sources[0].type=sns",
-                "atleon.config.sources[0]." + AwsConfig.REGION_CONFIG + "=" + CONTAINER.getRegion(),
-                "atleon.config.sources[0]." + AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG + "=" + AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC,
-                "atleon.config.sources[0]." + AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG + "=" + CONTAINER.getAccessKey(),
-                "atleon.config.sources[0]." + AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG + "=" + CONTAINER.getSecretKey(),
-                "atleon.config.sources[0]." + SnsConfig.ENDPOINT_OVERRIDE_CONFIG + "=" + CONTAINER.getSnsEndpointOverride(),
-                "atleon.config.sources[1].name=exampleSqsConfigSource",
-                "atleon.config.sources[1].type=sqs",
-                "atleon.config.sources[1]." + AwsConfig.REGION_CONFIG + "=" + CONTAINER.getRegion(),
-                "atleon.config.sources[1]." + AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG + "=" + AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC,
-                "atleon.config.sources[1]." + AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG + "=" + CONTAINER.getAccessKey(),
-                "atleon.config.sources[1]." + AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG + "=" + CONTAINER.getSecretKey(),
-                "atleon.config.sources[1]." + SqsConfig.ENDPOINT_OVERRIDE_CONFIG + "=" + CONTAINER.getSqsEndpointOverride(),
+                "vars.aws.region=" + CONTAINER.getRegion(),
+                "vars.aws.credentials.provider.type=" + AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC,
+                "vars.aws.credentials.access.key.id=" + CONTAINER.getAccessKey(),
+                "vars.aws.credentials.secret.access.key=" + CONTAINER.getSecretKey(),
+                "vars.sns.endpoint.override=" + CONTAINER.getSnsEndpointOverride(),
+                "vars.sqs.endpoint.override=" + CONTAINER.getSqsEndpointOverride(),
                 "stream.sns.input.topic.name=" + SNS_INPUT_TOPIC_NAME,
                 "stream.sqs.input.queue.name=" + SQS_INPUT_QUEUE_NAME,
                 "stream.sqs.output.queue.name=" + SQS_OUTPUT_QUEUE_NAME
