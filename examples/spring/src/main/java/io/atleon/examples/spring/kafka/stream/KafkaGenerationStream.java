@@ -37,7 +37,6 @@ public class KafkaGenerationStream extends SpringAloStream {
 
     private AloKafkaSender<Long, Long> buildKafkaLongSender() {
         return configSource.withClientId(name())
-            .withProducerOrderingAndResiliencyConfigs()
             .withKeySerializer(LongSerializer.class)
             .withValueSerializer(LongSerializer.class)
             .as(AloKafkaSender::create);

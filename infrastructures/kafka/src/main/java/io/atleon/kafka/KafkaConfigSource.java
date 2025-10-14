@@ -48,6 +48,12 @@ public class KafkaConfigSource extends ConfigSource<KafkaConfig, KafkaConfigSour
         return with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     }
 
+    /**
+     * @deprecated The properties set by this method are no longer necessary to guarantee ordering
+     * and resiliency. Idempotency is now (explicitly via sender) enabled by default, the default
+     * max in flight requests supports idempotency, and the default acks is set to "all".
+     */
+    @Deprecated
     public KafkaConfigSource withProducerOrderingAndResiliencyConfigs() {
         Map<String, Object> configs = new HashMap<>();
         configs.put(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1);

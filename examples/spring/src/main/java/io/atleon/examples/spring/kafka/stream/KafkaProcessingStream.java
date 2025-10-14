@@ -56,7 +56,6 @@ public class KafkaProcessingStream extends SpringAloStream {
     private AloKafkaSender<Long, Long> buildKafkaLongSender() {
         return configSource.withClientId(name())
             .withClientId(name())
-            .withProducerOrderingAndResiliencyConfigs()
             .withKeySerializer(LongSerializer.class)
             .withValueSerializer(LongSerializer.class)
             .as(AloKafkaSender::create);
