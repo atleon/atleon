@@ -52,10 +52,9 @@ final class SendingProducer<K, V> implements ProducerInvocable {
 
     private final Duration closeTimeout;
 
-    private final Sinks.Empty<Void> closed = Sinks.unsafe().empty();
+    private final Mono<Void> initTransactionsCache;
 
-    // Only cache first success. Until then, let client know about errors
-    private final Mono<Void> initTransactionsCache = Publishing.cacheSuccess(doOnProducer(Producer::initTransactions));
+    private final Sinks.Empty<Void> closed = Sinks.unsafe().empty();
 
     public SendingProducer(KafkaSenderOptions<K, V> options) {
         this.producer = options.createProducer();
@@ -64,6 +63,8 @@ final class SendingProducer<K, V> implements ProducerInvocable {
         this.producerListener = options.createProducerListener(this);
         this.sendImmediate = options.sendImmediate();
         this.closeTimeout = options.closeTimeout();
+        // Only cache first success. Until then, let client know about errors
+        this.initTransactionsCache = doOnProducer(Producer::initTransactions).as(Publishing::cacheSuccess);
     }
 
     @Override
@@ -73,13 +74,7 @@ final class SendingProducer<K, V> implements ProducerInvocable {
                 " worker thread. It should rather be the case that the Producer is directly passed to the call site" +
                 " in some way, for example with ProducerListener::onClose.");
         }
-        return Mono.create(sink -> taskLoop.schedule(() -> {
-            try {
-                sink.success(invocation.apply(externalProducerProxy));
-            } catch (Throwable e) {
-                sink.error(e);
-            }
-        }));
+        return taskLoop.publish(() -> invocation.apply(externalProducerProxy));
     }
 
     public Mono<Void> initTransactions() {
@@ -118,14 +113,14 @@ final class SendingProducer<K, V> implements ProducerInvocable {
     }
 
     public Mono<Void> closeSafely() {
-        return Mono.create(sink -> taskLoop.schedule(() -> {
+        return taskLoop.publish(() -> {
             runSafely(() -> producerListener.onClose(externalProducerProxy), "producerListener::onClose");
             runSafely(() -> producer.close(closeTimeout), "producer::close");
             closed.tryEmitEmpty();
             runSafely(producerListener::close, "producerListener::close");
             taskLoop.disposeSafely();
-            sink.success();
-        }));
+            return null;
+        });
     }
 
     public Mono<Void> closed() {
@@ -133,15 +128,15 @@ final class SendingProducer<K, V> implements ProducerInvocable {
     }
 
     private Mono<Void> doOnProducer(Consumer<Producer<?, ?>> task) {
-        return Mono.create(sink -> taskLoop.schedule(() -> {
+        return taskLoop.publish(() -> {
             try {
                 task.accept(producer);
-                sink.success();
-            } catch (Throwable e) {
+                return null;
+            } catch (Exception e) {
                 onProducerTaskFailure(e);
-                sink.error(e);
+                throw e;
             }
-        }));
+        });
     }
 
     private void send(ProducerRecord<K, V> producerRecord, BooleanSupplier producePredicate, Callback callback) {

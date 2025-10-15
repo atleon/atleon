@@ -132,13 +132,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
                 " polling thread. It should rather be the case that the Consumer is directly passed to the call site" +
                 " in some way, for example with ConsumerListener::onPartitionsAssigned.");
         }
-        return Mono.create(sink -> taskLoop.schedule(() -> {
-            try {
-                sink.success(invocation.apply(externalConsumerProxy));
-            } catch (Throwable e) {
-                sink.error(e);
-            }
-        }));
+        return taskLoop.publish(() -> invocation.apply(externalConsumerProxy));
     }
 
     public void init(ConsumptionSpec consumptionSpec, java.util.function.Consumer<Consumer<K, V>> andThen) {
@@ -149,14 +143,14 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
     }
 
     public Mono<Void> closeSafely(ConsumptionSpec consumptionSpec) {
-        return Mono.create(sink -> taskLoop.schedule(() -> {
+        return taskLoop.publish(() -> {
             runSafely(() -> consumptionSpec.onClose(consumer, this), "consumptionSpec::onClose");
             runSafely(() -> consumerListener.onClose(externalConsumerProxy), "consumerListener::onClose");
             runSafely(() -> consumer.close(closeTimeout), "consumer::close");
             runSafely(consumerListener::close, "consumerListener::close");
             taskLoop.disposeSafely();
-            sink.success();
-        }));
+            return null;
+        });
     }
 
     public void wakeupSafely() {

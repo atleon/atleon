@@ -37,7 +37,7 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
         SendingProducer<K, V> producer,
         Publisher<KafkaSenderRecord<K, V, T>> senderRecords
     ) {
-        return new SendPublisher<>(senderRecords, it -> new CompletingSend<>(options, producer, it, false));
+        return new SendPublisher<>(senderRecords, it -> new ConditionalSend<>(options, producer, it, false));
     }
 
     public static <K, V, T> SendPublisher<K, V, T> delegateError(
@@ -45,7 +45,7 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
         SendingProducer<K, V> producer,
         Publisher<KafkaSenderRecord<K, V, T>> senderRecords
     ) {
-        return new SendPublisher<>(senderRecords, it -> new CompletingSend<>(options, producer, it, true));
+        return new SendPublisher<>(senderRecords, it -> new ConditionalSend<>(options, producer, it, true));
     }
 
     public static <K, V, T> SendPublisher<K, V, T> delayError(
@@ -271,11 +271,11 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
         }
     }
 
-    private static final class CompletingSend<K, V, T> extends Send<K, V, T> {
+    private static final class ConditionalSend<K, V, T> extends Send<K, V, T> {
 
         private final boolean emitFailuresAsResults;
 
-        public CompletingSend(
+        public ConditionalSend(
             KafkaSenderOptions<K, V> options,
             SendingProducer<K, V> producer,
             Subscriber<? super KafkaSenderResult<T>> actual,

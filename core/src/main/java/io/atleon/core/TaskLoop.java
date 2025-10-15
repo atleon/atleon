@@ -2,7 +2,9 @@ package io.atleon.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
 
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -38,6 +40,16 @@ public final class TaskLoop {
 
     public static TaskLoop start(String name, Consumer<Runnable> runner) {
         return new TaskLoop(name, runner);
+    }
+
+    public <T> Mono<T> publish(Callable<? extends T> callable) {
+        return Mono.create(sink -> schedule(() -> {
+            try {
+                sink.success(callable.call());
+            } catch (Exception e) {
+                sink.error(e);
+            }
+        }));
     }
 
     public boolean schedule(Runnable task) {
