@@ -1,7 +1,5 @@
 package io.atleon.examples.spring.awssnssqs.config;
 
-import io.atleon.aws.sns.SnsConfig;
-import io.atleon.aws.sqs.SqsConfig;
 import io.atleon.aws.testcontainers.AtleonLocalStackContainer;
 import io.atleon.aws.util.AwsConfig;
 import org.springframework.boot.SpringApplication;

@@ -6,7 +6,6 @@ import org.springframework.context.annotation.ConditionContext;
 import org.springframework.util.ClassUtils;
 
 import java.util.Optional;
-import java.util.function.Function;
 
 final class Contexts {
 
