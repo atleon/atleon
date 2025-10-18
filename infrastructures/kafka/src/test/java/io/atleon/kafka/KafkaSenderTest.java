@@ -10,6 +10,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 import reactor.util.context.Context;
 
@@ -19,6 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -99,6 +102,37 @@ class KafkaSenderTest {
         producerListener.closed().then(Mono.delay(Duration.ofSeconds(1))).block();
 
         assertEquals(1, countRecords(topic, partition));
+    }
+
+    @Test
+    public void send_givenManyProducedRecords_expectsCorrectUpstreamRequestCount() throws Exception {
+        String topic = UUID.randomUUID().toString();
+        int maxInFlight = 16;
+        int numRecords = 100;
+
+        KafkaSenderOptions<String, String> senderOptions = KafkaSenderOptions.<String, String>newBuilder()
+            .producerProperties(newProducerProperties())
+            .maxInFlight(maxInFlight)
+            .build();
+        KafkaSender<String, String> sender = KafkaSender.create(senderOptions);
+
+        Sinks.Many<KafkaSenderRecord<String, String, Object>> sink = Sinks.many().unicast().onBackpressureBuffer();
+
+        AtomicLong requested = new AtomicLong(0L);
+        CountDownLatch latch = new CountDownLatch(numRecords);
+        sink.asFlux()
+            .doOnRequest(requested::addAndGet)
+            .as(sender::send)
+            .subscribe(__ -> latch.countDown());
+
+        Flux.range(0, numRecords)
+            .map(i -> KafkaSenderRecord.create(topic, "key" + i, "value" + i, null))
+            .subscribe(sink::tryEmitNext);
+
+        latch.await();
+        sender.close();
+
+        assertEquals(senderOptions.maxInFlight() + numRecords, requested.get(), 1);
     }
 
     @Test
