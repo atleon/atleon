@@ -40,6 +40,11 @@
             </dependency>
             <dependency>
                 <groupId>io.atleon</groupId>
+                <artifactId>atleon-aws-util</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
                 <artifactId>atleon-context-auto</artifactId>
                 <version>${project.version}</version>
             </dependency>
