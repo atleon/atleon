@@ -114,5 +114,12 @@
             <artifactId>atleon-opentracing-auto</artifactId>
             <scope>runtime</scope>
         </dependency>
+
+        <!-- Third Party Runtime Dependencies -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <scope>runtime</scope>
+        </dependency>
     </dependencies>
 </project>
