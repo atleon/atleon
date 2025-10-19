@@ -76,8 +76,11 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
         private static final AtomicLongFieldUpdater<Send> IN_FLIGHT =
             AtomicLongFieldUpdater.newUpdater(Send.class, "inFlight");
 
-        private static final AtomicLongFieldUpdater<Send> REQUESTED =
-            AtomicLongFieldUpdater.newUpdater(Send.class, "requested");
+        private static final AtomicLongFieldUpdater<Send> OUTSTANDING_DOWNSTREAM_REQUEST =
+            AtomicLongFieldUpdater.newUpdater(Send.class, "outstandingDownstreamRequest");
+
+        private static final AtomicLongFieldUpdater<Send> OUTSTANDING_UPSTREAM_REQUEST =
+            AtomicLongFieldUpdater.newUpdater(Send.class, "outstandingUpstreamRequest");
 
         private static final AtomicReferenceFieldUpdater<Send, State> SUBSCRIPTION_STATE =
             AtomicReferenceFieldUpdater.newUpdater(Send.class, State.class, "subscriptionState");
@@ -104,7 +107,9 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
         // been enqueued to the downstream subscriber.
         private volatile long inFlight = 1;
 
-        private volatile long requested = 0;
+        private volatile long outstandingDownstreamRequest = 0;
+
+        private volatile long outstandingUpstreamRequest = 0;
 
         private volatile State subscriptionState = State.ACTIVE;
 
@@ -168,7 +173,7 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
         @Override
         public void request(long n) {
             if (Operators.validate(n)) {
-                Operators.addCap(REQUESTED, this, n);
+                Operators.addCap(OUTSTANDING_DOWNSTREAM_REQUEST, this, n);
                 drainSubscription();
             }
         }
@@ -208,6 +213,9 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
                         return count + 1;
                     }
                 });
+                if (outstandingUpstreamRequest != Long.MAX_VALUE) {
+                    OUTSTANDING_UPSTREAM_REQUEST.decrementAndGet(this);
+                }
 
                 // If the previous in-flight count was positive, then we are not yet eligible for
                 // termination, and we should ensure that any capacity freed by emitting the last
@@ -240,12 +248,13 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
             int missed = 1;
             do {
                 if (subscriptionState == State.ACTIVE) {
-                    long toRequest = Math.min(freeInFlightSendCapacity(), requested);
+                    long toRequest = calculateMaxUpstreamRequest();
 
-                    if (toRequest > 0L) {
-                        if (requested != Long.MAX_VALUE) {
-                            REQUESTED.addAndGet(this, -toRequest);
+                    if (toRequest > 0 && outstandingUpstreamRequest != Long.MAX_VALUE) {
+                        if (outstandingDownstreamRequest != Long.MAX_VALUE) {
+                            OUTSTANDING_DOWNSTREAM_REQUEST.addAndGet(this, -toRequest);
                         }
+                        Operators.addCap(OUTSTANDING_UPSTREAM_REQUEST, this, toRequest);
                         runSafely(() -> parent.request(toRequest), "parent::request");
                     }
                 } else if (SUBSCRIPTION_STATE.compareAndSet(this, State.TERMINABLE, State.TERMINATED)) {
@@ -256,17 +265,11 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
             } while (missed != 0);
         }
 
-        private long freeInFlightSendCapacity() {
+        private long calculateMaxUpstreamRequest() {
             if (options.maxInFlight() == Integer.MAX_VALUE) {
-                return Long.MAX_VALUE;
+                return outstandingDownstreamRequest;
             } else {
-                long nvInFlight = inFlight;
-                // When the in-flight count is positive, it means there is still an extra count of
-                // 1 to represent the current publishing state of ACTIVE, so we need to add that
-                // back after subtracting from the max in-flight. When non-positive, the extra
-                // count has already been removed and the total count has been negated, so we just
-                // need to add.
-                return nvInFlight > 0 ? (options.maxInFlight() - nvInFlight + 1) : (options.maxInFlight() + nvInFlight);
+                return Math.min(options.maxInFlight() - outstandingUpstreamRequest, outstandingDownstreamRequest);
             }
         }
     }
