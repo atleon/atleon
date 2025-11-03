@@ -25,8 +25,7 @@ class AloKafkaReceiverTest {
 
     @Test
     public void receiveAloRecords_givenMultipleSubscriptionAttempts_expectsEnforcementOfMutualExclusion() {
-        KafkaConfigSource configSource = TestKafkaConfigSourceFactory.createSource(BOOTSTRAP_CONNECT)
-            .with(AloKafkaReceiver.RECEPTION_TYPE_CONFIG, "LEGACY");
+        KafkaConfigSource configSource = TestKafkaConfigSourceFactory.createSource(BOOTSTRAP_CONNECT);
 
         AloKafkaSender.create(configSource)
             .sendValues(Mono.just("DATA"), topic, Function.identity())
