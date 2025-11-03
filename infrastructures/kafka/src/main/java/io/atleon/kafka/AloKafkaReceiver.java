@@ -452,11 +452,11 @@ public class AloKafkaReceiver<K, V> {
         }
 
         private Flux<Alo<ConsumerRecord<K, V>>> receive(Object configKey, KafkaConfig config) {
+            ConsumerMutexEnforcer consumerMutexEnforcer =
+                consumerMutexEnforcers.computeIfAbsent(configKey, __ -> new ConsumerMutexEnforcer());
             if (config.loadString(RECEPTION_TYPE_CONFIG).orElse("OPTIMIZED").equalsIgnoreCase("OPTIMIZED")) {
-                return new ReceiveResources<K, V>(config).receive(receptionInvocation);
+                return new ReceiveResources<K, V>(config).receive(receptionInvocation, consumerMutexEnforcer);
             } else {
-                ConsumerMutexEnforcer consumerMutexEnforcer =
-                    consumerMutexEnforcers.computeIfAbsent(configKey, __ -> new ConsumerMutexEnforcer());
                 return new LegacyReceiveResources<K, V>(config).receive(optionsInitializer, consumerMutexEnforcer);
             }
         }
@@ -482,16 +482,17 @@ public class AloKafkaReceiver<K, V> {
             this.aloFactory = loadAloFactory(config);
         }
 
-        public Flux<Alo<ConsumerRecord<K, V>>> receive(ReceptionInvocation<K, V> receptionInvocation) {
-            KafkaReceiverOptions<K, V> options = newReceiverOptions();
+        public Flux<Alo<ConsumerRecord<K, V>>>
+        receive(ReceptionInvocation<K, V> receptionInvocation, ConsumerMutexEnforcer consumerMutexEnforcer) {
+            KafkaReceiverOptions<K, V> options = newReceiverOptions(consumerMutexEnforcer);
             return receptionInvocation.invoke(KafkaReceiver.create(options))
                 .map(this::toAloConsumerRecord)
                 .transform(this::applySignalListenerFactories);
         }
 
-        private KafkaReceiverOptions<K, V> newReceiverOptions() {
+        private KafkaReceiverOptions<K, V> newReceiverOptions(ConsumerMutexEnforcer consumerMutexEnforcer) {
             KafkaReceiverOptions<K, V> defaultOptions = KafkaReceiverOptions.defaultOptions();
-            return KafkaReceiverOptions.<K, V>newBuilder()
+            return KafkaReceiverOptions.<K, V>newBuilder(consumerMutexEnforcer.newConsumerFactory())
                 .consumerProperties(newConsumerConfig())
                 .receptionListener(loadReceptionListener())
                 .pollStrategyFactory(pollStrategyFactory)

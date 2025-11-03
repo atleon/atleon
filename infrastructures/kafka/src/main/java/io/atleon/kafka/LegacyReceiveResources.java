@@ -47,7 +47,7 @@ final class LegacyReceiveResources<K, V> {
     receive(OptionsInitializer<K, V> optionsInitializer, ConsumerMutexEnforcer consumerMutexEnforcer) {
         ErrorEmitter<Alo<ConsumerRecord<K, V>>> errorEmitter = newErrorEmitter();
         ReceiverOptions<K, V> options = newReceiverOptions(optionsInitializer);
-        ConsumerMutexEnforcer.ProhibitableConsumerFactory consumerFactory = consumerMutexEnforcer.newConsumerFactory();
+        ConsumerMutexEnforcer.ProhibitableConsumerFactory consumerFactory = consumerMutexEnforcer.newProhibitableConsumerFactory();
         return KafkaReceiver.create(consumerFactory, options).receive()
             .transform(newAloQueueingTransformer(errorEmitter::safelyEmit))
             .transform(errorEmitter::applyTo)
