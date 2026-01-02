@@ -1,6 +1,5 @@
 package io.atleon.core;
 
-import org.jetbrains.annotations.NotNull;
 import reactor.core.Disposable;
 import reactor.core.scheduler.Scheduler;
 
@@ -25,11 +24,11 @@ public abstract class SelfConfigurableAloStream extends AloStream<SelfConfigurab
     }
 
     @Override
-    protected final @NotNull Disposable startDisposable(@NotNull SelfConfigurableAloStream self) {
+    protected final Disposable startDisposable(SelfConfigurableAloStream self) {
         return startDisposable();
     }
 
-    protected abstract @NotNull Disposable startDisposable();
+    protected abstract Disposable startDisposable();
 
     protected Scheduler newBoundedElasticScheduler(int threadCap) {
         return newBoundedElasticScheduler(name(), threadCap);

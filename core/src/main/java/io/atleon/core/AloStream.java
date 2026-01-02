@@ -1,7 +1,6 @@
 package io.atleon.core;
 
 import io.atleon.util.Throwing;
-import org.jetbrains.annotations.NotNull;
 import reactor.core.Disposable;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -51,8 +50,7 @@ public abstract class AloStream<C extends AloStreamConfig> {
         }
     }
 
-    @NotNull
-    protected abstract Disposable startDisposable(@NotNull C config);
+    protected abstract Disposable startDisposable(C config);
 
     protected static Scheduler newBoundedElasticScheduler(String name, int threadCap) {
         return Schedulers.newBoundedElastic(threadCap, Integer.MAX_VALUE, name);
