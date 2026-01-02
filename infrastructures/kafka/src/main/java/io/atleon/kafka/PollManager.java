@@ -91,7 +91,7 @@ final class PollManager<T> {
 
     public <K, V> ConsumerRecords<K, V> pollWakeably(Consumer<K, V> consumer, IntSupplier freeCapacitySupplier) {
         boolean shouldBePausedDueToBackpressure = freeCapacitySupplier.getAsInt() < maxPollRecords;
-        boolean backpressureStateChange = shouldBePausedDueToBackpressure != pausedDueToBackpressure.get();
+        boolean backpressureStateChange = shouldBePausedDueToBackpressure != isPausedDueToBackpressure();
         try {
             // Prepare for polling by letting the strategy know if we're about to perform a poll
             // in the absence of a pause due to back-pressure. Else ensure that all assigned
@@ -118,7 +118,7 @@ final class PollManager<T> {
     }
 
     public boolean shouldWakeupOnSingularCapacityReclamation(int updatedFreeCapacity) {
-        return updatedFreeCapacity == maxPollRecords && pausedDueToBackpressure.get();
+        return updatedFreeCapacity == maxPollRecords && isPausedDueToBackpressure();
     }
 
     public void forcePause(Collection<TopicPartition> partitions) {
@@ -138,7 +138,7 @@ final class PollManager<T> {
     private Map<Boolean, ? extends Collection<TopicPartition>> partitionByPollPermissibility(
         Collection<TopicPartition> partitions
     ) {
-        if (pausedDueToBackpressure.get()) {
+        if (isPausedDueToBackpressure()) {
             Map<Boolean, Collection<TopicPartition>> result = new HashMap<>();
             result.put(false, partitions);
             result.put(true, Collections.emptyList());
@@ -151,6 +151,10 @@ final class PollManager<T> {
         } else {
             return partitions.stream().collect(Collectors.partitioningBy(it -> !forcePaused.contains(it)));
         }
+    }
+
+    private boolean isPausedDueToBackpressure() {
+        return pausedDueToBackpressure.get();
     }
 
     private final class ConsumerPollSelectionContext implements PollSelectionContext {
