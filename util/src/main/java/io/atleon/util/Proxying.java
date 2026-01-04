@@ -1,5 +1,7 @@
 package io.atleon.util;
 
+import org.jspecify.annotations.Nullable;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -26,6 +28,6 @@ public final class Proxying {
 
     public interface MethodInvocationHandler {
 
-        Object invoke(Method method, Object[] args) throws ReflectiveOperationException;
+        @Nullable Object invoke(Method method, Object[] args) throws ReflectiveOperationException;
     }
 }

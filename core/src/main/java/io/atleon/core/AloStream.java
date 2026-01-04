@@ -1,6 +1,7 @@
 package io.atleon.core;
 
 import io.atleon.util.Throwing;
+import org.jspecify.annotations.NullMarked;
 import reactor.core.Disposable;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -12,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @param <C> The type of Config used to start this reactive streaming process
  */
+@NullMarked
 public abstract class AloStream<C extends AloStreamConfig> {
 
     public enum State { STOPPED, STARTING, STARTED }
