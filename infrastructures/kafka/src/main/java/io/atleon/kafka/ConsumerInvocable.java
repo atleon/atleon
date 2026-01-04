@@ -1,10 +1,9 @@
 package io.atleon.kafka;
 
-import org.apache.kafka.clients.consumer.Consumer;
-import reactor.core.publisher.Mono;
-
 import java.util.Collection;
 import java.util.function.Function;
+import org.apache.kafka.clients.consumer.Consumer;
+import reactor.core.publisher.Mono;
 
 /**
  * A facade around an active {@link Consumer} instance that allows safely scheduling (allowed)

@@ -1,9 +1,8 @@
 package io.atleon.kafka;
 
+import java.util.Optional;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
-
-import java.util.Optional;
 
 /**
  * A received {@link ConsumerRecord} that is eligible for downstream emission, but has not been

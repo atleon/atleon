@@ -32,8 +32,7 @@ public class AloPollingReceiver<P, O> {
         private final boolean emit;
         private final boolean nack;
 
-        NackStrategy(final boolean emit,
-                     final boolean nack) {
+        NackStrategy(final boolean emit, final boolean nack) {
             this.emit = emit;
             this.nack = nack;
         }
@@ -51,23 +50,23 @@ public class AloPollingReceiver<P, O> {
     private final PollingSourceConfig config;
     private final Mono<ReceiveResources<P, O>> resourcesMono;
 
-    private AloPollingReceiver(final Pollable<P, O> pollable,
-                               final PollingSourceConfig config) {
+    private AloPollingReceiver(final Pollable<P, O> pollable, final PollingSourceConfig config) {
         this.pollable = pollable;
         this.config = config;
-        this.resourcesMono = Mono.just(ReceiveResources.create(AloFactoryConfig.loadDefault(), config.getNackStrategy()));
+        this.resourcesMono =
+                Mono.just(ReceiveResources.create(AloFactoryConfig.loadDefault(), config.getNackStrategy()));
     }
 
     /**
      * Alias for {@link #create(Pollable, PollingSourceConfig)}. Will be deprecated in future release.
      */
-    public static <P, O> AloPollingReceiver<P, O> from(final Pollable<P, O> pollable,
-                                                       final PollingSourceConfig config) {
+    public static <P, O> AloPollingReceiver<P, O> from(
+            final Pollable<P, O> pollable, final PollingSourceConfig config) {
         return create(pollable, config);
     }
 
-    public static <P, O> AloPollingReceiver<P, O> create(final Pollable<P, O> pollable,
-                                                         final PollingSourceConfig config) {
+    public static <P, O> AloPollingReceiver<P, O> create(
+            final Pollable<P, O> pollable, final PollingSourceConfig config) {
         return new AloPollingReceiver<>(pollable, config);
     }
 
@@ -79,8 +78,8 @@ public class AloPollingReceiver<P, O> {
     }
 
     private PollerOptions buildPollerOptions() {
-        return PollerOptions.create(config.getPollingInterval(),
-                () -> Schedulers.newSingle(AloPollingReceiver.class.getSimpleName()));
+        return PollerOptions.create(
+                config.getPollingInterval(), () -> Schedulers.newSingle(AloPollingReceiver.class.getSimpleName()));
     }
 
     private static final class ReceiveResources<P, O> {
@@ -88,41 +87,38 @@ public class AloPollingReceiver<P, O> {
         private final AloFactory<Polled<P, O>> aloFactory;
         private final NackStrategy nackStrategy;
 
-        private ReceiveResources(final AloFactory<Polled<P, O>> aloFactory,
-                                 final NackStrategy nackStrategy) {
+        private ReceiveResources(final AloFactory<Polled<P, O>> aloFactory, final NackStrategy nackStrategy) {
             this.aloFactory = aloFactory;
             this.nackStrategy = nackStrategy;
         }
 
-        static <P, O> ReceiveResources<P, O> create(final AloFactory<Polled<P, O>> aloFactory,
-                                                    final NackStrategy nackStrategy) {
+        static <P, O> ReceiveResources<P, O> create(
+                final AloFactory<Polled<P, O>> aloFactory, final NackStrategy nackStrategy) {
             return new ReceiveResources<>(aloFactory, nackStrategy);
         }
 
         public Flux<Alo<Polled<P, O>>> receive(final PollingReceiver<P, O> receiver) {
             final Sinks.Empty<Alo<Polled<P, O>>> sink = Sinks.empty();
-            return receiver.receive()
-                .transform(newAloQueueingTransformer(sink))
-                .mergeWith(sink.asMono());
+            return receiver.receive().transform(newAloQueueingTransformer(sink)).mergeWith(sink.asMono());
         }
 
-        private AloQueueingTransformer<ReceiverRecord<P, O>, Polled<P, O>> newAloQueueingTransformer(Sinks.Empty<?> sink) {
-            AloComponentExtractor<ReceiverRecord<P, O>, Polled<P, O>> componentExtractor = AloComponentExtractor.composed(
-                record -> () -> ack(record),
-                record -> error -> nack(sink, error, record),
-                ReceiverRecord::getRecord
-            );
+        private AloQueueingTransformer<ReceiverRecord<P, O>, Polled<P, O>> newAloQueueingTransformer(
+                Sinks.Empty<?> sink) {
+            AloComponentExtractor<ReceiverRecord<P, O>, Polled<P, O>> componentExtractor =
+                    AloComponentExtractor.composed(
+                            record -> () -> ack(record),
+                            record -> error -> nack(sink, error, record),
+                            ReceiverRecord::getRecord);
             return AloQueueingTransformer.create(componentExtractor)
-                .withGroupExtractor(receiverRecord -> receiverRecord.getRecord().getGroup());
+                    .withGroupExtractor(
+                            receiverRecord -> receiverRecord.getRecord().getGroup());
         }
 
         private void ack(final ReceiverRecord<P, O> record) {
             record.getPollable().ack(record.getRecord().getOffset());
         }
 
-        private void nack(final Sinks.Empty<?> sink,
-                          final Throwable throwable,
-                          final ReceiverRecord<P, O> record) {
+        private void nack(final Sinks.Empty<?> sink, final Throwable throwable, final ReceiverRecord<P, O> record) {
             if (nackStrategy.nack) {
                 record.getPollable().nack(throwable, record.getRecord().getOffset());
             }

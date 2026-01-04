@@ -18,10 +18,10 @@ import java.util.function.Predicate;
 public final class AcknowledgementQueue {
 
     private static final AtomicReferenceFieldUpdater<AcknowledgementQueue, InFlight> TAIL =
-        AtomicReferenceFieldUpdater.newUpdater(AcknowledgementQueue.class, InFlight.class, "tail");
+            AtomicReferenceFieldUpdater.newUpdater(AcknowledgementQueue.class, InFlight.class, "tail");
 
     private static final AtomicIntegerFieldUpdater<AcknowledgementQueue> DRAINS_IN_PROGRESS =
-        AtomicIntegerFieldUpdater.newUpdater(AcknowledgementQueue.class, "drainsInProgress");
+            AtomicIntegerFieldUpdater.newUpdater(AcknowledgementQueue.class, "drainsInProgress");
 
     private final AcknowledgementQueueMode mode;
 
@@ -126,16 +126,20 @@ public final class AcknowledgementQueue {
 
     public static final class InFlight {
 
-        private enum State {IN_PROCESS, COMPLETED, EXECUTED}
+        private enum State {
+            IN_PROCESS,
+            COMPLETED,
+            EXECUTED
+        }
 
         private static final AtomicReferenceFieldUpdater<InFlight, InFlight> NEXT =
-            AtomicReferenceFieldUpdater.newUpdater(InFlight.class, InFlight.class, "next");
+                AtomicReferenceFieldUpdater.newUpdater(InFlight.class, InFlight.class, "next");
 
         private static final AtomicReferenceFieldUpdater<InFlight, State> STATE =
-            AtomicReferenceFieldUpdater.newUpdater(InFlight.class, State.class, "state");
+                AtomicReferenceFieldUpdater.newUpdater(InFlight.class, State.class, "state");
 
         private static final AtomicReferenceFieldUpdater<InFlight, Throwable> ERROR =
-            AtomicReferenceFieldUpdater.newUpdater(InFlight.class, Throwable.class, "error");
+                AtomicReferenceFieldUpdater.newUpdater(InFlight.class, Throwable.class, "error");
 
         private final Runnable acknowledger;
 
@@ -162,8 +166,8 @@ public final class AcknowledgementQueue {
             }
 
             InFlight left = previous;
-            if (left.isCompletedWithoutError() && !left.isHead()) { // Don't sever head; Its completion must cause execution
-                left.sever(); // Need to sever left since it could be queued for draining and should then result in no-op
+            if (left.isCompletedWithoutError() && !left.isHead()) { // Don't sever head: Must execute on completion
+                left.sever(); // Need to sever left: It could be queued for draining and should then result in no-op
                 left = left.previous;
                 left.next.previous = null; // Enable efficient GC
                 compacted++;
@@ -216,7 +220,8 @@ public final class AcknowledgementQueue {
         }
 
         private boolean isCompletedWithoutError() {
-            return state == State.COMPLETED && error == null; // Ordering is important: State may be set after reading error
+            // Ordering is important: State may be set after reading error
+            return state == State.COMPLETED && error == null;
         }
 
         private boolean completeExceptionally(Throwable error) {

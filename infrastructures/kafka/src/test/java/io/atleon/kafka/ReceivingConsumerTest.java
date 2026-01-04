@@ -1,5 +1,17 @@
 package io.atleon.kafka;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.MockConsumer;
@@ -9,19 +21,6 @@ import org.apache.kafka.common.errors.WakeupException;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Sinks;
 
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 class ReceivingConsumerTest {
 
     @Test
@@ -30,8 +29,8 @@ class ReceivingConsumerTest {
         MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
 
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
-            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
 
         Set<TopicPartition> paused = new HashSet<>();
         Set<TopicPartition> resumed = new HashSet<>();
@@ -50,11 +49,15 @@ class ReceivingConsumerTest {
         Sinks.One<Throwable> error = Sinks.one();
 
         ReceivingConsumer<String, String> receivingConsumer =
-            new ReceivingConsumer<>(options, partitionListener, error::tryEmitValue);
+                new ReceivingConsumer<>(options, partitionListener, error::tryEmitValue);
         mockConsumer.assign(Collections.singletonList(topicPartition));
 
-        receivingConsumer.invoke(consumer -> consumer.pause(Collections.singletonList(topicPartition))).block();
-        receivingConsumer.invoke(consumer -> consumer.resume(Collections.singletonList(topicPartition))).block();
+        receivingConsumer
+                .invoke(consumer -> consumer.pause(Collections.singletonList(topicPartition)))
+                .block();
+        receivingConsumer
+                .invoke(consumer -> consumer.resume(Collections.singletonList(topicPartition)))
+                .block();
 
         assertEquals(Collections.singleton(topicPartition), paused);
         assertEquals(Collections.singleton(topicPartition), resumed);
@@ -66,8 +69,8 @@ class ReceivingConsumerTest {
         MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
 
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
-            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
 
         Set<TopicPartition> paused = new HashSet<>();
         NoOpPartitionListener partitionListener = new NoOpPartitionListener() {
@@ -80,9 +83,11 @@ class ReceivingConsumerTest {
         Sinks.One<Throwable> error = Sinks.one();
 
         ReceivingConsumer<String, String> receivingConsumer =
-            new ReceivingConsumer<>(options, partitionListener, error::tryEmitValue);
+                new ReceivingConsumer<>(options, partitionListener, error::tryEmitValue);
 
-        receivingConsumer.invoke(it -> it.pause(Collections.singletonList(topicPartition))).block();
+        receivingConsumer
+                .invoke(it -> it.pause(Collections.singletonList(topicPartition)))
+                .block();
 
         assertEquals(Collections.singleton(topicPartition), paused);
     }
@@ -92,12 +97,12 @@ class ReceivingConsumerTest {
         MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
 
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
-            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
         Sinks.One<Throwable> error = Sinks.one();
 
         ReceivingConsumer<String, String> receivingConsumer =
-            new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
+                new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
 
         assertThrows(UnsupportedOperationException.class, receivingConsumer.invoke(Consumer::wakeup)::block);
     }
@@ -107,12 +112,12 @@ class ReceivingConsumerTest {
         MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
 
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
-            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
         Sinks.One<Throwable> error = Sinks.one();
 
         ReceivingConsumer<String, String> receivingConsumer =
-            new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
+                new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
 
         receivingConsumer.schedule(__ -> receivingConsumer.invokeAndGet(Consumer::paused));
 
@@ -131,17 +136,17 @@ class ReceivingConsumerTest {
         };
 
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
-            .consumerListener(consumerListener)
-            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .consumerListener(consumerListener)
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
         Sinks.One<Throwable> error = Sinks.one();
 
         ReceivingConsumer<String, String> receivingConsumer =
-            new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
+                new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
 
         assertThrows(
-            UnsupportedOperationException.class,
-            () -> receivingConsumer.onPartitionsAssigned(Collections.emptyList()));
+                UnsupportedOperationException.class,
+                () -> receivingConsumer.onPartitionsAssigned(Collections.emptyList()));
     }
 
     @Test
@@ -149,12 +154,12 @@ class ReceivingConsumerTest {
         MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
 
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
-            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
         Sinks.One<Throwable> error = Sinks.one();
 
         ReceivingConsumer<String, String> receivingConsumer =
-            new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
+                new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
 
         ConsumptionSpec consumptionSpec = ConsumptionSpec.subscribe(Collections.singletonList("topic"));
         receivingConsumer.init(consumptionSpec, consumer -> {
@@ -172,12 +177,12 @@ class ReceivingConsumerTest {
         MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
 
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
-            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
         Sinks.One<Throwable> error = Sinks.one();
 
         ReceivingConsumer<String, String> receivingConsumer =
-            new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
+                new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
 
         receivingConsumer.schedule(__ -> {
             receivingConsumer.wakeupSafely();
@@ -193,12 +198,12 @@ class ReceivingConsumerTest {
         MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
 
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
-            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
         Sinks.One<Throwable> error = Sinks.one();
 
         ReceivingConsumer<String, String> receivingConsumer =
-            new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
+                new ReceivingConsumer<>(options, new NoOpPartitionListener(), error::tryEmitValue);
 
         receivingConsumer.wakeupSafely();
 
@@ -208,28 +213,18 @@ class ReceivingConsumerTest {
     public static class NoOpPartitionListener implements ReceivingConsumer.PartitionListener {
 
         @Override
-        public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-
-        }
+        public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {}
 
         @Override
-        public void onPartitionsRevoked(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-
-        }
+        public void onPartitionsRevoked(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {}
 
         @Override
-        public void onPartitionsLost(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-
-        }
+        public void onPartitionsLost(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {}
 
         @Override
-        public void onExternalPartitionsPauseRequested(Collection<TopicPartition> partitions) {
-
-        }
+        public void onExternalPartitionsPauseRequested(Collection<TopicPartition> partitions) {}
 
         @Override
-        public void onExternalPartitionsResumeRequested(Collection<TopicPartition> partitions) {
-
-        }
+        public void onExternalPartitionsResumeRequested(Collection<TopicPartition> partitions) {}
     }
 }

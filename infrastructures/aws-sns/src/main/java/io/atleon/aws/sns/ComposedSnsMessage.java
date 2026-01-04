@@ -1,9 +1,8 @@
 package io.atleon.aws.sns;
 
-import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
-
 import java.util.Collections;
 import java.util.Map;
+import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
 
 /**
  * A convenient implementation of {@link SnsMessage} that's composed of and built by all possible
@@ -14,13 +13,12 @@ import java.util.Map;
 public final class ComposedSnsMessage<T> extends AbstractSnsMessage<T> {
 
     private ComposedSnsMessage(
-        String messageDeduplicationId,
-        String messageGroupId,
-        Map<String, MessageAttributeValue> messageAttributes,
-        String messageStructure,
-        String subject,
-        T body
-    ) {
+            String messageDeduplicationId,
+            String messageGroupId,
+            Map<String, MessageAttributeValue> messageAttributes,
+            String messageStructure,
+            String subject,
+            T body) {
         super(messageDeduplicationId, messageGroupId, messageAttributes, messageStructure, subject, body);
     }
 
@@ -50,19 +48,11 @@ public final class ComposedSnsMessage<T> extends AbstractSnsMessage<T> {
 
         private T body;
 
-        private Builder() {
-
-        }
+        private Builder() {}
 
         public ComposedSnsMessage<T> build() {
             return new ComposedSnsMessage<>(
-                messageDeduplicationId,
-                messageGroupId,
-                messageAttributes,
-                messageStructure,
-                subject,
-                body
-            );
+                    messageDeduplicationId, messageGroupId, messageAttributes, messageStructure, subject, body);
         }
 
         public Builder<T> messageDeduplicationId(String messageDeduplicationId) {

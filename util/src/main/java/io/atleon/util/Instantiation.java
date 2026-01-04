@@ -8,11 +8,10 @@ import java.util.Map;
 
 public final class Instantiation {
 
-    private Instantiation() {
+    private Instantiation() {}
 
-    }
-
-    public static <T> T oneTyped(Class<? extends T> typeOrSubType, String qualifiedNameOfSubType, Object... parameters) {
+    public static <T> T oneTyped(
+            Class<? extends T> typeOrSubType, String qualifiedNameOfSubType, Object... parameters) {
         return oneTyped(typeOrSubType, TypeResolution.classForQualifiedName(qualifiedNameOfSubType), parameters);
     }
 
@@ -20,15 +19,16 @@ public final class Instantiation {
         if (typeOrSubType.isAssignableFrom(subType)) {
             return typeOrSubType.cast(one(subType, parameters));
         } else {
-            throw new IllegalArgumentException("Cannot instantiate type=" + typeOrSubType + " using subType=" + subType);
+            throw new IllegalArgumentException(
+                    "Cannot instantiate type=" + typeOrSubType + " using subType=" + subType);
         }
     }
 
     public static <T> T one(Class<? extends T> clazz, Object... parameters) {
         try {
             Class<?>[] parameterTypes = Arrays.stream(parameters)
-                .map(Instantiation::deduceParameterClass)
-                .toArray(Class[]::new);
+                    .map(Instantiation::deduceParameterClass)
+                    .toArray(Class[]::new);
             Constructor<? extends T> constructor = clazz.getDeclaredConstructor(parameterTypes);
             ensureConstructorAccessibility(constructor);
             return constructor.newInstance(parameters);

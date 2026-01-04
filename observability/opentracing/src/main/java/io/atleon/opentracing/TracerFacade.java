@@ -6,7 +6,6 @@ import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.propagation.Format;
 import io.opentracing.tag.Tags;
-
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
@@ -38,9 +37,7 @@ public final class TracerFacade {
     }
 
     public Tracer.SpanBuilder newSpanBuilder(String operationName) {
-        return tracer.buildSpan(operationName)
-            .ignoreActiveSpan()
-            .withTag(Tags.COMPONENT, "atleon");
+        return tracer.buildSpan(operationName).ignoreActiveSpan().withTag(Tags.COMPONENT, "atleon");
     }
 
     public <C> Optional<SpanContext> extract(Format<C> format, C carrier) {

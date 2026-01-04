@@ -12,7 +12,4 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * @param <V> The types of values in records decorated by this decorator
  */
 public class ContextActivatingAloKafkaConsumerRecordDecorator<K, V>
-    extends ContextActivatingAloDecorator<ConsumerRecord<K, V>>
-    implements AloKafkaConsumerRecordDecorator<K, V> {
-
-}
+        extends ContextActivatingAloDecorator<ConsumerRecord<K, V>> implements AloKafkaConsumerRecordDecorator<K, V> {}

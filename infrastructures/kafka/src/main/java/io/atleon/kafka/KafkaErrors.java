@@ -13,13 +13,10 @@ import org.apache.kafka.common.errors.UnsupportedVersionException;
  */
 final class KafkaErrors {
 
-    private KafkaErrors() {
-
-    }
+    private KafkaErrors() {}
 
     public static boolean isRetriableCommitFailure(Exception exception) {
-        return exception instanceof RetriableCommitFailedException
-            || exception instanceof RebalanceInProgressException;
+        return exception instanceof RetriableCommitFailedException || exception instanceof RebalanceInProgressException;
     }
 
     public static boolean isFatalSendFailure(Exception exception) {
@@ -31,9 +28,9 @@ final class KafkaErrors {
 
     public static boolean isFatalProducerException(Throwable error) {
         return error instanceof ProducerFencedException
-            || error instanceof OutOfOrderSequenceException
-            || error instanceof AuthenticationException
-            || error instanceof UnsupportedVersionException
-            || error instanceof UnsupportedForMessageFormatException;
+                || error instanceof OutOfOrderSequenceException
+                || error instanceof AuthenticationException
+                || error instanceof UnsupportedVersionException
+                || error instanceof UnsupportedForMessageFormatException;
     }
 }

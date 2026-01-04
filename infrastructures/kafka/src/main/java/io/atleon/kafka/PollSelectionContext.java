@@ -1,9 +1,8 @@
 package io.atleon.kafka;
 
-import org.apache.kafka.common.TopicPartition;
-
 import java.util.Map;
 import java.util.Set;
+import org.apache.kafka.common.TopicPartition;
 
 /**
  * Interface through which {@link PollStrategy} implementations may select partitions for polling

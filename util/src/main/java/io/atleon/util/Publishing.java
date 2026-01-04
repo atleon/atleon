@@ -1,20 +1,17 @@
 package io.atleon.util;
 
+import java.util.Collection;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Signal;
-
-import java.util.Collection;
 
 /**
  * Utility functions for working with low-level {@link Publisher Publishers}.
  */
 public final class Publishing {
 
-    private Publishing() {
-
-    }
+    private Publishing() {}
 
     /**
      * Caches the first successful signal from subscribing to the provided {@link Mono}

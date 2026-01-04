@@ -6,12 +6,11 @@ import io.atleon.rabbitmq.ExchangeDeclaration;
 import io.atleon.rabbitmq.QueueBinding;
 import io.atleon.rabbitmq.QueueDeclaration;
 import io.atleon.rabbitmq.RoutingInitializer;
+import java.util.List;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ApplicationContextEvent;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.core.Ordered;
-
-import java.util.List;
 
 public class RabbitMQRoutingInitialization implements ApplicationListener<ApplicationContextEvent>, Ordered {
 

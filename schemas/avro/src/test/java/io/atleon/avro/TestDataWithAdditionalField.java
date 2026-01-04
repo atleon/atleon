@@ -4,9 +4,7 @@ public class TestDataWithAdditionalField extends TestData {
 
     private String data3;
 
-    private TestDataWithAdditionalField() {
-
-    }
+    private TestDataWithAdditionalField() {}
 
     public static TestDataWithAdditionalField fromTestData(TestData testData) {
         TestDataWithAdditionalField modified = new TestDataWithAdditionalField();

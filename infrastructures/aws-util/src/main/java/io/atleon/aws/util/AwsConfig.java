@@ -1,6 +1,8 @@
 package io.atleon.aws.util;
 
 import io.atleon.util.ConfigLoading;
+import java.util.Map;
+import java.util.Optional;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -9,9 +11,6 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * Utility class used to build AWS resources from property-based configs
@@ -70,13 +69,11 @@ public final class AwsConfig {
      */
     public static final String REGION_CONFIG = CONFIG_PREFIX + "region";
 
-    private AwsConfig() {
-
-    }
+    private AwsConfig() {}
 
     public static AwsCredentialsProvider loadCredentialsProvider(Map<String, ?> configs) {
         String type = ConfigLoading.loadString(configs, CREDENTIALS_PROVIDER_TYPE_CONFIG)
-            .orElse(CREDENTIALS_PROVIDER_TYPE_DEFAULT);
+                .orElse(CREDENTIALS_PROVIDER_TYPE_DEFAULT);
         switch (type) {
             case CREDENTIALS_PROVIDER_TYPE_DEFAULT:
                 return DefaultCredentialsProvider.create();
@@ -94,15 +91,13 @@ public final class AwsConfig {
         switch (type) {
             case CREDENTIALS_TYPE_BASIC:
                 return AwsBasicCredentials.create(
-                    ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_ACCESS_KEY_ID_CONFIG),
-                    ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_SECRET_ACCESS_KEY_CONFIG)
-                );
+                        ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_ACCESS_KEY_ID_CONFIG),
+                        ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_SECRET_ACCESS_KEY_CONFIG));
             case CREDENTIALS_TYPE_SESSION:
                 return AwsSessionCredentials.create(
-                    ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_ACCESS_KEY_ID_CONFIG),
-                    ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_SECRET_ACCESS_KEY_CONFIG),
-                    ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_SESSION_TOKEN_CONFIG)
-                );
+                        ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_ACCESS_KEY_ID_CONFIG),
+                        ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_SECRET_ACCESS_KEY_CONFIG),
+                        ConfigLoading.loadStringOrThrow(configs, CREDENTIALS_SESSION_TOKEN_CONFIG));
             default:
                 throw new IllegalArgumentException("Cannot create AwsCredentials for type=" + type);
         }

@@ -1,9 +1,8 @@
 package io.atleon.core;
 
 import io.atleon.util.Configurable;
-import reactor.core.observability.SignalListenerFactory;
-
 import java.util.Map;
+import reactor.core.observability.SignalListenerFactory;
 
 /**
  * Interface for creating {@link reactor.core.observability.SignalListener} instances that add
@@ -15,7 +14,5 @@ import java.util.Map;
 public interface AloSignalListenerFactory<T, STATE> extends SignalListenerFactory<Alo<T>, STATE>, Configurable {
 
     @Override
-    default void configure(Map<String, ?> properties) {
-
-    }
+    default void configure(Map<String, ?> properties) {}
 }

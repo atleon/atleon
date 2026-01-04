@@ -5,11 +5,10 @@ import io.atleon.schema.SchematicDeserializer;
 import io.atleon.util.Configurable;
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.client.rest.exceptions.RestClientException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A deserializer that uses schemas fetched from a Schema Registry to deserialize data. Each

@@ -1,9 +1,8 @@
 package io.atleon.aws.sns;
 
-import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
-
 import java.util.Map;
 import java.util.Optional;
+import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
 
 /**
  * The base interface of all SNS Messages

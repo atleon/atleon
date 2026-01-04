@@ -1,15 +1,14 @@
 package io.atleon.aws.sqs;
 
 import io.atleon.aws.testcontainers.AtleonLocalStackContainer;
+import java.net.URI;
+import java.util.UUID;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.CreateQueueRequest;
-
-import java.net.URI;
-import java.util.UUID;
 
 public class LocalStackDependentTest {
 
@@ -19,10 +18,10 @@ public class LocalStackDependentTest {
 
     protected static SqsAsyncClient createSqsClient() {
         return SqsAsyncClient.builder()
-            .endpointOverride(getSqsEndpointOverride())
-            .credentialsProvider(StaticCredentialsProvider.create(createAwsCredentials()))
-            .region(Region.of(CONTAINER.getRegion()))
-            .build();
+                .endpointOverride(getSqsEndpointOverride())
+                .credentialsProvider(StaticCredentialsProvider.create(createAwsCredentials()))
+                .region(Region.of(CONTAINER.getRegion()))
+                .build();
     }
 
     protected static URI getSqsEndpointOverride() {
@@ -47,7 +46,8 @@ public class LocalStackDependentTest {
 
     private static String createQueue(String queueName) {
         try (SqsAsyncClient client = createSqsClient()) {
-            CreateQueueRequest request = CreateQueueRequest.builder().queueName(queueName).build();
+            CreateQueueRequest request =
+                    CreateQueueRequest.builder().queueName(queueName).build();
             return client.createQueue(request).join().queueUrl();
         }
     }

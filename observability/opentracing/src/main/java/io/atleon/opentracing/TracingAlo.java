@@ -9,7 +9,6 @@ import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
 import io.opentracing.log.Fields;
 import io.opentracing.tag.Tags;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

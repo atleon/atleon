@@ -1,12 +1,11 @@
 package io.atleon.core;
 
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.Mono;
-
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Mono;
 
 /**
  * A convenience interface for declaring error delegators to be used with
@@ -47,11 +46,10 @@ public interface ErrorDelegator<T> extends BiFunction<T, Throwable, Publisher<?>
         private final Function<? super S, Mono<? extends SenderResult>> sender;
 
         private Sending(
-            Predicate<Throwable> predicate,
-            BiFunction<T, Throwable, S> mapper,
-            UnaryOperator<Mono<S>> beforeSend,
-            Function<? super S, Mono<? extends SenderResult>> sender
-        ) {
+                Predicate<Throwable> predicate,
+                BiFunction<T, Throwable, S> mapper,
+                UnaryOperator<Mono<S>> beforeSend,
+                Function<? super S, Mono<? extends SenderResult>> sender) {
             this.predicate = predicate;
             this.mapper = mapper;
             this.beforeSend = beforeSend;
@@ -106,9 +104,11 @@ public interface ErrorDelegator<T> extends BiFunction<T, Throwable, Publisher<?>
         public Mono<SenderResult> apply(T data, Throwable error) {
             if (predicate.test(error)) {
                 return Mono.just(mapper.apply(data, error))
-                    .transform(beforeSend)
-                    .flatMap(sender)
-                    .flatMap(result -> result.failureCause().map(Mono::<SenderResult>error).orElse(Mono.just(result)));
+                        .transform(beforeSend)
+                        .flatMap(sender)
+                        .flatMap(result -> result.failureCause()
+                                .map(Mono::<SenderResult>error)
+                                .orElse(Mono.just(result)));
             } else {
                 return Mono.error(error);
             }

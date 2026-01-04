@@ -1,9 +1,8 @@
 package io.atleon.kafka.embedded;
 
-import kafka.server.KafkaConfig;
-
 import java.util.Map;
 import java.util.Objects;
+import kafka.server.KafkaConfig;
 
 public class EmbeddedKafkaConfig {
 

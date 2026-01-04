@@ -1,7 +1,6 @@
 package io.atleon.core;
 
 import io.atleon.util.ConfigLoading;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,31 +25,26 @@ public final class AloSignalListenerFactoryConfig {
      */
     public static final String SIGNAL_LISTENER_FACTORY_TYPE_AUTO = "auto";
 
-    private AloSignalListenerFactoryConfig() {
+    private AloSignalListenerFactoryConfig() {}
 
-    }
-
-    public static <T, D extends AloSignalListenerFactory<T, ?>> List<AloSignalListenerFactory<T, ?>>
-    loadList(Map<String, ?> properties, Class<D> superType) {
+    public static <T, D extends AloSignalListenerFactory<T, ?>> List<AloSignalListenerFactory<T, ?>> loadList(
+            Map<String, ?> properties, Class<D> superType) {
         return loadExplicitList(properties, superType)
-            .orElseGet(() -> ConfigLoading.loadListOfConfiguredServices(superType, properties));
+                .orElseGet(() -> ConfigLoading.loadListOfConfiguredServices(superType, properties));
     }
 
-    private static <T, D extends AloSignalListenerFactory<T, ?>> Optional<List<AloSignalListenerFactory<T, ?>>>
-    loadExplicitList(Map<String, ?> properties, Class<D> superType) {
+    private static <T, D extends AloSignalListenerFactory<T, ?>>
+            Optional<List<AloSignalListenerFactory<T, ?>>> loadExplicitList(
+                    Map<String, ?> properties, Class<D> superType) {
         return ConfigLoading.loadListOfConfiguredWithPredefinedTypes(
-            properties,
-            SIGNAL_LISTENER_FACTORY_TYPES_CONFIG,
-            superType,
-            typeName -> instantiatePredefined(properties, superType, typeName)
-        );
+                properties,
+                SIGNAL_LISTENER_FACTORY_TYPES_CONFIG,
+                superType,
+                typeName -> instantiatePredefined(properties, superType, typeName));
     }
 
     private static <T> Optional<List<AloSignalListenerFactory<T, ?>>> instantiatePredefined(
-        Map<String, ?> properties,
-        Class<? extends AloSignalListenerFactory<T, ?>> superType,
-        String typeName
-    ) {
+            Map<String, ?> properties, Class<? extends AloSignalListenerFactory<T, ?>> superType, String typeName) {
         if (typeName.equalsIgnoreCase(SIGNAL_LISTENER_FACTORY_TYPE_AUTO)) {
             return Optional.of(ConfigLoading.loadListOfConfiguredServices(superType, properties));
         } else {

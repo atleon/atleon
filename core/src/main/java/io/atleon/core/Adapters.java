@@ -1,18 +1,15 @@
 package io.atleon.core;
 
+import java.util.function.Consumer;
 import org.reactivestreams.Subscriber;
 import reactor.core.publisher.BaseSubscriber;
-
-import java.util.function.Consumer;
 
 /**
  * Common adaptations used to convert between and wrap reactive types.
  */
 public final class Adapters {
 
-    private Adapters() {
-
-    }
+    private Adapters() {}
 
     public static <T> Subscriber<T> toSubscriber(Consumer<T> consumer) {
         return new ConsumingSubscriber<>(consumer);

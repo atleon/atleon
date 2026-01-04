@@ -4,7 +4,6 @@ import com.rabbitmq.client.Address;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.ConnectionFactoryConfigurator;
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -81,7 +80,8 @@ public class AloConnectionFactory extends ConnectionFactory {
     }
 
     @Override
-    public Connection newConnection(ExecutorService executor, String connectionName) throws IOException, TimeoutException {
+    public Connection newConnection(ExecutorService executor, String connectionName)
+            throws IOException, TimeoutException {
         return newConnection(executor, addresses, connectionName);
     }
 
@@ -108,12 +108,13 @@ public class AloConnectionFactory extends ConnectionFactory {
     private static List<Address> extractAddresses(Map<String, ?> properties) {
         String hosts = extractHosts(properties);
         int fallbackPort = Optional.<Object>ofNullable(properties.get(ConnectionFactoryConfigurator.PORT))
-            .map(port -> Integer.parseInt(port.toString()))
-            .orElse(USE_DEFAULT_PORT);
+                .map(port -> Integer.parseInt(port.toString()))
+                .orElse(USE_DEFAULT_PORT);
         return Arrays.stream(Address.parseAddresses(hosts))
-            .map(address -> address.getPort() == USE_DEFAULT_PORT && fallbackPort != USE_DEFAULT_PORT
-                ? new Address(address.getHost(), fallbackPort) : address)
-            .collect(Collectors.toList());
+                .map(address -> address.getPort() == USE_DEFAULT_PORT && fallbackPort != USE_DEFAULT_PORT
+                        ? new Address(address.getHost(), fallbackPort)
+                        : address)
+                .collect(Collectors.toList());
     }
 
     private static String extractHosts(Map<String, ?> properties) {
@@ -123,9 +124,10 @@ public class AloConnectionFactory extends ConnectionFactory {
 
     private static Map<String, String> createConfiguratorProperties(Map<String, ?> properties) {
         Map<String, String> configuration = properties.entrySet().stream()
-            .collect(Collectors.toMap(Map.Entry::getKey, entry -> Objects.toString(entry.getValue())));
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> Objects.toString(entry.getValue())));
 
-        if (!configuration.containsKey(ConnectionFactoryConfigurator.VIRTUAL_HOST) && configuration.containsKey(VHOST)) {
+        if (!configuration.containsKey(ConnectionFactoryConfigurator.VIRTUAL_HOST)
+                && configuration.containsKey(VHOST)) {
             configuration.put(ConnectionFactoryConfigurator.VIRTUAL_HOST, configuration.remove(VHOST));
         }
 

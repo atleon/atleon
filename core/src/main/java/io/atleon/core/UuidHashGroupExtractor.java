@@ -3,7 +3,6 @@ package io.atleon.core;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
-
 import java.nio.ByteBuffer;
 import java.util.UUID;
 import java.util.function.Function;
@@ -32,7 +31,7 @@ public abstract class UuidHashGroupExtractor<T> implements Function<T, Integer> 
     protected final byte[] extractUuidBytes(T t) {
         UUID uuid = extractUuid(t);
         ByteBuffer uuidBytes = ByteBuffer.allocate(Long.BYTES * 2);
-        uuidBytes.putLong(uuid == null ? 0L : uuid.getMostSignificantBits());  // Defend against null UUIDs
+        uuidBytes.putLong(uuid == null ? 0L : uuid.getMostSignificantBits()); // Defend against null UUIDs
         uuidBytes.putLong(uuid == null ? 0L : uuid.getLeastSignificantBits());
         return uuidBytes.array();
     }

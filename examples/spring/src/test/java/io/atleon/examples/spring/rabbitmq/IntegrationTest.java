@@ -1,5 +1,10 @@
 package io.atleon.examples.spring.rabbitmq;
 
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
+
 import com.rabbitmq.client.MessageProperties;
 import io.atleon.amqp.embedded.EmbeddedAmqp;
 import io.atleon.amqp.embedded.EmbeddedAmqpConfig;
@@ -7,6 +12,7 @@ import io.atleon.rabbitmq.AloRabbitMQSender;
 import io.atleon.rabbitmq.LongBodySerializer;
 import io.atleon.rabbitmq.RabbitMQConfigSource;
 import io.atleon.rabbitmq.RabbitMQMessage;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,13 +23,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.support.TestPropertySourceUtils;
-
-import java.util.function.Consumer;
-
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.verify;
 
 @SpringBootTest
 @ContextConfiguration(initializers = IntegrationTest.Initializer.class)
@@ -52,11 +51,11 @@ public class IntegrationTest {
 
     private void produceNumber(Number number) {
         RabbitMQConfigSource configSource = RabbitMQConfigSource.unnamed()
-            .withAll(AMQP_CONFIG.asMap())
-            .with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, LongBodySerializer.class);
+                .withAll(AMQP_CONFIG.asMap())
+                .with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, LongBodySerializer.class);
         try (AloRabbitMQSender<Long> sender = AloRabbitMQSender.create(configSource)) {
             RabbitMQMessage<Long> message =
-                RabbitMQMessage.create(EXCHANGE, INPUT_QUEUE, MessageProperties.MINIMAL_BASIC, number.longValue());
+                    RabbitMQMessage.create(EXCHANGE, INPUT_QUEUE, MessageProperties.MINIMAL_BASIC, number.longValue());
             sender.sendMessage(message).block();
         }
     }
@@ -66,16 +65,15 @@ public class IntegrationTest {
         @Override
         public void initialize(ConfigurableApplicationContext applicationContext) {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
-                applicationContext,
-                "vars.rabbitmq.host=" + AMQP_CONFIG.getHost(),
-                "vars.rabbitmq.port=" + AMQP_CONFIG.getPort(),
-                "vars.rabbitmq.virtual.host=" + AMQP_CONFIG.getVirtualHost(),
-                "vars.rabbitmq.username=" + AMQP_CONFIG.getUsername(),
-                "vars.rabbitmq.password=" + AMQP_CONFIG.getPassword(),
-                "stream.rabbitmq.exchange=" + EXCHANGE,
-                "stream.rabbitmq.input.queue=" + INPUT_QUEUE,
-                "stream.rabbitmq.output.queue=" + OUTPUT_QUEUE
-            );
+                    applicationContext,
+                    "vars.rabbitmq.host=" + AMQP_CONFIG.getHost(),
+                    "vars.rabbitmq.port=" + AMQP_CONFIG.getPort(),
+                    "vars.rabbitmq.virtual.host=" + AMQP_CONFIG.getVirtualHost(),
+                    "vars.rabbitmq.username=" + AMQP_CONFIG.getUsername(),
+                    "vars.rabbitmq.password=" + AMQP_CONFIG.getPassword(),
+                    "stream.rabbitmq.exchange=" + EXCHANGE,
+                    "stream.rabbitmq.input.queue=" + INPUT_QUEUE,
+                    "stream.rabbitmq.output.queue=" + OUTPUT_QUEUE);
         }
     }
 

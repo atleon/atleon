@@ -1,17 +1,16 @@
 package io.atleon.schemaregistry.confluent;
 
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import io.atleon.schema.SchematicDeserializer;
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.SchemaProvider;
-import org.junit.jupiter.api.Test;
-
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertNull;
+import org.junit.jupiter.api.Test;
 
 public class RegistryDeserializerTest {
 
@@ -25,7 +24,7 @@ public class RegistryDeserializerTest {
 
         deserializer.configure(configs);
 
-        assertNull(deserializer.deserialize(new byte[]{0, 1, 2, 3}));
+        assertNull(deserializer.deserialize(new byte[] {0, 1, 2, 3}));
     }
 
     @Test
@@ -45,7 +44,8 @@ public class RegistryDeserializerTest {
 
         @Override
         public void configure(Map<String, ?> properties) {
-            configure(new RegistryDeserializerConfig(RegistryDeserializerConfig.registryDeserializerConfigDef(), properties));
+            configure(new RegistryDeserializerConfig(
+                    RegistryDeserializerConfig.registryDeserializerConfigDef(), properties));
         }
 
         @Override

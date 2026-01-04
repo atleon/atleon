@@ -1,15 +1,14 @@
 package io.atleon.core;
 
+import java.util.List;
+import java.util.function.BinaryOperator;
+import java.util.function.Function;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
-
-import java.util.List;
-import java.util.function.BinaryOperator;
-import java.util.function.Function;
 
 final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publisher<T>> {
 
@@ -20,22 +19,19 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
     private final Scheduler sourceScheduler;
 
     private DeduplicatingTransformer(
-        DeduplicationConfig config,
-        Deduplicator<T, ?> deduplicator,
-        Scheduler sourceScheduler
-    ) {
+            DeduplicationConfig config, Deduplicator<T, ?> deduplicator, Scheduler sourceScheduler) {
         this.config = config;
         this.deduplicator = deduplicator;
         this.sourceScheduler = sourceScheduler;
     }
 
-    static <T> DeduplicatingTransformer<T>
-    identity(DeduplicationConfig config, Deduplication<T> deduplication, Scheduler sourceScheduler) {
+    static <T> DeduplicatingTransformer<T> identity(
+            DeduplicationConfig config, Deduplication<T> deduplication, Scheduler sourceScheduler) {
         return new DeduplicatingTransformer<>(config, Deduplicator.identity(deduplication), sourceScheduler);
     }
 
-    static <T> DeduplicatingTransformer<Alo<T>>
-    alo(DeduplicationConfig config, Deduplication<T> deduplication, Scheduler sourceScheduler) {
+    static <T> DeduplicatingTransformer<Alo<T>> alo(
+            DeduplicationConfig config, Deduplication<T> deduplication, Scheduler sourceScheduler) {
         return new DeduplicatingTransformer<>(config, Deduplicator.alo(deduplication), sourceScheduler);
     }
 
@@ -45,8 +41,8 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
         // comparison to a simple transform) to avoid changing the initial downstream subscription
         // thread which would otherwise be switched due to required subscribeOn on in the transform
         return config.isEnabled()
-            ? Flux.from(publisher).switchOnFirst((signal, flux) -> flux.transform(this::applyDeduplication))
-            : publisher;
+                ? Flux.from(publisher).switchOnFirst((signal, flux) -> flux.transform(this::applyDeduplication))
+                : publisher;
     }
 
     private Flux<T> applyDeduplication(Publisher<T> publisher) {
@@ -56,17 +52,18 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
         // - Buffer max in-flight groups bounded in Duration and size
         Scheduler scheduler = Schedulers.single(sourceScheduler);
         return Flux.from(publisher)
-            .publishOn(scheduler, config.getDeduplicationSourcePrefetch())
-            .groupBy(deduplicator::extractKey)
-            .flatMap(groupedFlux -> deduplicateGroup(groupedFlux, scheduler), config.getDeduplicationConcurrency())
-            .subscribeOn(scheduler);
+                .publishOn(scheduler, config.getDeduplicationSourcePrefetch())
+                .groupBy(deduplicator::extractKey)
+                .flatMap(groupedFlux -> deduplicateGroup(groupedFlux, scheduler), config.getDeduplicationConcurrency())
+                .subscribeOn(scheduler);
     }
 
     private Mono<T> deduplicateGroup(GroupedFlux<Object, T> groupedFlux, Scheduler scheduler) {
-        return groupedFlux.take(config.getDeduplicationTimeout(), scheduler)
-            .take(config.getMaxDeduplicationSize())
-            .collectList()
-            .map(deduplicator::deduplicate);
+        return groupedFlux
+                .take(config.getDeduplicationTimeout(), scheduler)
+                .take(config.getMaxDeduplicationSize())
+                .collectList()
+                .map(deduplicator::deduplicate);
     }
 
     private static final class Deduplicator<T, R> {
@@ -77,7 +74,8 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
 
         private final Function<List<T>, T> reducer;
 
-        private Deduplicator(Function<T, R> dataExtractor, Function<R, Object> keyExtractor, Function<List<T>, T> reducer) {
+        private Deduplicator(
+                Function<T, R> dataExtractor, Function<R, Object> keyExtractor, Function<List<T>, T> reducer) {
             this.dataExtractor = dataExtractor;
             this.keyExtractor = keyExtractor;
             this.reducer = reducer;
@@ -89,7 +87,8 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
         }
 
         public static <T> Deduplicator<Alo<T>, T> alo(Deduplication<T> deduplication) {
-            Function<List<Alo<T>>, Alo<T>> aloReducer = group -> reduceToSingleAlo(group, deduplication::reduceDuplicates);
+            Function<List<Alo<T>>, Alo<T>> aloReducer =
+                    group -> reduceToSingleAlo(group, deduplication::reduceDuplicates);
             return new Deduplicator<>(Alo::get, deduplication::extractKey, aloReducer);
         }
 
@@ -105,7 +104,9 @@ final class DeduplicatingTransformer<T> implements Function<Publisher<T>, Publis
             if (group.isEmpty()) {
                 throw newEmptyDeduplicationGroupException();
             } else {
-                return group.size() == 1 ? group.get(0) : AloOps.fanIn(group).map(it -> reduceToSingle(it, accumulator));
+                return group.size() == 1
+                        ? group.get(0)
+                        : AloOps.fanIn(group).map(it -> reduceToSingle(it, accumulator));
             }
         }
 

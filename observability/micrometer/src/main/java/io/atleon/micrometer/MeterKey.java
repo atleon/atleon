@@ -2,7 +2,6 @@ package io.atleon.micrometer;
 
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
-
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -14,7 +13,11 @@ public final class MeterKey {
     private final Tags tags;
 
     public MeterKey(String name, Map<String, String> tags) {
-        this(name, tags.entrySet().stream().map(entry -> Tag.of(entry.getKey(), entry.getValue())).collect(Collectors.toList()));
+        this(
+                name,
+                tags.entrySet().stream()
+                        .map(entry -> Tag.of(entry.getKey(), entry.getValue()))
+                        .collect(Collectors.toList()));
     }
 
     public MeterKey(String name, Iterable<Tag> tags) {
@@ -45,8 +48,7 @@ public final class MeterKey {
         }
 
         MeterKey meterKey = (MeterKey) o;
-        return Objects.equals(name, meterKey.name) &&
-            Objects.equals(tags, meterKey.tags);
+        return Objects.equals(name, meterKey.name) && Objects.equals(tags, meterKey.tags);
     }
 
     @Override

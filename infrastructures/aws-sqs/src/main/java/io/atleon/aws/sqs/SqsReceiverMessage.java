@@ -1,14 +1,13 @@
 package io.atleon.aws.sqs;
 
-import software.amazon.awssdk.services.sqs.model.Message;
-import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
-import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
-import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeValue;
-
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import software.amazon.awssdk.services.sqs.model.Message;
+import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
+import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
+import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeValue;
 
 /**
  * An {@link SqsMessage} that has been received and must have its deletion and visibility
@@ -25,14 +24,13 @@ public final class SqsReceiverMessage extends AbstractSqsMessage<String> impleme
     private final SqsMessageVisibilityChanger visibilityChanger;
 
     private SqsReceiverMessage(
-        String receiptHandle,
-        String messageId,
-        Map<String, MessageAttributeValue> messageAttributes,
-        Map<String, MessageSystemAttributeValue> messageSystemAttributes,
-        String body,
-        Runnable deleter,
-        SqsMessageVisibilityChanger visibilityChanger
-    ) {
+            String receiptHandle,
+            String messageId,
+            Map<String, MessageAttributeValue> messageAttributes,
+            Map<String, MessageSystemAttributeValue> messageSystemAttributes,
+            String body,
+            Runnable deleter,
+            SqsMessageVisibilityChanger visibilityChanger) {
         super(messageAttributes, messageSystemAttributes, body);
         this.receiptHandle = receiptHandle;
         this.messageId = messageId;
@@ -42,14 +40,13 @@ public final class SqsReceiverMessage extends AbstractSqsMessage<String> impleme
 
     static SqsReceiverMessage create(Message message, Runnable deleter, SqsMessageVisibilityChanger visibilityChanger) {
         return new SqsReceiverMessage(
-            message.receiptHandle(),
-            message.messageId(),
-            message.messageAttributes(),
-            toMessageSystemAttributes(message.attributesAsStrings()),
-            message.body(),
-            deleter,
-            visibilityChanger
-        );
+                message.receiptHandle(),
+                message.messageId(),
+                message.messageAttributes(),
+                toMessageSystemAttributes(message.attributesAsStrings()),
+                message.body(),
+                deleter,
+                visibilityChanger);
     }
 
     @Override
@@ -65,13 +62,13 @@ public final class SqsReceiverMessage extends AbstractSqsMessage<String> impleme
     @Override
     public Optional<String> messageDeduplicationId() {
         return messageSystemAttribute(MessageSystemAttributeName.MESSAGE_DEDUPLICATION_ID)
-            .map(MessageSystemAttributeValue::stringValue);
+                .map(MessageSystemAttributeValue::stringValue);
     }
 
     @Override
     public Optional<String> messageGroupId() {
         return messageSystemAttribute(MessageSystemAttributeName.MESSAGE_GROUP_ID)
-            .map(MessageSystemAttributeValue::stringValue);
+                .map(MessageSystemAttributeValue::stringValue);
     }
 
     /**
@@ -113,14 +110,9 @@ public final class SqsReceiverMessage extends AbstractSqsMessage<String> impleme
     }
 
     private static Map<String, MessageSystemAttributeValue> toMessageSystemAttributes(
-        Map<String, String> messageSystemAttributesAsStrings
-    ) {
-        return messageSystemAttributesAsStrings.entrySet().stream().collect(
-            Collectors.toMap(
-                Map.Entry::getKey,
-                entry -> toMessageSystemAttributeValue(entry.getValue())
-            )
-        );
+            Map<String, String> messageSystemAttributesAsStrings) {
+        return messageSystemAttributesAsStrings.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> toMessageSystemAttributeValue(entry.getValue())));
     }
 
     private static MessageSystemAttributeValue toMessageSystemAttributeValue(String value) {

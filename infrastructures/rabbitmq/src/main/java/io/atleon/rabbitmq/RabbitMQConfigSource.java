@@ -3,17 +3,14 @@ package io.atleon.rabbitmq;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.ConnectionFactoryConfigurator;
 import io.atleon.core.ConfigSource;
-import reactor.core.publisher.Mono;
-
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import reactor.core.publisher.Mono;
 
 public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQConfigSource> {
 
-    protected RabbitMQConfigSource() {
-
-    }
+    protected RabbitMQConfigSource() {}
 
     protected RabbitMQConfigSource(String name) {
         super(name);

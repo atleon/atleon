@@ -1,11 +1,11 @@
 package io.atleon.avro;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.apache.avro.Conversions;
 import org.apache.avro.data.TimeConversions;
 import org.apache.avro.generic.GenericData;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class GenericDatasTest {
 
@@ -16,6 +16,7 @@ public class GenericDatasTest {
         GenericDatas.addLogicalTypeConversion(genericData);
 
         assertTrue(genericData.getConversions().stream().anyMatch(Conversions.DecimalConversion.class::isInstance));
-        assertTrue(genericData.getConversions().stream().anyMatch(TimeConversions.TimeMillisConversion.class::isInstance));
+        assertTrue(
+                genericData.getConversions().stream().anyMatch(TimeConversions.TimeMillisConversion.class::isInstance));
     }
 }

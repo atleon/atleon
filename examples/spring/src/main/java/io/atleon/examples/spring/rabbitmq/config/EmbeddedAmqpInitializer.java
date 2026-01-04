@@ -2,16 +2,15 @@ package io.atleon.examples.spring.rabbitmq.config;
 
 import io.atleon.amqp.embedded.EmbeddedAmqp;
 import io.atleon.amqp.embedded.EmbeddedAmqpConfig;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.env.EnvironmentPostProcessor;
-import org.springframework.core.env.ConfigurableEnvironment;
-import org.springframework.core.env.MapPropertySource;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.env.EnvironmentPostProcessor;
+import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.MapPropertySource;
 
 public class EmbeddedAmqpInitializer implements EnvironmentPostProcessor {
 
@@ -20,8 +19,9 @@ public class EmbeddedAmqpInitializer implements EnvironmentPostProcessor {
         Set<String> activeProfiles = Stream.of(environment.getActiveProfiles()).collect(Collectors.toSet());
         if (activeProfiles.contains("rabbitmq") && !activeProfiles.contains("integrationTest")) {
             EmbeddedAmqpConfig embeddedAmqpConfig = EmbeddedAmqp.start(15672);
-            environment.getPropertySources()
-                .addFirst(new MapPropertySource("embedded-amqp", createProperties(embeddedAmqpConfig)));
+            environment
+                    .getPropertySources()
+                    .addFirst(new MapPropertySource("embedded-amqp", createProperties(embeddedAmqpConfig)));
         }
     }
 

@@ -1,10 +1,9 @@
 package io.atleon.aws.sqs;
 
-import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
-import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeValue;
-
 import java.util.Map;
 import java.util.Optional;
+import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
+import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeValue;
 
 /**
  * The base interface of all SQS Messages that may either be inbound (received) or outbound

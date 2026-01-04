@@ -3,13 +3,12 @@ package io.atleon.spring;
 import io.atleon.core.Autostart;
 import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.core.StreamPropertyResolver;
+import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.env.Environment;
-
-import java.util.Optional;
 
 /**
  * Spring-aware extension of {@link SelfConfigurableAloStream} that provides convenient access to

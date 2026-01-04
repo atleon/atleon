@@ -15,7 +15,7 @@ import io.atleon.core.AloSignalListenerFactory;
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedSqsMessage}s
  */
 public interface AloReceivedSqsMessageSignalListenerFactory<T, STATE>
-    extends AloSignalListenerFactory<ReceivedSqsMessage<T>, STATE> {
+        extends AloSignalListenerFactory<ReceivedSqsMessage<T>, STATE> {
 
     /**
      * This parameter will be populated during configuration to let the factory know what the URL

@@ -3,7 +3,6 @@ package io.atleon.json.jackson;
 import io.atleon.rabbitmq.BodyDeserializer;
 import io.atleon.rabbitmq.SerializedBody;
 import io.atleon.util.ConfigLoading;
-
 import java.util.Map;
 
 public final class TypedJsonRabbitMQBodyDeserializer<T> implements BodyDeserializer<T> {

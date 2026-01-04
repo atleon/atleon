@@ -1,12 +1,11 @@
 package io.atleon.core;
 
 import io.atleon.util.Throwing;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jspecify.annotations.NullMarked;
 import reactor.core.Disposable;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
-
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A managed Alo streaming process that can be started and stopped
@@ -16,7 +15,11 @@ import java.util.concurrent.atomic.AtomicReference;
 @NullMarked
 public abstract class AloStream<C extends AloStreamConfig> {
 
-    public enum State { STOPPED, STARTING, STARTED }
+    public enum State {
+        STOPPED,
+        STARTING,
+        STARTED
+    }
 
     private static final Disposable EMPTY = () -> {};
 
@@ -25,7 +28,8 @@ public abstract class AloStream<C extends AloStreamConfig> {
     private final AtomicReference<Disposable> disposableReference = new AtomicReference<>(EMPTY);
 
     public final synchronized void start(C config) {
-        if (!disposableReference.compareAndSet(EMPTY, STARTING) && !disposableReference.get().isDisposed()) {
+        if (!disposableReference.compareAndSet(EMPTY, STARTING)
+                && !disposableReference.get().isDisposed()) {
             throw new UnsupportedOperationException("Cannot start AloStream that is already starting/started");
         }
 

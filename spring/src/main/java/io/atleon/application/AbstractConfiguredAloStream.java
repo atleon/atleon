@@ -32,8 +32,8 @@ public abstract class AbstractConfiguredAloStream<C extends AloStreamConfig> imp
         this.stream = stream;
         this.config = config;
         this.starterStopper = config instanceof StarterStopperConfig
-            ? StarterStopperConfig.class.cast(config).buildStarterStopper()
-            : null;
+                ? StarterStopperConfig.class.cast(config).buildStarterStopper()
+                : null;
     }
 
     @Override
@@ -86,8 +86,8 @@ public abstract class AbstractConfiguredAloStream<C extends AloStreamConfig> imp
             if (startStopDisposable != null && !startStopDisposable.isDisposed()) {
                 safelyExecute(startStopDisposable::dispose);
             }
-            startStopDisposable = startStop.subscribe(
-                this::doStartStop, this::logStartStopError, this::logStartStopCompletion);
+            startStopDisposable =
+                    startStop.subscribe(this::doStartStop, this::logStartStopError, this::logStartStopCompletion);
         }
     }
 

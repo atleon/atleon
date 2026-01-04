@@ -4,20 +4,26 @@ import io.atleon.util.ConfigLoading;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
-import org.apache.kafka.common.metrics.KafkaMetric;
-import org.apache.kafka.common.metrics.MetricsReporter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.kafka.common.metrics.KafkaMetric;
+import org.apache.kafka.common.metrics.MetricsReporter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
 
-    public enum FilterInclusion {BLOCKLIST, ALLOWLIST, @Deprecated BLACKLIST, @Deprecated  WHITELIST}
+    public enum FilterInclusion {
+        BLOCKLIST,
+        ALLOWLIST,
+        @Deprecated
+        BLACKLIST,
+        @Deprecated
+        WHITELIST
+    }
 
     public static final String CONFIG_PREFIX = "metric.reporter.";
 
@@ -31,8 +37,9 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
 
     private static final double ABSENT_EVALUATION = Double.NaN;
 
-    private static final AuditedMetricRegistry<AbstractKafkaMetricsReporter, KafkaMetric, Double> AUDITED_METRIC_REGISTRY =
-        new AuditedMetricRegistry<>(AbstractKafkaMetricsReporter::extractMeterValue, ABSENT_EVALUATION);
+    private static final AuditedMetricRegistry<AbstractKafkaMetricsReporter, KafkaMetric, Double>
+            AUDITED_METRIC_REGISTRY =
+                    new AuditedMetricRegistry<>(AbstractKafkaMetricsReporter::extractMeterValue, ABSENT_EVALUATION);
 
     protected MeterRegistry meterRegistry = Metrics.globalRegistry;
 
@@ -79,7 +86,8 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
     }
 
     protected boolean shouldReportMetric(KafkaMetric metric, String extractedMetricName) {
-        return FilterInclusion.ALLOWLIST.equals(filteredMetricNamesInclusion) == filteredMetricNames.contains(extractedMetricName);
+        return FilterInclusion.ALLOWLIST.equals(filteredMetricNamesInclusion)
+                == filteredMetricNames.contains(extractedMetricName);
     }
 
     protected final MeterKey createMeterKey(KafkaMetric metric, String extractedMetricName) {
@@ -101,17 +109,21 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
         // garbage collection, which is possible due to Weak Referencing of MeterKeys by underlying
         // MeterRegistry implementations
         MeterKey registeredMeterKey = AUDITED_METRIC_REGISTRY.register(meterKey, this, metric);
-        if (meterRegistry.find(registeredMeterKey.getName()).tags(registeredMeterKey.getTags()).meter() == null) {
+        if (meterRegistry
+                        .find(registeredMeterKey.getName())
+                        .tags(registeredMeterKey.getTags())
+                        .meter()
+                == null) {
             registerGauge(meterRegistry, registeredMeterKey, metric);
         }
     }
 
     protected final double extractMeterValue(KafkaMetric metric) {
         return Optional.ofNullable(metric.metricValue())
-            .filter(Number.class::isInstance)
-            .map(Number.class::cast)
-            .flatMap(this::extractMeterValue)
-            .orElse(ABSENT_EVALUATION);
+                .filter(Number.class::isInstance)
+                .map(Number.class::cast)
+                .flatMap(this::extractMeterValue)
+                .orElse(ABSENT_EVALUATION);
     }
 
     protected Optional<Double> extractMeterValue(Number number) {
@@ -128,7 +140,7 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
 
     private static Optional<FilterInclusion> loadFilterInclusion(Map<String, ?> configs) {
         return ConfigLoading.loadEnum(configs, FILTER_NAMES_INCLUSION_CONFIG, FilterInclusion.class)
-            .map(AbstractKafkaMetricsReporter::sanitize);
+                .map(AbstractKafkaMetricsReporter::sanitize);
     }
 
     private static FilterInclusion sanitize(FilterInclusion filterInclusion) {
@@ -148,9 +160,9 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
             // only be Weakly Referenced, which means it is susceptible garbage collection if not
             // Strongly Referenced elsewhere (i.e. by an AuditedMetricRegistry)
             Gauge.builder(meterKey.getName(), meterKey, AUDITED_METRIC_REGISTRY::evaluate)
-                .description(metric.metricName().description())
-                .tags(meterKey.getTags())
-                .register(meterRegistry);
+                    .description(metric.metricName().description())
+                    .tags(meterKey.getTags())
+                    .register(meterRegistry);
         } catch (Exception e) {
             LOGGER.debug("Failed to register Gauge with key={}", meterKey, e);
         }

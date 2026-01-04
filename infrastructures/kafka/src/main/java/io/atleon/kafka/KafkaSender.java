@@ -1,5 +1,6 @@
 package io.atleon.kafka;
 
+import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -7,8 +8,6 @@ import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
-
-import java.util.Map;
 
 /**
  * A reactive sender for Kafka {@link org.apache.kafka.clients.producer.ProducerRecord records},
@@ -39,9 +38,10 @@ public final class KafkaSender<K, V> {
     private KafkaSender(KafkaSenderOptions<K, V> options) {
         this.options = options;
         this.futureProducer = Mono.fromSupplier(() -> new SendingProducer<>(options))
-            .cacheInvalidateWhen(
-                it -> Mono.firstWithSignal(it.closed(), closeSink.asFlux().next().then()),
-                SendingProducer::closeSafelyAsync);
+                .cacheInvalidateWhen(
+                        it -> Mono.firstWithSignal(
+                                it.closed(), closeSink.asFlux().next().then()),
+                        SendingProducer::closeSafelyAsync);
     }
 
     public static <K, V> KafkaSender<K, V> create(KafkaSenderOptions<K, V> options) {
@@ -110,11 +110,9 @@ public final class KafkaSender<K, V> {
      * @return a {@link Flux} emitting results for each sent record
      */
     public <T> Flux<KafkaSenderResult<T>> sendTransactional(
-        Publisher<? extends Publisher<KafkaSenderRecord<K, V, T>>> batches
-    ) {
-        return futureProducer
-            .delayUntil(SendingProducer::initTransactions)
-            .flatMapMany(producer -> Flux.from(batches).concatMap(batch -> sendTransactional(producer, batch)));
+            Publisher<? extends Publisher<KafkaSenderRecord<K, V, T>>> batches) {
+        return futureProducer.delayUntil(SendingProducer::initTransactions).flatMapMany(producer -> Flux.from(batches)
+                .concatMap(batch -> sendTransactional(producer, batch)));
     }
 
     /**
@@ -134,15 +132,13 @@ public final class KafkaSender<K, V> {
     }
 
     private <T> Flux<KafkaSenderResult<T>> sendTransactional(
-        SendingProducer<K, V> producer,
-        Publisher<KafkaSenderRecord<K, V, T>> senderRecords
-    ) {
+            SendingProducer<K, V> producer, Publisher<KafkaSenderRecord<K, V, T>> senderRecords) {
         return Flux.usingWhen(
-            producer.beginTransaction().thenReturn(producer),
-            transactionalProducer -> SendPublisher.immediateError(options, transactionalProducer, senderRecords),
-            SendingProducer::commitTransaction,
-            (transactionalProducer, error) -> transactionalProducer.abortTransaction(),
-            SendingProducer::abortTransaction);
+                producer.beginTransaction().thenReturn(producer),
+                transactionalProducer -> SendPublisher.immediateError(options, transactionalProducer, senderRecords),
+                SendingProducer::commitTransaction,
+                (transactionalProducer, error) -> transactionalProducer.abortTransaction(),
+                SendingProducer::abortTransaction);
     }
 
     private static final class ProducerTxManager implements KafkaTxManager {

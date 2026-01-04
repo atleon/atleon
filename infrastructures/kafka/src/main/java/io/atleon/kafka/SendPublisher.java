@@ -1,6 +1,11 @@
 package io.atleon.kafka;
 
 import io.atleon.core.SerialQueue;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
+import java.util.concurrent.atomic.AtomicLongFieldUpdater;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -9,12 +14,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Operators;
 import reactor.util.context.Context;
-
-import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
-import java.util.concurrent.atomic.AtomicLongFieldUpdater;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
 
@@ -25,34 +24,30 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
     private final Function<Subscriber<? super KafkaSenderResult<T>>, ? extends Send<K, V, T>> sender;
 
     private SendPublisher(
-        Publisher<? extends KafkaSenderRecord<K, V, T>> source,
-        Function<Subscriber<? super KafkaSenderResult<T>>, ? extends Send<K, V, T>> sender
-    ) {
+            Publisher<? extends KafkaSenderRecord<K, V, T>> source,
+            Function<Subscriber<? super KafkaSenderResult<T>>, ? extends Send<K, V, T>> sender) {
         this.source = source;
         this.sender = sender;
     }
 
     public static <K, V, T> SendPublisher<K, V, T> immediateError(
-        KafkaSenderOptions<K, V> options,
-        SendingProducer<K, V> producer,
-        Publisher<KafkaSenderRecord<K, V, T>> senderRecords
-    ) {
+            KafkaSenderOptions<K, V> options,
+            SendingProducer<K, V> producer,
+            Publisher<KafkaSenderRecord<K, V, T>> senderRecords) {
         return new SendPublisher<>(senderRecords, it -> new ConditionalSend<>(options, producer, it, false));
     }
 
     public static <K, V, T> SendPublisher<K, V, T> delegateError(
-        KafkaSenderOptions<K, V> options,
-        SendingProducer<K, V> producer,
-        Publisher<KafkaSenderRecord<K, V, T>> senderRecords
-    ) {
+            KafkaSenderOptions<K, V> options,
+            SendingProducer<K, V> producer,
+            Publisher<KafkaSenderRecord<K, V, T>> senderRecords) {
         return new SendPublisher<>(senderRecords, it -> new ConditionalSend<>(options, producer, it, true));
     }
 
     public static <K, V, T> SendPublisher<K, V, T> delayError(
-        KafkaSenderOptions<K, V> options,
-        SendingProducer<K, V> producer,
-        Publisher<KafkaSenderRecord<K, V, T>> senderRecords
-    ) {
+            KafkaSenderOptions<K, V> options,
+            SendingProducer<K, V> producer,
+            Publisher<KafkaSenderRecord<K, V, T>> senderRecords) {
         return new SendPublisher<>(senderRecords, it -> new ErrorDelayingSend<>(options, producer, it));
     }
 
@@ -69,24 +64,28 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
         }
     }
 
-    private static abstract class Send<K, V, T> implements CoreSubscriber<KafkaSenderRecord<K, V, T>>, Subscription {
+    private abstract static class Send<K, V, T> implements CoreSubscriber<KafkaSenderRecord<K, V, T>>, Subscription {
 
-        private enum State {ACTIVE, TERMINABLE, TERMINATED}
+        private enum State {
+            ACTIVE,
+            TERMINABLE,
+            TERMINATED
+        }
 
         private static final AtomicLongFieldUpdater<Send> IN_FLIGHT =
-            AtomicLongFieldUpdater.newUpdater(Send.class, "inFlight");
+                AtomicLongFieldUpdater.newUpdater(Send.class, "inFlight");
 
         private static final AtomicLongFieldUpdater<Send> OUTSTANDING_DOWNSTREAM_REQUEST =
-            AtomicLongFieldUpdater.newUpdater(Send.class, "outstandingDownstreamRequest");
+                AtomicLongFieldUpdater.newUpdater(Send.class, "outstandingDownstreamRequest");
 
         private static final AtomicLongFieldUpdater<Send> OUTSTANDING_UPSTREAM_REQUEST =
-            AtomicLongFieldUpdater.newUpdater(Send.class, "outstandingUpstreamRequest");
+                AtomicLongFieldUpdater.newUpdater(Send.class, "outstandingUpstreamRequest");
 
         private static final AtomicReferenceFieldUpdater<Send, State> SUBSCRIPTION_STATE =
-            AtomicReferenceFieldUpdater.newUpdater(Send.class, State.class, "subscriptionState");
+                AtomicReferenceFieldUpdater.newUpdater(Send.class, State.class, "subscriptionState");
 
         private static final AtomicIntegerFieldUpdater<Send> SUBSCRIPTION_DRAINS_IN_PROGRESS =
-            AtomicIntegerFieldUpdater.newUpdater(Send.class, "subscriptionDrainsInProgress");
+                AtomicIntegerFieldUpdater.newUpdater(Send.class, "subscriptionDrainsInProgress");
 
         private final KafkaSenderOptions<K, V> options;
 
@@ -116,10 +115,9 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
         private volatile int subscriptionDrainsInProgress = 0;
 
         protected Send(
-            KafkaSenderOptions<K, V> options,
-            SendingProducer<K, V> producer,
-            CoreSubscriber<? super KafkaSenderResult<T>> actual
-        ) {
+                KafkaSenderOptions<K, V> options,
+                SendingProducer<K, V> producer,
+                CoreSubscriber<? super KafkaSenderResult<T>> actual) {
             this.options = options;
             this.producer = producer;
             this.subscriberContext = actual.currentContext();
@@ -279,11 +277,10 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
         private final boolean emitFailuresAsResults;
 
         public ConditionalSend(
-            KafkaSenderOptions<K, V> options,
-            SendingProducer<K, V> producer,
-            Subscriber<? super KafkaSenderResult<T>> actual,
-            boolean emitFailuresAsResults
-        ) {
+                KafkaSenderOptions<K, V> options,
+                SendingProducer<K, V> producer,
+                Subscriber<? super KafkaSenderResult<T>> actual,
+                boolean emitFailuresAsResults) {
             super(options, producer, Operators.toCoreSubscriber(actual));
             this.emitFailuresAsResults = emitFailuresAsResults;
         }
@@ -302,15 +299,14 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
     private static final class ErrorDelayingSend<K, V, T> extends Send<K, V, T> {
 
         private static final AtomicReferenceFieldUpdater<ErrorDelayingSend, Exception> FIRST_FAILURE =
-            AtomicReferenceFieldUpdater.newUpdater(ErrorDelayingSend.class, Exception.class, "firstFailure");
+                AtomicReferenceFieldUpdater.newUpdater(ErrorDelayingSend.class, Exception.class, "firstFailure");
 
         private volatile Exception firstFailure;
 
         public ErrorDelayingSend(
-            KafkaSenderOptions<K, V> options,
-            SendingProducer<K, V> producer,
-            Subscriber<? super KafkaSenderResult<T>> actual
-        ) {
+                KafkaSenderOptions<K, V> options,
+                SendingProducer<K, V> producer,
+                Subscriber<? super KafkaSenderResult<T>> actual) {
             super(options, producer, Operators.toCoreSubscriber(actual));
         }
 

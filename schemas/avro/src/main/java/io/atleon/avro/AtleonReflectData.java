@@ -1,10 +1,5 @@
 package io.atleon.avro;
 
-import org.apache.avro.Schema;
-import org.apache.avro.reflect.ReflectData;
-import org.apache.avro.reflect.ReflectDatumReader;
-import org.apache.avro.specific.SpecificData;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -12,6 +7,10 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Supplier;
+import org.apache.avro.Schema;
+import org.apache.avro.reflect.ReflectData;
+import org.apache.avro.reflect.ReflectDatumReader;
+import org.apache.avro.specific.SpecificData;
 
 public final class AtleonReflectData extends ReflectData {
 

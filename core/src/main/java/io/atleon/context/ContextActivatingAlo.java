@@ -3,7 +3,6 @@ package io.atleon.context;
 import io.atleon.core.AbstractDecoratingAlo;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
-
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;

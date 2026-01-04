@@ -28,13 +28,10 @@ public class TestDataWithProblematicTypes {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o)
-            return true;
-        if (o == null || getClass() != o.getClass())
-            return false;
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
         TestDataWithProblematicTypes that = (TestDataWithProblematicTypes) o;
-        return Objects.equals(dataSet, that.dataSet) &&
-            Objects.equals(sortedDataSet, that.sortedDataSet);
+        return Objects.equals(dataSet, that.dataSet) && Objects.equals(sortedDataSet, that.sortedDataSet);
     }
 
     @Override

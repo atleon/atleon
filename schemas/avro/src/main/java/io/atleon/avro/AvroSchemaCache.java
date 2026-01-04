@@ -1,10 +1,9 @@
 package io.atleon.avro;
 
-import org.apache.avro.Schema;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import org.apache.avro.Schema;
 
 public final class AvroSchemaCache<K> {
 

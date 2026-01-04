@@ -1,13 +1,12 @@
 package io.atleon.core;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 public class ConfigSourceTest {
 
@@ -24,10 +23,10 @@ public class ConfigSourceTest {
         String clientIdValue = "client";
 
         Map<String, Object> result = new DummyConfigSource()
-            .with(propertyKey, propertyValue)
-            .with(clientIdKey, clientIdValue)
-            .create()
-            .block();
+                .with(propertyKey, propertyValue)
+                .with(clientIdKey, clientIdValue)
+                .create()
+                .block();
 
         assertEquals(2, result.size());
         assertEquals(clientIdValue, result.get(clientIdKey));
@@ -41,16 +40,14 @@ public class ConfigSourceTest {
         String clientIdKey = "client.id";
         String clientIdValue = "client";
 
-        List<String> processors = Arrays.asList(
-            TestConfigProcessor.class.getName(),
-            TestConfigProcessor.class.getName()
-        );
+        List<String> processors =
+                Arrays.asList(TestConfigProcessor.class.getName(), TestConfigProcessor.class.getName());
         Map<String, Object> result = new DummyConfigSource()
-            .with(propertyKey, propertyValue)
-            .with(clientIdKey, clientIdValue)
-            .with(ConfigSource.PROCESSORS_PROPERTY, processors)
-            .create()
-            .block();
+                .with(propertyKey, propertyValue)
+                .with(clientIdKey, clientIdValue)
+                .with(ConfigSource.PROCESSORS_PROPERTY, processors)
+                .create()
+                .block();
 
         assertEquals(5, result.size());
         assertEquals(clientIdValue, result.get(clientIdKey));
@@ -66,16 +63,14 @@ public class ConfigSourceTest {
         String clientIdKey = "client.id";
         String clientIdValue = "client";
 
-        List<String> processors = Arrays.asList(
-            TestConfigProcessor.class.getName(),
-            TestConfigProcessor.class.getName()
-        );
+        List<String> processors =
+                Arrays.asList(TestConfigProcessor.class.getName(), TestConfigProcessor.class.getName());
         Map<String, Object> result = new DummyConfigSource()
-            .with(propertyKey, propertyValue)
-            .with(clientIdKey, clientIdValue)
-            .with(ConfigSource.PROCESSORS_PROPERTY, String.join(",", processors))
-            .create()
-            .block();
+                .with(propertyKey, propertyValue)
+                .with(clientIdKey, clientIdValue)
+                .with(ConfigSource.PROCESSORS_PROPERTY, String.join(",", processors))
+                .create()
+                .block();
 
         assertEquals(5, result.size());
         assertEquals(clientIdValue, result.get(clientIdKey));
@@ -92,9 +87,7 @@ public class ConfigSourceTest {
         }
 
         @Override
-        protected void validateProperties(Map<String, Object> properties) {
-
-        }
+        protected void validateProperties(Map<String, Object> properties) {}
 
         @Override
         protected Map<String, Object> postProcessProperties(Map<String, Object> properties) {

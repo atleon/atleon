@@ -1,9 +1,8 @@
 package io.atleon.kafka;
 
+import java.util.Objects;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-
-import java.util.Objects;
 
 /**
  * An offset for a {@link org.apache.kafka.clients.consumer.ConsumerRecord} from a particular
@@ -29,7 +28,7 @@ final class AcknowledgedOffset {
         }
         AcknowledgedOffset that = (AcknowledgedOffset) o;
         return Objects.equals(topicPartition, that.topicPartition)
-            && Objects.equals(nextOffsetAndMetadata, that.nextOffsetAndMetadata);
+                && Objects.equals(nextOffsetAndMetadata, that.nextOffsetAndMetadata);
     }
 
     @Override
@@ -39,10 +38,9 @@ final class AcknowledgedOffset {
 
     @Override
     public String toString() {
-        return "AcknowledgedOffset{" +
-            "topicPartition=" + topicPartition +
-            ", nextOffsetAndMetadata=" + nextOffsetAndMetadata +
-            '}';
+        return "AcknowledgedOffset{" + "topicPartition="
+                + topicPartition + ", nextOffsetAndMetadata="
+                + nextOffsetAndMetadata + '}';
     }
 
     public TopicPartition topicPartition() {

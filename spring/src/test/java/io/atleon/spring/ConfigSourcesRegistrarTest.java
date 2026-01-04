@@ -1,5 +1,7 @@
 package io.atleon.spring;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
 import io.atleon.aws.sns.SnsConfigSource;
 import io.atleon.aws.sqs.SqsConfigSource;
 import io.atleon.kafka.KafkaConfigSource;
@@ -10,8 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 @SpringBootApplication
 @SpringBootTest

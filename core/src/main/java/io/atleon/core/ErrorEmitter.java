@@ -1,12 +1,11 @@
 package io.atleon.core;
 
+import java.time.Duration;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Sinks;
-
-import java.time.Duration;
 
 /**
  * Utility class wrapping a {@link Sinks.Empty} that allows applying to Publishers and

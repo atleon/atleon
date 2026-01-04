@@ -1,6 +1,12 @@
 package io.atleon.kafka;
 
 import io.atleon.util.ConfigLoading;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.Function;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -8,13 +14,6 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import reactor.util.concurrent.Queues;
-
-import java.time.Duration;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.function.Function;
 
 /**
  * Options used to configure the reactive sending of records to Kafka.
@@ -39,13 +38,12 @@ public final class KafkaSenderOptions<K, V> {
     private final Duration closeTimeout;
 
     private KafkaSenderOptions(
-        Function<Map<String, Object>, Producer<K, V>> producerFactory,
-        ProducerListenerFactory producerListenerFactory,
-        Map<String, Object> producerProperties,
-        int maxInFlight,
-        boolean sendImmediate,
-        Duration closeTimeout
-    ) {
+            Function<Map<String, Object>, Producer<K, V>> producerFactory,
+            ProducerListenerFactory producerListenerFactory,
+            Map<String, Object> producerProperties,
+            int maxInFlight,
+            boolean sendImmediate,
+            Duration closeTimeout) {
         this.producerFactory = producerFactory;
         this.producerListenerFactory = producerListenerFactory;
         this.producerProperties = producerProperties;
@@ -224,13 +222,12 @@ public final class KafkaSenderOptions<K, V> {
 
         public KafkaSenderOptions<K, V> build() {
             return new KafkaSenderOptions<>(
-                producerFactory,
-                producerListenerFactory,
-                producerProperties,
-                maxInFlight,
-                sendImmediate,
-                closeTimeout
-            );
+                    producerFactory,
+                    producerListenerFactory,
+                    producerProperties,
+                    maxInFlight,
+                    sendImmediate,
+                    closeTimeout);
         }
     }
 }

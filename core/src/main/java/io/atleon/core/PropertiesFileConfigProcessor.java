@@ -1,8 +1,6 @@
 package io.atleon.core;
 
 import io.atleon.util.ConfigLoading;
-import reactor.core.publisher.Mono;
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.BiConsumer;
+import reactor.core.publisher.Mono;
 
 /**
  * A {@link ConfigProcessor} that can be configured to load/add key-values from properties files
@@ -27,7 +26,7 @@ public class PropertiesFileConfigProcessor implements ConfigProcessor {
             Map<String, Object> result = new HashMap<>(configs);
             result.remove(FILES_PROPERTY);
             ConfigLoading.loadSetOfStringOrEmpty(configs, FILES_PROPERTY)
-                .forEach(fileSpec -> processFile(fileSpec, result::put));
+                    .forEach(fileSpec -> processFile(fileSpec, result::put));
             return Mono.just(result);
         } else {
             return Mono.just(configs);

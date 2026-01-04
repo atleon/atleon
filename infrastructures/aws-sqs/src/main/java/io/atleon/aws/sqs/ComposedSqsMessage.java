@@ -1,11 +1,10 @@
 package io.atleon.aws.sqs;
 
-import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
-import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeValue;
-
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
+import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeValue;
 
 /**
  * A convenient implementation of {@link SqsMessage} that's composed of and built by all possible
@@ -22,13 +21,12 @@ public final class ComposedSqsMessage<T> extends AbstractSqsMessage<T> {
     private final Integer senderDelaySeconds;
 
     private ComposedSqsMessage(
-        String messageDeduplicationId,
-        String messageGroupId,
-        Map<String, MessageAttributeValue> messageAttributes,
-        Map<String, MessageSystemAttributeValue> messageSystemAttributes,
-        T body,
-        Integer senderDelaySeconds
-    ) {
+            String messageDeduplicationId,
+            String messageGroupId,
+            Map<String, MessageAttributeValue> messageAttributes,
+            Map<String, MessageSystemAttributeValue> messageSystemAttributes,
+            T body,
+            Integer senderDelaySeconds) {
         super(messageAttributes, messageSystemAttributes, body);
         this.messageDeduplicationId = messageDeduplicationId;
         this.messageGroupId = messageGroupId;
@@ -76,19 +74,16 @@ public final class ComposedSqsMessage<T> extends AbstractSqsMessage<T> {
 
         private Integer senderDelaySeconds;
 
-        private Builder() {
-
-        }
+        private Builder() {}
 
         public ComposedSqsMessage<T> build() {
             return new ComposedSqsMessage<>(
-                messageDeduplicationId,
-                messageGroupId,
-                messageAttributes,
-                messageSystemAttributes,
-                body,
-                senderDelaySeconds
-            );
+                    messageDeduplicationId,
+                    messageGroupId,
+                    messageAttributes,
+                    messageSystemAttributes,
+                    body,
+                    senderDelaySeconds);
         }
 
         public Builder<T> messageDeduplicationId(String messageDeduplicationId) {

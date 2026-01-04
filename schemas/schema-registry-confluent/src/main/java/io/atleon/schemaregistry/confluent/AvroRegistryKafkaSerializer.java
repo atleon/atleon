@@ -1,8 +1,7 @@
 package io.atleon.schemaregistry.confluent;
 
-import org.apache.kafka.common.serialization.Serializer;
-
 import java.util.Map;
+import org.apache.kafka.common.serialization.Serializer;
 
 /**
  * A Kafka {@link Serializer} that delegates to {@link AvroRegistrySerializer}

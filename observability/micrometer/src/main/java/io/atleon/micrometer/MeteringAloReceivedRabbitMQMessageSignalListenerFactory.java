@@ -4,7 +4,6 @@ import io.atleon.rabbitmq.AloReceivedRabbitMQMessageSignalListenerFactory;
 import io.atleon.rabbitmq.ReceivedRabbitMQMessage;
 import io.atleon.util.ConfigLoading;
 import io.micrometer.core.instrument.Tags;
-
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -17,8 +16,8 @@ import java.util.function.Function;
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedRabbitMQMessage}s
  */
 public final class MeteringAloReceivedRabbitMQMessageSignalListenerFactory<T>
-    extends MeteringAloSignalListenerFactory<ReceivedRabbitMQMessage<T>, Void>
-    implements AloReceivedRabbitMQMessageSignalListenerFactory<T, Void> {
+        extends MeteringAloSignalListenerFactory<ReceivedRabbitMQMessage<T>, Void>
+        implements AloReceivedRabbitMQMessageSignalListenerFactory<T, Void> {
 
     private String queue = null;
 

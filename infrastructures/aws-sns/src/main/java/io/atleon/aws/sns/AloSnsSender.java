@@ -3,6 +3,9 @@ package io.atleon.aws.sns;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
 import io.atleon.core.SenderResult;
+import java.io.Closeable;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,10 +13,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.core.publisher.SynchronousSink;
-
-import java.io.Closeable;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
 
 /**
  * A reactive sender of {@link Alo} data to SNS topics, with forwarding methods for non-Alo items.
@@ -72,9 +71,10 @@ public class AloSnsSender<T> implements Closeable {
     private final Sinks.Many<Long> closeSink = Sinks.many().multicast().directBestEffort();
 
     private AloSnsSender(SnsConfigSource configSource) {
-        this.futureResources = configSource.create()
-            .map(SendResources::<T>fromConfig)
-            .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SendResources::close);
+        this.futureResources = configSource
+                .create()
+                .map(SendResources::<T>fromConfig)
+                .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SendResources::close);
     }
 
     /**
@@ -105,9 +105,7 @@ public class AloSnsSender<T> implements Closeable {
      * @return A {@link Function} useful for Publisher transformations
      */
     public Function<Publisher<T>, Flux<SnsSenderResult<T>>> sendBodies(
-        SnsMessageCreator<T> messageCreator,
-        String topicArn
-    ) {
+            SnsMessageCreator<T> messageCreator, String topicArn) {
         return bodies -> sendBodies(bodies, messageCreator, topicArn);
     }
 
@@ -123,7 +121,8 @@ public class AloSnsSender<T> implements Closeable {
      * @param topicArn       ARN of the topic to send messages to
      * @return a Publisher of the results of each sent message
      */
-    public Flux<SnsSenderResult<T>> sendBodies(Publisher<T> bodies, SnsMessageCreator<T> messageCreator, String topicArn) {
+    public Flux<SnsSenderResult<T>> sendBodies(
+            Publisher<T> bodies, SnsMessageCreator<T> messageCreator, String topicArn) {
         return futureResources.flatMapMany(resources -> resources.send(bodies, messageCreator, topicArn));
     }
 
@@ -163,9 +162,7 @@ public class AloSnsSender<T> implements Closeable {
      * @return A {@link Function} useful for Publisher transformations
      */
     public Function<Publisher<Alo<T>>, AloFlux<SnsSenderResult<T>>> sendAloBodies(
-        SnsMessageCreator<T> messageCreator,
-        String topicArn
-    ) {
+            SnsMessageCreator<T> messageCreator, String topicArn) {
         return aloBodies -> sendAloBodies(aloBodies, messageCreator, topicArn);
     }
 
@@ -184,13 +181,11 @@ public class AloSnsSender<T> implements Closeable {
      * @return a Publisher of Alo items referencing the result of each sent message
      */
     public AloFlux<SnsSenderResult<T>> sendAloBodies(
-        Publisher<Alo<T>> aloBodies,
-        SnsMessageCreator<T> messageCreator,
-        String topicArn
-    ) {
-        return futureResources.flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator, topicArn))
-            .as(AloFlux::wrap)
-            .processFailure(SenderResult::isFailure, SenderResult::toError);
+            Publisher<Alo<T>> aloBodies, SnsMessageCreator<T> messageCreator, String topicArn) {
+        return futureResources
+                .flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator, topicArn))
+                .as(AloFlux::wrap)
+                .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     /**
@@ -202,8 +197,7 @@ public class AloSnsSender<T> implements Closeable {
      * @return A {@link Function} useful for Publisher transformations
      */
     public Function<Publisher<Alo<SnsMessage<T>>>, AloFlux<SnsSenderResult<SnsMessage<T>>>> sendAloMessages(
-        String topicArn
-    ) {
+            String topicArn) {
         return aloMessages -> sendAloMessages(aloMessages, topicArn);
     }
 
@@ -220,12 +214,11 @@ public class AloSnsSender<T> implements Closeable {
      * @return A Publisher of Alo items referencing the result of each sent message
      */
     public AloFlux<SnsSenderResult<SnsMessage<T>>> sendAloMessages(
-        Publisher<Alo<SnsMessage<T>>> aloMessages,
-        String topicArn
-    ) {
-        return futureResources.flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity(), topicArn))
-            .as(AloFlux::wrap)
-            .processFailure(SenderResult::isFailure, SenderResult::toError);
+            Publisher<Alo<SnsMessage<T>>> aloMessages, String topicArn) {
+        return futureResources
+                .flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity(), topicArn))
+                .as(AloFlux::wrap)
+                .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     /**
@@ -256,15 +249,17 @@ public class AloSnsSender<T> implements Closeable {
 
         public static <T> SendResources<T> fromConfig(SnsConfig config) {
             SnsSenderOptions options = SnsSenderOptions.newBuilder(config::buildClient)
-                .batchSize(config.loadInt(BATCH_SIZE_CONFIG).orElse(SnsSenderOptions.DEFAULT_BATCH_SIZE))
-                .batchDuration(config.loadDuration(BATCH_DURATION_CONFIG).orElse(SnsSenderOptions.DEFAULT_BATCH_DURATION))
-                .batchPrefetch(config.loadInt(BATCH_PREFETCH_CONFIG).orElse(SnsSenderOptions.DEFAULT_BATCH_PREFETCH))
-                .maxRequestsInFlight(config.loadInt(MAX_REQUESTS_IN_FLIGHT_CONFIG).orElse(SnsSenderOptions.DEFAULT_MAX_REQUESTS_IN_FLIGHT))
-                .build();
+                    .batchSize(config.loadInt(BATCH_SIZE_CONFIG).orElse(SnsSenderOptions.DEFAULT_BATCH_SIZE))
+                    .batchDuration(
+                            config.loadDuration(BATCH_DURATION_CONFIG).orElse(SnsSenderOptions.DEFAULT_BATCH_DURATION))
+                    .batchPrefetch(
+                            config.loadInt(BATCH_PREFETCH_CONFIG).orElse(SnsSenderOptions.DEFAULT_BATCH_PREFETCH))
+                    .maxRequestsInFlight(config.loadInt(MAX_REQUESTS_IN_FLIGHT_CONFIG)
+                            .orElse(SnsSenderOptions.DEFAULT_MAX_REQUESTS_IN_FLIGHT))
+                    .build();
             return new SendResources<T>(
-                SnsSender.create(options),
-                config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG, BodySerializer.class)
-            );
+                    SnsSender.create(options),
+                    config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG, BodySerializer.class));
         }
 
         public Mono<SnsSenderResult<SnsMessage<T>>> send(SnsMessage<T> message, SnsAddress address) {
@@ -272,24 +267,18 @@ public class AloSnsSender<T> implements Closeable {
         }
 
         public <R> Flux<SnsSenderResult<R>> send(
-            Publisher<R> items,
-            Function<R, SnsMessage<T>> messageCreator,
-            String topicArn
-        ) {
+                Publisher<R> items, Function<R, SnsMessage<T>> messageCreator, String topicArn) {
             return Flux.from(items)
-                .map(item -> toSenderMessage(item, messageCreator))
-                .transform(senderMessages -> sender.send(senderMessages, topicArn));
+                    .map(item -> toSenderMessage(item, messageCreator))
+                    .transform(senderMessages -> sender.send(senderMessages, topicArn));
         }
 
         public <R> Flux<Alo<SnsSenderResult<R>>> sendAlos(
-            Publisher<Alo<R>> alos,
-            Function<R, SnsMessage<T>> messageCreator,
-            String topicArn
-        ) {
+                Publisher<Alo<R>> alos, Function<R, SnsMessage<T>> messageCreator, String topicArn) {
             return AloFlux.toFlux(alos)
-                .handle(newAloEmitter(messageCreator.compose(Alo::get)))
-                .transform(senderMessages -> sender.send(senderMessages, topicArn))
-                .map(result -> result.correlationMetadata().map(result::replaceCorrelationMetadata));
+                    .handle(newAloEmitter(messageCreator.compose(Alo::get)))
+                    .transform(senderMessages -> sender.send(senderMessages, topicArn))
+                    .map(result -> result.correlationMetadata().map(result::replaceCorrelationMetadata));
         }
 
         public void close() {
@@ -297,22 +286,21 @@ public class AloSnsSender<T> implements Closeable {
         }
 
         private <R> BiConsumer<Alo<R>, SynchronousSink<SnsSenderMessage<Alo<R>>>> newAloEmitter(
-            Function<Alo<R>, SnsMessage<T>> aloToSnsMessage
-        ) {
+                Function<Alo<R>, SnsMessage<T>> aloToSnsMessage) {
             return (alo, sink) -> alo.runInContext(() -> sink.next(toSenderMessage(alo, aloToSnsMessage)));
         }
 
         private <R> SnsSenderMessage<R> toSenderMessage(R data, Function<R, SnsMessage<T>> dataToSnsMessage) {
             SnsMessage<T> snsMessage = dataToSnsMessage.apply(data);
             return SnsSenderMessage.<R>newBuilder()
-                .messageDeduplicationId(snsMessage.messageDeduplicationId().orElse(null))
-                .messageGroupId(snsMessage.messageGroupId().orElse(null))
-                .messageAttributes(snsMessage.messageAttributes())
-                .messageStructure(snsMessage.messageStructure().orElse(null))
-                .subject(snsMessage.subject().orElse(null))
-                .body(bodySerializer.serialize(snsMessage.body()))
-                .correlationMetadata(data)
-                .build();
+                    .messageDeduplicationId(snsMessage.messageDeduplicationId().orElse(null))
+                    .messageGroupId(snsMessage.messageGroupId().orElse(null))
+                    .messageAttributes(snsMessage.messageAttributes())
+                    .messageStructure(snsMessage.messageStructure().orElse(null))
+                    .subject(snsMessage.subject().orElse(null))
+                    .body(bodySerializer.serialize(snsMessage.body()))
+                    .correlationMetadata(data)
+                    .build();
         }
     }
 }

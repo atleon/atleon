@@ -1,13 +1,12 @@
 package io.atleon.core;
 
+import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 import org.reactivestreams.Subscriber;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.SynchronousSink;
 import reactor.util.context.Context;
 import reactor.util.context.ContextView;
-
-import java.util.function.BiPredicate;
-import java.util.function.Consumer;
 
 /**
  * A strategy applied when operations on {@link Alo} elements fail. When processing an error

@@ -8,9 +8,7 @@ public final class Timing {
 
     private static final long CONDITION_PAUSE_MILLIS = 10L;
 
-    private Timing() {
-
-    }
+    private Timing() {}
 
     public static void waitForCondition(Supplier<Boolean> condition) {
         waitForCondition(condition, DEFAULT_WAIT_MILLIS);

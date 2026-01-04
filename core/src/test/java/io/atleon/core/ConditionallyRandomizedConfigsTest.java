@@ -1,13 +1,12 @@
 package io.atleon.core;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.Map;
-import java.util.Objects;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Map;
+import java.util.Objects;
+import org.junit.jupiter.api.Test;
 
 class ConditionallyRandomizedConfigsTest {
 
@@ -19,11 +18,11 @@ class ConditionallyRandomizedConfigsTest {
         String clientIdValue = "client";
 
         Map<String, Object> result = new DummyConfigSource()
-            .with(propertyKey, propertyValue)
-            .with(clientIdKey, clientIdValue)
-            .with(clientIdKey + ConditionallyRandomizedConfigs.PROPERTY_SUFFIX, true)
-            .create()
-            .block();
+                .with(propertyKey, propertyValue)
+                .with(clientIdKey, clientIdValue)
+                .with(clientIdKey + ConditionallyRandomizedConfigs.PROPERTY_SUFFIX, true)
+                .create()
+                .block();
 
         assertEquals(2, result.size());
         assertTrue(Objects.toString(result.get(clientIdKey)).startsWith(clientIdValue));
@@ -39,9 +38,7 @@ class ConditionallyRandomizedConfigsTest {
         }
 
         @Override
-        protected void validateProperties(Map<String, Object> properties) {
-
-        }
+        protected void validateProperties(Map<String, Object> properties) {}
 
         @Override
         protected Map<String, Object> postProcessProperties(Map<String, Object> properties) {

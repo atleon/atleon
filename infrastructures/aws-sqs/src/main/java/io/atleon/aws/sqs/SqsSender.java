@@ -1,6 +1,13 @@
 package io.atleon.aws.sqs;
 
 import io.atleon.core.Batcher;
+import java.io.Closeable;
+import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -12,14 +19,6 @@ import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchRequestEntry;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchResponse;
 import software.amazon.awssdk.services.sqs.model.SendMessageBatchResultEntry;
-
-import java.io.Closeable;
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * A low-level sender of {@link SqsMessage}s. Sent Messages contain the raw String body payload and
@@ -44,7 +43,7 @@ public final class SqsSender implements Closeable {
 
     private SqsSender(SqsSenderOptions options) {
         this.futureClient = Mono.fromSupplier(options::createClient)
-            .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SqsAsyncClient::close);
+                .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SqsAsyncClient::close);
         this.batcher = Batcher.create(options.batchSize(), options.batchDuration(), options.batchPrefetch());
         this.maxRequestsInFlight = options.maxRequestsInFlight();
     }
@@ -65,7 +64,9 @@ public final class SqsSender implements Closeable {
      * @return A Publisher of the result of sending the message
      */
     public <C> Mono<SqsSenderResult<C>> send(SqsSenderMessage<C> message, String queueUrl) {
-        return futureClient.flatMapMany(client -> send(client, SqsSendEntry.singletonList(message), queueUrl)).next();
+        return futureClient
+                .flatMapMany(client -> send(client, SqsSendEntry.singletonList(message), queueUrl))
+                .next();
     }
 
     /**
@@ -90,35 +91,31 @@ public final class SqsSender implements Closeable {
         closeSink.tryEmitNext(System.currentTimeMillis());
     }
 
-    private <C> Flux<SqsSenderResult<C>> send(SqsAsyncClient client, Flux<SqsSenderMessage<C>> messages, String topicArn) {
+    private <C> Flux<SqsSenderResult<C>> send(
+            SqsAsyncClient client, Flux<SqsSenderMessage<C>> messages, String topicArn) {
         return batcher.applyMapping(
-            messages.map(SqsSendEntry::create),
-            entries -> send(client, entries, topicArn),
-            maxRequestsInFlight
-        );
+                messages.map(SqsSendEntry::create), entries -> send(client, entries, topicArn), maxRequestsInFlight);
     }
 
     private <C> Flux<SqsSenderResult<C>> send(SqsAsyncClient client, List<SqsSendEntry<C>> entries, String queueUrl) {
         SendMessageBatchRequest request = SendMessageBatchRequest.builder()
-            .queueUrl(queueUrl)
-            .entries(entries.stream().map(SqsSendEntry::requestEntry).collect(Collectors.toList()))
-            .build();
+                .queueUrl(queueUrl)
+                .entries(entries.stream().map(SqsSendEntry::requestEntry).collect(Collectors.toList()))
+                .build();
         Map<String, C> correlationMetadataByRequestId = entries.stream()
-            .filter(message -> message.correlationMetadata() != null)
-            .collect(Collectors.toMap(SqsSendEntry::requestId, SqsSendEntry::correlationMetadata));
+                .filter(message -> message.correlationMetadata() != null)
+                .collect(Collectors.toMap(SqsSendEntry::requestId, SqsSendEntry::correlationMetadata));
         return Mono.fromFuture(() -> client.sendMessageBatch(request))
-            .retryWhen(DEFAULT_RETRY)
-            .flatMapIterable(response -> createResults(response, correlationMetadataByRequestId));
+                .retryWhen(DEFAULT_RETRY)
+                .flatMapIterable(response -> createResults(response, correlationMetadataByRequestId));
     }
 
     private <C> List<SqsSenderResult<C>> createResults(
-        SendMessageBatchResponse response,
-        Map<String, C> correlationMetadataByRequestId
-    ) {
+            SendMessageBatchResponse response, Map<String, C> correlationMetadataByRequestId) {
         Stream<SqsSenderResult<C>> failures = response.failed().stream()
-            .map(entry -> createFailureResult(entry, correlationMetadataByRequestId.get(entry.id())));
+                .map(entry -> createFailureResult(entry, correlationMetadataByRequestId.get(entry.id())));
         Stream<SqsSenderResult<C>> successes = response.successful().stream()
-            .map(entry -> createSuccessResult(entry, correlationMetadataByRequestId.get(entry.id())));
+                .map(entry -> createSuccessResult(entry, correlationMetadataByRequestId.get(entry.id())));
         return Stream.concat(failures, successes).collect(Collectors.toList());
     }
 
@@ -169,14 +166,14 @@ public final class SqsSender implements Closeable {
 
         public static <C> SqsSendEntry<C> create(SqsSenderMessage<C> message) {
             SendMessageBatchRequestEntry requestEntry = SendMessageBatchRequestEntry.builder()
-                .id(message.requestId())
-                .messageDeduplicationId(message.messageDeduplicationId().orElse(null))
-                .messageGroupId(message.messageGroupId().orElse(null))
-                .messageAttributes(message.messageAttributes())
-                .messageSystemAttributesWithStrings(message.messageSystemAttributes())
-                .messageBody(message.body())
-                .delaySeconds(message.senderDelaySeconds().orElse(null))
-                .build();
+                    .id(message.requestId())
+                    .messageDeduplicationId(message.messageDeduplicationId().orElse(null))
+                    .messageGroupId(message.messageGroupId().orElse(null))
+                    .messageAttributes(message.messageAttributes())
+                    .messageSystemAttributesWithStrings(message.messageSystemAttributes())
+                    .messageBody(message.body())
+                    .delaySeconds(message.senderDelaySeconds().orElse(null))
+                    .build();
             return new SqsSendEntry<>(requestEntry, message.correlationMetadata());
         }
 

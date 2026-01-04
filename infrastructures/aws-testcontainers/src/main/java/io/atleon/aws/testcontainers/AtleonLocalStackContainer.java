@@ -1,9 +1,8 @@
 package io.atleon.aws.testcontainers;
 
+import java.net.URI;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.utility.DockerImageName;
-
-import java.net.URI;
 
 /**
  * Extension of {@link LocalStackContainer} that is a bit more convenient to use when testing

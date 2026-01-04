@@ -8,8 +8,7 @@ public class ReceiverRecord<P, O> {
     private final Polled<P, O> record;
     private final Pollable<P, O> pollable;
 
-    public ReceiverRecord(final Polled<P, O> record,
-                          final Pollable<P, O> pollable) {
+    public ReceiverRecord(final Polled<P, O> record, final Pollable<P, O> pollable) {
         this.record = record;
         this.pollable = pollable;
     }

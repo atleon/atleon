@@ -1,13 +1,12 @@
 package io.atleon.core;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
 
 class AloDecoratorTest {
 
@@ -19,8 +18,7 @@ class AloDecoratorTest {
         AloDecorator<String> decorator2 = new SideEffectAloDecorator<>(2, effects::add);
         AloDecorator<String> decorator3 = new SideEffectAloDecorator<>(3, effects::add);
 
-        AloDecorator.combine(Arrays.asList(decorator2, decorator3, decorator1))
-            .decorate(new TestAlo("data"));
+        AloDecorator.combine(Arrays.asList(decorator2, decorator3, decorator1)).decorate(new TestAlo("data"));
 
         assertEquals(Arrays.asList(1, 2, 3), effects);
     }

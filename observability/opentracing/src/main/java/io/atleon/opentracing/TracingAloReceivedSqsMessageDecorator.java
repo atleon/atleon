@@ -5,7 +5,6 @@ import io.atleon.aws.sqs.ReceivedSqsMessage;
 import io.atleon.core.Alo;
 import io.atleon.util.ConfigLoading;
 import io.opentracing.Tracer;
-
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -16,8 +15,7 @@ import java.util.stream.Collectors;
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedSqsMessage}s
  */
 public final class TracingAloReceivedSqsMessageDecorator<T>
-    extends TracingAloConsumptionDecorator<ReceivedSqsMessage<T>>
-    implements AloReceivedSqsMessageDecorator<T> {
+        extends TracingAloConsumptionDecorator<ReceivedSqsMessage<T>> implements AloReceivedSqsMessageDecorator<T> {
 
     private String queueUrl = null;
 
@@ -29,16 +27,18 @@ public final class TracingAloReceivedSqsMessageDecorator<T>
 
     @Override
     protected Tracer.SpanBuilder newSpanBuilder(SpanBuilderFactory spanBuilderFactory, ReceivedSqsMessage<T> message) {
-        return spanBuilderFactory.newSpanBuilder("atleon.receive.aws.sqs")
-            .withTag("queue_url", queueUrl)
-            .withTag("receipt_handle", message.receiptHandle())
-            .withTag("message_id", message.messageId());
+        return spanBuilderFactory
+                .newSpanBuilder("atleon.receive.aws.sqs")
+                .withTag("queue_url", queueUrl)
+                .withTag("receipt_handle", message.receiptHandle())
+                .withTag("message_id", message.messageId());
     }
 
     @Override
     protected Map<String, String> extractHeaderMap(ReceivedSqsMessage<T> message) {
         return message.messageAttributes().entrySet().stream()
-            .filter(entry -> entry.getValue().stringValue() != null)
-            .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().stringValue()));
+                .filter(entry -> entry.getValue().stringValue() != null)
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey, entry -> entry.getValue().stringValue()));
     }
 }

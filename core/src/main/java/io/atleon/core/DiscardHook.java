@@ -1,10 +1,9 @@
 package io.atleon.core;
 
-import reactor.util.context.Context;
-import reactor.util.context.ContextView;
-
 import java.util.function.Consumer;
 import java.util.function.Function;
+import reactor.util.context.Context;
+import reactor.util.context.ContextView;
 
 /**
  * A hook that may be applied when elements from a pipeline are discarded, e.g. via filtering
@@ -23,7 +22,8 @@ interface DiscardHook extends Consumer<Object> {
 
         return context -> {
             DiscardHook contextualHook = context.getOrDefault(DiscardHook.class, null);
-            return context.put(DiscardHook.class, contextualHook == null ? discardHook : discardHook.andThen(contextualHook));
+            return context.put(
+                    DiscardHook.class, contextualHook == null ? discardHook : discardHook.andThen(contextualHook));
         };
     }
 
@@ -32,9 +32,7 @@ interface DiscardHook extends Consumer<Object> {
     }
 
     static DiscardHook noOp() {
-        return __ -> {
-
-        };
+        return __ -> {};
     }
 
     @Override

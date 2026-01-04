@@ -1,10 +1,9 @@
 package io.atleon.polling;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import io.atleon.core.Alo;
 import io.atleon.polling.reactive.PollingSourceConfig;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -17,8 +16,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class AloPollingReceiverTest {
 
@@ -35,7 +34,7 @@ public class AloPollingReceiverTest {
         final Queue<Set<TestMessage>> messages = new LinkedList<>();
         final Set<TestMessage> acks = new HashSet<>();
         final Set<TestMessage> nacks = new HashSet<>();
-        messages.add(buildSuccessMessages("Batch - 1",5));
+        messages.add(buildSuccessMessages("Batch - 1", 5));
         messages.add(buildSuccessMessages("Batch - 2", 2));
         messages.add(buildSuccessMessages("Batch - 3", 3));
         pollable = new TestPollable(messages, acks, nacks);
@@ -55,7 +54,7 @@ public class AloPollingReceiverTest {
         final Set<TestMessage> acks = new HashSet<>();
         final Set<TestMessage> nacks = new HashSet<>();
         messages.add(buildSuccessMessages("Batch - 1", 5));
-        messages.add(buildFailureMessages("Batch - 2",5, 1));
+        messages.add(buildFailureMessages("Batch - 2", 5, 1));
         pollable = new TestPollable(messages, acks, nacks);
         AloPollingReceiver<TestMessage, TestMessage> receiver = AloPollingReceiver.create(pollable, config);
         receiver.receivePayloads().subscribe(alo -> {
@@ -74,16 +73,13 @@ public class AloPollingReceiverTest {
         assertEquals(1, nacks.size());
     }
 
-    private Set<TestMessage> buildSuccessMessages(final String message,
-                                                  final int count) {
+    private Set<TestMessage> buildSuccessMessages(final String message, final int count) {
         return IntStream.range(0, count)
                 .mapToObj(i -> new TestSuccessMessage(i, message + " Test Message " + i))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private Set<TestMessage> buildFailureMessages(final String message,
-                                                  int count,
-                                                  int exceptionCount) {
+    private Set<TestMessage> buildFailureMessages(final String message, int count, int exceptionCount) {
         return IntStream.range(0, count)
                 .mapToObj(i -> new TestFailureMessage(i, message + " Test Message " + i, exceptionCount))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -95,9 +91,8 @@ public class AloPollingReceiverTest {
         private final Set<TestMessage> acks;
         private final Set<TestMessage> nacks;
 
-        public TestPollable(final Queue<Set<TestMessage>> messages,
-                            final Set<TestMessage> acks,
-                            final Set<TestMessage> nacks) {
+        public TestPollable(
+                final Queue<Set<TestMessage>> messages, final Set<TestMessage> acks, final Set<TestMessage> nacks) {
             this.messages = messages;
             this.acks = acks;
             this.nacks = nacks;
@@ -105,23 +100,19 @@ public class AloPollingReceiverTest {
 
         @Override
         public Collection<Polled<TestMessage, TestMessage>> poll() {
-            Optional.ofNullable(messages.peek())
-                    .ifPresent(m -> {
-                        if (m.isEmpty()) {
-                            messages.poll();
-                        }
-                    });
+            Optional.ofNullable(messages.peek()).ifPresent(m -> {
+                if (m.isEmpty()) {
+                    messages.poll();
+                }
+            });
             return Optional.ofNullable(messages.peek())
-                    .map(msgs -> msgs.stream()
-                            .map(m -> Polled.compose(m, m))
-                            .collect(Collectors.toList()))
+                    .map(msgs -> msgs.stream().map(m -> Polled.compose(m, m)).collect(Collectors.toList()))
                     .orElse(new ArrayList<>());
         }
 
         @Override
         public synchronized void ack(TestMessage event) {
-            Optional.ofNullable(messages.peek()).orElse(new LinkedHashSet<>())
-                            .remove(event);
+            Optional.ofNullable(messages.peek()).orElse(new LinkedHashSet<>()).remove(event);
             acks.add(event);
         }
 
@@ -133,6 +124,7 @@ public class AloPollingReceiverTest {
 
     private interface TestMessage {
         int getId();
+
         String getMessage();
     }
 
@@ -140,8 +132,7 @@ public class AloPollingReceiverTest {
         private final int id;
         private final String message;
 
-        TestSuccessMessage(final int id,
-                    final String message) {
+        TestSuccessMessage(final int id, final String message) {
             this.id = id;
             this.message = message;
         }
@@ -155,24 +146,20 @@ public class AloPollingReceiverTest {
         public String getMessage() {
             return message;
         }
-
     }
 
     private static class TestFailureMessage implements TestMessage {
 
         private final int id;
         private final String message;
-        private final  int exceptionCount;
+        private final int exceptionCount;
         private final AtomicInteger count = new AtomicInteger(0);
 
-        TestFailureMessage(final int id,
-                           final String message,
-                           int exceptionCount) {
+        TestFailureMessage(final int id, final String message, int exceptionCount) {
             this.id = id;
             this.message = message;
             this.exceptionCount = exceptionCount;
         }
-
 
         @Override
         public int getId() {

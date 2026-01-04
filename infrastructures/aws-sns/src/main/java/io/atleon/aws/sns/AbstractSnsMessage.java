@@ -1,9 +1,8 @@
 package io.atleon.aws.sns;
 
-import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
-
 import java.util.Map;
 import java.util.Optional;
+import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
 
 /**
  * Base implementation of an {@link SnsMessage}
@@ -15,23 +14,22 @@ public abstract class AbstractSnsMessage<T> implements SnsMessage<T> {
     private final String messageDeduplicationId;
 
     private final String messageGroupId;
-    
+
     private final Map<String, MessageAttributeValue> messageAttributes;
-    
+
     private final String messageStructure;
-    
+
     private final String subject;
 
     private final T body;
 
     protected AbstractSnsMessage(
-        String messageDeduplicationId,
-        String messageGroupId,
-        Map<String, MessageAttributeValue> messageAttributes,
-        String messageStructure,
-        String subject,
-        T body
-    ) {
+            String messageDeduplicationId,
+            String messageGroupId,
+            Map<String, MessageAttributeValue> messageAttributes,
+            String messageStructure,
+            String subject,
+            T body) {
         this.messageDeduplicationId = messageDeduplicationId;
         this.messageGroupId = messageGroupId;
         this.messageAttributes = messageAttributes;

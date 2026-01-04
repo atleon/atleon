@@ -3,6 +3,15 @@ package io.atleon.kafka;
 import io.atleon.core.TaskLoop;
 import io.atleon.util.Proxying;
 import io.atleon.util.Publishing;
+import java.lang.reflect.Method;
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
@@ -14,16 +23,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
-import java.lang.reflect.Method;
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.BooleanSupplier;
-import java.util.function.Consumer;
-import java.util.function.Function;
-
 /**
  * A facade around an active {@link Producer} being used for sending.
  *
@@ -34,11 +33,8 @@ final class SendingProducer<K, V> implements ProducerInvocable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SendingProducer.class);
 
-    private static final Set<String> ALLOWED_EXTERNAL_PRODUCER_INVOCATIONS = new HashSet<>(Arrays.asList(
-        "clientInstanceId",
-        "metrics",
-        "partitionsFor"
-    ));
+    private static final Set<String> ALLOWED_EXTERNAL_PRODUCER_INVOCATIONS =
+            new HashSet<>(Arrays.asList("clientInstanceId", "metrics", "partitionsFor"));
 
     private final Producer<K, V> producer;
 
@@ -70,9 +66,9 @@ final class SendingProducer<K, V> implements ProducerInvocable {
     @Override
     public <T> Mono<T> invokeAndGet(Function<? super Producer<?, ?>, T> invocation) {
         if (taskLoop.isSourceOfCurrentThread()) {
-            throw new UnsupportedOperationException("ProducerInvocable::invokeAndGet should not be called from Kafka" +
-                " worker thread. It should rather be the case that the Producer is directly passed to the call site" +
-                " in some way, for example with ProducerListener::onClose.");
+            throw new UnsupportedOperationException("ProducerInvocable::invokeAndGet should not be called from Kafka"
+                    + " worker thread. It should rather be the case that the Producer is directly passed to the call site"
+                    + " in some way, for example with ProducerListener::onClose.");
         }
         return taskLoop.publish(() -> invocation.apply(externalProducerProxy));
     }
@@ -86,9 +82,7 @@ final class SendingProducer<K, V> implements ProducerInvocable {
     }
 
     public Mono<Void> sendOffsetsToTransaction(
-        Map<TopicPartition, OffsetAndMetadata> offsets,
-        ConsumerGroupMetadata metadata
-    ) {
+            Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata metadata) {
         return doOnProducer(it -> it.sendOffsetsToTransaction(offsets, metadata));
     }
 

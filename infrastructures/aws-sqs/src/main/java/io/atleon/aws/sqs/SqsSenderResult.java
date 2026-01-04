@@ -1,7 +1,6 @@
 package io.atleon.aws.sqs;
 
 import io.atleon.core.SenderResult;
-
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
@@ -23,12 +22,7 @@ public final class SqsSenderResult<C> implements SenderResult {
 
     private final C correlationMetadata;
 
-    private SqsSenderResult(
-        String requestId,
-        SuccessMetadata successMetadata,
-        Throwable error,
-        C correlationMetadata
-    ) {
+    private SqsSenderResult(String requestId, SuccessMetadata successMetadata, Throwable error, C correlationMetadata) {
         this.requestId = requestId;
         this.successMetadata = successMetadata;
         this.error = error;
@@ -36,11 +30,7 @@ public final class SqsSenderResult<C> implements SenderResult {
     }
 
     public static <C> SqsSenderResult<C> success(
-        String requestId,
-        String messageId,
-        String sequenceNumber,
-        C correlationMetadata
-    ) {
+            String requestId, String messageId, String sequenceNumber, C correlationMetadata) {
         SuccessMetadata successMetadata = new SuccessMetadata(messageId, sequenceNumber);
         return new SqsSenderResult<>(requestId, successMetadata, null, correlationMetadata);
     }
@@ -51,12 +41,11 @@ public final class SqsSenderResult<C> implements SenderResult {
 
     @Override
     public String toString() {
-        return "SqsSenderResult{" +
-            "requestId='" + requestId + '\'' +
-            ", successMetadata=" + successMetadata +
-            ", error=" + error +
-            ", correlationMetadata=" + correlationMetadata +
-            '}';
+        return "SqsSenderResult{" + "requestId='"
+                + requestId + '\'' + ", successMetadata="
+                + successMetadata + ", error="
+                + error + ", correlationMetadata="
+                + correlationMetadata + '}';
     }
 
     @Override

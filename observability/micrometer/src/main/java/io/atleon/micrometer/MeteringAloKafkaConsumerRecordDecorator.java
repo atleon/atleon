@@ -5,11 +5,10 @@ import io.atleon.kafka.AloKafkaConsumerRecordDecorator;
 import io.atleon.util.ConfigLoading;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
-import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-
 import java.util.Map;
 import java.util.Objects;
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 /**
  * An {@link AloKafkaConsumerRecordDecorator} that decorates {@link Alo} elements with metering
@@ -18,8 +17,7 @@ import java.util.Objects;
  * @param <V> The types of values in records decorated by this decorator
  */
 public final class MeteringAloKafkaConsumerRecordDecorator<K, V>
-    extends MeteringAloDecorator<ConsumerRecord<K, V>, String>
-    implements AloKafkaConsumerRecordDecorator<K, V> {
+        extends MeteringAloDecorator<ConsumerRecord<K, V>, String> implements AloKafkaConsumerRecordDecorator<K, V> {
 
     private String clientId = null;
 
@@ -30,7 +28,8 @@ public final class MeteringAloKafkaConsumerRecordDecorator<K, V>
     @Override
     public void configure(Map<String, ?> properties) {
         super.configure(properties);
-        clientId = ConfigLoading.loadString(properties, CommonClientConfigs.CLIENT_ID_CONFIG).orElse(clientId);
+        clientId = ConfigLoading.loadString(properties, CommonClientConfigs.CLIENT_ID_CONFIG)
+                .orElse(clientId);
     }
 
     @Override
@@ -40,9 +39,6 @@ public final class MeteringAloKafkaConsumerRecordDecorator<K, V>
 
     @Override
     protected Iterable<Tag> extractTags(String topic) {
-        return Tags.of(
-            Tag.of("client_id", Objects.toString(clientId)),
-            Tag.of("topic", topic)
-        );
+        return Tags.of(Tag.of("client_id", Objects.toString(clientId)), Tag.of("topic", topic));
     }
 }

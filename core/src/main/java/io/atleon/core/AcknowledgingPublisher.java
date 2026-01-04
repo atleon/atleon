@@ -1,14 +1,13 @@
 package io.atleon.core;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import org.reactivestreams.Subscription;
-
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Predicate;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 
 /**
  * A Publisher of {@link Alo} produced from a published mapping of another Alo. Takes care of
@@ -44,13 +43,18 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
     private static final class AcknowledgingSubscriber<T> implements Subscriber<T> {
 
-        private enum State {ACTIVE, IN_FLIGHT, EXECUTING, EXECUTED}
+        private enum State {
+            ACTIVE,
+            IN_FLIGHT,
+            EXECUTING,
+            EXECUTED
+        }
 
         private static final AtomicReferenceFieldUpdater<AcknowledgingSubscriber, State> STATE =
-            AtomicReferenceFieldUpdater.newUpdater(AcknowledgingSubscriber.class, State.class, "state");
+                AtomicReferenceFieldUpdater.newUpdater(AcknowledgingSubscriber.class, State.class, "state");
 
         private static final AtomicLongFieldUpdater<AcknowledgingSubscriber> COUNT =
-            AtomicLongFieldUpdater.newUpdater(AcknowledgingSubscriber.class, "count");
+                AtomicLongFieldUpdater.newUpdater(AcknowledgingSubscriber.class, "count");
 
         private final Alo<Publisher<T>> aloSource;
 
@@ -86,7 +90,8 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
 
         @Override
         public void onNext(T value) {
-            Acknowledgement acknowledgement = Acknowledgement.create(this::inFlightAcknowledged, this::inFlightNacknowledged);
+            Acknowledgement acknowledgement =
+                    Acknowledgement.create(this::inFlightAcknowledged, this::inFlightNacknowledged);
 
             COUNT.incrementAndGet(this);
             subscriber.onNext(factory.create(value, acknowledgement::positive, acknowledgement::negative));
@@ -96,8 +101,8 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
         public void onError(Throwable error) {
             AtomicReference<Throwable> errorReference = new AtomicReference<>(null);
 
-            if (STATE.compareAndSet(this, State.ACTIVE, State.EXECUTING) &&
-                AloFailureStrategy.choose(subscriber).process(aloSource, error, errorReference::set)) {
+            if (STATE.compareAndSet(this, State.ACTIVE, State.EXECUTING)
+                    && AloFailureStrategy.choose(subscriber).process(aloSource, error, errorReference::set)) {
                 // If we get here, the error we have received is the terminating signal, and that
                 // error has been successfully handled by the chosen failure strategy. We therefore
                 // clean up by marking our state as EXECUTED, which we can safely do since we know
@@ -109,7 +114,8 @@ final class AcknowledgingPublisher<T> implements Publisher<Alo<T>> {
                 // negative acknowledgement has been executed, or we raced with it), or handling
                 // the error has been delegated to us. Make sure negative acknowledgement is
                 // executed if it's possible to do so
-                maybeExecuteNacknowledger(error, priorState -> priorState == State.ACTIVE || priorState == State.EXECUTING);
+                maybeExecuteNacknowledger(
+                        error, priorState -> priorState == State.ACTIVE || priorState == State.EXECUTING);
             }
 
             Throwable errorToEmit = errorReference.get();

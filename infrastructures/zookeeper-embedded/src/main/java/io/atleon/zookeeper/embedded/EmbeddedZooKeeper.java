@@ -1,8 +1,7 @@
 package io.atleon.zookeeper.embedded;
 
-import org.apache.curator.test.TestingServer;
-
 import java.net.URL;
+import org.apache.curator.test.TestingServer;
 
 public final class EmbeddedZooKeeper {
 
@@ -10,9 +9,7 @@ public final class EmbeddedZooKeeper {
 
     private static URL zooKeeperConnect;
 
-    private EmbeddedZooKeeper() {
-
-    }
+    private EmbeddedZooKeeper() {}
 
     public static URL startAndGetConnectUrl() {
         return startAndGetConnectUrl(DEFAULT_PORT);

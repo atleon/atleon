@@ -3,7 +3,6 @@ package io.atleon.opentracing;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
 import io.atleon.core.ComposedAlo;
-
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;

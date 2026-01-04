@@ -7,8 +7,7 @@ public class ComposedPolled<P, O> implements Polled<P, O> {
     private final P payload;
     private final O offset;
 
-    public ComposedPolled(final P payload,
-                          final O offset) {
+    public ComposedPolled(final P payload, final O offset) {
         this.payload = payload;
         this.offset = offset;
     }

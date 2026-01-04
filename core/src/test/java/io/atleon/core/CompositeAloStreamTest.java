@@ -1,16 +1,15 @@
 package io.atleon.core;
 
-import org.junit.jupiter.api.Test;
-import reactor.core.Disposable;
-import reactor.core.Disposables;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Consumer;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import reactor.core.Disposable;
+import reactor.core.Disposables;
 
 class CompositeAloStreamTest {
 
@@ -27,7 +26,7 @@ class CompositeAloStreamTest {
         };
 
         AloStream<? super TestAloStreamConfig> stream =
-            CompositeAloStream.nCopies(copyCount, () -> new TestAloStream(configConsumer));
+                CompositeAloStream.nCopies(copyCount, () -> new TestAloStream(configConsumer));
 
         TestAloStreamConfig config = new TestAloStreamConfig("custom1", "custom2");
         stream.start(config);

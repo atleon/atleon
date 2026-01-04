@@ -2,7 +2,6 @@ package io.atleon.json.jackson;
 
 import io.atleon.aws.sqs.BodyDeserializer;
 import io.atleon.util.ConfigLoading;
-
 import java.util.Map;
 
 public final class TypedJsonSqsBodyDeserializer<T> implements BodyDeserializer<T> {

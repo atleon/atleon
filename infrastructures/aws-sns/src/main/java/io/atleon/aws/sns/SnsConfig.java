@@ -3,13 +3,12 @@ package io.atleon.aws.sns;
 import io.atleon.aws.util.AwsConfig;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
-import software.amazon.awssdk.services.sns.SnsAsyncClient;
-
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import software.amazon.awssdk.services.sns.SnsAsyncClient;
 
 /**
  * Config used by SNS Resources to build Clients and load typed configuration values.
@@ -30,10 +29,11 @@ public class SnsConfig {
 
     public SnsAsyncClient buildClient() {
         return SnsAsyncClient.builder()
-            .endpointOverride(ConfigLoading.loadUri(properties, ENDPOINT_OVERRIDE_CONFIG).orElse(null))
-            .credentialsProvider(AwsConfig.loadCredentialsProvider(properties))
-            .region(AwsConfig.loadRegion(properties).orElse(null))
-            .build();
+                .endpointOverride(ConfigLoading.loadUri(properties, ENDPOINT_OVERRIDE_CONFIG)
+                        .orElse(null))
+                .credentialsProvider(AwsConfig.loadCredentialsProvider(properties))
+                .region(AwsConfig.loadRegion(properties).orElse(null))
+                .build();
     }
 
     public <T extends Configurable> T loadConfiguredOrThrow(String property, Class<? extends T> type) {

@@ -1,14 +1,14 @@
 package io.atleon.application;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import io.atleon.core.AloStream;
 import io.atleon.core.AloStreamConfig;
 import io.atleon.core.Autostart;
 import org.junit.jupiter.api.Test;
 import reactor.core.Disposable;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class AbstractConfiguredAloStreamTest {
 
@@ -40,8 +40,7 @@ class AbstractConfiguredAloStreamTest {
 
         @Override
         protected Disposable startDisposable(AloStreamConfig config) {
-            return () -> {
-            };
+            return () -> {};
         }
     }
 
