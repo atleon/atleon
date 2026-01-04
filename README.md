@@ -1,7 +1,8 @@
 # Atleon
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Main Build Workflow](https://github.com/atleon/atleon/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/atleon/atleon/actions/workflows/build.yml)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.atleon/atleon-core/badge.svg?style=plastic)](https://mvnrepository.com/artifact/io.atleon)
+[![Maven Central](https://img.shields.io/maven-central/v/io.atleon/atleon-core)](
+https://search.maven.org/artifact/io.atleon/atleon-core)
 [![Javadoc](https://javadoc.io/badge2/io.atleon/atleon-core/javadoc.svg)](https://javadoc.io/doc/io.atleon/atleon-core)
 
 Atleon is a lightweight reactive stream processing framework that scalably transforms data from any supported infrastructure, and allows sending that data nearly anywhere, while _seamlessly_ maintaining **at** **le**ast **on**ce processing guarantees.
