@@ -1,7 +1,6 @@
 package io.atleon.aws.sqs;
 
 import io.atleon.core.ConfigSource;
-
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -11,9 +10,7 @@ import java.util.function.Function;
  */
 public class SqsConfigSource extends ConfigSource<SqsConfig, SqsConfigSource> {
 
-    protected SqsConfigSource() {
-
-    }
+    protected SqsConfigSource() {}
 
     protected SqsConfigSource(String name) {
         super(name);
@@ -37,9 +34,7 @@ public class SqsConfigSource extends ConfigSource<SqsConfig, SqsConfigSource> {
     }
 
     @Override
-    protected void validateProperties(Map<String, Object> properties) {
-
-    }
+    protected void validateProperties(Map<String, Object> properties) {}
 
     @Override
     protected SqsConfig postProcessProperties(Map<String, Object> properties) {

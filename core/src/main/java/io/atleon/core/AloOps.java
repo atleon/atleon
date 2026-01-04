@@ -1,10 +1,5 @@
 package io.atleon.core;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import reactor.core.publisher.SynchronousSink;
-import reactor.util.context.ContextView;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -15,6 +10,10 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import reactor.core.publisher.SynchronousSink;
+import reactor.util.context.ContextView;
 
 /**
  * Common utility methods associated with operations on Alo and related components
@@ -23,12 +22,10 @@ final class AloOps {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloOps.class);
 
-    private AloOps() {
+    private AloOps() {}
 
-    }
-
-    public static <T> BiConsumer<Alo<T>, SynchronousSink<Alo<T>>>
-    filteringHandler(Predicate<? super T> predicate, Consumer<? super Alo<T>> negativeConsumer) {
+    public static <T> BiConsumer<Alo<T>, SynchronousSink<Alo<T>>> filteringHandler(
+            Predicate<? super T> predicate, Consumer<? super Alo<T>> negativeConsumer) {
         return (alo, sink) -> {
             Boolean result = null;
             try {
@@ -47,8 +44,8 @@ final class AloOps {
         };
     }
 
-    public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<R>>>
-    typeFilteringHandler(Class<R> clazz, Consumer<? super Alo<T>> negativeConsumer) {
+    public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<R>>> typeFilteringHandler(
+            Class<R> clazz, Consumer<? super Alo<T>> negativeConsumer) {
         return (alo, sink) -> {
             if (clazz.isAssignableFrom(alo.get().getClass())) {
                 sink.next((Alo<R>) alo);
@@ -58,8 +55,8 @@ final class AloOps {
         };
     }
 
-    public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<R>>>
-    mappingHandler(Function<? super T, ? extends R> mapper) {
+    public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<R>>> mappingHandler(
+            Function<? super T, ? extends R> mapper) {
         return (alo, sink) -> {
             Alo<R> result = null;
             try {
@@ -75,8 +72,8 @@ final class AloOps {
         };
     }
 
-    public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<R>>>
-    mappingPresentHandler(Function<? super T, Optional<? extends R>> mapper, Consumer<? super Alo<T>> absentConsumer) {
+    public static <T, R> BiConsumer<Alo<T>, SynchronousSink<Alo<R>>> mappingPresentHandler(
+            Function<? super T, Optional<? extends R>> mapper, Consumer<? super Alo<T>> absentConsumer) {
         return (alo, sink) -> {
             Alo<Optional<? extends R>> result = null;
             try {
@@ -96,8 +93,8 @@ final class AloOps {
         };
     }
 
-    public static <T> BiConsumer<Alo<T>, SynchronousSink<Alo<Void>>>
-    consumingHandler(Consumer<? super T> consumer, Consumer<? super Alo<T>> afterSuccessConsumer) {
+    public static <T> BiConsumer<Alo<T>, SynchronousSink<Alo<Void>>> consumingHandler(
+            Consumer<? super T> consumer, Consumer<? super Alo<T>> afterSuccessConsumer) {
         return (alo, sink) -> {
             boolean consumed = false;
             try {
@@ -113,8 +110,8 @@ final class AloOps {
         };
     }
 
-    public static <T> BiConsumer<Alo<T>, SynchronousSink<Alo<T>>>
-    failureProcessingHandler(Predicate<? super T> isFailure, Function<? super T, ? extends Throwable> errorExtractor) {
+    public static <T> BiConsumer<Alo<T>, SynchronousSink<Alo<T>>> failureProcessingHandler(
+            Predicate<? super T> isFailure, Function<? super T, ? extends Throwable> errorExtractor) {
         return (alo, sink) -> {
             T t = alo.get();
             if (isFailure.test(t)) {
@@ -138,11 +135,13 @@ final class AloOps {
         if (alos.size() == 1) {
             return firstAlo.map(Collections::singletonList);
         } else {
-            return firstAlo.<T>fanInPropagator(alos).create(
-                alos.stream().map(Alo::get).collect(Collectors.toList()),
-                combineAcknowledgers(alos.stream().map(Alo::getAcknowledger).collect(Collectors.toList())),
-                combineNacknowledgers(alos.stream().map(Alo::getNacknowledger).collect(Collectors.toList()))
-            );
+            return firstAlo.<T>fanInPropagator(alos)
+                    .create(
+                            alos.stream().map(Alo::get).collect(Collectors.toList()),
+                            combineAcknowledgers(
+                                    alos.stream().map(Alo::getAcknowledger).collect(Collectors.toList())),
+                            combineNacknowledgers(
+                                    alos.stream().map(Alo::getNacknowledger).collect(Collectors.toList())));
         }
     }
 
@@ -150,7 +149,8 @@ final class AloOps {
         processFailure(sink, alo, error, () -> Alo.nacknowledge(alo, error));
     }
 
-    private static void processFailure(SynchronousSink<?> sink, Alo<?> alo, Throwable error, Runnable unprocessedFallback) {
+    private static void processFailure(
+            SynchronousSink<?> sink, Alo<?> alo, Throwable error, Runnable unprocessedFallback) {
         if (!AloFailureStrategy.choose(sink).process(alo, error, sink::error)) {
             unprocessedFallback.run();
         }
@@ -170,8 +170,8 @@ final class AloOps {
         return () -> acknowledgers.forEach(Runnable::run);
     }
 
-    private static Consumer<? super Throwable>
-    combineNacknowledgers(Iterable<? extends Consumer<? super Throwable>> nacknowledgers) {
+    private static Consumer<? super Throwable> combineNacknowledgers(
+            Iterable<? extends Consumer<? super Throwable>> nacknowledgers) {
         return error -> nacknowledgers.forEach(nacknowledger -> nacknowledger.accept(error));
     }
 

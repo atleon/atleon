@@ -1,5 +1,16 @@
 package io.atleon.kafka;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.OptionalLong;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -16,18 +27,6 @@ import org.apache.kafka.common.Uuid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.kafka.receiver.ReceiverOptions;
-
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.OptionalLong;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import java.util.regex.Pattern;
 
 /**
  * Enforces condition that at most one {@link Consumer} sourced from this class may be active at
@@ -56,7 +55,8 @@ class ConsumerMutexEnforcer {
     }
 
     protected <K, V> Consumer<K, V> newConsumer(ReceiverOptions<K, V> options) {
-        return new KafkaConsumer<>(options.consumerProperties(), options.keyDeserializer(), options.valueDeserializer());
+        return new KafkaConsumer<>(
+                options.consumerProperties(), options.keyDeserializer(), options.valueDeserializer());
     }
 
     private interface Invoker {
@@ -116,12 +116,12 @@ class ConsumerMutexEnforcer {
                 Instant deadline = consumptionDeadline;
                 if (deadline != null && Instant.now().compareTo(deadline) > 0) {
                     RuntimeException exception =
-                        new IllegalStateException("Consumer invocations prohibited, but invoked: " + clientId);
+                            new IllegalStateException("Consumer invocations prohibited, but invoked: " + clientId);
                     LOGGER.error(exception.getMessage(), exception);
                     throw exception;
                 } else if (deadline == null && ticket != ticketCounter.get()) {
                     RuntimeException exception =
-                        new IllegalStateException("Detected orphaned Consumer instance: " + clientId);
+                            new IllegalStateException("Detected orphaned Consumer instance: " + clientId);
                     LOGGER.error(exception.getMessage(), exception);
                     throw exception;
                 } else {
@@ -331,7 +331,8 @@ class ConsumerMutexEnforcer {
         }
 
         @Override
-        public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch, Duration timeout) {
+        public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(
+                Map<TopicPartition, Long> timestampsToSearch, Duration timeout) {
             return delegate.offsetsForTimes(timestampsToSearch, timeout);
         }
 

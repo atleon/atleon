@@ -17,6 +17,4 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * @param <V> The types of values in records consumed by this factory's listeners
  */
 public interface AloKafkaConsumerRecordSignalListenerFactory<K, V, STATE>
-    extends AloSignalListenerFactory<ConsumerRecord<K, V>, STATE> {
-
-}
+        extends AloSignalListenerFactory<ConsumerRecord<K, V>, STATE> {}

@@ -1,9 +1,8 @@
 package io.atleon.aws.sns;
 
-import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
-
 import java.util.Map;
 import java.util.UUID;
+import software.amazon.awssdk.services.sns.model.MessageAttributeValue;
 
 /**
  * An {@link SnsMessage} with serialized String body that can be sent to SQS. Each message may
@@ -13,21 +12,20 @@ import java.util.UUID;
  * @param <C> The type of correlated metadata propagated from this Message to its send Result
  */
 public final class SnsSenderMessage<C> extends AbstractSnsMessage<String> {
-    
+
     private final String requestId;
 
     private final C correlationMetadata;
 
     private SnsSenderMessage(
-        String requestId,
-        String messageDeduplicationId,
-        String messageGroupId,
-        Map<String, MessageAttributeValue> messageAttributes,
-        String messageStructure,
-        String subject,
-        String body,
-        C correlationMetadata
-    ) {
+            String requestId,
+            String messageDeduplicationId,
+            String messageGroupId,
+            Map<String, MessageAttributeValue> messageAttributes,
+            String messageStructure,
+            String subject,
+            String body,
+            C correlationMetadata) {
         super(messageDeduplicationId, messageGroupId, messageAttributes, messageStructure, subject, body);
         this.requestId = requestId;
         this.correlationMetadata = correlationMetadata;
@@ -72,15 +70,14 @@ public final class SnsSenderMessage<C> extends AbstractSnsMessage<String> {
 
         public SnsSenderMessage<C> build() {
             return new SnsSenderMessage<>(
-                requestId,
-                messageDeduplicationId,
-                messageGroupId,
-                messageAttributes,
-                messageStructure,
-                subject,
-                body,
-                correlationMetadata
-            );
+                    requestId,
+                    messageDeduplicationId,
+                    messageGroupId,
+                    messageAttributes,
+                    messageStructure,
+                    subject,
+                    body,
+                    correlationMetadata);
         }
 
         public Builder<C> messageDeduplicationId(String messageDeduplicationId) {

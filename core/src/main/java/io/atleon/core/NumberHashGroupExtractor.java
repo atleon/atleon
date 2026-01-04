@@ -3,7 +3,6 @@ package io.atleon.core;
 import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
-
 import java.util.function.Function;
 
 public abstract class NumberHashGroupExtractor<T> implements Function<T, Integer> {
@@ -16,8 +15,8 @@ public abstract class NumberHashGroupExtractor<T> implements Function<T, Integer
         this.modulus = modulus;
     }
 
-    public static <T> NumberHashGroupExtractor<T>
-    composed(Function<? super T, ? extends Number> extractor, int modulus) {
+    public static <T> NumberHashGroupExtractor<T> composed(
+            Function<? super T, ? extends Number> extractor, int modulus) {
         return new Composed<>(extractor, modulus);
     }
 

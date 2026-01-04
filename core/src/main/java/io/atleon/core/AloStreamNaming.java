@@ -6,9 +6,7 @@ public final class AloStreamNaming {
 
     private static final Pattern SUFFIX_PATTERN = Pattern.compile("(Config)$");
 
-    private AloStreamNaming() {
-
-    }
+    private AloStreamNaming() {}
 
     public static String fromConfigInKebabCaseWithoutConventionalSuffix(Class<? extends AloStreamConfig> configClass) {
         return toKebabCase(SUFFIX_PATTERN.matcher(configClass.getSimpleName()).replaceAll(""));

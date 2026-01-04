@@ -8,6 +8,4 @@ import java.util.function.Function;
  * @param <T> The (deserialized) type of body referenced by the resulting {@link SqsMessage}
  */
 @FunctionalInterface
-public interface SqsMessageCreator<T> extends Function<T, SqsMessage<T>> {
-
-}
+public interface SqsMessageCreator<T> extends Function<T, SqsMessage<T>> {}

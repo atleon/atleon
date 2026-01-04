@@ -4,13 +4,9 @@ import java.util.function.Consumer;
 
 public final class Consuming {
 
-    private Consuming() {
-
-    }
+    private Consuming() {}
 
     public static <T> Consumer<T> noOp() {
-        return __ -> {
-
-        };
+        return __ -> {};
     }
 }

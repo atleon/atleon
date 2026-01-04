@@ -1,8 +1,7 @@
 package io.atleon.avro;
 
-import org.apache.avro.reflect.Nullable;
-
 import java.util.Map;
+import org.apache.avro.reflect.Nullable;
 
 public class TestDataWithNullableMap {
 

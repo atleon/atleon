@@ -2,7 +2,6 @@ package io.atleon.polling.reactive;
 
 import io.atleon.polling.Pollable;
 import io.atleon.polling.Polled;
-
 import java.util.Collection;
 import java.util.stream.Collectors;
 
@@ -18,20 +17,13 @@ public abstract class AbstractPollingTest {
 
         @Override
         public Collection<Polled<String, String>> poll() {
-            return events
-                    .stream()
-                    .map(e -> Polled.compose(e, e))
-                    .collect(Collectors.toList());
+            return events.stream().map(e -> Polled.compose(e, e)).collect(Collectors.toList());
         }
 
         @Override
-        public void ack(String event) {
-
-        }
+        public void ack(String event) {}
 
         @Override
-        public void nack(Throwable t, String event) {
-
-        }
+        public void nack(Throwable t, String event) {}
     }
 }

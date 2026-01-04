@@ -24,23 +24,21 @@ import java.util.stream.StreamSupport;
  */
 public final class ConfigLoading {
 
-    private ConfigLoading() {
-
-    }
+    private ConfigLoading() {}
 
     /**
      * Strips out conventional Atleon-specific properties to distill "native" config
      */
     public static Map<String, Object> loadNative(Map<String, ?> configs) {
         return configs.entrySet().stream()
-            .filter(entry -> !entry.getKey().matches("^((atleon\\.)|(\\w+\\.(bounded\\.)?(receiver|sender)\\.)).+"))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                .filter(entry -> !entry.getKey().matches("^((atleon\\.)|(\\w+\\.(bounded\\.)?(receiver|sender)\\.)).+"))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    public static <T extends Configurable> T
-    loadConfiguredOrThrow(Map<String, ?> configs, String property, Class<? extends T> type) {
+    public static <T extends Configurable> T loadConfiguredOrThrow(
+            Map<String, ?> configs, String property, Class<? extends T> type) {
         return loadConfiguredWithPredefinedTypes(configs, property, type, typeName -> Optional.empty())
-            .orElseThrow(supplyMissingConfigPropertyException(property));
+                .orElseThrow(supplyMissingConfigPropertyException(property));
     }
 
     public static Duration loadDurationOrThrow(Map<String, ?> configs, String property) {
@@ -72,24 +70,22 @@ public final class ConfigLoading {
     }
 
     public static <T extends Configurable> Optional<T> loadConfiguredWithPredefinedTypes(
-        Map<String, ?> configs,
-        String property,
-        Class<? extends T> type,
-        Function<String, Optional<T>> predefinedTypeInstantiator
-    ) {
+            Map<String, ?> configs,
+            String property,
+            Class<? extends T> type,
+            Function<String, Optional<T>> predefinedTypeInstantiator) {
         Optional<T> result = loadInstanceWithPredefinedTypes(configs, property, type, predefinedTypeInstantiator);
         result.ifPresent(configurable -> configurable.configure(configs));
         return result;
     }
 
     public static <T> Optional<T> loadInstanceWithPredefinedTypes(
-        Map<String, ?> configs,
-        String property,
-        Class<? extends T> type,
-        Function<String, Optional<T>> predefinedTypeInstantiator
-    ) {
+            Map<String, ?> configs,
+            String property,
+            Class<? extends T> type,
+            Function<String, Optional<T>> predefinedTypeInstantiator) {
         Function<String, T> instantiator = typeName ->
-            predefinedTypeInstantiator.apply(typeName).orElseGet(() -> Instantiation.oneTyped(type, typeName));
+                predefinedTypeInstantiator.apply(typeName).orElseGet(() -> Instantiation.oneTyped(type, typeName));
         return load(configs, property, value -> coerce(value, type, instantiator));
     }
 
@@ -123,20 +119,20 @@ public final class ConfigLoading {
 
     public static Optional<Class<?>> loadClass(Map<String, ?> configs, String property) {
         return loadParseable(configs, property, Class.class, TypeResolution::classForQualifiedName)
-            .map(type -> (Class<?>) type);
+                .map(type -> (Class<?>) type);
     }
 
-    public static <T> Optional<T>
-    loadParseable(Map<String, ?> configs, String property, Class<T> type, Function<? super String, T> parser) {
+    public static <T> Optional<T> loadParseable(
+            Map<String, ?> configs, String property, Class<T> type, Function<? super String, T> parser) {
         return load(configs, property, value -> coerce(value, type, parser));
     }
 
-    public static <T extends Configurable> List<T>
-    loadListOfConfiguredServices(Class<? extends T> type, Map<String, ?> configs) {
+    public static <T extends Configurable> List<T> loadListOfConfiguredServices(
+            Class<? extends T> type, Map<String, ?> configs) {
         ServiceLoader<? extends T> serviceLoader = ServiceLoader.load(type);
         return StreamSupport.stream(serviceLoader.spliterator(), false)
-            .peek(configurable -> configurable.configure(configs))
-            .collect(Collectors.toList());
+                .peek(configurable -> configurable.configure(configs))
+                .collect(Collectors.toList());
     }
 
     public static <T> List<T> loadListOfInstancesOrEmpty(Map<String, ?> configs, String property, Class<T> type) {
@@ -148,13 +144,12 @@ public final class ConfigLoading {
     }
 
     public static <T extends Configurable> Optional<List<T>> loadListOfConfiguredWithPredefinedTypes(
-        Map<String, ?> configs,
-        String property,
-        Class<? extends T> type,
-        Function<String, Optional<List<T>>> predefinedTypeInstantiator
-    ) {
+            Map<String, ?> configs,
+            String property,
+            Class<? extends T> type,
+            Function<String, Optional<List<T>>> predefinedTypeInstantiator) {
         Optional<List<T>> result =
-            loadListOfInstancesWithPredefinedTypes(configs, property, type, predefinedTypeInstantiator);
+                loadListOfInstancesWithPredefinedTypes(configs, property, type, predefinedTypeInstantiator);
         result.ifPresent(configurables -> configurables.forEach(configurable -> configurable.configure(configs)));
         return result;
     }
@@ -164,18 +159,17 @@ public final class ConfigLoading {
     }
 
     public static <T> Optional<List<T>> loadListOfInstancesWithPredefinedTypes(
-        Map<String, ?> configs,
-        String property,
-        Class<? extends T> type,
-        Function<String, Optional<List<T>>> predefinedTypeInstantiator
-    ) {
+            Map<String, ?> configs,
+            String property,
+            Class<? extends T> type,
+            Function<String, Optional<List<T>>> predefinedTypeInstantiator) {
         return loadStream(configs, property, Function.identity())
-            .map(stream -> coerceToList(stream, type, predefinedTypeInstantiator));
+                .map(stream -> coerceToList(stream, type, predefinedTypeInstantiator));
     }
 
     public static Optional<Set<String>> loadSetOfString(Map<String, ?> configs, String property) {
         return loadStream(configs, property, Objects::toString)
-            .map(stream -> stream.collect(Collectors.toCollection(LinkedHashSet::new)));
+                .map(stream -> stream.collect(Collectors.toCollection(LinkedHashSet::new)));
     }
 
     private static <T extends Enum<T>> T parseEnum(Class<T> enumType, String value) {
@@ -193,10 +187,12 @@ public final class ConfigLoading {
         return Optional.ofNullable(configs.get(property)).map(coercer);
     }
 
-    private static <T> Optional<Stream<T>> loadStream(Map<String, ?> configs, String property, Function<Object, T> coercer) {
+    private static <T> Optional<Stream<T>> loadStream(
+            Map<String, ?> configs, String property, Function<Object, T> coercer) {
         if (configs.containsKey(property)) {
             Object value = configs.get(property);
-            return Optional.of(value == null ? Stream.empty() : convertToStream(value).map(coercer));
+            return Optional.of(
+                    value == null ? Stream.empty() : convertToStream(value).map(coercer));
         } else {
             return Optional.empty();
         }
@@ -206,33 +202,28 @@ public final class ConfigLoading {
         if (value instanceof Collection) {
             return Collection.class.cast(value).stream();
         } else if (value instanceof CharSequence) {
-            return Stream.of(value.toString().split(","))
-                .map(String::trim)
-                .filter(string -> !string.isEmpty());
+            return Stream.of(value.toString().split(",")).map(String::trim).filter(string -> !string.isEmpty());
         } else {
             return Stream.of(value);
         }
     }
 
     private static <T> List<T> coerceToList(
-        Stream<Object> stream,
-        Class<? extends T> type,
-        Function<String, Optional<List<T>>> predefinedTypeInstantiator
-    ) {
+            Stream<Object> stream,
+            Class<? extends T> type,
+            Function<String, Optional<List<T>>> predefinedTypeInstantiator) {
         Function<String, T> instantiator = typeName -> Instantiation.oneTyped(type, typeName);
         return stream.flatMap(object -> coerceToList(object, type, instantiator, predefinedTypeInstantiator).stream())
-            .collect(Collectors.toList());
+                .collect(Collectors.toList());
     }
 
     private static <T> List<T> coerceToList(
-        Object value,
-        Class<? extends T> toType,
-        Function<? super String, T> parser,
-        Function<String, Optional<List<T>>> predefinedTypeInstantiator
-    ) {
-        Optional<List<T>> instantiated = value instanceof CharSequence
-            ? predefinedTypeInstantiator.apply(value.toString())
-            : Optional.empty();
+            Object value,
+            Class<? extends T> toType,
+            Function<? super String, T> parser,
+            Function<String, Optional<List<T>>> predefinedTypeInstantiator) {
+        Optional<List<T>> instantiated =
+                value instanceof CharSequence ? predefinedTypeInstantiator.apply(value.toString()) : Optional.empty();
         return instantiated.orElseGet(() -> Collections.singletonList(coerce(value, toType, parser)));
     }
 

@@ -1,18 +1,5 @@
 package io.atleon.kafka;
 
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.errors.WakeupException;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-
-import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.function.Function;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -22,6 +9,18 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.function.Function;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 class PollManagerTest {
 
@@ -52,9 +51,10 @@ class PollManagerTest {
 
         pollManager.activateAssigned(consumer, Collections.singletonList(partition), Function.identity());
 
-        assertThrows(IllegalStateException.class, () ->
-            pollManager.activateAssigned(consumer, Collections.singletonList(partition), Function.identity())
-        );
+        assertThrows(
+                IllegalStateException.class,
+                () -> pollManager.activateAssigned(
+                        consumer, Collections.singletonList(partition), Function.identity()));
     }
 
     @Test

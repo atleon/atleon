@@ -1,15 +1,15 @@
 package io.atleon.micrometer;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.Collections;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
+import java.util.Collections;
+import org.junit.jupiter.api.Test;
+
 class AuditedMetricRegistryTest {
 
-    private final AuditedMetricRegistry<TestAuditor, Integer, Integer> registry = new AuditedMetricRegistry<>(TestAuditor::evaluate, Integer.MIN_VALUE);
+    private final AuditedMetricRegistry<TestAuditor, Integer, Integer> registry =
+            new AuditedMetricRegistry<>(TestAuditor::evaluate, Integer.MIN_VALUE);
 
     @Test
     public void auditorCanBeRegistered() {

@@ -1,10 +1,9 @@
 package io.atleon.core;
 
-import reactor.core.Disposable;
-import reactor.core.scheduler.Scheduler;
-
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import reactor.core.Disposable;
+import reactor.core.scheduler.Scheduler;
 
 /**
  * An {@link AloStream} that is configured by its own self. Extending this is a handy shortcut for
@@ -12,15 +11,14 @@ import java.util.concurrent.atomic.AtomicReference;
  * into the stream while also having the lifespan of the stream be managed by the containing
  * application/context (like Spring).
  */
-public abstract class SelfConfigurableAloStream extends AloStream<SelfConfigurableAloStream> implements AloStreamConfig {
+public abstract class SelfConfigurableAloStream extends AloStream<SelfConfigurableAloStream>
+        implements AloStreamConfig {
 
     private final AtomicReference<Integer> instanceId = new AtomicReference<>();
 
     @Override
     public String name() {
-        return instanceId()
-            .map(id -> AloStreamConfig.super.name() + "-i" + id)
-            .orElseGet(AloStreamConfig.super::name);
+        return instanceId().map(id -> AloStreamConfig.super.name() + "-i" + id).orElseGet(AloStreamConfig.super::name);
     }
 
     @Override

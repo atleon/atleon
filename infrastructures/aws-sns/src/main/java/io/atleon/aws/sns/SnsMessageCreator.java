@@ -8,6 +8,4 @@ import java.util.function.Function;
  * @param <T> The (deserialized) type of body referenced by the resulting {@link SnsMessage}
  */
 @FunctionalInterface
-public interface SnsMessageCreator<T> extends Function<T, SnsMessage<T>> {
-
-}
+public interface SnsMessageCreator<T> extends Function<T, SnsMessage<T>> {}

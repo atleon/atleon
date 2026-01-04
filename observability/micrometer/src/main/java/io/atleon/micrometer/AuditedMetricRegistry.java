@@ -49,8 +49,8 @@ public final class AuditedMetricRegistry<A, M, R> {
 
     public R evaluate(MeterKey key) {
         return Optional.ofNullable(auditedMetricsByKey.get(key))
-            .map(auditedMetric -> auditedMetric.evaluate(evaluator))
-            .orElse(absentEvaluation);
+                .map(auditedMetric -> auditedMetric.evaluate(evaluator))
+                .orElse(absentEvaluation);
     }
 
     private MeterKey internKey(MeterKey key) {
@@ -65,8 +65,8 @@ public final class AuditedMetricRegistry<A, M, R> {
 
     private boolean isCurrentAuditor(MeterKey key, A auditor) {
         return Optional.ofNullable(auditedMetricsByKey.get(key))
-            .map(auditedMetric -> auditedMetric.isAuditedBy(auditor))
-            .orElse(false);
+                .map(auditedMetric -> auditedMetric.isAuditedBy(auditor))
+                .orElse(false);
     }
 
     private static final class AuditedMetric<A, M> {
@@ -99,8 +99,7 @@ public final class AuditedMetricRegistry<A, M, R> {
             }
 
             AuditedMetric<?, ?> that = (AuditedMetric<?, ?>) o;
-            return Objects.equals(auditor, that.auditor) &&
-                Objects.equals(metric, that.metric);
+            return Objects.equals(auditor, that.auditor) && Objects.equals(metric, that.metric);
         }
 
         @Override

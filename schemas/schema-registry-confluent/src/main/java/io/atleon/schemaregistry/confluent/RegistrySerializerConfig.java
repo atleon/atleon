@@ -1,8 +1,7 @@
 package io.atleon.schemaregistry.confluent;
 
-import org.apache.kafka.common.config.ConfigDef;
-
 import java.util.Map;
+import org.apache.kafka.common.config.ConfigDef;
 
 public class RegistrySerializerConfig extends RegistrySerDeConfig {
 

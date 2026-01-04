@@ -6,7 +6,6 @@ import io.atleon.core.Alo;
 import io.atleon.util.ConfigLoading;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
-
 import java.util.Map;
 import java.util.Objects;
 
@@ -15,9 +14,8 @@ import java.util.Objects;
  *
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedSqsMessage}s
  */
-public final class MeteringAloReceivedSqsMessageDecorator<T>
-    extends MeteringAloDecorator<ReceivedSqsMessage<T>, Void>
-    implements AloReceivedSqsMessageDecorator<T> {
+public final class MeteringAloReceivedSqsMessageDecorator<T> extends MeteringAloDecorator<ReceivedSqsMessage<T>, Void>
+        implements AloReceivedSqsMessageDecorator<T> {
 
     private String queueUrl = null;
 

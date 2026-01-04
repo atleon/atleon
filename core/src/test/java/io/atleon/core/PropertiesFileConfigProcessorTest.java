@@ -1,6 +1,6 @@
 package io.atleon.core;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -8,8 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.Properties;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
 
 class PropertiesFileConfigProcessorTest {
 
@@ -22,10 +21,10 @@ class PropertiesFileConfigProcessorTest {
         Path propertiesFilePath = writePropertiesFile(properties, "noprefix");
 
         Map<String, Object> result = new DummyConfigSource()
-            .with(ConfigSource.PROCESSORS_PROPERTY, PropertiesFileConfigProcessor.class)
-            .with(PropertiesFileConfigProcessor.FILES_PROPERTY, propertiesFilePath.toString())
-            .create()
-            .block();
+                .with(ConfigSource.PROCESSORS_PROPERTY, PropertiesFileConfigProcessor.class)
+                .with(PropertiesFileConfigProcessor.FILES_PROPERTY, propertiesFilePath.toString())
+                .create()
+                .block();
 
         properties.forEach((key, value) -> assertEquals(value, result.get(key), key.toString()));
     }
@@ -40,10 +39,10 @@ class PropertiesFileConfigProcessorTest {
         Path propertiesFilePath = writePropertiesFile(properties, "prefix");
 
         Map<String, Object> result = new DummyConfigSource()
-            .with(ConfigSource.PROCESSORS_PROPERTY, PropertiesFileConfigProcessor.class)
-            .with(PropertiesFileConfigProcessor.FILES_PROPERTY, propertiesFilePath + ":" + prefix)
-            .create()
-            .block();
+                .with(ConfigSource.PROCESSORS_PROPERTY, PropertiesFileConfigProcessor.class)
+                .with(PropertiesFileConfigProcessor.FILES_PROPERTY, propertiesFilePath + ":" + prefix)
+                .create()
+                .block();
 
         assertEquals(properties.get("foo.fooKey"), result.get("fooKey"));
     }
@@ -67,9 +66,7 @@ class PropertiesFileConfigProcessorTest {
         }
 
         @Override
-        protected void validateProperties(Map<String, Object> properties) {
-
-        }
+        protected void validateProperties(Map<String, Object> properties) {}
 
         @Override
         protected Map<String, Object> postProcessProperties(Map<String, Object> properties) {

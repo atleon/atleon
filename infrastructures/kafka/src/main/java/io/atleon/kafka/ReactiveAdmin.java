@@ -1,5 +1,16 @@
 package io.atleon.kafka;
 
+import java.io.Closeable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.LongUnaryOperator;
+import java.util.stream.Collectors;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsSpec;
 import org.apache.kafka.clients.admin.ListOffsetsOptions;
@@ -14,18 +25,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.MonoSink;
 
-import java.io.Closeable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.function.LongUnaryOperator;
-import java.util.stream.Collectors;
-
 /**
  * Wrapper around a Kafka {@link Admin} instance providing a reactive facade for commonly used
  * utility functions.
@@ -33,7 +32,7 @@ import java.util.stream.Collectors;
 public class ReactiveAdmin implements Closeable {
 
     private static final ListOffsetsOptions LIST_OFFSETS_OPTIONS =
-        new ListOffsetsOptions(IsolationLevel.READ_COMMITTED);
+            new ListOffsetsOptions(IsolationLevel.READ_COMMITTED);
 
     private final Admin admin;
 
@@ -55,8 +54,9 @@ public class ReactiveAdmin implements Closeable {
      */
     public Mono<Void> alterRawConsumerGroupOffsets(String groupId, Map<TopicPartition, Long> offsets) {
         Map<TopicPartition, OffsetAndMetadata> offsetsAndMetadata = offsets.entrySet().stream()
-            .collect(Collectors.toMap(Map.Entry::getKey, it -> new OffsetAndMetadata(it.getValue())));
-        return execute(admin -> admin.alterConsumerGroupOffsets(groupId, offsetsAndMetadata).all());
+                .collect(Collectors.toMap(Map.Entry::getKey, it -> new OffsetAndMetadata(it.getValue())));
+        return execute(admin ->
+                admin.alterConsumerGroupOffsets(groupId, offsetsAndMetadata).all());
     }
 
     /**
@@ -89,9 +89,9 @@ public class ReactiveAdmin implements Closeable {
      */
     public Flux<TopicPartitionGroupOffsets> listTopicPartitionGroupOffsets(Collection<String> groupIds) {
         Map<String, ListConsumerGroupOffsetsSpec> offsetSpecs = groupIds.stream()
-            .collect(Collectors.toMap(Function.identity(), __ -> new ListConsumerGroupOffsetsSpec()));
+                .collect(Collectors.toMap(Function.identity(), __ -> new ListConsumerGroupOffsetsSpec()));
         return execute(admin -> admin.listConsumerGroupOffsets(offsetSpecs).all())
-            .flatMapMany(this::listTopicPartitionGroupOffsets);
+                .flatMapMany(this::listTopicPartitionGroupOffsets);
     }
 
     /**
@@ -107,10 +107,7 @@ public class ReactiveAdmin implements Closeable {
      * @return A {@link Flux} of {@link TopicPartitionGroupOffsets} describing group and partition offsets
      */
     public Flux<TopicPartitionGroupOffsets> listTopicPartitionGroupOffsets(
-        String groupId,
-        OffsetResetStrategy resetStrategy,
-        Collection<TopicPartition> topicPartitions
-    ) {
+            String groupId, OffsetResetStrategy resetStrategy, Collection<TopicPartition> topicPartitions) {
         return listTopicPartitionGroupOffsets(Collections.singletonMap(groupId, resetStrategy), topicPartitions);
     }
 
@@ -126,17 +123,16 @@ public class ReactiveAdmin implements Closeable {
      * @return A {@link Flux} of {@link TopicPartitionGroupOffsets} describing group and partition offsets
      */
     public Flux<TopicPartitionGroupOffsets> listTopicPartitionGroupOffsets(
-        Map<String, OffsetResetStrategy> groupIds,
-        Collection<TopicPartition> topicPartitions
-    ) {
+            Map<String, OffsetResetStrategy> groupIds, Collection<TopicPartition> topicPartitions) {
         ListConsumerGroupOffsetsSpec offsetsSpec = new ListConsumerGroupOffsetsSpec().topicPartitions(topicPartitions);
-        Map<String, ListConsumerGroupOffsetsSpec> offsetSpecs = groupIds.keySet().stream()
-            .collect(Collectors.toMap(Function.identity(), __ -> offsetsSpec));
+        Map<String, ListConsumerGroupOffsetsSpec> offsetSpecs =
+                groupIds.keySet().stream().collect(Collectors.toMap(Function.identity(), __ -> offsetsSpec));
         return Mono.zip(
-            execute(admin -> admin.listConsumerGroupOffsets(offsetSpecs).all()),
-            listOffsets(topicPartitions, OffsetSpec.earliest()),
-            listOffsets(topicPartitions, OffsetSpec.latest())
-        ).flatMapIterable(it -> createTopicPartitionGroupOffsets(groupIds, it.getT1(), it.getT2(), it.getT3()));
+                        execute(admin ->
+                                admin.listConsumerGroupOffsets(offsetSpecs).all()),
+                        listOffsets(topicPartitions, OffsetSpec.earliest()),
+                        listOffsets(topicPartitions, OffsetSpec.latest()))
+                .flatMapIterable(it -> createTopicPartitionGroupOffsets(groupIds, it.getT1(), it.getT2(), it.getT3()));
     }
 
     /**
@@ -147,7 +143,8 @@ public class ReactiveAdmin implements Closeable {
      * @param offsetSpec      The criteria used to describe offsets for
      * @return A {@link Mono} of a single {@link Map} containing offsets for the provided {@link TopicPartition}s
      */
-    public Mono<Map<TopicPartition, Long>> listOffsets(Collection<TopicPartition> topicPartitions, OffsetSpec offsetSpec) {
+    public Mono<Map<TopicPartition, Long>> listOffsets(
+            Collection<TopicPartition> topicPartitions, OffsetSpec offsetSpec) {
         return listOffsets(topicPartitions.stream().collect(Collectors.toMap(Function.identity(), __ -> offsetSpec)));
     }
 
@@ -170,15 +167,16 @@ public class ReactiveAdmin implements Closeable {
      * @return A {@link Mono} of a single {@link Map} containing offsets for the provided {@link TopicPartition}s
      */
     public Mono<Map<TopicPartition, Long>> listOffsets(
-        Map<TopicPartition, OffsetSpec> offsetSpecs,
-        LongUnaryOperator adjustment
-    ) {
+            Map<TopicPartition, OffsetSpec> offsetSpecs, LongUnaryOperator adjustment) {
         if (offsetSpecs.isEmpty()) {
             return Mono.empty();
         } else {
-            return execute(admin -> admin.listOffsets(offsetSpecs, LIST_OFFSETS_OPTIONS).all())
-                .flatMapIterable(Map::entrySet)
-                .collectMap(Map.Entry::getKey, it -> adjustment.applyAsLong(it.getValue().offset()));
+            return execute(admin ->
+                            admin.listOffsets(offsetSpecs, LIST_OFFSETS_OPTIONS).all())
+                    .flatMapIterable(Map::entrySet)
+                    .collectMap(
+                            Map.Entry::getKey,
+                            it -> adjustment.applyAsLong(it.getValue().offset()));
         }
     }
 
@@ -200,8 +198,8 @@ public class ReactiveAdmin implements Closeable {
      */
     public Flux<TopicPartition> listTopicPartitions(Collection<String> topics) {
         return execute(admin -> admin.describeTopics(topics).allTopicNames())
-            .flatMapIterable(Map::values)
-            .flatMapIterable(ReactiveAdmin::extractTopicPartitions);
+                .flatMapIterable(Map::values)
+                .flatMapIterable(ReactiveAdmin::extractTopicPartitions);
     }
 
     @Override
@@ -210,13 +208,12 @@ public class ReactiveAdmin implements Closeable {
     }
 
     private Flux<TopicPartitionGroupOffsets> listTopicPartitionGroupOffsets(
-        Map<String, Map<TopicPartition, OffsetAndMetadata>> offsetsByGroup
-    ) {
+            Map<String, Map<TopicPartition, OffsetAndMetadata>> offsetsByGroup) {
         Set<TopicPartition> topicPartitions = offsetsByGroup.values().stream()
-            .flatMap(it -> it.keySet().stream())
-            .collect(Collectors.toSet());
+                .flatMap(it -> it.keySet().stream())
+                .collect(Collectors.toSet());
         return listOffsets(topicPartitions, OffsetSpec.latest())
-            .flatMapIterable(it -> createTopicPartitionGroupOffsets(offsetsByGroup, it));
+                .flatMapIterable(it -> createTopicPartitionGroupOffsets(offsetsByGroup, it));
     }
 
     private <T> Mono<T> execute(Function<Admin, KafkaFuture<T>> method) {
@@ -225,59 +222,59 @@ public class ReactiveAdmin implements Closeable {
 
     private static List<TopicPartition> extractTopicPartitions(TopicDescription topicDescription) {
         return topicDescription.partitions().stream()
-            .map(it -> new TopicPartition(topicDescription.name(), it.partition()))
-            .collect(Collectors.toList());
+                .map(it -> new TopicPartition(topicDescription.name(), it.partition()))
+                .collect(Collectors.toList());
     }
 
     private static List<TopicPartitionGroupOffsets> createTopicPartitionGroupOffsets(
-        Map<String, Map<TopicPartition, OffsetAndMetadata>> offsetsByGroup,
-        Map<TopicPartition, Long> latestOffsets
-    ) {
+            Map<String, Map<TopicPartition, OffsetAndMetadata>> offsetsByGroup,
+            Map<TopicPartition, Long> latestOffsets) {
         return offsetsByGroup.entrySet().stream()
-            .flatMap(it -> createTopicPartitionGroupOffsets(it.getKey(), it.getValue(), latestOffsets).stream())
-            .collect(Collectors.toList());
+                .flatMap(it -> createTopicPartitionGroupOffsets(it.getKey(), it.getValue(), latestOffsets).stream())
+                .collect(Collectors.toList());
     }
 
     private static List<TopicPartitionGroupOffsets> createTopicPartitionGroupOffsets(
-        String groupId,
-        Map<TopicPartition, OffsetAndMetadata> groupOffsets,
-        Map<TopicPartition, Long> latestOffsets
-    ) {
+            String groupId,
+            Map<TopicPartition, OffsetAndMetadata> groupOffsets,
+            Map<TopicPartition, Long> latestOffsets) {
         return latestOffsets.entrySet().stream()
-            .filter(it -> groupOffsets.get(it.getKey()) != null) // Values may be explicitly set to null
-            .map(it -> new TopicPartitionGroupOffsets(
-                it.getKey(), it.getValue(), groupId, groupOffsets.get(it.getKey()).offset()))
-            .collect(Collectors.toList());
+                .filter(it -> groupOffsets.get(it.getKey()) != null) // Values may be explicitly set to null
+                .map(it -> new TopicPartitionGroupOffsets(
+                        it.getKey(),
+                        it.getValue(),
+                        groupId,
+                        groupOffsets.get(it.getKey()).offset()))
+                .collect(Collectors.toList());
     }
 
     private static List<TopicPartitionGroupOffsets> createTopicPartitionGroupOffsets(
-        Map<String, OffsetResetStrategy> groupIds,
-        Map<String, Map<TopicPartition, OffsetAndMetadata>> offsetsByGroup,
-        Map<TopicPartition, Long> earliestOffsets,
-        Map<TopicPartition, Long> latestOffsets
-    ) {
+            Map<String, OffsetResetStrategy> groupIds,
+            Map<String, Map<TopicPartition, OffsetAndMetadata>> offsetsByGroup,
+            Map<TopicPartition, Long> earliestOffsets,
+            Map<TopicPartition, Long> latestOffsets) {
         List<TopicPartitionGroupOffsets> result = new ArrayList<>();
         for (String groupId : groupIds.keySet()) {
             OffsetResetStrategy resetStrategy = groupIds.get(groupId);
-            Map<TopicPartition, OffsetAndMetadata> offsets = offsetsByGroup.getOrDefault(groupId, Collections.emptyMap());
+            Map<TopicPartition, OffsetAndMetadata> offsets =
+                    offsetsByGroup.getOrDefault(groupId, Collections.emptyMap());
             for (TopicPartition topicPartition : latestOffsets.keySet()) {
                 long earliestOffset = earliestOffsets.get(topicPartition);
                 long latestOffset = latestOffsets.get(topicPartition);
                 calculateGroupOffset(topicPartition, offsets, resetStrategy, earliestOffset, latestOffset)
-                    .map(it -> new TopicPartitionGroupOffsets(topicPartition, latestOffset, groupId, it))
-                    .ifPresent(result::add);
+                        .map(it -> new TopicPartitionGroupOffsets(topicPartition, latestOffset, groupId, it))
+                        .ifPresent(result::add);
             }
         }
         return result;
     }
 
     private static Optional<Long> calculateGroupOffset(
-        TopicPartition topicPartition,
-        Map<TopicPartition, OffsetAndMetadata> committedOffsets,
-        OffsetResetStrategy resetStrategy,
-        long earliestOffset,
-        long latestOffset
-    ) {
+            TopicPartition topicPartition,
+            Map<TopicPartition, OffsetAndMetadata> committedOffsets,
+            OffsetResetStrategy resetStrategy,
+            long earliestOffset,
+            long latestOffset) {
         OffsetAndMetadata committedOffsetAndMetadata = committedOffsets.get(topicPartition);
         if (committedOffsetAndMetadata != null) {
             return Optional.of(committedOffsetAndMetadata.offset());

@@ -13,10 +13,9 @@ import java.util.function.Function;
 public interface AloComponentExtractor<T, V> {
 
     static <T, V> AloComponentExtractor<T, V> composed(
-        Function<T, Runnable> acknowledgerExtractor,
-        Function<T, Consumer<? super Throwable>> nacknowledgerExtractor,
-        Function<? super T, ? extends V> valueExtractor
-    ) {
+            Function<T, Runnable> acknowledgerExtractor,
+            Function<T, Consumer<? super Throwable>> nacknowledgerExtractor,
+            Function<? super T, ? extends V> valueExtractor) {
         return new Composed<>(acknowledgerExtractor, nacknowledgerExtractor, valueExtractor);
     }
 
@@ -35,10 +34,9 @@ public interface AloComponentExtractor<T, V> {
         private final Function<? super T, ? extends V> valueExtractor;
 
         private Composed(
-            Function<T, Runnable> acknowledgerExtractor,
-            Function<T, Consumer<? super Throwable>> nacknowledgerExtractor,
-            Function<? super T, ? extends V> valueExtractor
-        ) {
+                Function<T, Runnable> acknowledgerExtractor,
+                Function<T, Consumer<? super Throwable>> nacknowledgerExtractor,
+                Function<? super T, ? extends V> valueExtractor) {
             this.acknowledgerExtractor = acknowledgerExtractor;
             this.nacknowledgerExtractor = nacknowledgerExtractor;
             this.valueExtractor = valueExtractor;

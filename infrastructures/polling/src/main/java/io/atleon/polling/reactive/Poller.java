@@ -2,11 +2,10 @@ package io.atleon.polling.reactive;
 
 import io.atleon.polling.Pollable;
 import io.atleon.polling.Polled;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
 import java.time.Duration;
 import java.util.Collection;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * The PollingHandler manages the interaction between the event loop which handles polling and the downstream
@@ -24,8 +23,7 @@ public interface Poller<P, O> {
      * @param <O> - The type of the object used for ack and nack.
      * @return - A new PollingHandler instance.
      */
-    static <P, O> Poller<P, O> create(final Pollable<P, O> pollable,
-                                      final Duration pollingInterval) {
+    static <P, O> Poller<P, O> create(final Pollable<P, O> pollable, final Duration pollingInterval) {
         return new PollerImp<>(pollable, pollingInterval);
     }
 

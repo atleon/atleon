@@ -26,11 +26,7 @@ public class RabbitMQMessage<T> {
     }
 
     public static <T> RabbitMQMessage<T> create(
-        String exchange,
-        String routingKey,
-        AMQP.BasicProperties properties,
-        T body
-    ) {
+            String exchange, String routingKey, AMQP.BasicProperties properties, T body) {
         return new RabbitMQMessage<>(exchange, routingKey, properties, body);
     }
 

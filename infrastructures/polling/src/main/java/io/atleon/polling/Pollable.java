@@ -1,7 +1,6 @@
 package io.atleon.polling;
 
 import io.atleon.polling.reactive.PollingReceiver;
-
 import java.util.Collection;
 
 /**

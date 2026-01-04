@@ -2,6 +2,10 @@ package io.atleon.polling.reactive;
 
 import io.atleon.polling.Pollable;
 import io.atleon.polling.Polled;
+import java.time.Duration;
+import java.util.Collection;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -9,11 +13,6 @@ import reactor.core.publisher.SignalType;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Scheduler;
 import reactor.util.annotation.NonNull;
-
-import java.time.Duration;
-import java.util.Collection;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PollingEventLoop<P, O> implements Sinks.EmitFailureHandler {
 
@@ -25,10 +24,11 @@ public class PollingEventLoop<P, O> implements Sinks.EmitFailureHandler {
     private final AtomicBoolean active;
     private final Duration pollingInterval;
 
-    public PollingEventLoop(final Scheduler scheduler,
-                            final Pollable<P, O> pollable,
-                            final Duration pollingInterval,
-                            final Sinks.Many<Collection<Polled<P, O>>> sink) {
+    public PollingEventLoop(
+            final Scheduler scheduler,
+            final Pollable<P, O> pollable,
+            final Duration pollingInterval,
+            final Sinks.Many<Collection<Polled<P, O>>> sink) {
         this.scheduler = scheduler;
         this.pollable = pollable;
         this.pollingInterval = pollingInterval;
@@ -43,8 +43,7 @@ public class PollingEventLoop<P, O> implements Sinks.EmitFailureHandler {
     }
 
     public Mono<Void> stop() {
-        return Mono
-                .defer(() -> {
+        return Mono.defer(() -> {
                     pollEvent.stop();
                     return Mono.<Void>empty();
                 })
@@ -52,10 +51,7 @@ public class PollingEventLoop<P, O> implements Sinks.EmitFailureHandler {
     }
 
     @Override
-    public boolean onEmitFailure(@NonNull
-                                 final SignalType signalType,
-                                 @NonNull
-                                 final Sinks.EmitResult emitResult) {
+    public boolean onEmitFailure(@NonNull final SignalType signalType, @NonNull final Sinks.EmitResult emitResult) {
         if (!active.get()) {
             return false;
         } else {

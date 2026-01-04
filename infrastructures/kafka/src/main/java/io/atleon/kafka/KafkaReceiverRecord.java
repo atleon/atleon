@@ -1,9 +1,8 @@
 package io.atleon.kafka;
 
+import java.util.function.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
-
-import java.util.function.Consumer;
 
 /**
  * A wrapper around a received Kafka {@link ConsumerRecord} that has been emitted and should be
@@ -21,20 +20,14 @@ public final class KafkaReceiverRecord<K, V> {
     private final Consumer<Throwable> nacknowledger;
 
     private KafkaReceiverRecord(
-        ConsumerRecord<K, V> consumerRecord,
-        Runnable acknowledger,
-        Consumer<Throwable> nacknowledger
-    ) {
+            ConsumerRecord<K, V> consumerRecord, Runnable acknowledger, Consumer<Throwable> nacknowledger) {
         this.consumerRecord = consumerRecord;
         this.acknowledger = acknowledger;
         this.nacknowledger = nacknowledger;
     }
 
     public static <K, V> KafkaReceiverRecord<K, V> create(
-        ConsumerRecord<K, V> consumerRecord,
-        Runnable acknowledger,
-        Consumer<Throwable> nacknowledger
-    ) {
+            ConsumerRecord<K, V> consumerRecord, Runnable acknowledger, Consumer<Throwable> nacknowledger) {
         return new KafkaReceiverRecord<>(consumerRecord, acknowledger, nacknowledger);
     }
 

@@ -3,7 +3,6 @@ package io.atleon.protobuf;
 import com.google.protobuf.Message;
 import io.atleon.rabbitmq.BodyDeserializer;
 import io.atleon.rabbitmq.SerializedBody;
-
 import java.util.Map;
 import java.util.function.Function;
 

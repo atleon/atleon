@@ -9,13 +9,6 @@ import io.atleon.core.AloQueueListenerConfig;
 import io.atleon.core.AloSignalListenerFactory;
 import io.atleon.core.AloSignalListenerFactoryConfig;
 import io.atleon.util.Defaults;
-import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.TopicPartition;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.kafka.receiver.ReceiverOptions;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
@@ -28,6 +21,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.kafka.receiver.ReceiverOptions;
 
 /**
  * A reactive Kafka receiver with at-least-once semantics for consuming records from topics of a
@@ -260,8 +259,7 @@ public class AloKafkaReceiver<K, V> {
      * @return A Publisher of Alo items referencing values extracted from Kafka ConsumerRecords
      */
     public AloFlux<V> receiveAloValues(Collection<String> topics) {
-        return receiveAloRecords(topics)
-            .mapNotNull(ConsumerRecord::value);
+        return receiveAloRecords(topics).mapNotNull(ConsumerRecord::value);
     }
 
     /**
@@ -272,8 +270,7 @@ public class AloKafkaReceiver<K, V> {
      * @return A Publisher of Alo items referencing values extracted from Kafka ConsumerRecords
      */
     public AloFlux<V> receiveAloValues(Pattern topicsPattern) {
-        return receiveAloRecords(topicsPattern)
-            .mapNotNull(ConsumerRecord::value);
+        return receiveAloRecords(topicsPattern).mapNotNull(ConsumerRecord::value);
     }
 
     /**
@@ -335,8 +332,8 @@ public class AloKafkaReceiver<K, V> {
      * @param prioritization Indicates the priority of consuming any given {@link TopicPartition}
      * @return A Publisher of Alo items referencing prioritized Kafka ConsumerRecords
      */
-    public AloFlux<ConsumerRecord<K, V>>
-    receivePrioritizedAloRecords(String topic, ReceptionPrioritization prioritization) {
+    public AloFlux<ConsumerRecord<K, V>> receivePrioritizedAloRecords(
+            String topic, ReceptionPrioritization prioritization) {
         return receivePrioritizedAloRecords(Collections.singleton(topic), prioritization, Defaults.PREFETCH);
     }
 
@@ -365,31 +362,32 @@ public class AloKafkaReceiver<K, V> {
      * @param prefetch       The number of elements to prefetch from each merged sequence
      * @return A Publisher of Alo items referencing prioritized Kafka ConsumerRecords
      */
-    public AloFlux<ConsumerRecord<K, V>>
-    receivePrioritizedAloRecords(Collection<String> topics, ReceptionPrioritization prioritization, int prefetch) {
+    public AloFlux<ConsumerRecord<K, V>> receivePrioritizedAloRecords(
+            Collection<String> topics, ReceptionPrioritization prioritization, int prefetch) {
         ReceptionFactory<K, V> receptionFactory = ReceptionFactory.topics(topics);
-        return configSource.create()
-            .flatMap(it -> createOrderedConfigs(it, topics, prioritization))
-            .map(receptionFactory::receive)
-            .flatMapMany(it -> Flux.mergePriority(prefetch, toComparator(prioritization), it))
-            .as(AloFlux::wrap);
+        return configSource
+                .create()
+                .flatMap(it -> createOrderedConfigs(it, topics, prioritization))
+                .map(receptionFactory::receive)
+                .flatMapMany(it -> Flux.mergePriority(prefetch, toComparator(prioritization), it))
+                .as(AloFlux::wrap);
     }
 
-    private static Mono<List<KafkaConfig>>
-    createOrderedConfigs(KafkaConfig config, Collection<String> topics, ReceptionPrioritization prioritization) {
+    private static Mono<List<KafkaConfig>> createOrderedConfigs(
+            KafkaConfig config, Collection<String> topics, ReceptionPrioritization prioritization) {
         return listTopicPartitions(config, topics)
-            .map(it -> prioritize(prioritization, it))
-            .distinct()
-            .sort(Comparator.naturalOrder())
-            .map(it -> config.withClientIdSuffix("-", "p" + it))
-            .collectList();
+                .map(it -> prioritize(prioritization, it))
+                .distinct()
+                .sort(Comparator.naturalOrder())
+                .map(it -> config.withClientIdSuffix("-", "p" + it))
+                .collectList();
     }
 
     private static Flux<TopicPartition> listTopicPartitions(KafkaConfig config, Collection<String> topics) {
         return Flux.using(
-            () -> ReactiveAdmin.create(config.nativeProperties()),
-            it -> it.listTopicPartitions(topics),
-            ReactiveAdmin::close);
+                () -> ReactiveAdmin.create(config.nativeProperties()),
+                it -> it.listTopicPartitions(topics),
+                ReactiveAdmin::close);
     }
 
     private static int prioritize(ReceptionPrioritization prioritization, TopicPartition topicPartition) {
@@ -401,8 +399,8 @@ public class AloKafkaReceiver<K, V> {
     }
 
     private static <K, V> Comparator<Alo<ConsumerRecord<K, V>>> toComparator(ReceptionPrioritization prioritization) {
-        return Comparator.comparing(alo ->
-            prioritization.prioritize(ConsumerRecordExtraction.topicPartition(alo.get())));
+        return Comparator.comparing(
+                alo -> prioritization.prioritize(ConsumerRecordExtraction.topicPartition(alo.get())));
     }
 
     private interface ReceptionInvocation<K, V> {
@@ -419,31 +417,30 @@ public class AloKafkaReceiver<K, V> {
         private final Map<Object, ConsumerMutexEnforcer> consumerMutexEnforcers = new ConcurrentHashMap<>();
 
         private ReceptionFactory(
-            ReceptionInvocation<K, V> receptionInvocation,
-            LegacyReceiveResources.OptionsInitializer<K, V> optionsInitializer
-        ) {
+                ReceptionInvocation<K, V> receptionInvocation,
+                LegacyReceiveResources.OptionsInitializer<K, V> optionsInitializer) {
             this.receptionInvocation = receptionInvocation;
             this.optionsInitializer = optionsInitializer;
         }
 
         public static <K, V> ReceptionFactory<K, V> topics(Collection<String> topics) {
             return new ReceptionFactory<>(
-                receiver -> receiver.receiveManual(topics),
-                config -> ReceiverOptions.<K, V>create(config).subscription(topics));
+                    receiver -> receiver.receiveManual(topics),
+                    config -> ReceiverOptions.<K, V>create(config).subscription(topics));
         }
 
         public static <K, V> ReceptionFactory<K, V> topicsPattern(Pattern topicsPattern) {
             return new ReceptionFactory<>(
-                receiver -> receiver.receiveManual(topicsPattern),
-                config -> ReceiverOptions.<K, V>create(config).subscription(topicsPattern));
+                    receiver -> receiver.receiveManual(topicsPattern),
+                    config -> ReceiverOptions.<K, V>create(config).subscription(topicsPattern));
         }
 
         @SuppressWarnings("unchecked")
         public Flux<Alo<ConsumerRecord<K, V>>>[] receive(List<KafkaConfig> orderedConfigs) {
             // Config index used as config key, since mutex should be maintained per reception lifecycle
             return IntStream.range(0, orderedConfigs.size())
-                .mapToObj(it -> receive(it, orderedConfigs.get(it)))
-                .toArray(Flux[]::new);
+                    .mapToObj(it -> receive(it, orderedConfigs.get(it)))
+                    .toArray(Flux[]::new);
         }
 
         public Flux<Alo<ConsumerRecord<K, V>>> receive(KafkaConfig config) {
@@ -453,7 +450,7 @@ public class AloKafkaReceiver<K, V> {
 
         private Flux<Alo<ConsumerRecord<K, V>>> receive(Object configKey, KafkaConfig config) {
             ConsumerMutexEnforcer consumerMutexEnforcer =
-                consumerMutexEnforcers.computeIfAbsent(configKey, __ -> new ConsumerMutexEnforcer());
+                    consumerMutexEnforcers.computeIfAbsent(configKey, __ -> new ConsumerMutexEnforcer());
             if (config.loadString(RECEPTION_TYPE_CONFIG).orElse("OPTIMIZED").equalsIgnoreCase("OPTIMIZED")) {
                 return new ReceiveResources<K, V>(config).receive(receptionInvocation, consumerMutexEnforcer);
             } else {
@@ -482,33 +479,35 @@ public class AloKafkaReceiver<K, V> {
             this.aloFactory = loadAloFactory(config);
         }
 
-        public Flux<Alo<ConsumerRecord<K, V>>>
-        receive(ReceptionInvocation<K, V> receptionInvocation, ConsumerMutexEnforcer consumerMutexEnforcer) {
+        public Flux<Alo<ConsumerRecord<K, V>>> receive(
+                ReceptionInvocation<K, V> receptionInvocation, ConsumerMutexEnforcer consumerMutexEnforcer) {
             KafkaReceiverOptions<K, V> options = newReceiverOptions(consumerMutexEnforcer);
-            return receptionInvocation.invoke(KafkaReceiver.create(options))
-                .map(this::toAloConsumerRecord)
-                .transform(this::applySignalListenerFactories);
+            return receptionInvocation
+                    .invoke(KafkaReceiver.create(options))
+                    .map(this::toAloConsumerRecord)
+                    .transform(this::applySignalListenerFactories);
         }
 
         private KafkaReceiverOptions<K, V> newReceiverOptions(ConsumerMutexEnforcer consumerMutexEnforcer) {
             KafkaReceiverOptions<K, V> defaultOptions = KafkaReceiverOptions.defaultOptions();
             return KafkaReceiverOptions.<K, V>newBuilder(consumerMutexEnforcer.newConsumerFactory())
-                .consumerProperties(newConsumerConfig())
-                .receptionListener(loadReceptionListener())
-                .pollStrategyFactory(pollStrategyFactory)
-                .fullPollRecordsPrefetch(config.loadInt(FULL_POLL_RECORDS_PREFETCH_CONFIG)
-                    .orElse(defaultOptions.fullPollRecordsPrefetch()))
-                .maxActiveInFlight(config.loadLong(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG)
-                    .orElse(DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION))
-                .pollTimeout(config.loadDuration(POLL_TIMEOUT_CONFIG).orElse(defaultOptions.pollTimeout()))
-                .acknowledgementQueueMode(acknowledgementQueueMode)
-                .commitPeriod(config.loadDuration(COMMIT_INTERVAL_CONFIG).orElse(defaultOptions.commitPeriod()))
-                .maxCommitAttempts(config.loadInt(MAX_COMMIT_ATTEMPTS_CONFIG).orElse(defaultOptions.maxCommitAttempts()))
-                .revocationGracePeriod(loadRevocationGracePeriod().orElse(defaultOptions.revocationGracePeriod()))
-                .terminationGracePeriod(config.loadDuration(TERMINATION_GRACE_PERIOD_CONFIG)
-                    .orElse(defaultOptions.terminationGracePeriod()))
-                .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
-                .build();
+                    .consumerProperties(newConsumerConfig())
+                    .receptionListener(loadReceptionListener())
+                    .pollStrategyFactory(pollStrategyFactory)
+                    .fullPollRecordsPrefetch(config.loadInt(FULL_POLL_RECORDS_PREFETCH_CONFIG)
+                            .orElse(defaultOptions.fullPollRecordsPrefetch()))
+                    .maxActiveInFlight(config.loadLong(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG)
+                            .orElse(DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION))
+                    .pollTimeout(config.loadDuration(POLL_TIMEOUT_CONFIG).orElse(defaultOptions.pollTimeout()))
+                    .acknowledgementQueueMode(acknowledgementQueueMode)
+                    .commitPeriod(config.loadDuration(COMMIT_INTERVAL_CONFIG).orElse(defaultOptions.commitPeriod()))
+                    .maxCommitAttempts(
+                            config.loadInt(MAX_COMMIT_ATTEMPTS_CONFIG).orElse(defaultOptions.maxCommitAttempts()))
+                    .revocationGracePeriod(loadRevocationGracePeriod().orElse(defaultOptions.revocationGracePeriod()))
+                    .terminationGracePeriod(config.loadDuration(TERMINATION_GRACE_PERIOD_CONFIG)
+                            .orElse(defaultOptions.terminationGracePeriod()))
+                    .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
+                    .build();
         }
 
         private Map<String, Object> newConsumerConfig() {
@@ -518,7 +517,8 @@ public class AloKafkaReceiver<K, V> {
 
                 // If enabled, increment Client ID
                 if (config.loadBoolean(AUTO_INCREMENT_CLIENT_ID_CONFIG).orElse(DEFAULT_AUTO_INCREMENT_CLIENT_ID)) {
-                    properties.computeIfPresent(CommonClientConfigs.CLIENT_ID_CONFIG, (__, id) -> incrementId(id.toString()));
+                    properties.computeIfPresent(
+                            CommonClientConfigs.CLIENT_ID_CONFIG, (__, id) -> incrementId(id.toString()));
                 }
             });
         }
@@ -526,30 +526,31 @@ public class AloKafkaReceiver<K, V> {
         private Optional<Duration> loadRevocationGracePeriod() {
             Optional<Duration> revocationGracePeriod = config.loadDuration(REVOCATION_GRACE_PERIOD_CONFIG);
             revocationGracePeriod = revocationGracePeriod.isPresent()
-                ? revocationGracePeriod
-                : config.loadDuration(MAX_DELAY_REBALANCE_CONFIG);
+                    ? revocationGracePeriod
+                    : config.loadDuration(MAX_DELAY_REBALANCE_CONFIG);
             return revocationGracePeriod.isPresent() || acknowledgementQueueMode == AcknowledgementQueueMode.STRICT
-                ? revocationGracePeriod
-                : Optional.of(Duration.ZERO); // By default, disable delay if acknowledgements may be skipped
+                    ? revocationGracePeriod
+                    : Optional.of(Duration.ZERO); // By default, disable delay if acknowledgements may be skipped
         }
 
         private ReceptionListener loadReceptionListener() {
             Map<String, Object> listenerConfig = config.modifyAndGetProperties(properties -> {});
             return AloQueueListenerConfig.load(listenerConfig, AloKafkaQueueListener.class)
-                .<ReceptionListener>map(AloQueueReceptionListener::new)
-                .orElseGet(ReceptionListener::noOp);
+                    .<ReceptionListener>map(AloQueueReceptionListener::new)
+                    .orElseGet(ReceptionListener::noOp);
         }
 
         private Alo<ConsumerRecord<K, V>> toAloConsumerRecord(KafkaReceiverRecord<K, V> receiverRecord) {
             Consumer<Throwable> nacknowledger =
-                nacknowledgerFactory.create(receiverRecord.consumerRecord(), receiverRecord.nacknowledger());
+                    nacknowledgerFactory.create(receiverRecord.consumerRecord(), receiverRecord.nacknowledger());
             return aloFactory.create(receiverRecord.consumerRecord(), receiverRecord.acknowledger(), nacknowledger);
         }
 
-        private Flux<Alo<ConsumerRecord<K, V>>> applySignalListenerFactories(Flux<Alo<ConsumerRecord<K, V>>> aloRecords) {
+        private Flux<Alo<ConsumerRecord<K, V>>> applySignalListenerFactories(
+                Flux<Alo<ConsumerRecord<K, V>>> aloRecords) {
             Map<String, Object> factoryConfig = config.modifyAndGetProperties(properties -> {});
-            List<AloSignalListenerFactory<ConsumerRecord<K, V>, ?>> factories =
-                AloSignalListenerFactoryConfig.loadList(factoryConfig, AloKafkaConsumerRecordSignalListenerFactory.class);
+            List<AloSignalListenerFactory<ConsumerRecord<K, V>, ?>> factories = AloSignalListenerFactoryConfig.loadList(
+                    factoryConfig, AloKafkaConsumerRecordSignalListenerFactory.class);
             for (AloSignalListenerFactory<ConsumerRecord<K, V>, ?> factory : factories) {
                 aloRecords = aloRecords.tap(factory);
             }
@@ -558,10 +559,9 @@ public class AloKafkaReceiver<K, V> {
 
         private static PollStrategyFactory createPollStrategyFactory(KafkaConfig config) {
             Optional<PollStrategyFactory> pollStrategyFactory1 = config.loadInstanceWithPredefinedTypes(
-                POLL_STRATEGY_FACTORY_CONFIG,
-                PollStrategyFactory.class,
-                ReceiveResources::newPredefinedPollStrategyFactory
-            );
+                    POLL_STRATEGY_FACTORY_CONFIG,
+                    PollStrategyFactory.class,
+                    ReceiveResources::newPredefinedPollStrategyFactory);
             return pollStrategyFactory1.orElseGet(PollStrategyFactory::natural);
         }
 
@@ -581,13 +581,15 @@ public class AloKafkaReceiver<K, V> {
 
         private static <K, V> NacknowledgerFactory<K, V> createNacknowledgerFactory(KafkaConfig config) {
             Optional<NacknowledgerFactory<K, V>> nacknowledgerFactory =
-                loadNacknowledgerFactory(config, NACKNOWLEDGER_TYPE_CONFIG, NacknowledgerFactory.class);
+                    loadNacknowledgerFactory(config, NACKNOWLEDGER_TYPE_CONFIG, NacknowledgerFactory.class);
             return nacknowledgerFactory.orElseGet(NacknowledgerFactory.Emit::new);
         }
 
-        private static <K, V, N extends NacknowledgerFactory<K, V>> Optional<NacknowledgerFactory<K, V>>
-        loadNacknowledgerFactory(KafkaConfig config, String key, Class<N> type) {
-            return config.loadConfiguredWithPredefinedTypes(key, type, ReceiveResources::newPredefinedNacknowledgerFactory);
+        private static <K, V, N extends NacknowledgerFactory<K, V>>
+                Optional<NacknowledgerFactory<K, V>> loadNacknowledgerFactory(
+                        KafkaConfig config, String key, Class<N> type) {
+            return config.loadConfiguredWithPredefinedTypes(
+                    key, type, ReceiveResources::newPredefinedNacknowledgerFactory);
         }
 
         private static <K, V> Optional<NacknowledgerFactory<K, V>> newPredefinedNacknowledgerFactory(String typeName) {
@@ -605,11 +607,12 @@ public class AloKafkaReceiver<K, V> {
 
         private static AcknowledgementQueueMode loadAcknowledgementQueueMode(KafkaConfig config) {
             return config.loadEnum(ACKNOWLEDGEMENT_QUEUE_MODE_CONFIG, AcknowledgementQueueMode.class)
-                .orElse(DEFAULT_ACKNOWLEDGEMENT_QUEUE_MODE);
+                    .orElse(DEFAULT_ACKNOWLEDGEMENT_QUEUE_MODE);
         }
 
         private static String incrementId(String id) {
-            return id + "-" + COUNTS_BY_ID.computeIfAbsent(id, __ -> new AtomicLong()).incrementAndGet();
+            return id + "-"
+                    + COUNTS_BY_ID.computeIfAbsent(id, __ -> new AtomicLong()).incrementAndGet();
         }
     }
 }

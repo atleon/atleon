@@ -2,11 +2,10 @@ package io.atleon.aws.sqs;
 
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.Map;
 import java.util.function.Consumer;
+import org.slf4j.Logger;
 
 /**
  * An interface for creating a "nacknowledger" ({@link Consumer} of Throwable) that is executed
@@ -23,28 +22,22 @@ public interface NacknowledgerFactory<T> extends Configurable {
     String VISIBILITY_RESET_SECONDS_CONFIG = "sqs.nacknowledger.visibility.reset.seconds";
 
     @Override
-    default void configure(Map<String, ?> properties) {
-
-    }
+    default void configure(Map<String, ?> properties) {}
 
     Consumer<Throwable> create(
-        ReceivedSqsMessage<T> message,
-        SqsMessageVisibilityChanger visibilityChanger,
-        Consumer<Throwable> errorEmitter
-    );
+            ReceivedSqsMessage<T> message,
+            SqsMessageVisibilityChanger visibilityChanger,
+            Consumer<Throwable> errorEmitter);
 
     final class Emit<T> implements NacknowledgerFactory<T> {
 
-        Emit() {
-
-        }
+        Emit() {}
 
         @Override
         public Consumer<Throwable> create(
-            ReceivedSqsMessage<T> message,
-            SqsMessageVisibilityChanger visibilityChanger,
-            Consumer<Throwable> errorEmitter
-        ) {
+                ReceivedSqsMessage<T> message,
+                SqsMessageVisibilityChanger visibilityChanger,
+                Consumer<Throwable> errorEmitter) {
             return errorEmitter;
         }
     }
@@ -61,18 +54,22 @@ public interface NacknowledgerFactory<T> extends Configurable {
 
         @Override
         public void configure(Map<String, ?> properties) {
-            this.seconds = ConfigLoading.loadInt(properties, VISIBILITY_RESET_SECONDS_CONFIG).orElse(seconds);
+            this.seconds = ConfigLoading.loadInt(properties, VISIBILITY_RESET_SECONDS_CONFIG)
+                    .orElse(seconds);
         }
 
         @Override
         public Consumer<Throwable> create(
-            ReceivedSqsMessage<T> message,
-            SqsMessageVisibilityChanger visibilityChanger,
-            Consumer<Throwable> errorEmitter
-        ) {
+                ReceivedSqsMessage<T> message,
+                SqsMessageVisibilityChanger visibilityChanger,
+                Consumer<Throwable> errorEmitter) {
             String messageId = message.messageId(); // Avoid keeping the whole message in memory
             return error -> {
-                logger.warn("Nacknowledging Message id={} by resetting visibility to {} seconds", messageId, seconds, error);
+                logger.warn(
+                        "Nacknowledging Message id={} by resetting visibility to {} seconds",
+                        messageId,
+                        seconds,
+                        error);
                 visibilityChanger.execute(Duration.ofSeconds(seconds), false);
             };
         }

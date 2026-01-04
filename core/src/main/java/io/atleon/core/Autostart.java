@@ -5,5 +5,6 @@ package io.atleon.core;
  * processes, like {@link AloStream}.
  */
 public enum Autostart {
-    DISABLED, ENABLED
+    DISABLED,
+    ENABLED
 }

@@ -5,9 +5,7 @@ package io.atleon.util;
  */
 public final class Calculation {
 
-    private Calculation() {
-
-    }
+    private Calculation() {}
 
     /**
      * Calculates the binary logarithm (log base 2) of the given value, returning the floor of the

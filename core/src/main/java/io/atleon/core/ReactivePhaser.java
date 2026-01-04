@@ -1,11 +1,10 @@
 package io.atleon.core;
 
+import java.util.concurrent.Phaser;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
-
-import java.util.concurrent.Phaser;
 
 /**
  * An extension of {@link Phaser} that allows subscribing to phase advances.
@@ -30,8 +29,9 @@ public final class ReactivePhaser extends Phaser {
 
     public Mono<Integer> arriveAndAwaitAdvanceReactively(Scheduler scheduler) {
         return Mono.fromSupplier(this::arrive)
-            .flatMap(arrivalPhase -> awaitAdvanceReactively(arrivalPhase, scheduler).thenReturn(arrivalPhase))
-            .cache();
+                .flatMap(arrivalPhase ->
+                        awaitAdvanceReactively(arrivalPhase, scheduler).thenReturn(arrivalPhase))
+                .cache();
     }
 
     public Mono<Integer> awaitAdvanceReactively(int phase) {
@@ -43,9 +43,9 @@ public final class ReactivePhaser extends Phaser {
             return Mono.just(phase);
         } else {
             return sink.asFlux()
-                .publishOn(scheduler)
-                .filter(phaseAdvancedTo -> phaseAdvancedTo < 0 || phaseAdvancedTo > phase)
-                .next();
+                    .publishOn(scheduler)
+                    .filter(phaseAdvancedTo -> phaseAdvancedTo < 0 || phaseAdvancedTo > phase)
+                    .next();
         }
     }
 

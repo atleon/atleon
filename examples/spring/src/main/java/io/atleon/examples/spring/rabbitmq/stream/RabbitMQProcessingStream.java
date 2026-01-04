@@ -32,28 +32,28 @@ public class RabbitMQProcessingStream extends SpringAloStream {
         AloRabbitMQSender<Long> sender = buildRabbitMQLongSender();
 
         return buildRabbitMQLongReceiver()
-            .receiveAloBodies(getRequiredProperty("stream.rabbitmq.input.queue"))
-            .filter(service::isPrime)
-            .transform(sender.sendAloBodies(buildLongMessageCreator()))
-            .resubscribeOnError(name())
-            .doFinally(sender::close)
-            .subscribeWith(new DefaultAloSenderResultSubscriber<>());
+                .receiveAloBodies(getRequiredProperty("stream.rabbitmq.input.queue"))
+                .filter(service::isPrime)
+                .transform(sender.sendAloBodies(buildLongMessageCreator()))
+                .resubscribeOnError(name())
+                .doFinally(sender::close)
+                .subscribeWith(new DefaultAloSenderResultSubscriber<>());
     }
 
     public AloRabbitMQReceiver<Long> buildRabbitMQLongReceiver() {
-        return configSource.with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName())
-            .as(AloRabbitMQReceiver::create);
+        return configSource
+                .with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName())
+                .as(AloRabbitMQReceiver::create);
     }
 
     public AloRabbitMQSender<Long> buildRabbitMQLongSender() {
-        return configSource.with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, LongBodySerializer.class.getName())
-            .as(AloRabbitMQSender::create);
+        return configSource
+                .with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, LongBodySerializer.class.getName())
+                .as(AloRabbitMQSender::create);
     }
 
     public RabbitMQMessageCreator<Long> buildLongMessageCreator() {
         return DefaultRabbitMQMessageCreator.minimalBasic(
-            getRequiredProperty("stream.rabbitmq.exchange"),
-            getRequiredProperty("stream.rabbitmq.output.queue")
-        );
+                getRequiredProperty("stream.rabbitmq.exchange"), getRequiredProperty("stream.rabbitmq.output.queue"));
     }
 }

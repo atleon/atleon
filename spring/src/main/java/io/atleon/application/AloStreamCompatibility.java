@@ -2,7 +2,6 @@ package io.atleon.application;
 
 import io.atleon.core.AloStream;
 import io.atleon.core.AloStreamConfig;
-
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Collection;
@@ -15,25 +14,22 @@ import java.util.stream.Collectors;
  */
 public final class AloStreamCompatibility {
 
-    private AloStreamCompatibility() {
-
-    }
+    private AloStreamCompatibility() {}
 
     public static <C extends AloStreamConfig> Optional<AloStream<? super C>> findSingleCompatibleStream(
-        Collection<? extends AloStream<?>> registeredStreams,
-        C config
-    ) {
+            Collection<? extends AloStream<?>> registeredStreams, C config) {
         List<? extends AloStream<? super C>> compatibleStreams = registeredStreams.stream()
-            .filter(stream -> isCompatible((Class<? extends AloStream<?>>) stream.getClass(), config))
-            .map(stream -> (AloStream<? super C>) stream)
-            .collect(Collectors.toList());
+                .filter(stream -> isCompatible((Class<? extends AloStream<?>>) stream.getClass(), config))
+                .map(stream -> (AloStream<? super C>) stream)
+                .collect(Collectors.toList());
 
         if (compatibleStreams.isEmpty()) {
             return Optional.empty();
         } else if (compatibleStreams.size() == 1) {
             return Optional.of(compatibleStreams.get(0));
         } else {
-            throw new IllegalStateException("There is more than one registered stream compatible with config=" + config);
+            throw new IllegalStateException(
+                    "There is more than one registered stream compatible with config=" + config);
         }
     }
 

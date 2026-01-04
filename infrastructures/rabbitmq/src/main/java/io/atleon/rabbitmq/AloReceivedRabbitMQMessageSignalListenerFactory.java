@@ -15,7 +15,7 @@ import io.atleon.core.AloSignalListenerFactory;
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedRabbitMQMessage}s
  */
 public interface AloReceivedRabbitMQMessageSignalListenerFactory<T, STATE>
-    extends AloSignalListenerFactory<ReceivedRabbitMQMessage<T>, STATE> {
+        extends AloSignalListenerFactory<ReceivedRabbitMQMessage<T>, STATE> {
 
     /**
      * This parameter will be populated during configuration to let the factory know the name of

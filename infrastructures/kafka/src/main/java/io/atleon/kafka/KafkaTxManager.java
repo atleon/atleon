@@ -1,11 +1,10 @@
 package io.atleon.kafka;
 
+import java.util.Map;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import reactor.core.publisher.Mono;
-
-import java.util.Map;
 
 /**
  * A Kafka-specific manager of transactions.

@@ -7,18 +7,14 @@ import java.util.Map;
  */
 public final class AloFactoryConfig {
 
-    private AloFactoryConfig() {
-
-    }
+    private AloFactoryConfig() {}
 
     public static <T, D extends AloDecorator<T>> AloFactory<T> loadDecorated(
-        Map<String, ?> properties,
-        Class<D> decoratorSuperType
-    ) {
+            Map<String, ?> properties, Class<D> decoratorSuperType) {
         AloFactory<T> aloFactory = loadDefault();
         return AloDecoratorConfig.load(properties, decoratorSuperType)
-            .map(aloFactory::withDecorator)
-            .orElse(aloFactory);
+                .map(aloFactory::withDecorator)
+                .orElse(aloFactory);
     }
 
     public static <T> AloFactory<T> loadDefault() {

@@ -1,14 +1,13 @@
 package io.atleon.kafka;
 
 import io.atleon.core.StarterStopper;
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.util.retry.Retry;
-
-import java.time.Duration;
-import java.util.Collection;
-import java.util.Collections;
 
 /**
  * A {@link StarterStopper} that is based on periodically measuring the estimated lag of some
@@ -35,12 +34,11 @@ public class KafkaLagThresholdStarterStopper implements StarterStopper {
     private final long lowTide;
 
     private KafkaLagThresholdStarterStopper(
-        KafkaConfigSource configSource,
-        Collection<String> consumerGroupIds,
-        Duration sampleDelay,
-        long highTide,
-        long lowTide
-    ) {
+            KafkaConfigSource configSource,
+            Collection<String> consumerGroupIds,
+            Duration sampleDelay,
+            long highTide,
+            long lowTide) {
         this.configSource = configSource;
         this.consumerGroupIds = consumerGroupIds;
         this.sampleDelay = sampleDelay;
@@ -68,7 +66,8 @@ public class KafkaLagThresholdStarterStopper implements StarterStopper {
      * @param consumerGroupIds The IDs of the consumer groups whose combined total lag are monitored
      * @return A new {@link KafkaLagThresholdStarterStopper}
      */
-    public static KafkaLagThresholdStarterStopper create(KafkaConfigSource configSource, Collection<String> consumerGroupIds) {
+    public static KafkaLagThresholdStarterStopper create(
+            KafkaConfigSource configSource, Collection<String> consumerGroupIds) {
         return new KafkaLagThresholdStarterStopper(configSource, consumerGroupIds, DEFAULT_SAMPLE_INTERVAL, 0, 0);
     }
 
@@ -110,28 +109,30 @@ public class KafkaLagThresholdStarterStopper implements StarterStopper {
 
     private Flux<Boolean> startStop(ReactiveAdmin admin) {
         return admin.listTopicPartitionGroupOffsets(consumerGroupIds)
-            .reduce(0L, (sum, offsets) -> sum + offsets.estimateLag())
-            .doOnNext(this::logCalculatedLag)
-            .retryWhen(Retry.fixedDelay(Long.MAX_VALUE, sampleDelay).doBeforeRetry(this::logCalculationFailure))
-            .repeatWhen(it -> it.delayElements(sampleDelay))
-            .scan(false, (started, totalLag) -> started ? totalLag <= highTide : totalLag <= lowTide)
-            .skip(1)
-            .distinctUntilChanged()
-            .doOnNext(this::logStartStopSignal);
+                .reduce(0L, (sum, offsets) -> sum + offsets.estimateLag())
+                .doOnNext(this::logCalculatedLag)
+                .retryWhen(Retry.fixedDelay(Long.MAX_VALUE, sampleDelay).doBeforeRetry(this::logCalculationFailure))
+                .repeatWhen(it -> it.delayElements(sampleDelay))
+                .scan(false, (started, totalLag) -> started ? totalLag <= highTide : totalLag <= lowTide)
+                .skip(1)
+                .distinctUntilChanged()
+                .doOnNext(this::logStartStopSignal);
     }
 
     private void logCalculatedLag(long lag) {
         LOGGER.debug(
-            "Calculated lag for consumerGroupsIds={} is {} where highTide={} and lowTide={}",
-            consumerGroupIds, lag, highTide, lowTide
-        );
+                "Calculated lag for consumerGroupsIds={} is {} where highTide={} and lowTide={}",
+                consumerGroupIds,
+                lag,
+                highTide,
+                lowTide);
     }
 
     private void logCalculationFailure(Retry.RetrySignal signal) {
         LOGGER.error(
-            "Failed to calculate total lag for consumerGroupsIds={} where signal={}. This may cause stream hanging.",
-            consumerGroupIds, signal
-        );
+                "Failed to calculate total lag for consumerGroupsIds={} where signal={}. This may cause stream hanging.",
+                consumerGroupIds,
+                signal);
     }
 
     private void logStartStopSignal(boolean start) {

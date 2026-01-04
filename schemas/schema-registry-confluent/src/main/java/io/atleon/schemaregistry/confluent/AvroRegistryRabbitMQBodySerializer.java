@@ -2,7 +2,6 @@ package io.atleon.schemaregistry.confluent;
 
 import io.atleon.rabbitmq.BodySerializer;
 import io.atleon.rabbitmq.SerializedBody;
-
 import java.util.Map;
 
 /**

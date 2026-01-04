@@ -1,17 +1,14 @@
 package io.atleon.spring;
 
+import java.util.Optional;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ConditionContext;
 import org.springframework.util.ClassUtils;
 
-import java.util.Optional;
-
 final class Contexts {
 
-    private Contexts() {
-
-    }
+    private Contexts() {}
 
     public static boolean isPropertySetToFalse(ApplicationContext context, String property) {
         return "false".equalsIgnoreCase(context.getEnvironment().getProperty(property));

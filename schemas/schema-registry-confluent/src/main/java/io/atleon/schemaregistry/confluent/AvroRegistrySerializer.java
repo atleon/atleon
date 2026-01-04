@@ -7,10 +7,9 @@ import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.SchemaProvider;
 import io.confluent.kafka.schemaregistry.avro.AvroSchema;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
+import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
-
-import java.util.Map;
 
 /**
  * A {@link RegistrySerializer} that uses Avro and delegates to {@link AvroSerializer}
@@ -48,9 +47,9 @@ public final class AvroRegistrySerializer<T> extends RegistrySerializer<T, Schem
 
     private AvroSerializer<T> createSerializer(AvroRegistrySerializerConfig config) {
         return AvroSerializer.<T>create(createGenericData(config))
-            .withSchemaCachingEnabled(config.schemaCachingEnabled())
-            .withSchemaGenerationEnabled(config.schemaGenerationEnabled())
-            .withRemoveJavaProperties(config.removeJavaProperties());
+                .withSchemaCachingEnabled(config.schemaCachingEnabled())
+                .withSchemaGenerationEnabled(config.schemaGenerationEnabled())
+                .withRemoveJavaProperties(config.removeJavaProperties());
     }
 
     private GenericData createGenericData(AvroRegistrySerializerConfig config) {

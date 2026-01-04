@@ -1,23 +1,21 @@
 package io.atleon.avro;
 
-import io.atleon.schema.SchemaBytes;
-import org.apache.avro.Schema;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-import java.util.stream.Collectors;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import io.atleon.schema.SchemaBytes;
+import java.util.List;
+import java.util.stream.Collectors;
+import org.apache.avro.Schema;
+import org.junit.jupiter.api.Test;
 
 public class ReflectAvroSerDeTest extends AvroSerDeTest {
 
     public ReflectAvroSerDeTest() {
         super(
-            AvroSerializer.reflect().withSchemaGenerationEnabled(true),
-            AvroDeserializer.reflect().withReaderReferenceSchemaGenerationEnabled(true)
-        );
+                AvroSerializer.reflect().withSchemaGenerationEnabled(true),
+                AvroDeserializer.reflect().withReaderReferenceSchemaGenerationEnabled(true));
     }
 
     @Test
@@ -66,24 +64,31 @@ public class ReflectAvroSerDeTest extends AvroSerDeTest {
 
         Schema schema = schemaBytes.schema();
         List<Schema.Field> modifiedFields = schema.getFields().stream()
-            .map(field -> {
-                if (field.name().equals("data")) {
-                    Schema nonNullSchema = AvroSchemas.reduceNonNull(field.schema()).orElseThrow(IllegalStateException::new);
-                    List<Schema.Field> copiedFields = nonNullSchema.getFields().stream()
-                        .map(it -> new Schema.Field(it.name(), it.schema(), it.doc(), it.defaultVal()))
-                        .collect(Collectors.toList());
-                    Schema dataSchema = Schema.createRecord("TestDataUndefined", nonNullSchema.getDoc(), nonNullSchema.getNamespace(), nonNullSchema.isError(), copiedFields);
-                    return new Schema.Field(field.name(), AvroSchemas.makeNullable(dataSchema), field.doc(), field.defaultVal());
-                } else {
-                    return new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultVal());
-                }
-            })
-            .collect(Collectors.toList());
+                .map(field -> {
+                    if (field.name().equals("data")) {
+                        Schema nonNullSchema =
+                                AvroSchemas.reduceNonNull(field.schema()).orElseThrow(IllegalStateException::new);
+                        List<Schema.Field> copiedFields = nonNullSchema.getFields().stream()
+                                .map(it -> new Schema.Field(it.name(), it.schema(), it.doc(), it.defaultVal()))
+                                .collect(Collectors.toList());
+                        Schema dataSchema = Schema.createRecord(
+                                "TestDataUndefined",
+                                nonNullSchema.getDoc(),
+                                nonNullSchema.getNamespace(),
+                                nonNullSchema.isError(),
+                                copiedFields);
+                        return new Schema.Field(
+                                field.name(), AvroSchemas.makeNullable(dataSchema), field.doc(), field.defaultVal());
+                    } else {
+                        return new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultVal());
+                    }
+                })
+                .collect(Collectors.toList());
 
         Object deserialized = deserializer.deserialize(
-            schemaBytes.bytes(),
-            Schema.createRecord(schema.getName(), schema.getDoc(), schema.getNamespace(), schema.isError(), modifiedFields)
-        );
+                schemaBytes.bytes(),
+                Schema.createRecord(
+                        schema.getName(), schema.getDoc(), schema.getNamespace(), schema.isError(), modifiedFields));
 
         assertTrue(deserialized instanceof TestGenericData);
         assertNull(TestGenericData.class.cast(deserialized).getData());

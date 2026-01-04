@@ -7,7 +7,11 @@ package io.atleon.aws.sns;
  */
 public final class SnsAddress {
 
-    public enum Type {TOPIC_ARN, TARGET_ARN, PHONE_NUMBER}
+    public enum Type {
+        TOPIC_ARN,
+        TARGET_ARN,
+        PHONE_NUMBER
+    }
 
     private final Type type;
 

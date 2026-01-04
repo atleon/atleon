@@ -3,7 +3,6 @@ package io.atleon.rabbitmq;
 import com.rabbitmq.client.ConnectionFactory;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
-
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -38,10 +37,7 @@ public class RabbitMQConfig {
     }
 
     public <T extends Configurable> Optional<T> loadConfiguredWithPredefinedTypes(
-        String key,
-        Class<? extends T> type,
-        Function<String, Optional<T>> predefinedTypeInstantiator
-    ) {
+            String key, Class<? extends T> type, Function<String, Optional<T>> predefinedTypeInstantiator) {
         return ConfigLoading.loadConfiguredWithPredefinedTypes(properties, key, type, predefinedTypeInstantiator);
     }
 

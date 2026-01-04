@@ -1,13 +1,6 @@
 package io.atleon.kafka;
 
 import io.atleon.util.Collecting;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.errors.WakeupException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
@@ -19,6 +12,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.stream.Collectors;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Resource through which management of polling state and polling invocation are delegated. Takes
@@ -53,10 +52,7 @@ final class PollManager<T> {
     }
 
     public void activateAssigned(
-        Consumer<?, ?> consumer,
-        Collection<TopicPartition> partitions,
-        Function<TopicPartition, T> activator
-    ) {
+            Consumer<?, ?> consumer, Collection<TopicPartition> partitions, Function<TopicPartition, T> activator) {
         partitions.forEach(partition -> {
             if (assignments.containsKey(partition)) {
                 throw new IllegalStateException("TopicPartition already assigned: " + partition);
@@ -83,8 +79,8 @@ final class PollManager<T> {
 
     public Collection<T> unassigned(Collection<TopicPartition> partitions) {
         Map<TopicPartition, T> unassigned = partitions.stream()
-            .filter(assignments::containsKey)
-            .collect(Collectors.toMap(Function.identity(), assignments::remove));
+                .filter(assignments::containsKey)
+                .collect(Collectors.toMap(Function.identity(), assignments::remove));
         pollStrategy.onPollingProhibited(unassigned.keySet());
         return unassigned.values();
     }
@@ -136,8 +132,7 @@ final class PollManager<T> {
     }
 
     private Map<Boolean, ? extends Collection<TopicPartition>> partitionByPollPermissibility(
-        Collection<TopicPartition> partitions
-    ) {
+            Collection<TopicPartition> partitions) {
         if (isPausedDueToBackpressure()) {
             Map<Boolean, Collection<TopicPartition>> result = new HashMap<>();
             result.put(false, partitions);
@@ -185,15 +180,15 @@ final class PollManager<T> {
         @Override
         public Map<TopicPartition, Long> currentLag(Set<TopicPartition> partitions, long defaultValue) {
             validatePermissibility(partitions, "request metadata for");
-            return partitions.stream()
-                .collect(Collectors.toMap(Function.identity(), it -> consumer.currentLag(it).orElse(defaultValue)));
+            return partitions.stream().collect(Collectors.toMap(Function.identity(), it -> consumer.currentLag(it)
+                    .orElse(defaultValue)));
         }
 
         @Override
         public Map<TopicPartition, Long> currentBatchLag(Set<TopicPartition> partitions, long defaultValue) {
             validatePermissibility(partitions, "request metadata for");
             return partitions.stream()
-                .collect(Collectors.toMap(Function.identity(), it -> currentBatchLag(it, defaultValue)));
+                    .collect(Collectors.toMap(Function.identity(), it -> currentBatchLag(it, defaultValue)));
         }
 
         private long currentBatchLag(TopicPartition topicPartition, long defaultValue) {
@@ -204,7 +199,7 @@ final class PollManager<T> {
         private void validatePermissibility(Set<TopicPartition> partitions, String action) {
             if (!forcePaused.isEmpty() && partitions.stream().anyMatch(forcePaused::contains)) {
                 throw new IllegalArgumentException(
-                    String.format("Cannot %s prohibited partitions: %s", action, partitions));
+                        String.format("Cannot %s prohibited partitions: %s", action, partitions));
             }
         }
     }

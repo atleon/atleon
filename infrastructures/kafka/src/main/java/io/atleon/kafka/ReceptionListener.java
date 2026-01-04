@@ -21,17 +21,13 @@ public interface ReceptionListener {
     /**
      * Invoked when a partition has been assigned and from which records may now be received.
      */
-    default void onPartitionActivated(TopicPartition partition) {
-
-    }
+    default void onPartitionActivated(TopicPartition partition) {}
 
     /**
      * Invoked when a partition has been revoked or lost, and any remaining activated records from
      * that partition have also been deactivated.
      */
-    default void onPartitionDeactivated(TopicPartition partition) {
-
-    }
+    default void onPartitionDeactivated(TopicPartition partition) {}
 
     /**
      * Invoked when records have been received from the given partition and activated for
@@ -40,9 +36,7 @@ public interface ReceptionListener {
      * @param partition The active partition from which records have been activated
      * @param count     The number of records that have been activated
      */
-    default void onRecordsActivated(TopicPartition partition, long count) {
-
-    }
+    default void onRecordsActivated(TopicPartition partition, long count) {}
 
     /**
      * Invoked when activated records which have been emitted downstream have either had their
@@ -52,14 +46,10 @@ public interface ReceptionListener {
      * @param partition The active partition from which records have been deactivated
      * @param count     The number of records that have been deactivated
      */
-    default void onRecordsDeactivated(TopicPartition partition, long count) {
-
-    }
+    default void onRecordsDeactivated(TopicPartition partition, long count) {}
 
     /**
      * Invoked once the reception process has been terminated.
      */
-    default void close() {
-
-    }
+    default void close() {}
 }

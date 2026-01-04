@@ -1,11 +1,10 @@
 package io.atleon.core;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.function.Function;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+
+import java.util.function.Function;
+import org.junit.jupiter.api.Test;
 
 class StringHashGroupExtractorTest {
 

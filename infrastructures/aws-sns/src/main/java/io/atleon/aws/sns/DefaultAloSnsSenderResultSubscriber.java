@@ -6,6 +6,4 @@ import io.atleon.core.DefaultAloSenderResultSubscriber;
  * Deprecated - Use {@link DefaultAloSenderResultSubscriber}
  */
 @Deprecated
-public class DefaultAloSnsSenderResultSubscriber<C> extends DefaultAloSenderResultSubscriber<SnsSenderResult<C>> {
-
-}
+public class DefaultAloSnsSenderResultSubscriber<C> extends DefaultAloSenderResultSubscriber<SnsSenderResult<C>> {}

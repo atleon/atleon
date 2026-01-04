@@ -26,18 +26,19 @@ public class KafkaConsumptionStream extends SpringAloStream {
     @Override
     protected Disposable startDisposable() {
         return buildKafkaLongReceiver()
-            .receiveAloValues(getRequiredProperty("stream.kafka.output.topic"))
-            .consume(service::handleNumber)
-            .resubscribeOnError(name())
-            .subscribe();
+                .receiveAloValues(getRequiredProperty("stream.kafka.output.topic"))
+                .consume(service::handleNumber)
+                .resubscribeOnError(name())
+                .subscribe();
     }
 
     private AloKafkaReceiver<Long, Long> buildKafkaLongReceiver() {
-        return configSource.withClientId(name())
-            .withConsumerGroupId(KafkaConsumptionStream.class.getSimpleName())
-            .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-            .withKeyDeserializer(LongDeserializer.class)
-            .withValueDeserializer(LongDeserializer.class)
-            .as(AloKafkaReceiver::create);
+        return configSource
+                .withClientId(name())
+                .withConsumerGroupId(KafkaConsumptionStream.class.getSimpleName())
+                .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+                .withKeyDeserializer(LongDeserializer.class)
+                .withValueDeserializer(LongDeserializer.class)
+                .as(AloKafkaReceiver::create);
     }
 }

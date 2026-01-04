@@ -1,14 +1,13 @@
 package io.atleon.application;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Collection;
 import java.util.Optional;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ConfiguredAloStreamStatusService implements AloStreamStatusService {
 
@@ -17,12 +16,12 @@ public class ConfiguredAloStreamStatusService implements AloStreamStatusService 
     private final SortedMap<String, ConfiguredAloStream> streamsByName;
 
     public ConfiguredAloStreamStatusService(Collection<? extends ConfiguredAloStream> streams) {
-        this.streamsByName = streams.stream().collect(Collectors.toMap(
-            ConfiguredAloStream::name,
-            Function.identity(),
-            ConfiguredAloStreamStatusService::logConflictingStreamsAndChooseFirst,
-            TreeMap::new
-        ));
+        this.streamsByName = streams.stream()
+                .collect(Collectors.toMap(
+                        ConfiguredAloStream::name,
+                        Function.identity(),
+                        ConfiguredAloStreamStatusService::logConflictingStreamsAndChooseFirst,
+                        TreeMap::new));
     }
 
     @Override
@@ -53,8 +52,8 @@ public class ConfiguredAloStreamStatusService implements AloStreamStatusService 
         return new AloStreamStatusDto(stream.name(), stream.state().name());
     }
 
-    private static ConfiguredAloStream
-    logConflictingStreamsAndChooseFirst(ConfiguredAloStream first, ConfiguredAloStream second) {
+    private static ConfiguredAloStream logConflictingStreamsAndChooseFirst(
+            ConfiguredAloStream first, ConfiguredAloStream second) {
         LOGGER.warn("Conflicting Streams! Choosing first. name={} first={} second={}", first.name(), first, second);
         return first;
     }

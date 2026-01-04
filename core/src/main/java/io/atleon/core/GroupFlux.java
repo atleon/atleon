@@ -1,17 +1,16 @@
 package io.atleon.core;
 
-import org.reactivestreams.Publisher;
-import reactor.core.observability.SignalListenerFactory;
-import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import org.reactivestreams.Publisher;
+import reactor.core.observability.SignalListenerFactory;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * A wrapped {@link Flux} of grouped {@link AloFlux} sequences. Exposes convenience methods
@@ -184,11 +183,7 @@ public class GroupFlux<K, T> {
      * @return a transformed {@link GroupFlux}
      */
     public GroupFlux<K, List<T>> innerBufferTimeout(
-        int maxSize,
-        Duration maxTime,
-        Scheduler scheduler,
-        boolean fairBackpressure
-    ) {
+            int maxSize, Duration maxTime, Scheduler scheduler, boolean fairBackpressure) {
         return map(group -> group.bufferTimeout(maxSize, maxTime, scheduler, fairBackpressure));
     }
 

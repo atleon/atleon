@@ -1,22 +1,21 @@
 package io.atleon.util;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
 
 class ProxyingTest {
 
     @Test
     public void interfaceMethods_givenNonInterface_expectsIllegalArgumentException() {
         assertThrows(
-            IllegalArgumentException.class,
-            () -> Proxying.interfaceMethods(ProxyingTest.class, (method, args) -> null));
+                IllegalArgumentException.class,
+                () -> Proxying.interfaceMethods(ProxyingTest.class, (method, args) -> null));
     }
 
     @Test

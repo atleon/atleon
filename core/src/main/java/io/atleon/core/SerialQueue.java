@@ -1,11 +1,10 @@
 package io.atleon.core;
 
-import reactor.core.publisher.Sinks;
-
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.function.Consumer;
+import reactor.core.publisher.Sinks;
 
 /**
  * A thread-safe Queue of tasks which must be executed serially. This provides non-blocking
@@ -18,7 +17,7 @@ import java.util.function.Consumer;
 public final class SerialQueue<T> {
 
     private static final AtomicIntegerFieldUpdater<SerialQueue> DRAINS_IN_PROGRESS =
-        AtomicIntegerFieldUpdater.newUpdater(SerialQueue.class, "drainsInProgress");
+            AtomicIntegerFieldUpdater.newUpdater(SerialQueue.class, "drainsInProgress");
 
     private volatile int drainsInProgress;
 

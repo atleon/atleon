@@ -30,5 +30,4 @@ public interface Polled<P, O> {
      * @return An object that represents the group of the record.
      */
     Optional<?> getGroup();
-
 }

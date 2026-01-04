@@ -2,7 +2,6 @@ package io.atleon.json.jackson;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.io.IOException;
 
 final class ObjectMapperFacade {

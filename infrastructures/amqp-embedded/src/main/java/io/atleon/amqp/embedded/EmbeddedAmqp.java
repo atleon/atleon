@@ -1,10 +1,5 @@
 package io.atleon.amqp.embedded;
 
-import org.apache.qpid.server.SystemLauncher;
-import org.apache.qpid.server.model.SystemConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -13,6 +8,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.qpid.server.SystemLauncher;
+import org.apache.qpid.server.model.SystemConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <a href="http://mail-archives.apache.org/mod_mbox/qpid-users/202002.mbox/%3CCAP3WMuQ3ehJG5oqS3smCQbZZnxQqQvp=HUCsrSyCQvLkHUFobA@mail.gmail.com%3E">Reference 1</a>
@@ -51,8 +50,11 @@ public final class EmbeddedAmqp {
     private static void startLocalBroker(EmbeddedAmqpConfig config) {
         try {
             LOGGER.info("BEGINNING STARTUP OF LOCAL AMQP BROKER");
-            Path tempDirectory = Files.createTempDirectory(EmbeddedAmqp.class.getSimpleName() + "_" + System.currentTimeMillis());
-            System.getProperties().putIfAbsent("derby.stream.error.file", new File(tempDirectory.toFile(), "derby.log").getAbsolutePath());
+            Path tempDirectory =
+                    Files.createTempDirectory(EmbeddedAmqp.class.getSimpleName() + "_" + System.currentTimeMillis());
+            System.getProperties()
+                    .putIfAbsent(
+                            "derby.stream.error.file", new File(tempDirectory.toFile(), "derby.log").getAbsolutePath());
             Map<String, Object> attributes = createAttributes(config, tempDirectory);
             SystemLauncher systemLauncher = new SystemLauncher();
             systemLauncher.startup(attributes);
@@ -62,7 +64,8 @@ public final class EmbeddedAmqp {
         }
     }
 
-    private static Map<String, Object> createAttributes(EmbeddedAmqpConfig config, Path tempDirectory) throws Exception {
+    private static Map<String, Object> createAttributes(EmbeddedAmqpConfig config, Path tempDirectory)
+            throws Exception {
         Map<String, String> context = new HashMap<>();
         context.put(PORT_PROPERTY, Integer.toString(config.getPort()));
         context.put(USERNAME_PROPERTY, config.getUsername());
@@ -71,13 +74,16 @@ public final class EmbeddedAmqp {
 
         Map<String, Object> attributes = new HashMap<>();
         attributes.put(SystemConfig.TYPE, "JSON");
-        attributes.put(SystemConfig.INITIAL_CONFIGURATION_LOCATION, createAmqpConfig(tempDirectory).getCanonicalPath());
+        attributes.put(
+                SystemConfig.INITIAL_CONFIGURATION_LOCATION,
+                createAmqpConfig(tempDirectory).getCanonicalPath());
         attributes.put(SystemConfig.CONTEXT, context);
         return attributes;
     }
 
     private static File createAmqpConfig(Path directory) throws Exception {
-        File configFile = Files.createTempFile(directory, "amqp", SystemConfig.DEFAULT_INITIAL_CONFIG_NAME).toFile();
+        File configFile = Files.createTempFile(directory, "amqp", SystemConfig.DEFAULT_INITIAL_CONFIG_NAME)
+                .toFile();
         PrintWriter configWriter = new PrintWriter(configFile);
         configWriter.println("{");
         configWriter.println("    \"name\": \"broker\",");

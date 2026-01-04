@@ -10,7 +10,4 @@ import io.atleon.core.Alo;
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedSqsMessage}s
  */
 public class ContextActivatingAloReceivedSqsMessageDecorator<T>
-    extends ContextActivatingAloDecorator<ReceivedSqsMessage<T>>
-    implements AloReceivedSqsMessageDecorator<T> {
-
-}
+        extends ContextActivatingAloDecorator<ReceivedSqsMessage<T>> implements AloReceivedSqsMessageDecorator<T> {}

@@ -6,15 +6,14 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.function.Function;
 import org.reactivestreams.Publisher;
 import reactor.core.observability.DefaultSignalListener;
 import reactor.core.observability.SignalListener;
 import reactor.core.publisher.SignalType;
 import reactor.util.context.ContextView;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.function.Function;
 
 /**
  * Templated implementation of {@link reactor.core.observability.SignalListenerFactory} that
@@ -44,8 +43,8 @@ public abstract class MeteringAloSignalListenerFactory<T, K> implements AloSigna
     }
 
     @Override
-    public SignalListener<Alo<T>>
-    createListener(Publisher<? extends Alo<T>> source, ContextView listenerContext, Void publisherContext) {
+    public SignalListener<Alo<T>> createListener(
+            Publisher<? extends Alo<T>> source, ContextView listenerContext, Void publisherContext) {
         return new MeteringAloSignalListener<>(meterRegistry, name, keyExtractor(), tagger());
     }
 
@@ -62,11 +61,10 @@ public abstract class MeteringAloSignalListenerFactory<T, K> implements AloSigna
         private final Tagger<? super K> tagger;
 
         public MeteringAloSignalListener(
-            MeterRegistry meterRegistry,
-            String name,
-            Function<? super T, K> keyExtractor,
-            Tagger<? super K> tagger
-        ) {
+                MeterRegistry meterRegistry,
+                String name,
+                Function<? super T, K> keyExtractor,
+                Tagger<? super K> tagger) {
             this.meterFacade = MeterFacade.create(meterRegistry, it -> new MeterKey(name, toTags(it)));
             this.keyExtractor = keyExtractor;
             this.tagger = tagger;

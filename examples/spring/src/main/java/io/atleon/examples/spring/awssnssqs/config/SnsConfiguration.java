@@ -11,7 +11,8 @@ import software.amazon.awssdk.services.sns.SnsAsyncClient;
 public class SnsConfiguration {
 
     @Bean("snsInputTopicArn")
-    public String snsInputTopicArn(SnsConfigSource exampleSnsConfigSource, @Value("${stream.sns.input.topic.name}") String topicName) {
+    public String snsInputTopicArn(
+            SnsConfigSource exampleSnsConfigSource, @Value("${stream.sns.input.topic.name}") String topicName) {
         return createTopicArn(exampleSnsConfigSource, topicName);
     }
 

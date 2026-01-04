@@ -3,8 +3,6 @@ package io.atleon.aws.sqs;
 import io.atleon.aws.util.AwsConfig;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
-import software.amazon.awssdk.services.sqs.SqsAsyncClient;
-
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -13,6 +11,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 /**
  * Config used by SQS Resources to build Clients and load typed configuration values.
@@ -33,10 +32,11 @@ public class SqsConfig {
 
     public SqsAsyncClient buildClient() {
         return SqsAsyncClient.builder()
-            .endpointOverride(ConfigLoading.loadUri(properties, ENDPOINT_OVERRIDE_CONFIG).orElse(null))
-            .credentialsProvider(AwsConfig.loadCredentialsProvider(properties))
-            .region(AwsConfig.loadRegion(properties).orElse(null))
-            .build();
+                .endpointOverride(ConfigLoading.loadUri(properties, ENDPOINT_OVERRIDE_CONFIG)
+                        .orElse(null))
+                .credentialsProvider(AwsConfig.loadCredentialsProvider(properties))
+                .region(AwsConfig.loadRegion(properties).orElse(null))
+                .build();
     }
 
     public Map<String, Object> modifyAndGetProperties(Consumer<Map<String, Object>> modifier) {
@@ -54,10 +54,7 @@ public class SqsConfig {
     }
 
     public <T extends Configurable> Optional<T> loadConfiguredWithPredefinedTypes(
-        String key,
-        Class<? extends T> type,
-        Function<String, Optional<T>> predefinedTypeInstantiator
-    ) {
+            String key, Class<? extends T> type, Function<String, Optional<T>> predefinedTypeInstantiator) {
         return ConfigLoading.loadConfiguredWithPredefinedTypes(properties, key, type, predefinedTypeInstantiator);
     }
 

@@ -6,11 +6,10 @@ import io.atleon.avro.GenericDatas;
 import io.confluent.kafka.schemaregistry.ParsedSchema;
 import io.confluent.kafka.schemaregistry.SchemaProvider;
 import io.confluent.kafka.schemaregistry.avro.AvroSchemaProvider;
+import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.specific.SpecificData;
-
-import java.util.Map;
 
 /**
  * A {@link RegistryDeserializer} that uses Avro and delegates to {@link AvroDeserializer}
@@ -48,7 +47,9 @@ public final class AvroRegistryDeserializer<T> extends RegistryDeserializer<T, S
 
     private AvroDeserializer<T> createDeserializer(AvroRegistryDeserializerConfig config) {
         AvroDeserializer<T> deserializer = AvroDeserializer.create(createGenericData(config));
-        deserializer = config.readerSchemaLoading().map(deserializer::withReaderSchemaLoadingEnabled).orElse(deserializer);
+        deserializer = config.readerSchemaLoading()
+                .map(deserializer::withReaderSchemaLoadingEnabled)
+                .orElse(deserializer);
         return deserializer.withReaderReferenceSchemaGenerationEnabled(config.readerReferenceSchemaGeneration());
     }
 

@@ -1,10 +1,10 @@
 package io.atleon.context;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
 
 class AloContextTest {
 
@@ -53,7 +53,8 @@ class AloContextTest {
 
         context1.run(() -> {
             assertEquals(1L, AloContext.active().get(SINGLE_KEY).orElse(null));
-            context2.run(() -> assertEquals(2, AloContext.active().get(SINGLE_KEY).orElse(null)));
+            context2.run(
+                    () -> assertEquals(2, AloContext.active().get(SINGLE_KEY).orElse(null)));
             assertEquals(1L, AloContext.active().get(SINGLE_KEY).orElse(null));
         });
     }

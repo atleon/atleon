@@ -15,6 +15,4 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * @param <K> The types of keys in records decorated by this decorator
  * @param <V> The types of values in records decorated by this decorator
  */
-public interface AloKafkaConsumerRecordDecorator<K, V> extends AloDecorator<ConsumerRecord<K, V>> {
-
-}
+public interface AloKafkaConsumerRecordDecorator<K, V> extends AloDecorator<ConsumerRecord<K, V>> {}

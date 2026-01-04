@@ -16,9 +16,7 @@ import java.util.stream.IntStream;
  */
 public final class Collecting {
 
-    private Collecting() {
-
-    }
+    private Collecting() {}
 
     /**
      * Generates binary strided selections of the provided collection. Each selection corresponds
@@ -44,9 +42,7 @@ public final class Collecting {
      * @return a list of permutations, each containing elements selected via binary stride pattern
      */
     public static <T, C extends Collection<T>> List<C> binaryStrides(
-        Collection<T> collection,
-        Supplier<C> collectionSupplier
-    ) {
+            Collection<T> collection, Supplier<C> collectionSupplier) {
         if (collection.size() <= 1) {
             C result = collectionSupplier.get();
             result.addAll(collection);
@@ -54,8 +50,8 @@ public final class Collecting {
         } else {
             List<T> list = new ArrayList<>(collection);
             return IntStream.range(0, totalBinaryStrides(list.size()))
-                .mapToObj(it -> binaryStride(list, it, collectionSupplier))
-                .collect(Collectors.toList());
+                    .mapToObj(it -> binaryStride(list, it, collectionSupplier))
+                    .collect(Collectors.toList());
         }
     }
 
@@ -73,10 +69,7 @@ public final class Collecting {
      * @return a collection containing all elements with the greatest evaluated value
      */
     public static <T, V extends Comparable<? super V>, C extends Collection<T>> C greatest(
-        Collection<T> collection,
-        Function<? super T, ? extends V> evaluator,
-        Supplier<C> collectionSupplier
-    ) {
+            Collection<T> collection, Function<? super T, ? extends V> evaluator, Supplier<C> collectionSupplier) {
         C result = collectionSupplier.get();
         V greatestValue = null;
         for (T element : collection) {
@@ -107,10 +100,7 @@ public final class Collecting {
      * @return A <i>new</i> collection containing elements up-to-and-including matching element
      */
     public static <T, C extends Collection<T>> C takeUntil(
-        Collection<T> collection,
-        Predicate<? super T> predicate,
-        Supplier<C> collectionSupplier
-    ) {
+            Collection<T> collection, Predicate<? super T> predicate, Supplier<C> collectionSupplier) {
         C result = collectionSupplier.get();
         for (T element : collection) {
             result.add(element);
@@ -132,8 +122,8 @@ public final class Collecting {
      */
     public static <T> Collection<T> difference(Collection<T> left, Collection<T> right) {
         return left.isEmpty() || right.isEmpty()
-            ? left
-            : left.stream().filter(it -> !right.contains(it)).collect(Collectors.toList());
+                ? left
+                : left.stream().filter(it -> !right.contains(it)).collect(Collectors.toList());
     }
 
     private static <T, C extends Collection<T>> C binaryStride(List<T> source, int cycle, Supplier<C> resultCreator) {

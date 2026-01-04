@@ -8,9 +8,7 @@ final class ContextualProducerFactory extends ProducerFactory {
 
     public static final ProducerFactory INSTANCE = new ContextualProducerFactory();
 
-    private ContextualProducerFactory() {
-
-    }
+    private ContextualProducerFactory() {}
 
     @Override
     public <K, V> Producer<K, V> createProducer(SenderOptions<K, V> senderOptions) {

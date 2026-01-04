@@ -1,10 +1,10 @@
 package io.atleon.core;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
-import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Schedulers;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -12,12 +12,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 public class AcknowledgementQueueTest {
 
@@ -57,8 +56,10 @@ public class AcknowledgementQueueTest {
         AtomicBoolean secondAcknowledged = new AtomicBoolean();
         AtomicReference<Throwable> secondNacknowledged = new AtomicReference<>();
 
-        AcknowledgementQueue.InFlight firstInFlight = queue.add(() -> firstAcknowledged.set(true), firstNacknowledged::set);
-        AcknowledgementQueue.InFlight secondInFlight = queue.add(() -> secondAcknowledged.set(true), secondNacknowledged::set);
+        AcknowledgementQueue.InFlight firstInFlight =
+                queue.add(() -> firstAcknowledged.set(true), firstNacknowledged::set);
+        AcknowledgementQueue.InFlight secondInFlight =
+                queue.add(() -> secondAcknowledged.set(true), secondNacknowledged::set);
 
         long drained = queue.completeExceptionally(secondInFlight, new IllegalStateException());
 
@@ -88,9 +89,12 @@ public class AcknowledgementQueueTest {
         AtomicInteger thirdAcknowledgements = new AtomicInteger();
         AtomicReference<Throwable> thirdNacknowledged = new AtomicReference<>();
 
-        AcknowledgementQueue.InFlight firstInFlight = queue.add(firstAcknowledgements::incrementAndGet, firstNacknowledged::set);
-        AcknowledgementQueue.InFlight secondInFlight = queue.add(secondAcknowledgements::incrementAndGet, secondNacknowledged::set);
-        AcknowledgementQueue.InFlight thirdInFlight = queue.add(thirdAcknowledgements::incrementAndGet, thirdNacknowledged::set);
+        AcknowledgementQueue.InFlight firstInFlight =
+                queue.add(firstAcknowledgements::incrementAndGet, firstNacknowledged::set);
+        AcknowledgementQueue.InFlight secondInFlight =
+                queue.add(secondAcknowledgements::incrementAndGet, secondNacknowledged::set);
+        AcknowledgementQueue.InFlight thirdInFlight =
+                queue.add(thirdAcknowledgements::incrementAndGet, thirdNacknowledged::set);
 
         queue.completeExceptionally(secondInFlight, new IllegalStateException());
         queue.complete(thirdInFlight);
@@ -229,24 +233,22 @@ public class AcknowledgementQueueTest {
         AtomicInteger errorCount = new AtomicInteger(0);
         AtomicLong drained = new AtomicLong();
 
-        AcknowledgementQueue acknowledgementQueue = AcknowledgementQueue.create(mode);
+        AcknowledgementQueue queue = AcknowledgementQueue.create(mode);
 
         Flux.range(0, count)
-            .map(i -> acknowledgementQueue.add(positiveCount::incrementAndGet, error -> negativeCount.incrementAndGet()))
-            .parallel(parallelism)
-            .runOn(Schedulers.boundedElastic())
-            .subscribe(
-                inFlight -> {
+                .map(i -> queue.add(positiveCount::incrementAndGet, error -> negativeCount.incrementAndGet()))
+                .parallel(parallelism)
+                .runOn(Schedulers.boundedElastic())
+                .subscribe(inFlight -> {
                     Timing.pause((long) (10 * Math.random()));
                     if (Math.random() <= .65D) {
                         errorCount.incrementAndGet();
                         IllegalArgumentException error = new IllegalArgumentException("Boom");
-                        drained.addAndGet(acknowledgementQueue.completeExceptionally(inFlight, error));
+                        drained.addAndGet(queue.completeExceptionally(inFlight, error));
                     } else {
-                        drained.addAndGet(acknowledgementQueue.complete(inFlight));
+                        drained.addAndGet(queue.complete(inFlight));
                     }
-                }
-            );
+                });
 
         Timing.waitForCondition(() -> drained.get() == count, 30000);
 

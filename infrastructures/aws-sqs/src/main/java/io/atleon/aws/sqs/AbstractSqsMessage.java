@@ -1,11 +1,10 @@
 package io.atleon.aws.sqs;
 
+import java.util.Map;
+import java.util.Optional;
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue;
 import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName;
 import software.amazon.awssdk.services.sqs.model.MessageSystemAttributeValue;
-
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * Base implementation of an {@link SqsMessage}
@@ -21,10 +20,9 @@ public abstract class AbstractSqsMessage<T> implements SqsMessage<T> {
     private final T body;
 
     protected AbstractSqsMessage(
-        Map<String, MessageAttributeValue> messageAttributes,
-        Map<String, MessageSystemAttributeValue> messageSystemAttributes,
-        T body
-    ) {
+            Map<String, MessageAttributeValue> messageAttributes,
+            Map<String, MessageSystemAttributeValue> messageSystemAttributes,
+            T body) {
         this.messageAttributes = messageAttributes;
         this.messageSystemAttributes = messageSystemAttributes;
         this.body = body;

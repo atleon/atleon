@@ -29,24 +29,18 @@ public interface ProducerListener {
     /**
      * Callback invoked when the provided producer is about to be closed.
      */
-    default void onClose(Producer<?, ?> producer) {
-
-    }
+    default void onClose(Producer<?, ?> producer) {}
 
     /**
      * Callback invoked after the associated producer has been closed.
      */
-    default void close() {
-
-    }
+    default void close() {}
 
     final class Closure implements ProducerListener {
 
         private final Sinks.Empty<Void> closed = Sinks.empty();
 
-        private Closure() {
-
-        }
+        private Closure() {}
 
         @Override
         public void close() {

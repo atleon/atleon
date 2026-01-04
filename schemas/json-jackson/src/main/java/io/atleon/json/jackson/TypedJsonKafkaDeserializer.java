@@ -1,9 +1,8 @@
 package io.atleon.json.jackson;
 
 import io.atleon.util.ConfigLoading;
-import org.apache.kafka.common.serialization.Deserializer;
-
 import java.util.Map;
+import org.apache.kafka.common.serialization.Deserializer;
 
 public final class TypedJsonKafkaDeserializer<T> implements Deserializer<T> {
 

@@ -2,7 +2,6 @@ package io.atleon.micrometer;
 
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
-
 import java.util.function.Function;
 
 /**

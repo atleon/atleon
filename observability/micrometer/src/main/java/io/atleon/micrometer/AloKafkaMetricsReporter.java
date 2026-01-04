@@ -1,9 +1,8 @@
 package io.atleon.micrometer;
 
-import org.apache.kafka.common.metrics.KafkaMetric;
-
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.kafka.common.metrics.KafkaMetric;
 
 public class AloKafkaMetricsReporter extends AbstractKafkaMetricsReporter {
 

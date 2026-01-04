@@ -1,10 +1,5 @@
 package io.atleon.kafka;
 
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.common.TopicPartition;
-import reactor.core.publisher.Mono;
-import reactor.core.publisher.Sinks;
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -12,6 +7,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.common.TopicPartition;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 
 /**
  * A listener interface for callbacks associated with the lifecycle of Kafka record consumption.
@@ -68,9 +67,8 @@ public interface ConsumerListener {
         return new ConsumerListener() {
             @Override
             public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-                Collection<TopicPartition> actionable = partitions.stream()
-                    .filter(it -> !actioned.contains(it))
-                    .collect(Collectors.toList());
+                Collection<TopicPartition> actionable =
+                        partitions.stream().filter(it -> !actioned.contains(it)).collect(Collectors.toList());
                 if (!actionable.isEmpty()) {
                     action.accept(consumer, actionable);
                     actioned.addAll(actionable);
@@ -104,9 +102,7 @@ public interface ConsumerListener {
      * @param partitions The partitions that have been revoked
      * @see org.apache.kafka.clients.consumer.ConsumerRebalanceListener#onPartitionsRevoked(Collection)
      */
-    default void onPartitionsRevoked(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-
-    }
+    default void onPartitionsRevoked(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {}
 
     /**
      * Callback invoked when the provided partitions have been assigned.
@@ -115,31 +111,23 @@ public interface ConsumerListener {
      * @param partitions The partitions that have been assigned
      * @see org.apache.kafka.clients.consumer.ConsumerRebalanceListener#onPartitionsAssigned(Collection)
      */
-    default void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-
-    }
+    default void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {}
 
     /**
      * Callback invoked when the provided consumer is about to be closed.
      */
-    default void onClose(Consumer<?, ?> consumer) {
-
-    }
+    default void onClose(Consumer<?, ?> consumer) {}
 
     /**
      * Callback invoked after the associated consumer has been closed.
      */
-    default void close() {
-
-    }
+    default void close() {}
 
     final class Closure implements ConsumerListener {
 
         private final Sinks.Empty<Void> closed = Sinks.empty();
 
-        private Closure() {
-
-        }
+        private Closure() {}
 
         @Override
         public void close() {

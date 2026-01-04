@@ -1,9 +1,8 @@
 package io.atleon.aws.sns;
 
-import software.amazon.awssdk.services.sns.SnsAsyncClient;
-
 import java.time.Duration;
 import java.util.function.Supplier;
+import software.amazon.awssdk.services.sns.SnsAsyncClient;
 
 /**
  * Configures behavior of sending {@link SnsMessage}s and creation of underlying SNS Client.
@@ -29,12 +28,11 @@ public final class SnsSenderOptions {
     private final int maxRequestsInFlight;
 
     private SnsSenderOptions(
-        Supplier<SnsAsyncClient> clientSupplier,
-        int batchSize,
-        Duration batchDuration,
-        int batchPrefetch,
-        int maxRequestsInFlight
-    ) {
+            Supplier<SnsAsyncClient> clientSupplier,
+            int batchSize,
+            Duration batchDuration,
+            int batchPrefetch,
+            int maxRequestsInFlight) {
         this.clientSupplier = clientSupplier;
         this.batchSize = batchSize;
         this.batchDuration = batchDuration;

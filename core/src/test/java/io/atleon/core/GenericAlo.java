@@ -87,11 +87,7 @@ public class GenericAlo<T> implements Alo<T> {
         private final Consumer<? super Throwable> nacknowledger;
 
         private Propagated(
-            AtomicInteger mapCount,
-            T data,
-            Runnable acknowledger,
-            Consumer<? super Throwable> nacknowledger
-        ) {
+                AtomicInteger mapCount, T data, Runnable acknowledger, Consumer<? super Throwable> nacknowledger) {
             this.mapCount = mapCount;
             this.data = data;
             this.acknowledger = acknowledger;

@@ -6,7 +6,6 @@ import io.atleon.rabbitmq.ReceivedRabbitMQMessage;
 import io.atleon.util.ConfigLoading;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
-
 import java.util.Map;
 import java.util.Objects;
 
@@ -16,8 +15,8 @@ import java.util.Objects;
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedRabbitMQMessage}s
  */
 public final class MeteringAloReceivedRabbitMQMessageDecorator<T>
-    extends MeteringAloDecorator<ReceivedRabbitMQMessage<T>, Void>
-    implements AloReceivedRabbitMQMessageDecorator<T> {
+        extends MeteringAloDecorator<ReceivedRabbitMQMessage<T>, Void>
+        implements AloReceivedRabbitMQMessageDecorator<T> {
 
     private String queue = null;
 

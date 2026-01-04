@@ -1,8 +1,7 @@
 package org.apache.kafka.clients.admin;
 
-import org.apache.kafka.common.KafkaFuture;
-
 import java.util.Map;
+import org.apache.kafka.common.KafkaFuture;
 
 /**
  * Test extension of {@link DescribeTopicsResult} to allow creation for tests

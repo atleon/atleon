@@ -2,6 +2,10 @@ package io.atleon.kafka;
 
 import io.atleon.core.ConfigSource;
 import io.atleon.util.ConfigLoading;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Function;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerPartitionAssignor;
@@ -9,16 +13,9 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serializer;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.function.Function;
-
 public class KafkaConfigSource extends ConfigSource<KafkaConfig, KafkaConfigSource> {
 
-    protected KafkaConfigSource() {
-
-    }
+    protected KafkaConfigSource() {}
 
     protected KafkaConfigSource(String name) {
         super(name);

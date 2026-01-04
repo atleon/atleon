@@ -1,8 +1,7 @@
 package io.atleon.kafka;
 
-import org.apache.kafka.common.TopicPartition;
-
 import java.util.Comparator;
+import org.apache.kafka.common.TopicPartition;
 
 /**
  * Factory that provides instances of {@link PollStrategy} upon beginning the consumption of

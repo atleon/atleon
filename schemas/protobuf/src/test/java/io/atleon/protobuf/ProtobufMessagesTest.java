@@ -1,13 +1,12 @@
 package io.atleon.protobuf;
 
-import com.google.protobuf.StringValue;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.google.protobuf.StringValue;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Function;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
 
 public class ProtobufMessagesTest {
 

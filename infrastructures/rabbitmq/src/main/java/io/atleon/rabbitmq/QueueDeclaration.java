@@ -20,12 +20,7 @@ public final class QueueDeclaration {
     }
 
     private QueueDeclaration(
-        String name,
-        boolean durable,
-        boolean exclusive,
-        boolean autoDelete,
-        Map<String, Object> arguments
-    ) {
+            String name, boolean durable, boolean exclusive, boolean autoDelete, Map<String, Object> arguments) {
         this.name = name;
         this.durable = durable;
         this.exclusive = exclusive;

@@ -1,8 +1,7 @@
 package io.atleon.examples.spring.awssnssqs.service;
 
-import org.springframework.stereotype.Component;
-
 import java.util.function.Consumer;
+import org.springframework.stereotype.Component;
 
 @Component
 public class NumbersService {

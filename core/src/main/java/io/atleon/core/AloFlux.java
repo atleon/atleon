@@ -1,16 +1,5 @@
 package io.atleon.core;
 
-import org.reactivestreams.Publisher;
-import org.reactivestreams.Subscriber;
-import reactor.core.Disposable;
-import reactor.core.observability.SignalListenerFactory;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.SignalType;
-import reactor.core.publisher.SynchronousSink;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
-import reactor.util.context.Context;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
@@ -23,6 +12,16 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import org.reactivestreams.Publisher;
+import org.reactivestreams.Subscriber;
+import reactor.core.Disposable;
+import reactor.core.observability.SignalListenerFactory;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.SignalType;
+import reactor.core.publisher.SynchronousSink;
+import reactor.core.scheduler.Scheduler;
+import reactor.core.scheduler.Schedulers;
+import reactor.util.context.Context;
 
 /**
  * A wrapper around Project Reactor's {@link Flux} for Alo elements containing data of type T.
@@ -223,8 +222,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <V> AloFlux<V> concatMap(Function<? super T, ? extends Publisher<V>> mapper) {
         return wrapped.<Alo<Publisher<V>>>handle(AloOps.mappingHandler(mapper))
-            .concatMap(AcknowledgingPublisher::fromAloPublisher)
-            .as(AloFlux::new);
+                .concatMap(AcknowledgingPublisher::fromAloPublisher)
+                .as(AloFlux::new);
     }
 
     /**
@@ -232,8 +231,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <V> AloFlux<V> concatMap(Function<? super T, ? extends Publisher<V>> mapper, int prefetch) {
         return wrapped.<Alo<Publisher<V>>>handle(AloOps.mappingHandler(mapper))
-            .concatMap(AcknowledgingPublisher::fromAloPublisher, prefetch)
-            .as(AloFlux::new);
+                .concatMap(AcknowledgingPublisher::fromAloPublisher, prefetch)
+                .as(AloFlux::new);
     }
 
     /**
@@ -256,8 +255,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper) {
         return wrapped.<Alo<Publisher<V>>>handle(AloOps.mappingHandler(mapper))
-            .flatMap(AcknowledgingPublisher::fromAloPublisher)
-            .as(AloFlux::new);
+                .flatMap(AcknowledgingPublisher::fromAloPublisher)
+                .as(AloFlux::new);
     }
 
     /**
@@ -265,8 +264,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper, int concurrency) {
         return wrapped.<Alo<Publisher<V>>>handle(AloOps.mappingHandler(mapper))
-            .flatMap(AcknowledgingPublisher::fromAloPublisher, concurrency)
-            .as(AloFlux::new);
+                .flatMap(AcknowledgingPublisher::fromAloPublisher, concurrency)
+                .as(AloFlux::new);
     }
 
     /**
@@ -274,8 +273,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <V> AloFlux<V> flatMap(Function<? super T, ? extends Publisher<V>> mapper, int concurrency, int prefetch) {
         return wrapped.<Alo<Publisher<V>>>handle(AloOps.mappingHandler(mapper))
-            .flatMap(AcknowledgingPublisher::fromAloPublisher, concurrency, prefetch)
-            .as(AloFlux::new);
+                .flatMap(AcknowledgingPublisher::fromAloPublisher, concurrency, prefetch)
+                .as(AloFlux::new);
     }
 
     /**
@@ -302,8 +301,11 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     /**
      * @see Flux#bufferTimeout(int, Duration, Scheduler, boolean)
      */
-    public AloFlux<List<T>> bufferTimeout(int maxSize, Duration maxTime, Scheduler scheduler, boolean fairBackpressure) {
-        return wrapped.bufferTimeout(maxSize, maxTime, scheduler, fairBackpressure).map(AloOps::fanIn).as(AloFlux::wrap);
+    public AloFlux<List<T>> bufferTimeout(
+            int maxSize, Duration maxTime, Scheduler scheduler, boolean fairBackpressure) {
+        return wrapped.bufferTimeout(maxSize, maxTime, scheduler, fairBackpressure)
+                .map(AloOps::fanIn)
+                .as(AloFlux::wrap);
     }
 
     /**
@@ -394,7 +396,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param numGroups       How many groups to divide the source sequence in to
      * @return A Flux of grouped AloFluxes
      */
-    public GroupFlux<Integer, T> groupByNumberHash(Function<? super T, ? extends Number> numberExtractor, int numGroups) {
+    public GroupFlux<Integer, T> groupByNumberHash(
+            Function<? super T, ? extends Number> numberExtractor, int numGroups) {
         return groupBy(NumberHashGroupExtractor.composed(numberExtractor, numGroups), numGroups);
     }
 
@@ -408,10 +411,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @return A Flux of grouped AloFluxes
      */
     public <V> GroupFlux<Integer, V> groupByNumberHash(
-        Function<? super T, ? extends Number> numberExtractor,
-        int numGroups,
-        Function<? super T, V> valueMapper
-    ) {
+            Function<? super T, ? extends Number> numberExtractor, int numGroups, Function<? super T, V> valueMapper) {
         return groupBy(NumberHashGroupExtractor.composed(numberExtractor, numGroups), numGroups, valueMapper);
     }
 
@@ -437,8 +437,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param numGroups       How many groups to divide the source sequence in to
      * @return A Flux of grouped AloFluxes
      */
-    public <V> GroupFlux<Integer, V>
-    groupByStringHash(Function<? super T, String> stringExtractor, int numGroups, Function<? super T, V> valueMapper) {
+    public <V> GroupFlux<Integer, V> groupByStringHash(
+            Function<? super T, String> stringExtractor, int numGroups, Function<? super T, V> valueMapper) {
         return groupBy(StringHashGroupExtractor.composed(stringExtractor, numGroups), numGroups, valueMapper);
     }
 
@@ -447,19 +447,19 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <K> GroupFlux<K, T> groupBy(Function<? super T, ? extends K> groupExtractor, int cardinality) {
         return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()))
-            .<AloGroupedFlux<K, T>>map(AloGroupedFlux::create)
-            .as(flux -> GroupFlux.create(flux, cardinality));
+                .<AloGroupedFlux<K, T>>map(AloGroupedFlux::create)
+                .as(flux -> GroupFlux.create(flux, cardinality));
     }
 
     /**
      * @see Flux#groupBy(Function)
      */
-    public <K, V> GroupFlux<K, V>
-    groupBy(Function<? super T, ? extends K> groupExtractor, int cardinality, Function<? super T, V> valueMapper) {
+    public <K, V> GroupFlux<K, V> groupBy(
+            Function<? super T, ? extends K> groupExtractor, int cardinality, Function<? super T, V> valueMapper) {
         BiConsumer<Alo<T>, SynchronousSink<Alo<V>>> aloValueMappingHandler = AloOps.mappingHandler(valueMapper);
         return wrapped.groupBy(alo -> groupExtractor.apply(alo.get()))
-            .<AloGroupedFlux<K, V>>map(groupedFlux -> AloGroupedFlux.create(groupedFlux, aloValueMappingHandler))
-            .as(flux -> GroupFlux.create(flux, cardinality));
+                .<AloGroupedFlux<K, V>>map(groupedFlux -> AloGroupedFlux.create(groupedFlux, aloValueMappingHandler))
+                .as(flux -> GroupFlux.create(flux, cardinality));
     }
 
     /**
@@ -469,9 +469,10 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @return a {@link GroupFlux} where keys are rail IDs
      */
     public GroupFlux<Integer, T> groupByRoundRobin(int cardinality) {
-        return wrapped.parallel(cardinality).groups()
-            .map(AloGroupedFlux::create)
-            .as(flux -> GroupFlux.create(flux, cardinality));
+        return wrapped.parallel(cardinality)
+                .groups()
+                .map(AloGroupedFlux::create)
+                .as(flux -> GroupFlux.create(flux, cardinality));
     }
 
     /**
@@ -613,8 +614,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param errorExtractor Function used to convert failed item to throwable error
      * @return A new {@link AloFlux} with failure processing applied
      */
-    public AloFlux<T>
-    processFailure(Predicate<? super T> isFailure, Function<? super T, ? extends Throwable> errorExtractor) {
+    public AloFlux<T> processFailure(
+            Predicate<? super T> isFailure, Function<? super T, ? extends Throwable> errorExtractor) {
         return new AloFlux<>(wrapped.handle(AloOps.failureProcessingHandler(isFailure, errorExtractor)));
     }
 
@@ -725,7 +726,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @param delegator A {@link BiFunction} invoked when a downstream error occurs
      * @return A new {@link AloFlux}
      */
-    public AloFlux<T> addAloErrorDelegation(BiFunction<? super T, ? super Throwable, ? extends Publisher<?>> delegator) {
+    public AloFlux<T> addAloErrorDelegation(
+            BiFunction<? super T, ? super Throwable, ? extends Publisher<?>> delegator) {
         return new AloFlux<>(new AloErrorDelegatingOperator<>(wrapped, delegator));
     }
 

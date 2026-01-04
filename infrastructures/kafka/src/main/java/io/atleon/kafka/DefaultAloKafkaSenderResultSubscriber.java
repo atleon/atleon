@@ -6,6 +6,4 @@ import io.atleon.core.DefaultAloSenderResultSubscriber;
  * Deprecated - Use {@link DefaultAloSenderResultSubscriber}
  */
 @Deprecated
-public class DefaultAloKafkaSenderResultSubscriber<T> extends DefaultAloSenderResultSubscriber<KafkaSenderResult<T>> {
-
-}
+public class DefaultAloKafkaSenderResultSubscriber<T> extends DefaultAloSenderResultSubscriber<KafkaSenderResult<T>> {}

@@ -1,20 +1,20 @@
 package io.atleon.core;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 class AloDecoratorConfigTest {
 
     @Test
     public void decoratorsAreAutoLoadedIfNotSpecifiedDirectly() {
-        Optional<AloDecorator<Object>> loadedDecorator = AloDecoratorConfig.load(Collections.emptyMap(), AloDecorator.class);
+        Optional<AloDecorator<Object>> loadedDecorator =
+                AloDecoratorConfig.load(Collections.emptyMap(), AloDecorator.class);
 
         assertTrue(loadedDecorator.isPresent());
         assertTrue(loadedDecorator.get() instanceof TestAloDecorator);
@@ -33,10 +33,8 @@ class AloDecoratorConfigTest {
 
     @Test
     public void decoratorsAreInstantiatedFromClassWhenExplicitlySpecified() {
-        Map<String, ?> properties = Collections.singletonMap(
-            AloDecoratorConfig.DECORATOR_TYPES_CONFIG,
-            ExplicitAloDecorator.class
-        );
+        Map<String, ?> properties =
+                Collections.singletonMap(AloDecoratorConfig.DECORATOR_TYPES_CONFIG, ExplicitAloDecorator.class);
 
         Optional<AloDecorator<Object>> loadedDecorator = AloDecoratorConfig.load(properties, AloDecorator.class);
 
@@ -46,9 +44,7 @@ class AloDecoratorConfigTest {
     @Test
     public void decoratorsAreInstantiatedFromClassNameWhenExplicitlySpecified() {
         Map<String, ?> properties = Collections.singletonMap(
-            AloDecoratorConfig.DECORATOR_TYPES_CONFIG,
-            ExplicitAloDecorator.class.getName()
-        );
+                AloDecoratorConfig.DECORATOR_TYPES_CONFIG, ExplicitAloDecorator.class.getName());
 
         Optional<AloDecorator<Object>> loadedDecorator = AloDecoratorConfig.load(properties, AloDecorator.class);
 
@@ -58,9 +54,8 @@ class AloDecoratorConfigTest {
     @Test
     public void decoratorsAreLoadedWithAutoDecoratorsWhenExplicitlySpecified() {
         Map<String, ?> properties = Collections.singletonMap(
-            AloDecoratorConfig.DECORATOR_TYPES_CONFIG,
-            Arrays.asList(ExplicitAloDecorator.class, AloDecoratorConfig.DECORATOR_TYPE_AUTO)
-        );
+                AloDecoratorConfig.DECORATOR_TYPES_CONFIG,
+                Arrays.asList(ExplicitAloDecorator.class, AloDecoratorConfig.DECORATOR_TYPE_AUTO));
 
         Optional<AloDecorator<Object>> loadedDecorator = AloDecoratorConfig.load(properties, AloDecorator.class);
 

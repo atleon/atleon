@@ -1,13 +1,12 @@
 package io.atleon.core;
 
-import org.reactivestreams.Publisher;
-import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Schedulers;
-
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
+import org.reactivestreams.Publisher;
+import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * Convenience class for applying size and time bounded batching to {@link Publisher}s
@@ -31,13 +30,14 @@ public final class Batcher {
     }
 
     public <T, R> Flux<R> applyMapping(
-        Publisher<T> publisher,
-        Function<? super List<T>, ? extends Publisher<? extends R>> mapper,
-        int maxConcurrency
-    ) {
+            Publisher<T> publisher,
+            Function<? super List<T>, ? extends Publisher<? extends R>> mapper,
+            int maxConcurrency) {
         return maxConcurrency <= 1
-            ? toBatches(publisher).concatMap(mapper, prefetch)
-            : toBatches(publisher).publishOn(Schedulers.immediate(), prefetch).flatMap(mapper, maxConcurrency);
+                ? toBatches(publisher).concatMap(mapper, prefetch)
+                : toBatches(publisher)
+                        .publishOn(Schedulers.immediate(), prefetch)
+                        .flatMap(mapper, maxConcurrency);
     }
 
     private <T> Flux<List<T>> toBatches(Publisher<T> publisher) {

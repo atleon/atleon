@@ -1,11 +1,10 @@
 package io.atleon.util;
 
-import org.jspecify.annotations.Nullable;
-
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Utility methods for creating/managing proxies.
@@ -23,11 +22,12 @@ public final class Proxying {
                 throw e.getCause();
             }
         };
-        return (U) Proxy.newProxyInstance(interfaceType.getClassLoader(), new Class[]{interfaceType}, rawHandler);
+        return (U) Proxy.newProxyInstance(interfaceType.getClassLoader(), new Class[] {interfaceType}, rawHandler);
     }
 
     public interface MethodInvocationHandler {
 
-        @Nullable Object invoke(Method method, Object[] args) throws ReflectiveOperationException;
+        @Nullable
+        Object invoke(Method method, Object[] args) throws ReflectiveOperationException;
     }
 }

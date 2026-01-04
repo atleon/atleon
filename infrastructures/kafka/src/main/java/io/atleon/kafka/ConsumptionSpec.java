@@ -1,11 +1,10 @@
 package io.atleon.kafka;
 
+import java.util.Collection;
+import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.TopicPartition;
-
-import java.util.Collection;
-import java.util.regex.Pattern;
 
 /**
  * Interface used to specify what topic(s) or partition(s) to request for consumption, with
@@ -39,7 +38,5 @@ interface ConsumptionSpec {
 
     void onInit(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener);
 
-    default void onClose(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener) {
-
-    }
+    default void onClose(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener) {}
 }
