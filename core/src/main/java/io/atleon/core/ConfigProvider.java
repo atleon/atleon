@@ -108,15 +108,6 @@ public abstract class ConfigProvider<T, P extends ConfigProvider<T, P>> {
         throw new IllegalArgumentException("At least one of " + Arrays.toString(keys) + " must be configured");
     }
 
-    protected static <T extends Enum<T>> void
-    validateEnumProperty(Map<String, Object> properties, String key, Class<T> enumClass) {
-        try {
-            Enum.valueOf(enumClass, Objects.toString(properties.get(key)));
-        } catch (Exception e) {
-            throw new IllegalArgumentException(key + " must be configured as an Enum value from " + enumClass, e);
-        }
-    }
-
     final void setProperties(Map<String, Object> properties) {
         this.properties = properties;
     }

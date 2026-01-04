@@ -18,10 +18,9 @@ public class ReflectAvroRegistrySerDeTest {
         RegistrySerializer<Object, ?> serializer = new AvroRegistrySerializer<>();
         RegistryDeserializer<Object, ?> deserializer = new AvroRegistryDeserializer<>();
 
-        Map<String, Object> configs = new HashMap<String, Object>() {{
-            put(RegistrySerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, SCHEMA_REGISTRY_URL);
-            put(RegistrySerDeConfig.SCHEMA_REFLECTION_CONFIG, true);
-        }};
+        Map<String, Object> configs = new HashMap<>();
+        configs.put(RegistrySerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, SCHEMA_REGISTRY_URL);
+        configs.put(RegistrySerDeConfig.SCHEMA_REFLECTION_CONFIG, true);
 
         serializer.configure(configs);
         deserializer.configure(configs);
