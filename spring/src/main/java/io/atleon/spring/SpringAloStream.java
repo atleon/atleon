@@ -3,6 +3,7 @@ package io.atleon.spring;
 import io.atleon.core.Autostart;
 import io.atleon.core.SelfConfigurableAloStream;
 import io.atleon.core.StreamPropertyResolver;
+import org.jspecify.annotations.NullMarked;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
@@ -23,6 +24,7 @@ import java.util.Optional;
  * so as an example, you can set the default value for {@code concurrency} used by all extending
  * streams by configuring {@code stream.defaults.concurrency}.
  */
+@NullMarked
 public abstract class SpringAloStream extends SelfConfigurableAloStream implements StreamPropertyResolver {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SpringAloStream.class);

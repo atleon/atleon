@@ -20,6 +20,7 @@
         <confluent.version>7.7.4</confluent.version> <!-- https://docs.confluent.io/platform/current/installation/versions-interoperability.html -->
         <guava.version>32.0.1-jre</guava.version>
         <jackson.version>2.16.2</jackson.version>
+        <jspecify.version>1.0.0</jspecify.version>
         <junit-jupiter.version>5.10.1</junit-jupiter.version>
         <kotlin.version>1.9.21</kotlin.version> <!-- Dictated by kotlinx-coroutines version -->
         <kotlinx-coroutines.version>1.8.0</kotlinx-coroutines.version>
@@ -295,6 +296,11 @@
                 <groupId>org.jetbrains.kotlinx</groupId>
                 <artifactId>kotlinx-coroutines-reactor</artifactId>
                 <version>${kotlinx-coroutines.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jspecify</groupId>
+                <artifactId>jspecify</artifactId>
+                <version>${jspecify.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
