@@ -27,7 +27,7 @@ public class PropertiesFileConfigProcessor implements ConfigProcessor {
             Map<String, Object> result = new HashMap<>(configs);
             result.remove(FILES_PROPERTY);
             ConfigLoading.loadSetOfStringOrEmpty(configs, FILES_PROPERTY)
-                .forEach(fileSpec -> processFile(fileSpec, result::put));
+                    .forEach(fileSpec -> processFile(fileSpec, result::put));
             return Mono.just(result);
         } else {
             return Mono.just(configs);

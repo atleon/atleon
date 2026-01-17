@@ -9,9 +9,7 @@ import java.util.Optional;
 
 final class Contexts {
 
-    private Contexts() {
-
-    }
+    private Contexts() {}
 
     public static boolean isPropertySetToFalse(ApplicationContext context, String property) {
         return "false".equalsIgnoreCase(context.getEnvironment().getProperty(property));

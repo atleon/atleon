@@ -11,9 +11,7 @@ import java.util.function.Function;
  */
 public class SnsConfigSource extends ConfigSource<SnsConfig, SnsConfigSource> {
 
-    protected SnsConfigSource() {
-
-    }
+    protected SnsConfigSource() {}
 
     protected SnsConfigSource(String name) {
         super(name);
@@ -37,9 +35,7 @@ public class SnsConfigSource extends ConfigSource<SnsConfig, SnsConfigSource> {
     }
 
     @Override
-    protected void validateProperties(Map<String, Object> properties) {
-
-    }
+    protected void validateProperties(Map<String, Object> properties) {}
 
     @Override
     protected SnsConfig postProcessProperties(Map<String, Object> properties) {

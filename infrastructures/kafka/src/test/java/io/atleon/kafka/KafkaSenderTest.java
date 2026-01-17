@@ -37,8 +37,8 @@ class KafkaSenderTest {
     @Test
     public void send_givenDownstreamContext_expectsPropagationToUpstream() {
         KafkaSenderOptions<String, String> senderOptions = KafkaSenderOptions.<String, String>newBuilder()
-            .producerProperties(newProducerProperties())
-            .build();
+                .producerProperties(newProducerProperties())
+                .build();
         KafkaSender<String, String> sender = KafkaSender.create(senderOptions);
 
         Flux<KafkaSenderRecord<String, String, Object>> senderRecords = Flux.deferContextual(context -> {
@@ -47,8 +47,8 @@ class KafkaSenderTest {
         });
 
         Mono<Void> result = sender.send(senderRecords)
-            .contextWrite(Context.of(String.class, "context"))
-            .then();
+                .contextWrite(Context.of(String.class, "context"))
+                .then();
 
         assertDoesNotThrow(() -> result.block());
 
@@ -61,11 +61,11 @@ class KafkaSenderTest {
         int partition = 0;
 
         KafkaSenderRecord<String, String, Object> senderRecord =
-            KafkaSenderRecord.create(topic, partition, "key", "value", null);
+                KafkaSenderRecord.create(topic, partition, "key", "value", null);
 
         KafkaSenderOptions<String, String> senderOptions = KafkaSenderOptions.<String, String>newBuilder()
-            .producerProperties(newProducerProperties())
-            .build();
+                .producerProperties(newProducerProperties())
+                .build();
         KafkaSender<String, String> sender = KafkaSender.create(senderOptions);
 
         sender.send(senderRecord).block();
@@ -81,22 +81,23 @@ class KafkaSenderTest {
         int partition = 0;
 
         KafkaSenderRecord<String, String, Object> senderRecord1 =
-            KafkaSenderRecord.create(topic, partition, "key1", "value1", null);
+                KafkaSenderRecord.create(topic, partition, "key1", "value1", null);
         KafkaSenderRecord<String, String, Object> senderRecord2 =
-            KafkaSenderRecord.create(topic, partition, "key2", "Boom", null);
+                KafkaSenderRecord.create(topic, partition, "key2", "Boom", null);
         KafkaSenderRecord<String, String, Object> senderRecord3 =
-            KafkaSenderRecord.create(topic, partition, "key3", "value3", null);
+                KafkaSenderRecord.create(topic, partition, "key3", "value3", null);
 
         ProducerListener.Closure producerListener = ProducerListener.closure();
         KafkaSenderOptions<String, String> senderOptions = KafkaSenderOptions.<String, String>newBuilder()
-            .producerListener(producerListener)
-            .producerProperties(newProducerProperties())
-            .build();
+                .producerListener(producerListener)
+                .producerProperties(newProducerProperties())
+                .build();
         KafkaSender<String, String> sender = KafkaSender.create(senderOptions);
 
-        assertThrows(
-            SerializationException.class,
-            () -> Flux.just(senderRecord1, senderRecord2, senderRecord3).as(sender::send).then().block());
+        assertThrows(SerializationException.class, () -> Flux.just(senderRecord1, senderRecord2, senderRecord3)
+                .as(sender::send)
+                .then()
+                .block());
 
         sender.close();
         producerListener.closed().then(Mono.delay(Duration.ofSeconds(1))).block();
@@ -111,23 +112,21 @@ class KafkaSenderTest {
         int numRecords = 100;
 
         KafkaSenderOptions<String, String> senderOptions = KafkaSenderOptions.<String, String>newBuilder()
-            .producerProperties(newProducerProperties())
-            .maxInFlight(maxInFlight)
-            .build();
+                .producerProperties(newProducerProperties())
+                .maxInFlight(maxInFlight)
+                .build();
         KafkaSender<String, String> sender = KafkaSender.create(senderOptions);
 
-        Sinks.Many<KafkaSenderRecord<String, String, Object>> sink = Sinks.many().unicast().onBackpressureBuffer();
+        Sinks.Many<KafkaSenderRecord<String, String, Object>> sink =
+                Sinks.many().unicast().onBackpressureBuffer();
 
         AtomicLong requested = new AtomicLong(0L);
         CountDownLatch latch = new CountDownLatch(numRecords);
-        sink.asFlux()
-            .doOnRequest(requested::addAndGet)
-            .as(sender::send)
-            .subscribe(__ -> latch.countDown());
+        sink.asFlux().doOnRequest(requested::addAndGet).as(sender::send).subscribe(__ -> latch.countDown());
 
         Flux.range(0, numRecords)
-            .map(i -> KafkaSenderRecord.create(topic, "key" + i, "value" + i, null))
-            .subscribe(sink::tryEmitNext);
+                .map(i -> KafkaSenderRecord.create(topic, "key" + i, "value" + i, null))
+                .subscribe(sink::tryEmitNext);
 
         latch.await();
         sender.close();
@@ -141,20 +140,21 @@ class KafkaSenderTest {
         int partition = 0;
 
         KafkaSenderRecord<String, String, Object> senderRecord1 =
-            KafkaSenderRecord.create(topic, partition, "key1", "value1", null);
+                KafkaSenderRecord.create(topic, partition, "key1", "value1", null);
         KafkaSenderRecord<String, String, Object> senderRecord2 =
-            KafkaSenderRecord.create(topic, partition, "key2", "Boom", null);
+                KafkaSenderRecord.create(topic, partition, "key2", "Boom", null);
         KafkaSenderRecord<String, String, Object> senderRecord3 =
-            KafkaSenderRecord.create(topic, partition, "key3", "value3", null);
+                KafkaSenderRecord.create(topic, partition, "key3", "value3", null);
 
         KafkaSenderOptions<String, String> senderOptions = KafkaSenderOptions.<String, String>newBuilder()
-            .producerProperties(newProducerProperties())
-            .build();
+                .producerProperties(newProducerProperties())
+                .build();
         KafkaSender<String, String> sender = KafkaSender.create(senderOptions);
 
-        assertThrows(
-            SerializationException.class,
-            () -> Flux.just(senderRecord1, senderRecord2, senderRecord3).as(sender::sendDelayError).then().block());
+        assertThrows(SerializationException.class, () -> Flux.just(senderRecord1, senderRecord2, senderRecord3)
+                .as(sender::sendDelayError)
+                .then()
+                .block());
 
         assertEquals(2, countRecords(topic, partition));
     }
@@ -165,27 +165,29 @@ class KafkaSenderTest {
         int partition = 0;
 
         KafkaSenderRecord<String, String, Boolean> senderRecord1 =
-            KafkaSenderRecord.create(topic, partition, "key1", "value1", false);
+                KafkaSenderRecord.create(topic, partition, "key1", "value1", false);
         KafkaSenderRecord<String, String, Boolean> senderRecord2 =
-            KafkaSenderRecord.create(topic, partition, "key2", "Boom", true);
+                KafkaSenderRecord.create(topic, partition, "key2", "Boom", true);
         KafkaSenderRecord<String, String, Boolean> senderRecord3 =
-            KafkaSenderRecord.create(topic, partition, "key3", "value3", false);
+                KafkaSenderRecord.create(topic, partition, "key3", "value3", false);
 
         KafkaSenderOptions<String, String> senderOptions = KafkaSenderOptions.<String, String>newBuilder()
-            .producerProperties(newProducerProperties())
-            .build();
+                .producerProperties(newProducerProperties())
+                .build();
         KafkaSender<String, String> sender = KafkaSender.create(senderOptions);
 
         Map<Boolean, List<KafkaSenderResult<Boolean>>> results = Flux.just(senderRecord1, senderRecord2, senderRecord3)
-            .as(sender::sendDelegateError)
-            .collect(Collectors.partitioningBy(KafkaSenderResult::correlationMetadata))
-            .block();
+                .as(sender::sendDelegateError)
+                .collect(Collectors.partitioningBy(KafkaSenderResult::correlationMetadata))
+                .block();
 
         assertEquals(2, results.get(false).size());
         assertTrue(results.get(false).stream().noneMatch(KafkaSenderResult::isFailure));
         assertEquals(1, results.get(true).size());
         assertTrue(results.get(true).get(0).isFailure());
-        assertInstanceOf(SerializationException.class, results.get(true).get(0).failureCause().orElse(null));
+        assertInstanceOf(
+                SerializationException.class,
+                results.get(true).get(0).failureCause().orElse(null));
         assertEquals(2, countRecords(topic, partition));
     }
 
@@ -194,17 +196,21 @@ class KafkaSenderTest {
         String topic = UUID.randomUUID().toString();
         int partition = 0;
 
-        Flux<KafkaSenderRecord<String, String, Object>> senderRecords = Flux.just(
-            KafkaSenderRecord.create(topic, partition, "key", "value", null)
-        );
+        Flux<KafkaSenderRecord<String, String, Object>> senderRecords =
+                Flux.just(KafkaSenderRecord.create(topic, partition, "key", "value", null));
 
         KafkaSenderOptions<String, String> senderOptions = KafkaSenderOptions.<String, String>newBuilder()
-            .producerProperties(newProducerProperties())
-            .producerProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, UUID.randomUUID().toString())
-            .build();
+                .producerProperties(newProducerProperties())
+                .producerProperty(
+                        ProducerConfig.TRANSACTIONAL_ID_CONFIG,
+                        UUID.randomUUID().toString())
+                .build();
         KafkaSender<String, String> sender = KafkaSender.create(senderOptions);
 
-        Flux.just(senderRecords).as(sender::sendTransactional).then(Mono.delay(Duration.ofSeconds(1))).block();
+        Flux.just(senderRecords)
+                .as(sender::sendTransactional)
+                .then(Mono.delay(Duration.ofSeconds(1)))
+                .block();
 
         // There should be two records: One "uncommitted" record, followed by COMMIT record marker
         assertEquals(2, countRecords(topic, partition));
@@ -218,26 +224,27 @@ class KafkaSenderTest {
         int partition = 0;
 
         Flux<KafkaSenderRecord<String, String, Object>> senderRecords = Flux.just(
-            KafkaSenderRecord.create(topic, partition, "key1", "value1", null),
-            KafkaSenderRecord.create(topic, partition, "key2", "Boom", null),
-            KafkaSenderRecord.create(topic, partition, "key3", "value3", null)
-        );
+                KafkaSenderRecord.create(topic, partition, "key1", "value1", null),
+                KafkaSenderRecord.create(topic, partition, "key2", "Boom", null),
+                KafkaSenderRecord.create(topic, partition, "key3", "value3", null));
 
         ProducerListener.Closure producerListener = ProducerListener.closure();
         KafkaSenderOptions<String, String> senderOptions = KafkaSenderOptions.<String, String>newBuilder()
-            .producerListener(producerListener)
-            .producerProperties(newProducerProperties())
-            .producerProperty(ProducerConfig.TRANSACTIONAL_ID_CONFIG, UUID.randomUUID().toString())
-            .build();
+                .producerListener(producerListener)
+                .producerProperties(newProducerProperties())
+                .producerProperty(
+                        ProducerConfig.TRANSACTIONAL_ID_CONFIG,
+                        UUID.randomUUID().toString())
+                .build();
         KafkaSender<String, String> sender = KafkaSender.create(senderOptions);
 
         Flux.just(senderRecords)
-            .as(sender::sendTransactional)
-            .as(it -> StepVerifier.create(it, 1))
-            .expectNextCount(1)
-            .thenRequest(Long.MAX_VALUE)
-            .expectError(SerializationException.class)
-            .verify();
+                .as(sender::sendTransactional)
+                .as(it -> StepVerifier.create(it, 1))
+                .expectNextCount(1)
+                .thenRequest(Long.MAX_VALUE)
+                .expectError(SerializationException.class)
+                .verify();
 
         sender.close();
         producerListener.closed().then(Mono.delay(Duration.ofSeconds(1))).block();
@@ -251,10 +258,10 @@ class KafkaSenderTest {
         try (ReactiveAdmin admin = ReactiveAdmin.create(newKafkaProperties())) {
             TopicPartition topicPartition = new TopicPartition(topic, partition);
             return admin.listOffsets(Collections.singletonList(topicPartition), OffsetSpec.latest())
-                .flatMapIterable(Map::values)
-                .reduce(0L, Long::sum)
-                .blockOptional()
-                .orElse(0L);
+                    .flatMapIterable(Map::values)
+                    .reduce(0L, Long::sum)
+                    .blockOptional()
+                    .orElse(0L);
         }
     }
 

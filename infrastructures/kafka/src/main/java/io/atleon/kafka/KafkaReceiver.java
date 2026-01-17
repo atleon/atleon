@@ -239,9 +239,7 @@ public final class KafkaReceiver<K, V> {
      * @return A stream of records that require manual acknowledgment
      */
     public Flux<KafkaReceiverRecord<K, V>> receiveTxManual(
-        Publisher<? extends KafkaTxManager> txManager,
-        Collection<String> topics
-    ) {
+            Publisher<? extends KafkaTxManager> txManager, Collection<String> topics) {
         return Mono.from(txManager).flatMapMany(it -> receiveTxManual(it, ConsumptionSpec.subscribe(topics)));
     }
 
@@ -254,9 +252,7 @@ public final class KafkaReceiver<K, V> {
      * @return A stream of records that require manual acknowledgment
      */
     public Flux<KafkaReceiverRecord<K, V>> receiveTxManual(
-        Publisher<? extends KafkaTxManager> txManager,
-        Pattern topicsPattern
-    ) {
+            Publisher<? extends KafkaTxManager> txManager, Pattern topicsPattern) {
         return Mono.from(txManager).flatMapMany(it -> receiveTxManual(it, ConsumptionSpec.subscribe(topicsPattern)));
     }
 
@@ -278,9 +274,7 @@ public final class KafkaReceiver<K, V> {
      * with automatic acknowledgment behavior
      */
     public Flux<Mono<ConsumerRecord<K, V>>> receiveAutoAckInRanges(
-        Collection<String> topics,
-        OffsetRangeProvider provider
-    ) {
+            Collection<String> topics, OffsetRangeProvider provider) {
         return receiveManualInRanges(topics, provider).map(KafkaReceiver::toAutoAck);
     }
 
@@ -293,17 +287,15 @@ public final class KafkaReceiver<K, V> {
      * @return A <i>finite</i> stream of records that require manual acknowledgment
      */
     public Flux<KafkaReceiverRecord<K, V>> receiveManualInRanges(
-        Collection<String> topics,
-        OffsetRangeProvider provider
-    ) {
+            Collection<String> topics, OffsetRangeProvider provider) {
         Comparator<RecordRange> recordRangeComparator =
-            Comparator.comparing(RecordRange::topicPartition, provider.topicPartitionComparator());
+                Comparator.comparing(RecordRange::topicPartition, provider.topicPartitionComparator());
 
         return Flux.using(options::createAdmin, it -> RecordRange.list(it, topics, provider), ReactiveAdmin::close)
-            .filter(RecordRange::hasNonNegativeLength)
-            .collectSortedList(recordRangeComparator)
-            .filter(it -> !it.isEmpty())
-            .flatMapMany(it -> receiveManualInRanges(it, provider.maxConcurrentTopicPartitions()));
+                .filter(RecordRange::hasNonNegativeLength)
+                .collectSortedList(recordRangeComparator)
+                .filter(it -> !it.isEmpty())
+                .flatMapMany(it -> receiveManualInRanges(it, provider.maxConcurrentTopicPartitions()));
     }
 
     private Flux<Mono<ConsumerRecord<K, V>>> receiveAutoAck(ConsumptionSpec consumptionSpec) {
@@ -324,34 +316,31 @@ public final class KafkaReceiver<K, V> {
         BoundedPolling boundedPolling = new BoundedPolling(recordRanges, maxConcurrency);
 
         KafkaReceiverOptions<K, V> boundedOptions = options.toBuilder()
-            .consumerListener(boundedPolling)
-            .receptionListener(boundedPolling)
-            .pollStrategyFactory(() -> boundedPolling)
-            .build();
+                .consumerListener(boundedPolling)
+                .receptionListener(boundedPolling)
+                .pollStrategyFactory(() -> boundedPolling)
+                .build();
 
         ConsumptionSpec consumptionSpec = recordRanges.stream()
-            .map(RecordRange::topicPartition)
-            .collect(Collectors.collectingAndThen(Collectors.toList(), ConsumptionSpec::assign));
+                .map(RecordRange::topicPartition)
+                .collect(Collectors.collectingAndThen(Collectors.toList(), ConsumptionSpec::assign));
 
         Scheduler timer = options.createAuxiliaryScheduler();
         return receiveManual(new PollingSubscriptionFactory<>(boundedOptions), consumptionSpec)
-            .takeUntilOther(boundedPolling.pollingAndProcessingCompleted(options.revocationGracePeriod(), timer))
-            .doFinally(__ -> timer.dispose())
-            .concatWith(boundedPolling.closed());
+                .takeUntilOther(boundedPolling.pollingAndProcessingCompleted(options.revocationGracePeriod(), timer))
+                .doFinally(__ -> timer.dispose())
+                .concatWith(boundedPolling.closed());
     }
 
     private static <K, V> Flux<KafkaReceiverRecord<K, V>> receiveManual(
-        PollingSubscriptionFactory<K, V> subscriptionFactory,
-        ConsumptionSpec consumptionSpec
-    ) {
+            PollingSubscriptionFactory<K, V> subscriptionFactory, ConsumptionSpec consumptionSpec) {
         return Flux.from(it -> it.onSubscribe(subscriptionFactory.periodicCommit(consumptionSpec, it)));
     }
 
     private static <K, V> Flux<KafkaReceiverRecord<K, V>> receiveTxManual(
-        KafkaTxManager txManager,
-        ConsumptionSpec consumptionSpec,
-        PollingSubscriptionFactory<K, V> subscriptionFactory
-    ) {
+            KafkaTxManager txManager,
+            ConsumptionSpec consumptionSpec,
+            PollingSubscriptionFactory<K, V> subscriptionFactory) {
         return Flux.from(it -> it.onSubscribe(subscriptionFactory.transactional(txManager, consumptionSpec, it)));
     }
 

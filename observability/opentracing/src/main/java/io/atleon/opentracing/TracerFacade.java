@@ -38,9 +38,7 @@ public final class TracerFacade {
     }
 
     public Tracer.SpanBuilder newSpanBuilder(String operationName) {
-        return tracer.buildSpan(operationName)
-            .ignoreActiveSpan()
-            .withTag(Tags.COMPONENT, "atleon");
+        return tracer.buildSpan(operationName).ignoreActiveSpan().withTag(Tags.COMPONENT, "atleon");
     }
 
     public <C> Optional<SpanContext> extract(Format<C> format, C carrier) {

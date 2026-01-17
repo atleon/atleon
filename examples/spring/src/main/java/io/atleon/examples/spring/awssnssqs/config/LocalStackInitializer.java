@@ -20,8 +20,9 @@ public class LocalStackInitializer implements EnvironmentPostProcessor {
         Set<String> activeProfiles = Stream.of(environment.getActiveProfiles()).collect(Collectors.toSet());
         if (activeProfiles.contains("aws") && !activeProfiles.contains("integrationTest")) {
             AtleonLocalStackContainer container = AtleonLocalStackContainer.createAndStart();
-            environment.getPropertySources()
-                .addFirst(new MapPropertySource("local-stack", createProperties(container)));
+            environment
+                    .getPropertySources()
+                    .addFirst(new MapPropertySource("local-stack", createProperties(container)));
         }
     }
 
@@ -32,8 +33,10 @@ public class LocalStackInitializer implements EnvironmentPostProcessor {
         properties.put("vars.aws.credentials.provider.type", AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC);
         properties.put("vars.aws.credentials.access.key.id", container.getAccessKey());
         properties.put("vars.aws.credentials.secret.access.key", container.getSecretKey());
-        properties.put("vars.sns.endpoint.override", container.getSnsEndpointOverride().toString());
-        properties.put("vars.sqs.endpoint.override", container.getSqsEndpointOverride().toString());
+        properties.put(
+                "vars.sns.endpoint.override", container.getSnsEndpointOverride().toString());
+        properties.put(
+                "vars.sqs.endpoint.override", container.getSqsEndpointOverride().toString());
 
         return properties;
     }

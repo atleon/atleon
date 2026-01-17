@@ -20,8 +20,8 @@ class SendingProducerTest {
         MockProducer<String, String> mockProducer = new MockProducer<>();
 
         KafkaSenderOptions<String, String> options = KafkaSenderOptions.newBuilder(__ -> mockProducer)
-            .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
 
         SendingProducer<String, String> producer = new SendingProducer<>(options);
 
@@ -33,12 +33,13 @@ class SendingProducerTest {
         MockProducer<String, String> mockProducer = new MockProducer<>();
 
         KafkaSenderOptions<String, String> options = KafkaSenderOptions.newBuilder(__ -> mockProducer)
-            .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
 
         SendingProducer<String, String> producer = new SendingProducer<>(options);
 
-        assertThrows(UnsupportedOperationException.class, () -> producer.invoke(Producer::close).block());
+        assertThrows(UnsupportedOperationException.class, () -> producer.invoke(Producer::close)
+                .block());
     }
 
     @Test
@@ -46,14 +47,14 @@ class SendingProducerTest {
         MockProducer<String, String> mockProducer = new MockProducer<>();
 
         KafkaSenderOptions<String, String> options = KafkaSenderOptions.newBuilder(__ -> mockProducer)
-            .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
 
         SendingProducer<String, String> producer = new SendingProducer<>(options);
 
         assertThrows(
-            UnsupportedOperationException.class,
-            () -> producer.invoke(__ -> producer.invoke(Producer::metrics)).block());
+                UnsupportedOperationException.class,
+                () -> producer.invoke(__ -> producer.invoke(Producer::metrics)).block());
     }
 
     @Test
@@ -61,8 +62,8 @@ class SendingProducerTest {
         MockProducer<String, String> mockProducer = new MockProducer<>();
 
         KafkaSenderOptions<String, String> options = KafkaSenderOptions.newBuilder(__ -> mockProducer)
-            .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
 
         SendingProducer<String, String> producer = new SendingProducer<>(options);
 
@@ -78,8 +79,8 @@ class SendingProducerTest {
         MockProducer<String, String> mockProducer = new MockProducer<>();
 
         KafkaSenderOptions<String, String> options = KafkaSenderOptions.newBuilder(__ -> mockProducer)
-            .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
 
         SendingProducer<String, String> producer = new SendingProducer<>(options);
 
@@ -101,12 +102,13 @@ class SendingProducerTest {
         mockProducer.initTransactionException = new ProducerFencedException("test");
 
         KafkaSenderOptions<String, String> options = KafkaSenderOptions.newBuilder(__ -> mockProducer)
-            .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .build();
+                .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
 
         SendingProducer<String, String> producer = new SendingProducer<>(options);
 
-        assertThrows(ProducerFencedException.class, () -> producer.initTransactions().block());
+        assertThrows(
+                ProducerFencedException.class, () -> producer.initTransactions().block());
         assertNull(producer.closed().block());
         assertTrue(mockProducer.closed());
     }

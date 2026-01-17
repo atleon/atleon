@@ -21,18 +21,18 @@ class AloSnsSenderTest extends LocalStackDependentTest {
         AtomicReference<Throwable> nacknowledgement = new AtomicReference<>(null);
 
         Alo<SnsMessage<String>> aloSnsMessage = new ComposedAlo<>(
-            ComposedSnsMessage.fromBody(UUID.randomUUID().toString()),
-            () -> acknowledged.set(true),
-            nacknowledgement::set
-        );
+                ComposedSnsMessage.fromBody(UUID.randomUUID().toString()),
+                () -> acknowledged.set(true),
+                nacknowledgement::set);
 
         AloSnsSender.<String>create(newAloSnsSenderConfigSource())
-            .sendAloMessages(Flux.just(aloSnsMessage), topicArn)
-            .consumeAloAndGet(alo -> {
-                Alo.acknowledge(alo);
-                Alo.nacknowledge(alo, new RuntimeException());
-            })
-            .then().block();
+                .sendAloMessages(Flux.just(aloSnsMessage), topicArn)
+                .consumeAloAndGet(alo -> {
+                    Alo.acknowledge(alo);
+                    Alo.nacknowledge(alo, new RuntimeException());
+                })
+                .then()
+                .block();
 
         assertTrue(acknowledged.get());
         assertNotNull(nacknowledgement.get());
@@ -40,11 +40,11 @@ class AloSnsSenderTest extends LocalStackDependentTest {
 
     private SnsConfigSource newAloSnsSenderConfigSource() {
         return SnsConfigSource.unnamed()
-            .with(SnsConfig.ENDPOINT_OVERRIDE_CONFIG, getSqsEndpointOverride())
-            .with(AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC)
-            .with(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, getAccessKey())
-            .with(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, getSecretKey())
-            .with(AwsConfig.REGION_CONFIG, getRegion())
-            .with(AloSnsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName());
+                .with(SnsConfig.ENDPOINT_OVERRIDE_CONFIG, getSqsEndpointOverride())
+                .with(AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC)
+                .with(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, getAccessKey())
+                .with(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, getSecretKey())
+                .with(AwsConfig.REGION_CONFIG, getRegion())
+                .with(AloSnsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName());
     }
 }

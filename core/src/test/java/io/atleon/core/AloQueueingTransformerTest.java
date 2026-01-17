@@ -54,9 +54,7 @@ public class AloQueueingTransformerTest {
         Sinks.Many<TestAlo> sink = Sinks.many().multicast().onBackpressureBuffer();
 
         List<Alo<String>> emitted = new ArrayList<>();
-        sink.asFlux()
-            .transform(newTransformer())
-            .subscribe(emitted::add);
+        sink.asFlux().transform(newTransformer()).subscribe(emitted::add);
 
         sink.emitNext(firstAcknowledgeable, Sinks.EmitFailureHandler.FAIL_FAST);
         sink.emitNext(secondAcknowledgeable, Sinks.EmitFailureHandler.FAIL_FAST);
@@ -64,7 +62,8 @@ public class AloQueueingTransformerTest {
         EXECUTOR.execute(() -> Alo.acknowledge(emitted.get(0)));
         assertTrue(firstAcknowledgementStarted.get());
 
-        // Erroneous implementation would block here indefinitely since first acknowledgement is still in-process (blocked)
+        // Erroneous implementation would block here indefinitely since first acknowledgement is still in-process
+        // (blocked)
         Alo.acknowledge(emitted.get(1));
 
         assertFalse(firstAcknowledgeable.isAcknowledged());
@@ -98,9 +97,7 @@ public class AloQueueingTransformerTest {
         Sinks.Many<TestAlo> sink = Sinks.many().multicast().onBackpressureBuffer();
 
         List<Alo<String>> emitted = new ArrayList<>();
-        sink.asFlux()
-            .transform(newTransformer().withMaxInFlight(2))
-            .subscribe(emitted::add);
+        sink.asFlux().transform(newTransformer().withMaxInFlight(2)).subscribe(emitted::add);
 
         sink.emitNext(mom, Sinks.EmitFailureHandler.FAIL_FAST);
         sink.emitNext(dad, Sinks.EmitFailureHandler.FAIL_FAST);
@@ -159,8 +156,10 @@ public class AloQueueingTransformerTest {
 
         List<Alo<String>> emitted = new ArrayList<>();
         sink.asFlux()
-            .transform(newTransformer().withGroupExtractor(alo -> alo.get().length()).withMaxInFlight(3))
-            .subscribe(emitted::add);
+                .transform(newTransformer()
+                        .withGroupExtractor(alo -> alo.get().length())
+                        .withMaxInFlight(3))
+                .subscribe(emitted::add);
 
         all.forEach(sink::tryEmitNext);
 
@@ -192,7 +191,6 @@ public class AloQueueingTransformerTest {
 
     private static AloQueueingTransformer<TestAlo, String> newTransformer() {
         return AloQueueingTransformer.create(
-            AloComponentExtractor.composed(Alo::getAcknowledger, Alo::getNacknowledger, Alo::get)
-        );
+                AloComponentExtractor.composed(Alo::getAcknowledger, Alo::getNacknowledger, Alo::get));
     }
 }

@@ -48,9 +48,9 @@ public final class AvroRegistrySerializer<T> extends RegistrySerializer<T, Schem
 
     private AvroSerializer<T> createSerializer(AvroRegistrySerializerConfig config) {
         return AvroSerializer.<T>create(createGenericData(config))
-            .withSchemaCachingEnabled(config.schemaCachingEnabled())
-            .withSchemaGenerationEnabled(config.schemaGenerationEnabled())
-            .withRemoveJavaProperties(config.removeJavaProperties());
+                .withSchemaCachingEnabled(config.schemaCachingEnabled())
+                .withSchemaGenerationEnabled(config.schemaGenerationEnabled())
+                .withRemoveJavaProperties(config.removeJavaProperties());
     }
 
     private GenericData createGenericData(AvroRegistrySerializerConfig config) {

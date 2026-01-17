@@ -23,12 +23,13 @@ class SqsSenderReceiverTest extends LocalStackDependentTest {
 
         sender.send(toSenderMessage(messageBody), queueUrl).then().block();
 
-        Set<String> receivedBodies = SqsReceiver.create(newReceiverOptions()).receiveManual(queueUrl)
-            .doOnNext(SqsReceiverMessage::delete)
-            .map(SqsReceiverMessage::body)
-            .take(1)
-            .collect(Collectors.toSet())
-            .block();
+        Set<String> receivedBodies = SqsReceiver.create(newReceiverOptions())
+                .receiveManual(queueUrl)
+                .doOnNext(SqsReceiverMessage::delete)
+                .map(SqsReceiverMessage::body)
+                .take(1)
+                .collect(Collectors.toSet())
+                .block();
 
         assertEquals(Collections.singleton(messageBody), receivedBodies);
     }
@@ -36,20 +37,22 @@ class SqsSenderReceiverTest extends LocalStackDependentTest {
     @Test
     public void manyMessagesCanBeSentAndReceived() {
         Set<String> messageBodies = IntStream.range(0, 10)
-            .mapToObj(i -> UUID.randomUUID().toString())
-            .collect(Collectors.toSet());
+                .mapToObj(i -> UUID.randomUUID().toString())
+                .collect(Collectors.toSet());
 
         Flux.fromIterable(messageBodies)
-            .map(SqsSenderReceiverTest::toSenderMessage)
-            .transform(messages -> sender.send(messages, queueUrl))
-            .then().block();
+                .map(SqsSenderReceiverTest::toSenderMessage)
+                .transform(messages -> sender.send(messages, queueUrl))
+                .then()
+                .block();
 
-        Set<String> receivedBodies = SqsReceiver.create(newReceiverOptions()).receiveManual(queueUrl)
-            .doOnNext(SqsReceiverMessage::delete)
-            .map(SqsReceiverMessage::body)
-            .take(messageBodies.size())
-            .collect(Collectors.toSet())
-            .block();
+        Set<String> receivedBodies = SqsReceiver.create(newReceiverOptions())
+                .receiveManual(queueUrl)
+                .doOnNext(SqsReceiverMessage::delete)
+                .map(SqsReceiverMessage::body)
+                .take(messageBodies.size())
+                .collect(Collectors.toSet())
+                .block();
 
         assertEquals(messageBodies, receivedBodies);
     }
@@ -60,18 +63,20 @@ class SqsSenderReceiverTest extends LocalStackDependentTest {
 
         sender.send(toSenderMessage(messageBody), queueUrl).then().block();
 
-        List<String> receivedBodies1 = SqsReceiver.create(newReceiverOptions()).receiveManual(queueUrl)
-            .map(SqsReceiverMessage::body)
-            .take(1)
-            .collectList()
-            .block();
+        List<String> receivedBodies1 = SqsReceiver.create(newReceiverOptions())
+                .receiveManual(queueUrl)
+                .map(SqsReceiverMessage::body)
+                .take(1)
+                .collectList()
+                .block();
 
-        List<String> receivedBodies2 = SqsReceiver.create(newReceiverOptions()).receiveManual(queueUrl)
-            .doOnNext(SqsReceiverMessage::delete)
-            .map(SqsReceiverMessage::body)
-            .take(1)
-            .collectList()
-            .block();
+        List<String> receivedBodies2 = SqsReceiver.create(newReceiverOptions())
+                .receiveManual(queueUrl)
+                .doOnNext(SqsReceiverMessage::delete)
+                .map(SqsReceiverMessage::body)
+                .take(1)
+                .collectList()
+                .block();
 
         assertEquals(1, receivedBodies1.size());
         assertEquals(messageBody, receivedBodies1.get(0));
@@ -85,23 +90,25 @@ class SqsSenderReceiverTest extends LocalStackDependentTest {
 
         sender.send(toSenderMessage(messageBody1), queueUrl).block();
 
-        List<String> messages1 = SqsReceiver.create(newReceiverOptions()).receiveManual(queueUrl)
-            .doOnNext(SqsReceiverMessage::delete)
-            .map(SqsReceiverMessage::body)
-            .take(1)
-            .collectList()
-            .block();
+        List<String> messages1 = SqsReceiver.create(newReceiverOptions())
+                .receiveManual(queueUrl)
+                .doOnNext(SqsReceiverMessage::delete)
+                .map(SqsReceiverMessage::body)
+                .take(1)
+                .collectList()
+                .block();
 
         String messageBody2 = UUID.randomUUID().toString();
 
         sender.send(toSenderMessage(messageBody2), queueUrl).block();
 
-        List<String> messages2 = SqsReceiver.create(newReceiverOptions()).receiveManual(queueUrl)
-            .doOnNext(SqsReceiverMessage::delete)
-            .map(SqsReceiverMessage::body)
-            .take(1)
-            .collectList()
-            .block();
+        List<String> messages2 = SqsReceiver.create(newReceiverOptions())
+                .receiveManual(queueUrl)
+                .doOnNext(SqsReceiverMessage::delete)
+                .map(SqsReceiverMessage::body)
+                .take(1)
+                .collectList()
+                .block();
 
         assertEquals(1, messages1.size());
         assertEquals(messageBody1, messages1.get(0));
@@ -115,17 +122,18 @@ class SqsSenderReceiverTest extends LocalStackDependentTest {
 
         sender.send(toSenderMessage(messageBody), queueUrl).block();
 
-        List<String> messages = SqsReceiver.create(newReceiverOptions()).receiveManual(queueUrl)
-            .index((index, receivedMessage) -> {
-                if (index == 0) {
-                    receivedMessage.changeVisibility(Duration.ZERO);
-                }
-                return receivedMessage;
-            })
-            .map(SqsReceiverMessage::body)
-            .take(2)
-            .collectList()
-            .block();
+        List<String> messages = SqsReceiver.create(newReceiverOptions())
+                .receiveManual(queueUrl)
+                .index((index, receivedMessage) -> {
+                    if (index == 0) {
+                        receivedMessage.changeVisibility(Duration.ZERO);
+                    }
+                    return receivedMessage;
+                })
+                .map(SqsReceiverMessage::body)
+                .take(2)
+                .collectList()
+                .block();
 
         assertEquals(2, messages.size());
         assertEquals(messageBody, messages.get(0));

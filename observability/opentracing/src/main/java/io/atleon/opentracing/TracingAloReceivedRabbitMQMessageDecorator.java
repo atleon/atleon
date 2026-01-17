@@ -19,8 +19,8 @@ import java.util.stream.Collectors;
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedRabbitMQMessage}s
  */
 public final class TracingAloReceivedRabbitMQMessageDecorator<T>
-    extends TracingAloConsumptionDecorator<ReceivedRabbitMQMessage<T>>
-    implements AloReceivedRabbitMQMessageDecorator<T> {
+        extends TracingAloConsumptionDecorator<ReceivedRabbitMQMessage<T>>
+        implements AloReceivedRabbitMQMessageDecorator<T> {
 
     private String queue = null;
 
@@ -31,20 +31,23 @@ public final class TracingAloReceivedRabbitMQMessageDecorator<T>
     }
 
     @Override
-    protected Tracer.SpanBuilder newSpanBuilder(SpanBuilderFactory spanBuilderFactory, ReceivedRabbitMQMessage<T> message) {
-        return spanBuilderFactory.newSpanBuilder("atleon.receive.rabbitmq")
-            .withTag("queue", queue)
-            .withTag("exchange", message.exchange())
-            .withTag("routing_key", message.routingKey());
+    protected Tracer.SpanBuilder newSpanBuilder(
+            SpanBuilderFactory spanBuilderFactory, ReceivedRabbitMQMessage<T> message) {
+        return spanBuilderFactory
+                .newSpanBuilder("atleon.receive.rabbitmq")
+                .withTag("queue", queue)
+                .withTag("exchange", message.exchange())
+                .withTag("routing_key", message.routingKey());
     }
 
     @Override
     protected Map<String, String> extractHeaderMap(ReceivedRabbitMQMessage<T> message) {
         Map<String, Object> headers = Optional.ofNullable(message.properties())
-            .map(AMQP.BasicProperties::getHeaders)
-            .orElse(Collections.emptyMap());
+                .map(AMQP.BasicProperties::getHeaders)
+                .orElse(Collections.emptyMap());
         return headers.entrySet().stream()
-            .filter(entry -> entry.getValue() != null)
-            .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().toString()));
+                .filter(entry -> entry.getValue() != null)
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey, entry -> entry.getValue().toString()));
     }
 }

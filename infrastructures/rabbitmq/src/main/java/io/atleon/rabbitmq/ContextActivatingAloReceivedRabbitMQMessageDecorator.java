@@ -10,7 +10,5 @@ import io.atleon.core.Alo;
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedRabbitMQMessage}s
  */
 public class ContextActivatingAloReceivedRabbitMQMessageDecorator<T>
-    extends ContextActivatingAloDecorator<ReceivedRabbitMQMessage<T>>
-    implements AloReceivedRabbitMQMessageDecorator<T> {
-
-}
+        extends ContextActivatingAloDecorator<ReceivedRabbitMQMessage<T>>
+        implements AloReceivedRabbitMQMessageDecorator<T> {}

@@ -29,8 +29,8 @@ class SingleMachinePartitionAssignorTest {
         MachineData oldMachine = new MachineData(UUID.randomUUID(), 12345L);
         MachineData youngMachine = new MachineData(UUID.randomUUID(), 56789L);
 
-        ConsumerPartitionAssignor.Subscription oldSubscription = new ConsumerPartitionAssignor.Subscription(
-                Collections.singletonList(topic), oldMachine.toByteBuffer());
+        ConsumerPartitionAssignor.Subscription oldSubscription =
+                new ConsumerPartitionAssignor.Subscription(Collections.singletonList(topic), oldMachine.toByteBuffer());
         ConsumerPartitionAssignor.Subscription youngSubscription = new ConsumerPartitionAssignor.Subscription(
                 Collections.singletonList(topic), youngMachine.toByteBuffer());
 
@@ -43,8 +43,8 @@ class SingleMachinePartitionAssignorTest {
         assertEquals(2, result.size());
         assertEquals(4, result.get("old-member").size());
         assertTrue(result.get("young-member").isEmpty());
-        IntStream.range(0, numPartitions).forEach(it ->
-                assertTrue(result.get("old-member").contains(new TopicPartition(topic, it))));
+        IntStream.range(0, numPartitions)
+                .forEach(it -> assertTrue(result.get("old-member").contains(new TopicPartition(topic, it))));
     }
 
     @Test
@@ -55,10 +55,10 @@ class SingleMachinePartitionAssignorTest {
 
         MachineData machine = new MachineData(UUID.randomUUID(), 12345L);
 
-        ConsumerPartitionAssignor.Subscription subscription1 = new ConsumerPartitionAssignor.Subscription(
-                Collections.singletonList(topic), machine.toByteBuffer());
-        ConsumerPartitionAssignor.Subscription subscription2 = new ConsumerPartitionAssignor.Subscription(
-                Collections.singletonList(topic), machine.toByteBuffer());
+        ConsumerPartitionAssignor.Subscription subscription1 =
+                new ConsumerPartitionAssignor.Subscription(Collections.singletonList(topic), machine.toByteBuffer());
+        ConsumerPartitionAssignor.Subscription subscription2 =
+                new ConsumerPartitionAssignor.Subscription(Collections.singletonList(topic), machine.toByteBuffer());
 
         Map<String, ConsumerPartitionAssignor.Subscription> subscriptionsByMemberId = new LinkedHashMap<>();
         subscriptionsByMemberId.put("member-1", subscription1);
@@ -89,8 +89,8 @@ class SingleMachinePartitionAssignorTest {
 
         ConsumerPartitionAssignor.Subscription oldSubscription = new ConsumerPartitionAssignor.Subscription(
                 Collections.singletonList(topic1), oldMachine.toByteBuffer());
-        ConsumerPartitionAssignor.Subscription youngSubscription = new ConsumerPartitionAssignor.Subscription(
-                Arrays.asList(topic1, topic2), youngMachine.toByteBuffer());
+        ConsumerPartitionAssignor.Subscription youngSubscription =
+                new ConsumerPartitionAssignor.Subscription(Arrays.asList(topic1, topic2), youngMachine.toByteBuffer());
 
         Map<String, ConsumerPartitionAssignor.Subscription> subscriptionsByMemberId = new LinkedHashMap<>();
         subscriptionsByMemberId.put("old-member", oldSubscription);
@@ -101,9 +101,9 @@ class SingleMachinePartitionAssignorTest {
         assertEquals(2, result.size());
         assertEquals(4, result.get("old-member").size());
         assertEquals(4, result.get("young-member").size());
-        IntStream.range(0, numPartitions).forEach(it ->
-                assertTrue(result.get("old-member").contains(new TopicPartition(topic1, it))));
-        IntStream.range(0, numPartitions).forEach(it ->
-                assertTrue(result.get("young-member").contains(new TopicPartition(topic2, it))));
+        IntStream.range(0, numPartitions)
+                .forEach(it -> assertTrue(result.get("old-member").contains(new TopicPartition(topic1, it))));
+        IntStream.range(0, numPartitions)
+                .forEach(it -> assertTrue(result.get("young-member").contains(new TopicPartition(topic2, it))));
     }
 }

@@ -9,9 +9,7 @@ import java.time.Instant;
  */
 public abstract class OffsetCriteria {
 
-    private OffsetCriteria() {
-
-    }
+    private OffsetCriteria() {}
 
     /**
      * Points to the first Record's offset in a TopicPartition
@@ -87,16 +85,12 @@ public abstract class OffsetCriteria {
 
     public static final class Earliest extends OffsetCriteria {
 
-        private Earliest() {
-
-        }
+        private Earliest() {}
     }
 
     public static final class Latest extends OffsetCriteria {
 
-        private Latest() {
-
-        }
+        private Latest() {}
     }
 
     public static final class Timestamp extends OffsetCriteria {

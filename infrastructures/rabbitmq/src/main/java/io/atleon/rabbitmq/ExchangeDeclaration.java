@@ -22,12 +22,7 @@ public final class ExchangeDeclaration {
     }
 
     private ExchangeDeclaration(
-        String name,
-        BuiltinExchangeType type,
-        boolean durable,
-        boolean autoDelete,
-        Map<String, Object> arguments
-    ) {
+            String name, BuiltinExchangeType type, boolean durable, boolean autoDelete, Map<String, Object> arguments) {
         this.name = name;
         this.type = type;
         this.durable = durable;

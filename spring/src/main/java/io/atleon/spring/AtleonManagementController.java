@@ -16,10 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Collection;
 
 @RestController
-@RequestMapping(
-    path = "/${atleon.management.rest.path:atleonManagement}",
-    produces = MediaType.APPLICATION_JSON_VALUE
-)
+@RequestMapping(path = "/${atleon.management.rest.path:atleonManagement}", produces = MediaType.APPLICATION_JSON_VALUE)
 public class AtleonManagementController {
 
     private final AloStreamStatusService streamStatusService;

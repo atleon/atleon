@@ -12,9 +12,7 @@ import java.util.function.Function;
  */
 public final class AloMicrometer {
 
-    private AloMicrometer() {
-
-    }
+    private AloMicrometer() {}
 
     /**
      * Creates a simple metering {@link SignalListenerFactory} for {@link Alo} items with the
@@ -41,8 +39,8 @@ public final class AloMicrometer {
      * @param <T>                The type of data exposed by Alo items in emitted Signal values
      * @return A new metering {@link SignalListenerFactory} for reactive pipelines of Alo
      */
-    public static <T> SignalListenerFactory<Alo<T>, ?>
-    metrics(String name, Function<? super T, String> stringKeyExtractor, String keyTagName) {
+    public static <T> SignalListenerFactory<Alo<T>, ?> metrics(
+            String name, Function<? super T, String> stringKeyExtractor, String keyTagName) {
         return metrics(name, stringKeyExtractor, Tagger.composed(Tags.empty(), key -> Tags.of(keyTagName, key)));
     }
 
@@ -60,8 +58,8 @@ public final class AloMicrometer {
      * @param <K>          The type of key used to identify/delineate meters
      * @return A new metering {@link SignalListenerFactory} for reactive pipelines of Alo
      */
-    public static <T, K> SignalListenerFactory<Alo<T>, ?>
-    metrics(String name, Function<? super T, K> keyExtractor, Tagger<? super K> tagger) {
+    public static <T, K> SignalListenerFactory<Alo<T>, ?> metrics(
+            String name, Function<? super T, K> keyExtractor, Tagger<? super K> tagger) {
         return new MeteringAloSignalListenerFactory<T, K>(name) {
 
             @Override

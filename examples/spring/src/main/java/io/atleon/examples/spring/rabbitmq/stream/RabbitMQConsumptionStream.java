@@ -25,14 +25,15 @@ public class RabbitMQConsumptionStream extends SpringAloStream {
     @Override
     protected Disposable startDisposable() {
         return buildRabbitMQLongReceiver()
-            .receiveAloBodies(getRequiredProperty("stream.rabbitmq.output.queue"))
-            .consume(service::handleNumber)
-            .resubscribeOnError(name())
-            .subscribe();
+                .receiveAloBodies(getRequiredProperty("stream.rabbitmq.output.queue"))
+                .consume(service::handleNumber)
+                .resubscribeOnError(name())
+                .subscribe();
     }
 
     private AloRabbitMQReceiver<Long> buildRabbitMQLongReceiver() {
-        return configSource.with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName())
-            .as(AloRabbitMQReceiver::create);
+        return configSource
+                .with(AloRabbitMQReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName())
+                .as(AloRabbitMQReceiver::create);
     }
 }

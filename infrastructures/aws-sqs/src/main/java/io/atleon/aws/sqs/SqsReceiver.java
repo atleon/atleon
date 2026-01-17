@@ -47,7 +47,8 @@ public final class SqsReceiver {
 
     private static final Retry DEFAULT_RETRY = Retry.backoff(3, Duration.ofMillis(10));
 
-    private static final ReceiveMessageResponse EMPTY_RECEIVE_MESSAGE_RESPONSE = ReceiveMessageResponse.builder().build();
+    private static final ReceiveMessageResponse EMPTY_RECEIVE_MESSAGE_RESPONSE =
+            ReceiveMessageResponse.builder().build();
 
     private final SqsReceiverOptions options;
 
@@ -105,7 +106,8 @@ public final class SqsReceiver {
         // Receipt handles that have been emitted, but not deleted nor had their visibility reset
         private final Set<String> inFlightReceiptHandles = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-        private final Sinks.Many<String> receiptHandlesToDelete = Sinks.unsafe().many().unicast().onBackpressureError();
+        private final Sinks.Many<String> receiptHandlesToDelete =
+                Sinks.unsafe().many().unicast().onBackpressureError();
 
         private final SerialQueue<String> receiptHandlesToDeleteQueue = SerialQueue.onEmitNext(receiptHandlesToDelete);
 
@@ -113,11 +115,13 @@ public final class SqsReceiver {
             this.queueUrl = queueUrl;
             this.subscriber = subscriber;
             this.client = options.createClient();
-            this.receiptHandlesToDelete.asFlux()
-                .doOnComplete(executionPhaser::register) // Avoid race condition with batch Scheduler and disposing
-                .transform(receiptHandles -> batch(receiptHandles, options.deleteBatchSize(), options.deleteInterval()))
-                .doAfterTerminate(executionPhaser::arriveAndDeregister)
-                .subscribe(this::deleteMessages, this::doError);
+            this.receiptHandlesToDelete
+                    .asFlux()
+                    .doOnComplete(executionPhaser::register) // Avoid race condition with batch Scheduler and disposing
+                    .transform(receiptHandles ->
+                            batch(receiptHandles, options.deleteBatchSize(), options.deleteInterval()))
+                    .doAfterTerminate(executionPhaser::arriveAndDeregister)
+                    .subscribe(this::deleteMessages, this::doError);
         }
 
         @Override
@@ -133,35 +137,37 @@ public final class SqsReceiver {
 
         private Mono<Boolean> dispose() {
             return Mono.fromSupplier(() -> done.compareAndSet(false, true))
-                .flatMap(shouldDispose -> shouldDispose ? doDispose().thenReturn(true) : Mono.just(false));
+                    .flatMap(shouldDispose -> shouldDispose ? doDispose().thenReturn(true) : Mono.just(false));
         }
 
         private Mono<?> doDispose() {
-            return executionPhaser.arriveAndAwaitAdvanceReactively()
-                .then(Mono.fromRunnable(receiptHandlesToDelete::tryEmitComplete))
-                .then(Mono.defer(() -> changeMessageVisibilities(inProcessReceiptHandles, Duration.ZERO, __ -> true)))
-                .then(executionPhaser.arriveAndAwaitAdvanceReactively())
-                .timeout(options.closeTimeout())
-                .doFinally(__ -> client.close())
-                .doOnError(error -> LOGGER.error("Encountered error while disposing SQS Poller", error))
-                .onErrorResume(error -> Mono.empty());
+            return executionPhaser
+                    .arriveAndAwaitAdvanceReactively()
+                    .then(Mono.fromRunnable(receiptHandlesToDelete::tryEmitComplete))
+                    .then(Mono.defer(
+                            () -> changeMessageVisibilities(inProcessReceiptHandles, Duration.ZERO, __ -> true)))
+                    .then(executionPhaser.arriveAndAwaitAdvanceReactively())
+                    .timeout(options.closeTimeout())
+                    .doFinally(__ -> client.close())
+                    .doOnError(error -> LOGGER.error("Encountered error while disposing SQS Poller", error))
+                    .onErrorResume(error -> Mono.empty());
         }
 
         private void maybeScheduleMessageReception() {
             int maxNumberOfMessagesToRequest = calculateMaxNumberOfMessagesToRequest();
             if (maxNumberOfMessagesToRequest > 0 && !done.get() && receptionPending.compareAndSet(false, true)) {
                 ReceiveMessageRequest request = ReceiveMessageRequest.builder()
-                    .receiveRequestAttemptId(UUID.randomUUID().toString())
-                    .queueUrl(queueUrl)
-                    .maxNumberOfMessages(maxNumberOfMessagesToRequest)
-                    .messageAttributeNames(options.messageAttributesToRequest())
-                    .attributeNamesWithStrings(options.messageSystemAttributesToRequest())
-                    .waitTimeSeconds(options.waitTimeSecondsPerReception())
-                    .visibilityTimeout(options.visibilityTimeoutSeconds())
-                    .build();
+                        .receiveRequestAttemptId(UUID.randomUUID().toString())
+                        .queueUrl(queueUrl)
+                        .maxNumberOfMessages(maxNumberOfMessagesToRequest)
+                        .messageAttributeNames(options.messageAttributesToRequest())
+                        .attributeNamesWithStrings(options.messageSystemAttributesToRequest())
+                        .waitTimeSeconds(options.waitTimeSecondsPerReception())
+                        .visibilityTimeout(options.visibilityTimeoutSeconds())
+                        .build();
                 maybeExecute(SqsAsyncClient::receiveMessage, request, phase -> phase == 0)
-                    .defaultIfEmpty(EMPTY_RECEIVE_MESSAGE_RESPONSE) // Should emit something so handler will run
-                    .subscribe(this::handleMessagesReceived, this::handleMessagesReceivedError);
+                        .defaultIfEmpty(EMPTY_RECEIVE_MESSAGE_RESPONSE) // Should emit something so handler will run
+                        .subscribe(this::handleMessagesReceived, this::handleMessagesReceivedError);
             }
         }
 
@@ -210,14 +216,17 @@ public final class SqsReceiver {
         private void deleteMessages(Collection<String> receiptHandles) {
             if (receiptHandles.isEmpty()) return;
             List<DeleteMessageBatchRequestEntry> entries = receiptHandles.stream()
-                .map(it -> DeleteMessageBatchRequestEntry.builder().id(newReceiptHandleId()).receiptHandle(it).build())
-                .collect(Collectors.toList());
+                    .map(it -> DeleteMessageBatchRequestEntry.builder()
+                            .id(newReceiptHandleId())
+                            .receiptHandle(it)
+                            .build())
+                    .collect(Collectors.toList());
             DeleteMessageBatchRequest request = DeleteMessageBatchRequest.builder()
-                .queueUrl(queueUrl)
-                .entries(entries)
-                .build();
+                    .queueUrl(queueUrl)
+                    .entries(entries)
+                    .build();
             maybeExecute(SqsAsyncClient::deleteMessageBatch, request, __ -> true)
-                .subscribe(response -> handleMessagesDeleted(response, receiptHandles), this::doError);
+                    .subscribe(response -> handleMessagesDeleted(response, receiptHandles), this::doError);
         }
 
         private void handleMessagesDeleted(DeleteMessageBatchResponse response, Collection<String> receiptHandles) {
@@ -230,47 +239,44 @@ public final class SqsReceiver {
 
         private void maybeChangeMessageVisibility(String receiptHandle, Duration timeout) {
             changeMessageVisibilities(Collections.singletonList(receiptHandle), timeout, phase -> phase == 0)
-                .subscribe(response -> handleMessageVisibilitiesChanged(response, Collections.emptyList()), this::doError);
+                    .subscribe(
+                            response -> handleMessageVisibilitiesChanged(response, Collections.emptyList()),
+                            this::doError);
         }
 
         private void maybeChangeMessageVisibilityAndMarkNotInFlight(String receiptHandle, Duration timeout) {
             List<String> receiptHandles = Collections.singletonList(receiptHandle);
             changeMessageVisibilities(receiptHandles, timeout, phase -> phase == 0)
-                .subscribe(response -> handleMessageVisibilitiesChanged(response, receiptHandles), this::doError);
+                    .subscribe(response -> handleMessageVisibilitiesChanged(response, receiptHandles), this::doError);
         }
 
         private Mono<ChangeMessageVisibilityBatchResponse> changeMessageVisibilities(
-            Collection<String> receiptHandles,
-            Duration timeout,
-            IntPredicate phaseMustMatch
-        ) {
+                Collection<String> receiptHandles, Duration timeout, IntPredicate phaseMustMatch) {
             if (receiptHandles.isEmpty()) return Mono.empty();
             int timeoutInSeconds = Math.toIntExact(timeout.getSeconds());
             List<ChangeMessageVisibilityBatchRequestEntry> entries = receiptHandles.stream()
-                .map(receiptHandle -> createChangeMessageVisibilityRequestEntry(receiptHandle, timeoutInSeconds))
-                .collect(Collectors.toList());
+                    .map(receiptHandle -> createChangeMessageVisibilityRequestEntry(receiptHandle, timeoutInSeconds))
+                    .collect(Collectors.toList());
             return maybeExecute(
-                SqsAsyncClient::changeMessageVisibilityBatch,
-                ChangeMessageVisibilityBatchRequest.builder().queueUrl(queueUrl).entries(entries).build(),
-                phaseMustMatch
-            );
+                    SqsAsyncClient::changeMessageVisibilityBatch,
+                    ChangeMessageVisibilityBatchRequest.builder()
+                            .queueUrl(queueUrl)
+                            .entries(entries)
+                            .build(),
+                    phaseMustMatch);
         }
 
         private ChangeMessageVisibilityBatchRequestEntry createChangeMessageVisibilityRequestEntry(
-            String receiptHandle,
-            int timeoutInSeconds
-        ) {
+                String receiptHandle, int timeoutInSeconds) {
             return ChangeMessageVisibilityBatchRequestEntry.builder()
-                .id(newReceiptHandleId())
-                .receiptHandle(receiptHandle)
-                .visibilityTimeout(timeoutInSeconds)
-                .build();
+                    .id(newReceiptHandleId())
+                    .receiptHandle(receiptHandle)
+                    .visibilityTimeout(timeoutInSeconds)
+                    .build();
         }
 
         private void handleMessageVisibilitiesChanged(
-            ChangeMessageVisibilityBatchResponse response,
-            Collection<String> receiptHandlesNoLongerInFlight
-        ) {
+                ChangeMessageVisibilityBatchResponse response, Collection<String> receiptHandlesNoLongerInFlight) {
             if (response.hasFailed()) {
                 doError(new BatchRequestFailedException("ChangeMessageVisibility", response.failed()));
             } else if (inFlightReceiptHandles.removeAll(receiptHandlesNoLongerInFlight)) {
@@ -279,15 +285,12 @@ public final class SqsReceiver {
         }
 
         private <T, V> Mono<V> maybeExecute(
-            BiFunction<SqsAsyncClient, T, CompletableFuture<V>> method,
-            T request,
-            IntPredicate phaseMustMatch
-        ) {
+                BiFunction<SqsAsyncClient, T, CompletableFuture<V>> method, T request, IntPredicate phaseMustMatch) {
             return Mono.fromSupplier(() -> phaseMustMatch.test(executionPhaser.register()))
-                .cache()
-                .flatMap(it -> it ? Mono.fromFuture(method.apply(client, request)) : Mono.empty())
-                .retryWhen(DEFAULT_RETRY)
-                .doFinally(__ -> executionPhaser.arriveAndDeregister());
+                    .cache()
+                    .flatMap(it -> it ? Mono.fromFuture(method.apply(client, request)) : Mono.empty())
+                    .retryWhen(DEFAULT_RETRY)
+                    .doFinally(__ -> executionPhaser.arriveAndDeregister());
         }
 
         private void doNext(SqsReceiverMessage sqsReceiverMessage) {

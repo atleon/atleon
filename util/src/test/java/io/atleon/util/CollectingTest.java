@@ -14,15 +14,14 @@ class CollectingTest {
     @Test
     public void binaryStrides_givenTrivialElements_expectsSingletonSelections() {
         assertEquals(
-            Collections.singletonList(Collections.emptyList()),
-            Collecting.binaryStrides(Collections.emptyList(), ArrayList::new));
+                Collections.singletonList(Collections.emptyList()),
+                Collecting.binaryStrides(Collections.emptyList(), ArrayList::new));
         assertEquals(
-            Collections.singletonList(Collections.singletonList(0)),
-            Collecting.binaryStrides(Collections.singletonList(0), ArrayList::new));
+                Collections.singletonList(Collections.singletonList(0)),
+                Collecting.binaryStrides(Collections.singletonList(0), ArrayList::new));
         assertEquals(
-            Arrays.asList(Collections.singletonList(0), Collections.singletonList(1)),
-            Collecting.binaryStrides(Arrays.asList(0, 1), ArrayList::new)
-        );
+                Arrays.asList(Collections.singletonList(0), Collections.singletonList(1)),
+                Collecting.binaryStrides(Arrays.asList(0, 1), ArrayList::new));
     }
 
     @Test
@@ -130,12 +129,10 @@ class CollectingTest {
     public void takeUntil_givenCollectionAndPredicate_expectsResultContainingUpToAndIncludingMatchingElement() {
         List<String> strings = Arrays.asList("one", "two", "three", "three", "four", "one");
 
+        assertEquals(Arrays.asList("one"), Collecting.takeUntil(strings, it -> it.equals("one"), ArrayList::new));
         assertEquals(
-            Arrays.asList("one"),
-            Collecting.takeUntil(strings, it -> it.equals("one"), ArrayList::new));
-        assertEquals(
-            Arrays.asList("one", "two", "three"),
-            Collecting.takeUntil(strings, it -> it.equals("three"), ArrayList::new));
+                Arrays.asList("one", "two", "three"),
+                Collecting.takeUntil(strings, it -> it.equals("three"), ArrayList::new));
         assertEquals(strings, Collecting.takeUntil(strings, __ -> false, ArrayList::new));
     }
 

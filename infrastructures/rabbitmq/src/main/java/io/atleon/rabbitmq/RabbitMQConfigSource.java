@@ -11,9 +11,7 @@ import java.util.function.Function;
 
 public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQConfigSource> {
 
-    protected RabbitMQConfigSource() {
-
-    }
+    protected RabbitMQConfigSource() {}
 
     protected RabbitMQConfigSource(String name) {
         super(name);

@@ -27,15 +27,14 @@ public final class SqsSenderMessage<C> extends AbstractSqsMessage<String> {
     private final C correlationMetadata;
 
     private SqsSenderMessage(
-        String requestId,
-        String messageDeduplicationId,
-        String messageGroupId,
-        Map<String, MessageAttributeValue> messageAttributes,
-        Map<String, MessageSystemAttributeValue> messageSystemAttributes,
-        String body,
-        Integer delaySeconds,
-        C correlationMetadata
-    ) {
+            String requestId,
+            String messageDeduplicationId,
+            String messageGroupId,
+            Map<String, MessageAttributeValue> messageAttributes,
+            Map<String, MessageSystemAttributeValue> messageSystemAttributes,
+            String body,
+            Integer delaySeconds,
+            C correlationMetadata) {
         super(messageAttributes, messageSystemAttributes, body);
         this.requestId = requestId;
         this.messageDeduplicationId = messageDeduplicationId;
@@ -101,15 +100,14 @@ public final class SqsSenderMessage<C> extends AbstractSqsMessage<String> {
 
         public SqsSenderMessage<C> build() {
             return new SqsSenderMessage<>(
-                requestId,
-                messageDeduplicationId,
-                messageGroupId,
-                messageAttributes,
-                messageSystemAttributes,
-                body,
-                delaySeconds,
-                correlationMetadata
-            );
+                    requestId,
+                    messageDeduplicationId,
+                    messageGroupId,
+                    messageAttributes,
+                    messageSystemAttributes,
+                    body,
+                    delaySeconds,
+                    correlationMetadata);
         }
 
         public Builder<C> messageDeduplicationId(String messageDeduplicationId) {

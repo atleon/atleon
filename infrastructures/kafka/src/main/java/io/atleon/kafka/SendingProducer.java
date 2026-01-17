@@ -34,11 +34,8 @@ final class SendingProducer<K, V> implements ProducerInvocable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SendingProducer.class);
 
-    private static final Set<String> ALLOWED_EXTERNAL_PRODUCER_INVOCATIONS = new HashSet<>(Arrays.asList(
-        "clientInstanceId",
-        "metrics",
-        "partitionsFor"
-    ));
+    private static final Set<String> ALLOWED_EXTERNAL_PRODUCER_INVOCATIONS =
+            new HashSet<>(Arrays.asList("clientInstanceId", "metrics", "partitionsFor"));
 
     private final Producer<K, V> producer;
 
@@ -70,9 +67,9 @@ final class SendingProducer<K, V> implements ProducerInvocable {
     @Override
     public <T> Mono<T> invokeAndGet(Function<? super Producer<?, ?>, T> invocation) {
         if (taskLoop.isSourceOfCurrentThread()) {
-            throw new UnsupportedOperationException("ProducerInvocable::invokeAndGet should not be called from Kafka" +
-                " worker thread. It should rather be the case that the Producer is directly passed to the call site" +
-                " in some way, for example with ProducerListener::onClose.");
+            throw new UnsupportedOperationException("ProducerInvocable::invokeAndGet should not be called from Kafka"
+                    + " worker thread. It should rather be the case that the Producer is directly passed to the call site"
+                    + " in some way, for example with ProducerListener::onClose.");
         }
         return taskLoop.publish(() -> invocation.apply(externalProducerProxy));
     }
@@ -86,9 +83,7 @@ final class SendingProducer<K, V> implements ProducerInvocable {
     }
 
     public Mono<Void> sendOffsetsToTransaction(
-        Map<TopicPartition, OffsetAndMetadata> offsets,
-        ConsumerGroupMetadata metadata
-    ) {
+            Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata metadata) {
         return doOnProducer(it -> it.sendOffsetsToTransaction(offsets, metadata));
     }
 

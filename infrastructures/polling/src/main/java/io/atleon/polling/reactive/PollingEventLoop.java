@@ -25,10 +25,11 @@ public class PollingEventLoop<P, O> implements Sinks.EmitFailureHandler {
     private final AtomicBoolean active;
     private final Duration pollingInterval;
 
-    public PollingEventLoop(final Scheduler scheduler,
-                            final Pollable<P, O> pollable,
-                            final Duration pollingInterval,
-                            final Sinks.Many<Collection<Polled<P, O>>> sink) {
+    public PollingEventLoop(
+            final Scheduler scheduler,
+            final Pollable<P, O> pollable,
+            final Duration pollingInterval,
+            final Sinks.Many<Collection<Polled<P, O>>> sink) {
         this.scheduler = scheduler;
         this.pollable = pollable;
         this.pollingInterval = pollingInterval;
@@ -43,8 +44,7 @@ public class PollingEventLoop<P, O> implements Sinks.EmitFailureHandler {
     }
 
     public Mono<Void> stop() {
-        return Mono
-                .defer(() -> {
+        return Mono.defer(() -> {
                     pollEvent.stop();
                     return Mono.<Void>empty();
                 })
@@ -52,10 +52,7 @@ public class PollingEventLoop<P, O> implements Sinks.EmitFailureHandler {
     }
 
     @Override
-    public boolean onEmitFailure(@NonNull
-                                 final SignalType signalType,
-                                 @NonNull
-                                 final Sinks.EmitResult emitResult) {
+    public boolean onEmitFailure(@NonNull final SignalType signalType, @NonNull final Sinks.EmitResult emitResult) {
         if (!active.get()) {
             return false;
         } else {

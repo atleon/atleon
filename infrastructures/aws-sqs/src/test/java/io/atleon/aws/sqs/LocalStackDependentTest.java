@@ -19,10 +19,10 @@ public class LocalStackDependentTest {
 
     protected static SqsAsyncClient createSqsClient() {
         return SqsAsyncClient.builder()
-            .endpointOverride(getSqsEndpointOverride())
-            .credentialsProvider(StaticCredentialsProvider.create(createAwsCredentials()))
-            .region(Region.of(CONTAINER.getRegion()))
-            .build();
+                .endpointOverride(getSqsEndpointOverride())
+                .credentialsProvider(StaticCredentialsProvider.create(createAwsCredentials()))
+                .region(Region.of(CONTAINER.getRegion()))
+                .build();
     }
 
     protected static URI getSqsEndpointOverride() {
@@ -47,7 +47,8 @@ public class LocalStackDependentTest {
 
     private static String createQueue(String queueName) {
         try (SqsAsyncClient client = createSqsClient()) {
-            CreateQueueRequest request = CreateQueueRequest.builder().queueName(queueName).build();
+            CreateQueueRequest request =
+                    CreateQueueRequest.builder().queueName(queueName).build();
             return client.createQueue(request).join().queueUrl();
         }
     }

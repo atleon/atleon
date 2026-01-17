@@ -13,9 +13,7 @@ import java.util.stream.Stream;
 
 public final class TypeResolution {
 
-    private TypeResolution() {
-
-    }
+    private TypeResolution() {}
 
     public static Class<?> safelyGetClass(Object object) {
         return object == null ? Void.class : object.getClass();
@@ -43,8 +41,8 @@ public final class TypeResolution {
 
     private static Stream<TypeVariable<?>> streamAllTypeParameters(Class<?> clazz) {
         return withSuperClasses(clazz).stream()
-            .<TypeVariable<?>[]>map(Class::getTypeParameters)
-            .flatMap(Arrays::stream);
+                .<TypeVariable<?>[]>map(Class::getTypeParameters)
+                .flatMap(Arrays::stream);
     }
 
     private static List<Class<?>> withSuperClasses(Class<?> clazz) {

@@ -57,12 +57,12 @@ public class IntegrationTest {
 
     private void produceNumber(Number number) {
         SnsConfigSource configSource = SnsConfigSource.unnamed()
-            .with(AwsConfig.REGION_CONFIG, CONTAINER.getRegion())
-            .with(AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC)
-            .with(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, CONTAINER.getAccessKey())
-            .with(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, CONTAINER.getSecretKey())
-            .with(SnsConfig.ENDPOINT_OVERRIDE_CONFIG, CONTAINER.getSnsEndpointOverride())
-            .with(AloSnsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class);
+                .with(AwsConfig.REGION_CONFIG, CONTAINER.getRegion())
+                .with(AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC)
+                .with(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, CONTAINER.getAccessKey())
+                .with(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, CONTAINER.getSecretKey())
+                .with(SnsConfig.ENDPOINT_OVERRIDE_CONFIG, CONTAINER.getSnsEndpointOverride())
+                .with(AloSnsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class);
         try (AloSnsSender<Long> sender = AloSnsSender.create(configSource)) {
             SnsMessage<Long> message = ComposedSnsMessage.fromBody(number.longValue());
             sender.sendMessage(message, SnsAddress.topicArn(snsInputTopicArn)).block();
@@ -74,17 +74,16 @@ public class IntegrationTest {
         @Override
         public void initialize(ConfigurableApplicationContext applicationContext) {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
-                applicationContext,
-                "vars.aws.region=" + CONTAINER.getRegion(),
-                "vars.aws.credentials.provider.type=" + AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC,
-                "vars.aws.credentials.access.key.id=" + CONTAINER.getAccessKey(),
-                "vars.aws.credentials.secret.access.key=" + CONTAINER.getSecretKey(),
-                "vars.sns.endpoint.override=" + CONTAINER.getSnsEndpointOverride(),
-                "vars.sqs.endpoint.override=" + CONTAINER.getSqsEndpointOverride(),
-                "stream.sns.input.topic.name=" + SNS_INPUT_TOPIC_NAME,
-                "stream.sqs.input.queue.name=" + SQS_INPUT_QUEUE_NAME,
-                "stream.sqs.output.queue.name=" + SQS_OUTPUT_QUEUE_NAME
-            );
+                    applicationContext,
+                    "vars.aws.region=" + CONTAINER.getRegion(),
+                    "vars.aws.credentials.provider.type=" + AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC,
+                    "vars.aws.credentials.access.key.id=" + CONTAINER.getAccessKey(),
+                    "vars.aws.credentials.secret.access.key=" + CONTAINER.getSecretKey(),
+                    "vars.sns.endpoint.override=" + CONTAINER.getSnsEndpointOverride(),
+                    "vars.sqs.endpoint.override=" + CONTAINER.getSqsEndpointOverride(),
+                    "stream.sns.input.topic.name=" + SNS_INPUT_TOPIC_NAME,
+                    "stream.sqs.input.queue.name=" + SQS_INPUT_QUEUE_NAME,
+                    "stream.sqs.output.queue.name=" + SQS_OUTPUT_QUEUE_NAME);
         }
     }
 

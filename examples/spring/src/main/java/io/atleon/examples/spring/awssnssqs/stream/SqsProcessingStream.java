@@ -37,21 +37,23 @@ public class SqsProcessingStream extends SpringAloStream {
         AloSqsSender<Long> sender = buildSender();
 
         return buildReceiver()
-            .receiveAloBodies(inputQueueUrl)
-            .filter(service::isPrime)
-            .transform(sender.sendAloBodies(ComposedSqsMessage::fromBody, outputQueueUrl))
-            .resubscribeOnError(name())
-            .doFinally(sender::close)
-            .subscribeWith(new DefaultAloSenderResultSubscriber<>());
+                .receiveAloBodies(inputQueueUrl)
+                .filter(service::isPrime)
+                .transform(sender.sendAloBodies(ComposedSqsMessage::fromBody, outputQueueUrl))
+                .resubscribeOnError(name())
+                .doFinally(sender::close)
+                .subscribeWith(new DefaultAloSenderResultSubscriber<>());
     }
 
     private AloSqsReceiver<Long> buildReceiver() {
-        return configSource.with(AloSqsReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName())
-            .as(AloSqsReceiver::create);
+        return configSource
+                .with(AloSqsReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class.getName())
+                .as(AloSqsReceiver::create);
     }
 
     private AloSqsSender<Long> buildSender() {
-        return configSource.with(AloSqsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName())
-            .as(AloSqsSender::create);
+        return configSource
+                .with(AloSqsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName())
+                .as(AloSqsSender::create);
     }
 }

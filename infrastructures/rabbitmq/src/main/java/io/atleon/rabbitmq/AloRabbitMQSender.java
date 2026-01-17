@@ -50,9 +50,10 @@ public class AloRabbitMQSender<T> implements Closeable {
     private final Sinks.Many<Long> closeSink = Sinks.many().multicast().directBestEffort();
 
     private AloRabbitMQSender(RabbitMQConfigSource configSource) {
-        this.futureResources = configSource.create()
-            .map(SendResources::<T>fromConfig)
-            .cacheInvalidateWhen(resources -> closeSink.asFlux().next().then(), SendResources::close);
+        this.futureResources = configSource
+                .create()
+                .map(SendResources::<T>fromConfig)
+                .cacheInvalidateWhen(resources -> closeSink.asFlux().next().then(), SendResources::close);
     }
 
     /**
@@ -134,8 +135,7 @@ public class AloRabbitMQSender<T> implements Closeable {
      * @return A {@link Function} useful for Publisher transformations
      */
     public Function<Publisher<Alo<T>>, AloFlux<RabbitMQSenderResult<T>>> sendAloBodies(
-        RabbitMQMessageCreator<T> messageCreator
-    ) {
+            RabbitMQMessageCreator<T> messageCreator) {
         return aloBodies -> sendAloBodies(aloBodies, messageCreator);
     }
 
@@ -154,12 +154,11 @@ public class AloRabbitMQSender<T> implements Closeable {
      * @return a Publisher of Alo items referencing the result of each sent message
      */
     public AloFlux<RabbitMQSenderResult<T>> sendAloBodies(
-        Publisher<Alo<T>> aloBodies,
-        RabbitMQMessageCreator<T> messageCreator
-    ) {
-        return futureResources.flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator))
-            .as(AloFlux::wrap)
-            .processFailure(SenderResult::isFailure, SenderResult::toError);
+            Publisher<Alo<T>> aloBodies, RabbitMQMessageCreator<T> messageCreator) {
+        return futureResources
+                .flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator))
+                .as(AloFlux::wrap)
+                .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     /**
@@ -174,11 +173,11 @@ public class AloRabbitMQSender<T> implements Closeable {
      * @return A Publisher of Alo items referencing the result of each sent message
      */
     public AloFlux<RabbitMQSenderResult<RabbitMQMessage<T>>> sendAloMessages(
-        Publisher<Alo<RabbitMQMessage<T>>> aloMessages
-    ) {
-        return futureResources.flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity()))
-            .as(AloFlux::wrap)
-            .processFailure(SenderResult::isFailure, SenderResult::toError);
+            Publisher<Alo<RabbitMQMessage<T>>> aloMessages) {
+        return futureResources
+                .flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity()))
+                .as(AloFlux::wrap)
+                .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     /**
@@ -208,32 +207,26 @@ public class AloRabbitMQSender<T> implements Closeable {
         }
 
         public static <T> SendResources<T> fromConfig(RabbitMQConfig config) {
-            SenderOptions senderOptions = new SenderOptions()
-                .connectionFactory(config.buildConnectionFactory());
+            SenderOptions senderOptions = new SenderOptions().connectionFactory(config.buildConnectionFactory());
             return new SendResources<T>(
-                new Sender(senderOptions),
-                config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG, BodySerializer.class)
-            );
+                    new Sender(senderOptions),
+                    config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG, BodySerializer.class));
         }
 
         public <R> Flux<RabbitMQSenderResult<R>> send(
-            Publisher<R> items,
-            Function<R, RabbitMQMessage<T>> messageCreator
-        ) {
+                Publisher<R> items, Function<R, RabbitMQMessage<T>> messageCreator) {
             return Flux.from(items)
-                .map(item -> toOutboundMessage(item, messageCreator))
-                .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, SEND_OPTIONS))
-                .map(RabbitMQSenderResult::fromMessageResult);
+                    .map(item -> toOutboundMessage(item, messageCreator))
+                    .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, SEND_OPTIONS))
+                    .map(RabbitMQSenderResult::fromMessageResult);
         }
 
         public <R> Flux<Alo<RabbitMQSenderResult<R>>> sendAlos(
-            Publisher<Alo<R>> alos,
-            Function<R, RabbitMQMessage<T>> messageCreator
-        ) {
+                Publisher<Alo<R>> alos, Function<R, RabbitMQMessage<T>> messageCreator) {
             return AloFlux.toFlux(alos)
-                .handle(newAloEmitter(messageCreator.compose(Alo::get)))
-                .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, SEND_OPTIONS))
-                .map(RabbitMQSenderResult::fromMessageResultOfAlo);
+                    .handle(newAloEmitter(messageCreator.compose(Alo::get)))
+                    .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, SEND_OPTIONS))
+                    .map(RabbitMQSenderResult::fromMessageResultOfAlo);
         }
 
         public void close() {
@@ -241,23 +234,19 @@ public class AloRabbitMQSender<T> implements Closeable {
         }
 
         private <R> BiConsumer<Alo<R>, SynchronousSink<CorrelableOutboundMessage<Alo<R>>>> newAloEmitter(
-            Function<Alo<R>, RabbitMQMessage<T>> aloToRabbitMQMessage
-        ) {
+                Function<Alo<R>, RabbitMQMessage<T>> aloToRabbitMQMessage) {
             return (alo, sink) -> alo.runInContext(() -> sink.next(toOutboundMessage(alo, aloToRabbitMQMessage)));
         }
 
         private <R> CorrelableOutboundMessage<R> toOutboundMessage(
-            R data,
-            Function<R, RabbitMQMessage<T>> dataToRabbitMQMessage
-        ) {
+                R data, Function<R, RabbitMQMessage<T>> dataToRabbitMQMessage) {
             RabbitMQMessage<T> message = dataToRabbitMQMessage.apply(data);
             return new CorrelableOutboundMessage<>(
-                message.exchange(),
-                message.routingKey(),
-                message.properties(),
-                bodySerializer.serialize(message.body()).bytes(),
-                data
-            );
+                    message.exchange(),
+                    message.routingKey(),
+                    message.properties(),
+                    bodySerializer.serialize(message.body()).bytes(),
+                    data);
         }
     }
 }

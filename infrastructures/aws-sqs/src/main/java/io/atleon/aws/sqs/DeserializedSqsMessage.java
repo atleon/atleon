@@ -19,26 +19,24 @@ public final class DeserializedSqsMessage<T> extends AbstractSqsMessage<T> imple
     private final String messageId;
 
     private DeserializedSqsMessage(
-        String receiptHandle,
-        String messageId,
-        Map<String, MessageAttributeValue> messageAttributes,
-        Map<String, MessageSystemAttributeValue> messageSystemAttributes,
-        T body
-    ) {
+            String receiptHandle,
+            String messageId,
+            Map<String, MessageAttributeValue> messageAttributes,
+            Map<String, MessageSystemAttributeValue> messageSystemAttributes,
+            T body) {
         super(messageAttributes, messageSystemAttributes, body);
         this.receiptHandle = receiptHandle;
         this.messageId = messageId;
     }
 
-    public static <T> DeserializedSqsMessage<T>
-    deserialize(ReceivedSqsMessage<String> serializedMessage, BodyDeserializer<T> bodyDeserializer) {
+    public static <T> DeserializedSqsMessage<T> deserialize(
+            ReceivedSqsMessage<String> serializedMessage, BodyDeserializer<T> bodyDeserializer) {
         return new DeserializedSqsMessage<>(
-            serializedMessage.receiptHandle(),
-            serializedMessage.messageId(),
-            serializedMessage.messageAttributes(),
-            serializedMessage.messageSystemAttributes(),
-            bodyDeserializer.deserialize(serializedMessage.body())
-        );
+                serializedMessage.receiptHandle(),
+                serializedMessage.messageId(),
+                serializedMessage.messageAttributes(),
+                serializedMessage.messageSystemAttributes(),
+                bodyDeserializer.deserialize(serializedMessage.body()));
     }
 
     @Override
@@ -54,12 +52,12 @@ public final class DeserializedSqsMessage<T> extends AbstractSqsMessage<T> imple
     @Override
     public Optional<String> messageDeduplicationId() {
         return messageSystemAttribute(MessageSystemAttributeName.MESSAGE_DEDUPLICATION_ID)
-            .map(MessageSystemAttributeValue::stringValue);
+                .map(MessageSystemAttributeValue::stringValue);
     }
 
     @Override
     public Optional<String> messageGroupId() {
         return messageSystemAttribute(MessageSystemAttributeName.MESSAGE_GROUP_ID)
-            .map(MessageSystemAttributeValue::stringValue);
+                .map(MessageSystemAttributeValue::stringValue);
     }
 }

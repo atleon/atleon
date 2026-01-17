@@ -39,10 +39,9 @@ public abstract class TracingAloConsumptionDecorator<T> implements AloDecorator<
     @Override
     public final Alo<T> decorate(Alo<T> alo) {
         T t = alo.get();
-        Tracer.SpanBuilder spanBuilder = newSpanBuilder(tracerFacade::newSpanBuilder, t)
-            .withTag(Tags.SPAN_KIND, Tags.SPAN_KIND_CONSUMER);
-        deduceSpanContextToLink(t)
-            .ifPresent(it -> spanBuilder.addReference(References.FOLLOWS_FROM, it));
+        Tracer.SpanBuilder spanBuilder =
+                newSpanBuilder(tracerFacade::newSpanBuilder, t).withTag(Tags.SPAN_KIND, Tags.SPAN_KIND_CONSUMER);
+        deduceSpanContextToLink(t).ifPresent(it -> spanBuilder.addReference(References.FOLLOWS_FROM, it));
         return TracingAlo.start(alo, tracerFacade, spanBuilder);
     }
 

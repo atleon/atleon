@@ -28,8 +28,8 @@ public class AloStreamAutoConfiguration {
 
     @Bean
     @Conditional(AutoConfigureStreamEnabled.class)
-    public List<ConfiguredAloStream>
-    autoConfiguredAloStreams(ConfigurableApplicationContext context, List<AloStreamConfig> configs) {
+    public List<ConfiguredAloStream> autoConfiguredAloStreams(
+            ConfigurableApplicationContext context, List<AloStreamConfig> configs) {
         List<ConfiguredAloStream> configuredAloStreams = new ArrayList<>();
         Set<AloStream<?>> uniqueStreams = Collections.newSetFromMap(new IdentityHashMap<>());
         for (AloStreamConfig config : configs) {
@@ -48,18 +48,18 @@ public class AloStreamAutoConfiguration {
         return configuredAloStreams;
     }
 
-    private static <C extends AloStreamConfig> AloStream<? super C>
-    findOrCreateStream(ConfigurableApplicationContext context, C config, AutoConfigureStream annotation) {
+    private static <C extends AloStreamConfig> AloStream<? super C> findOrCreateStream(
+            ConfigurableApplicationContext context, C config, AutoConfigureStream annotation) {
         Class<? extends AloStream<?>> streamType = (Class<? extends AloStream<?>>) annotation.value();
         Collection<? extends AloStream<?>> registeredStreams = config instanceof SelfConfigurableAloStream
-            ? Collections.singletonList((SelfConfigurableAloStream) config)
-            : context.getBeansOfType(streamType, false, true).values();
+                ? Collections.singletonList((SelfConfigurableAloStream) config)
+                : context.getBeansOfType(streamType, false, true).values();
         Optional<AloStream<? super C>> compatibleStream =
-            AloStreamCompatibility.findSingleCompatibleStream(registeredStreams, config);
+                AloStreamCompatibility.findSingleCompatibleStream(registeredStreams, config);
         int count = Contexts.parseValue(context, annotation.instanceCountValue())
-            .map(Integer::valueOf)
-            .orElseThrow(() ->
-                new IllegalArgumentException("Could not parse instance count: " + annotation.instanceCountValue()));
+                .map(Integer::valueOf)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Could not parse instance count: " + annotation.instanceCountValue()));
 
         if (compatibleStream.isPresent()) {
             AloStream<? super C> initial = compatibleStream.get();

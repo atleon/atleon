@@ -41,10 +41,9 @@ class KafkaBoundedReceiverTest {
     public void allDataCurrentlyOnATopicCanBeConsumed() {
         String topic = UUID.randomUUID().toString();
         Set<Long> producedValues = produceRecordsFromValues(
-            newProducerConfigs(LongSerializer.class, LongSerializer.class),
-            createRandomLongValues(1000, Collectors.toSet()),
-            value -> new ProducerRecord<>(topic, value, value)
-        );
+                newProducerConfigs(LongSerializer.class, LongSerializer.class),
+                createRandomLongValues(1000, Collectors.toSet()),
+                value -> new ProducerRecord<>(topic, value, value));
 
         OffsetRange offsetRange = OffsetCriteria.earliest().to(OffsetCriteria.latest());
         Set<Long> result = receiveRecordValues(topic, LongDeserializer.class, offsetRange, Collectors.toSet());
@@ -56,12 +55,12 @@ class KafkaBoundedReceiverTest {
     public void theEarliestRecordOnATopicPartitionCanBeConsumed() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
-            newProducerConfigs(LongSerializer.class, LongSerializer.class),
-            createRandomLongValues(4, Collectors.toList()),
-            value -> new ProducerRecord<>(topic, 0, value, value)
-        );
+                newProducerConfigs(LongSerializer.class, LongSerializer.class),
+                createRandomLongValues(4, Collectors.toList()),
+                value -> new ProducerRecord<>(topic, 0, value, value));
 
-        List<Long> result = receiveValuesAsLongs(topic, OffsetCriteria.earliest().asRange());
+        List<Long> result =
+                receiveValuesAsLongs(topic, OffsetCriteria.earliest().asRange());
 
         assertEquals(producedValues.subList(0, 1), result);
     }
@@ -70,10 +69,9 @@ class KafkaBoundedReceiverTest {
     public void theLatestRecordOnATopicPartitionCanBeConsumed() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
-            newProducerConfigs(LongSerializer.class, LongSerializer.class),
-            createRandomLongValues(4, Collectors.toList()),
-            value -> new ProducerRecord<>(topic, 0, value, value)
-        );
+                newProducerConfigs(LongSerializer.class, LongSerializer.class),
+                createRandomLongValues(4, Collectors.toList()),
+                value -> new ProducerRecord<>(topic, 0, value, value));
 
         List<Long> result = receiveValuesAsLongs(topic, OffsetCriteria.latest().asRange());
 
@@ -84,10 +82,9 @@ class KafkaBoundedReceiverTest {
     public void recordAtASpecificOffsetCanBeConsumed() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
-            newProducerConfigs(LongSerializer.class, LongSerializer.class),
-            createRandomLongValues(4, Collectors.toList()),
-            value -> new ProducerRecord<>(topic, 0, value, value)
-        );
+                newProducerConfigs(LongSerializer.class, LongSerializer.class),
+                createRandomLongValues(4, Collectors.toList()),
+                value -> new ProducerRecord<>(topic, 0, value, value));
 
         List<Long> result = receiveValuesAsLongs(topic, OffsetCriteria.raw(1).asRange());
 
@@ -98,27 +95,22 @@ class KafkaBoundedReceiverTest {
     public void recordsInASpecificOffsetRangeCanBeConsumed() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
-            newProducerConfigs(LongSerializer.class, LongSerializer.class),
-            createRandomLongValues(4, Collectors.toList()),
-            value -> new ProducerRecord<>(topic, 0, value, value)
-        );
+                newProducerConfigs(LongSerializer.class, LongSerializer.class),
+                createRandomLongValues(4, Collectors.toList()),
+                value -> new ProducerRecord<>(topic, 0, value, value));
 
         assertEquals(
-            producedValues.subList(0, 2),
-            receiveValuesAsLongs(topic, OffsetCriteria.raw(0).to(OffsetCriteria.raw(1)))
-        );
+                producedValues.subList(0, 2),
+                receiveValuesAsLongs(topic, OffsetCriteria.raw(0).to(OffsetCriteria.raw(1))));
         assertEquals(
-            producedValues.subList(1, 3),
-            receiveValuesAsLongs(topic, OffsetCriteria.raw(1).to(OffsetCriteria.raw(2)))
-        );
+                producedValues.subList(1, 3),
+                receiveValuesAsLongs(topic, OffsetCriteria.raw(1).to(OffsetCriteria.raw(2))));
         assertEquals(
-            producedValues.subList(2, 4),
-            receiveValuesAsLongs(topic, OffsetCriteria.raw(2).to(OffsetCriteria.raw(3)))
-        );
+                producedValues.subList(2, 4),
+                receiveValuesAsLongs(topic, OffsetCriteria.raw(2).to(OffsetCriteria.raw(3))));
         assertEquals(
-            producedValues.subList(3, 4),
-            receiveValuesAsLongs(topic, OffsetCriteria.raw(3).to(OffsetCriteria.raw(4)))
-        );
+                producedValues.subList(3, 4),
+                receiveValuesAsLongs(topic, OffsetCriteria.raw(3).to(OffsetCriteria.raw(4))));
     }
 
     @Test
@@ -126,12 +118,12 @@ class KafkaBoundedReceiverTest {
         String topic = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
         List<Long> producedTimestamps = produceRecordsFromValues(
-            newProducerConfigs(LongSerializer.class, LongSerializer.class),
-            IntStream.range(0, 3).mapToObj(index -> now + (index * 2L)).collect(Collectors.toList()),
-            epochMillis -> new ProducerRecord<>(topic, 0, epochMillis, epochMillis, epochMillis)
-        );
+                newProducerConfigs(LongSerializer.class, LongSerializer.class),
+                IntStream.range(0, 3).mapToObj(index -> now + (index * 2L)).collect(Collectors.toList()),
+                epochMillis -> new ProducerRecord<>(topic, 0, epochMillis, epochMillis, epochMillis));
 
-        List<Long> result = receiveValuesAsLongs(topic, OffsetCriteria.timestamp(producedTimestamps.get(1)).asRange());
+        List<Long> result = receiveValuesAsLongs(
+                topic, OffsetCriteria.timestamp(producedTimestamps.get(1)).asRange());
 
         assertEquals(producedTimestamps.subList(1, 2), result);
     }
@@ -141,59 +133,51 @@ class KafkaBoundedReceiverTest {
         String topic = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
         List<Long> producedTimestamps = produceRecordsFromValues(
-            newProducerConfigs(LongSerializer.class, LongSerializer.class),
-            IntStream.range(0, 3).mapToObj(index -> now + (index * 2L)).collect(Collectors.toList()),
-            epochMillis -> new ProducerRecord<>(topic, 0, epochMillis, epochMillis, epochMillis)
-        );
+                newProducerConfigs(LongSerializer.class, LongSerializer.class),
+                IntStream.range(0, 3).mapToObj(index -> now + (index * 2L)).collect(Collectors.toList()),
+                epochMillis -> new ProducerRecord<>(topic, 0, epochMillis, epochMillis, epochMillis));
 
         assertEquals(
-            Collections.emptyList(),
-            receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(0) - 2, producedTimestamps.get(0) - 1))
-        );
+                Collections.emptyList(),
+                receiveValuesAsLongs(
+                        topic, timestampRange(producedTimestamps.get(0) - 2, producedTimestamps.get(0) - 1)));
         assertEquals(
-            producedTimestamps.subList(0, 1),
-            receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(0) - 1, producedTimestamps.get(0)))
-        );
+                producedTimestamps.subList(0, 1),
+                receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(0) - 1, producedTimestamps.get(0))));
         assertEquals(
-            producedTimestamps.subList(0, 1),
-            receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(0) - 1, producedTimestamps.get(0) + 1))
-        );
+                producedTimestamps.subList(0, 1),
+                receiveValuesAsLongs(
+                        topic, timestampRange(producedTimestamps.get(0) - 1, producedTimestamps.get(0) + 1)));
         assertEquals(
-            producedTimestamps.subList(0, 1),
-            receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(0), producedTimestamps.get(0) + 1))
-        );
+                producedTimestamps.subList(0, 1),
+                receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(0), producedTimestamps.get(0) + 1)));
         assertEquals(
-            producedTimestamps.subList(0, 2),
-            receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(0), producedTimestamps.get(1)))
-        );
+                producedTimestamps.subList(0, 2),
+                receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(0), producedTimestamps.get(1))));
         assertEquals(
-            producedTimestamps.subList(1, 2),
-            receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(1) - 1, producedTimestamps.get(1) + 1))
-        );
+                producedTimestamps.subList(1, 2),
+                receiveValuesAsLongs(
+                        topic, timestampRange(producedTimestamps.get(1) - 1, producedTimestamps.get(1) + 1)));
         assertEquals(
-            producedTimestamps.subList(1, 3),
-            receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(1), producedTimestamps.get(2)))
-        );
+                producedTimestamps.subList(1, 3),
+                receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(1), producedTimestamps.get(2))));
         assertEquals(
-            producedTimestamps.subList(2, 3),
-            receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(2) - 1, producedTimestamps.get(2)))
-        );
+                producedTimestamps.subList(2, 3),
+                receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(2) - 1, producedTimestamps.get(2))));
         assertEquals(
-            producedTimestamps.subList(2, 3),
-            receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(2) - 1, producedTimestamps.get(2) + 1))
-        );
+                producedTimestamps.subList(2, 3),
+                receiveValuesAsLongs(
+                        topic, timestampRange(producedTimestamps.get(2) - 1, producedTimestamps.get(2) + 1)));
         assertEquals(
-            producedTimestamps.subList(2, 3),
-            receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(2), producedTimestamps.get(2) + 1))
-        );
+                producedTimestamps.subList(2, 3),
+                receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(2), producedTimestamps.get(2) + 1)));
         assertEquals(
-            Collections.emptyList(),
-            receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(2) + 1, producedTimestamps.get(2) + 2))
-        );
+                Collections.emptyList(),
+                receiveValuesAsLongs(
+                        topic, timestampRange(producedTimestamps.get(2) + 1, producedTimestamps.get(2) + 2)));
         assertEquals(
-            producedTimestamps,
-            receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(0), producedTimestamps.get(2)))
-        );
+                producedTimestamps,
+                receiveValuesAsLongs(topic, timestampRange(producedTimestamps.get(0), producedTimestamps.get(2))));
     }
 
     @Test
@@ -202,47 +186,38 @@ class KafkaBoundedReceiverTest {
         KafkaConfigSource configSource = newProducerConfigs(LongSerializer.class, LongSerializer.class);
         TopicPartition topicPartition = new TopicPartition(topic, 0);
         List<Long> producedValues = produceRecordsFromValues(
-            configSource,
-            createRandomLongValues(4, Collectors.toList()),
-            value -> new ProducerRecord<>(topicPartition.topic(), topicPartition.partition(), value, value)
-        );
+                configSource,
+                createRandomLongValues(4, Collectors.toList()),
+                value -> new ProducerRecord<>(topicPartition.topic(), topicPartition.partition(), value, value));
 
         Mono<Void> alterGroupOffsets = Mono.usingWhen(
-            configSource.create().map(KafkaConfig::nativeProperties).map(ReactiveAdmin::create),
-            it -> it.alterRawConsumerGroupOffsets(groupId, Collections.singletonMap(topicPartition, 2L)),
-            it -> Mono.fromRunnable(it::close));
+                configSource.create().map(KafkaConfig::nativeProperties).map(ReactiveAdmin::create),
+                it -> it.alterRawConsumerGroupOffsets(groupId, Collections.singletonMap(topicPartition, 2L)),
+                it -> Mono.fromRunnable(it::close));
         alterGroupOffsets.block();
 
         OffsetCriteria consumerGroupCriteria = OffsetCriteria.consumerGroup(groupId, OffsetResetStrategy.EARLIEST);
 
         assertEquals(
-            producedValues.subList(0, 2),
-            receiveValuesAsLongs(topic, OffsetCriteria.earliest().to(consumerGroupCriteria))
-        );
+                producedValues.subList(0, 2),
+                receiveValuesAsLongs(topic, OffsetCriteria.earliest().to(consumerGroupCriteria)));
         assertEquals(
-            producedValues.subList(2, 4),
-            receiveValuesAsLongs(topic, consumerGroupCriteria.to(OffsetCriteria.latest()))
-        );
+                producedValues.subList(2, 4),
+                receiveValuesAsLongs(topic, consumerGroupCriteria.to(OffsetCriteria.latest())));
     }
 
     @Test
     public void recordsCanBeConsumedFromASingleTopicPartition() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
-            newProducerConfigs(LongSerializer.class, LongSerializer.class),
-            LongStream.range(0, 6).boxed().collect(Collectors.toList()),
-            value -> new ProducerRecord<>(topic, (int) (value / 3), value, value)
-        );
+                newProducerConfigs(LongSerializer.class, LongSerializer.class),
+                LongStream.range(0, 6).boxed().collect(Collectors.toList()),
+                value -> new ProducerRecord<>(topic, (int) (value / 3), value, value));
 
         OffsetRangeProvider allValuesFromFirstPartition = OffsetRangeProvider.inOffsetRangeFromTopicPartition(
-            new TopicPartition(topic, 0),
-            OffsetCriteria.earliest().to(OffsetCriteria.latest())
-        );
+                new TopicPartition(topic, 0), OffsetCriteria.earliest().to(OffsetCriteria.latest()));
         OffsetRangeProvider partialValuesFromSecondPartition = OffsetRangeProvider.inOffsetRangeFromTopicPartition(
-            new TopicPartition(topic, 1),
-            1,
-            OffsetCriteria.latest()
-        );
+                new TopicPartition(topic, 1), 1, OffsetCriteria.latest());
 
         assertEquals(producedValues.subList(0, 3), receiveValuesAsLongs(topic, allValuesFromFirstPartition));
         assertEquals(producedValues.subList(4, 6), receiveValuesAsLongs(topic, partialValuesFromSecondPartition));
@@ -252,16 +227,12 @@ class KafkaBoundedReceiverTest {
     public void recordsCanBeConsumedStartingFromASpecificPartitionAndOffset() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
-            newProducerConfigs(LongSerializer.class, LongSerializer.class),
-            LongStream.range(0, 6).boxed().collect(Collectors.toList()),
-            value -> new ProducerRecord<>(topic, (int) (value / 3), value, value)
-        );
+                newProducerConfigs(LongSerializer.class, LongSerializer.class),
+                LongStream.range(0, 6).boxed().collect(Collectors.toList()),
+                value -> new ProducerRecord<>(topic, (int) (value / 3), value, value));
 
         OffsetRangeProvider startingInFirstPartition = OffsetRangeProvider.startingFromRawOffsetInTopicPartition(
-            new TopicPartition(topic, 0),
-            2,
-            OffsetCriteria.earliest().to(OffsetCriteria.latest())
-        );
+                new TopicPartition(topic, 0), 2, OffsetCriteria.earliest().to(OffsetCriteria.latest()));
 
         assertEquals(producedValues.subList(2, 6), receiveValuesAsLongs(topic, startingInFirstPartition));
     }
@@ -270,15 +241,12 @@ class KafkaBoundedReceiverTest {
     public void recordsCanBeConsumedUsingRawOffsets() {
         String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
-            newProducerConfigs(LongSerializer.class, LongSerializer.class),
-            LongStream.range(0, 6).boxed().collect(Collectors.toList()),
-            value -> new ProducerRecord<>(topic, (int) (value / 3), value, value)
-        );
+                newProducerConfigs(LongSerializer.class, LongSerializer.class),
+                LongStream.range(0, 6).boxed().collect(Collectors.toList()),
+                value -> new ProducerRecord<>(topic, (int) (value / 3), value, value));
 
-        OffsetRangeProvider recordsInFirstPartition = OffsetRangeProvider.usingRawOffsetRange(
-            new TopicPartition(topic, 0),
-            RawOffsetRange.of(1, 2)
-        );
+        OffsetRangeProvider recordsInFirstPartition =
+                OffsetRangeProvider.usingRawOffsetRange(new TopicPartition(topic, 0), RawOffsetRange.of(1, 2));
 
         assertEquals(producedValues.subList(1, 3), receiveValuesAsLongs(topic, recordsInFirstPartition));
     }
@@ -292,64 +260,56 @@ class KafkaBoundedReceiverTest {
     }
 
     private <T, C extends Collection<T>> C receiveRecordValues(
-        String topic,
-        Class<? extends Deserializer<T>> deserializer,
-        OffsetRange offsetRange,
-        Collector<T, ?, C> collector
-    ) {
+            String topic,
+            Class<? extends Deserializer<T>> deserializer,
+            OffsetRange offsetRange,
+            Collector<T, ?, C> collector) {
         OffsetRangeProvider rangeProvider = OffsetRangeProvider.inOffsetRangeFromAllTopicPartitions(offsetRange);
         return receiveRecordValues(topic, deserializer, rangeProvider, collector);
     }
 
     private <T, C extends Collection<T>> C receiveRecordValues(
-        String topic,
-        Class<? extends Deserializer<T>> deserializer,
-        OffsetRangeProvider rangeProvider,
-        Collector<T, ?, C> collector
-    ) {
-        return KafkaBoundedReceiver.<Object, T>create(newConsumerConfigSource(ByteArrayDeserializer.class, deserializer))
-            .receiveRecords(Collections.singletonList(topic), rangeProvider)
-            .map(ConsumerRecord::value)
-            .collect(collector)
-            .block(Duration.ofSeconds(30));
+            String topic,
+            Class<? extends Deserializer<T>> deserializer,
+            OffsetRangeProvider rangeProvider,
+            Collector<T, ?, C> collector) {
+        return KafkaBoundedReceiver.<Object, T>create(
+                        newConsumerConfigSource(ByteArrayDeserializer.class, deserializer))
+                .receiveRecords(Collections.singletonList(topic), rangeProvider)
+                .map(ConsumerRecord::value)
+                .collect(collector)
+                .block(Duration.ofSeconds(30));
     }
 
     private KafkaConfigSource newProducerConfigs(
-        Class<? extends Serializer<?>> keySerializer,
-        Class<? extends Serializer<?>> valueSerializer
-    ) {
+            Class<? extends Serializer<?>> keySerializer, Class<? extends Serializer<?>> valueSerializer) {
         return newBaseConfigSource()
-            .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, keySerializer.getName())
-            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, valueSerializer.getName());
+                .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, keySerializer.getName())
+                .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, valueSerializer.getName());
     }
 
     private KafkaConfigSource newConsumerConfigSource(
-        Class<? extends Deserializer<?>> keyDeserializer,
-        Class<? extends Deserializer<?>> valueDeserializer
-    ) {
+            Class<? extends Deserializer<?>> keyDeserializer, Class<? extends Deserializer<?>> valueDeserializer) {
         return newBaseConfigSource()
-            .with(ConsumerConfig.GROUP_ID_CONFIG, groupId)
-            .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, keyDeserializer.getName())
-            .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializer.getName());
+                .with(ConsumerConfig.GROUP_ID_CONFIG, groupId)
+                .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, keyDeserializer.getName())
+                .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, valueDeserializer.getName());
     }
 
     private KafkaConfigSource newBaseConfigSource() {
         return KafkaConfigSource.useClientIdAsName()
-            .withClientId(KafkaBoundedReceiverTest.class.getSimpleName())
-            .withBootstrapServers(BOOTSTRAP_CONNECT);
+                .withClientId(KafkaBoundedReceiverTest.class.getSimpleName())
+                .withBootstrapServers(BOOTSTRAP_CONNECT);
     }
 
     private <T, C extends Collection<T>> C produceRecordsFromValues(
-        KafkaConfigSource configSource,
-        C data,
-        Function<T, ProducerRecord<Object, T>> recordCreator
-    ) {
+            KafkaConfigSource configSource, C data, Function<T, ProducerRecord<Object, T>> recordCreator) {
         try (AloKafkaSender<Object, T> sender = AloKafkaSender.create(configSource)) {
             Flux.fromIterable(data)
-                .map(recordCreator)
-                .transform(sender::sendRecords)
-                .then()
-                .block(Duration.ofSeconds(30));
+                    .map(recordCreator)
+                    .transform(sender::sendRecords)
+                    .then()
+                    .block(Duration.ofSeconds(30));
         }
         return data;
     }

@@ -32,8 +32,7 @@ public final class SingleMachinePartitionAssignor extends AbstractPartitionAssig
 
     @Override
     public Map<String, List<TopicPartition>> assign(
-            Map<String, Integer> partitionCounts,
-            Map<String, Subscription> subscriptionsByMemberId) {
+            Map<String, Integer> partitionCounts, Map<String, Subscription> subscriptionsByMemberId) {
         Map<String, List<MachineMemberData>> machineMemberDataByTopic = subscriptionsByMemberId.entrySet().stream()
                 .flatMap(it -> streamTopicMachineMemberData(it.getKey(), it.getValue()))
                 .collect(Collectors.groupingBy(
@@ -67,8 +66,7 @@ public final class SingleMachinePartitionAssignor extends AbstractPartitionAssig
 
     private Stream<TopicMachineMemberData> streamTopicMachineMemberData(String memberId, Subscription subscription) {
         MachineData machineData = MachineData.fromByteBuffer(subscription.userData());
-        return subscription.topics().stream()
-                .map(it -> new TopicMachineMemberData(it, machineData, memberId));
+        return subscription.topics().stream().map(it -> new TopicMachineMemberData(it, machineData, memberId));
     }
 
     private List<String> chooseMemberIdsToAssign(List<MachineMemberData> machineMemberData) {

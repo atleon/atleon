@@ -24,8 +24,8 @@ public class KafkaConfig {
     }
 
     public KafkaConfig withClientIdSuffix(String delimiter, String suffix) {
-        Map<String, ?> modifiedProperties = modifyAndGetProperties(it ->
-            it.computeIfPresent(CommonClientConfigs.CLIENT_ID_CONFIG, (__, id) -> id + delimiter + suffix));
+        Map<String, ?> modifiedProperties = modifyAndGetProperties(
+                it -> it.computeIfPresent(CommonClientConfigs.CLIENT_ID_CONFIG, (__, id) -> id + delimiter + suffix));
         return new KafkaConfig(modifiedProperties);
     }
 
@@ -40,18 +40,12 @@ public class KafkaConfig {
     }
 
     public <T> Optional<T> loadInstanceWithPredefinedTypes(
-        String key,
-        Class<? extends T> type,
-        Function<String, Optional<T>> predefinedTypeInstantiator
-    ) {
+            String key, Class<? extends T> type, Function<String, Optional<T>> predefinedTypeInstantiator) {
         return ConfigLoading.loadInstanceWithPredefinedTypes(properties, key, type, predefinedTypeInstantiator);
     }
 
     public <T extends Configurable> Optional<T> loadConfiguredWithPredefinedTypes(
-        String key,
-        Class<? extends T> type,
-        Function<String, Optional<T>> predefinedTypeInstantiator
-    ) {
+            String key, Class<? extends T> type, Function<String, Optional<T>> predefinedTypeInstantiator) {
         return ConfigLoading.loadConfiguredWithPredefinedTypes(properties, key, type, predefinedTypeInstantiator);
     }
 

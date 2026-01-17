@@ -44,12 +44,11 @@ public abstract class AvroSerDeTest {
         assertTrue(schemaBytes.bytes().length > 0);
 
         Schema modifiedWriterSchema = Schema.createRecord(
-            TestData.class.getCanonicalName(),
-            schemaBytes.schema().getDoc(),
-            null,
-            schemaBytes.schema().isError(),
-            copyFields(schemaBytes.schema().getFields())
-        );
+                TestData.class.getCanonicalName(),
+                schemaBytes.schema().getDoc(),
+                null,
+                schemaBytes.schema().isError(),
+                copyFields(schemaBytes.schema().getFields()));
 
         Object deserialized = deserializer.deserialize(schemaBytes.bytes(), modifiedWriterSchema);
 
@@ -101,7 +100,7 @@ public abstract class AvroSerDeTest {
 
     private List<Schema.Field> copyFields(List<Schema.Field> fields) {
         return fields.stream()
-            .map(field -> new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultVal()))
-            .collect(Collectors.toList());
+                .map(field -> new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultVal()))
+                .collect(Collectors.toList());
     }
 }

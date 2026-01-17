@@ -48,7 +48,9 @@ public final class AvroRegistryDeserializer<T> extends RegistryDeserializer<T, S
 
     private AvroDeserializer<T> createDeserializer(AvroRegistryDeserializerConfig config) {
         AvroDeserializer<T> deserializer = AvroDeserializer.create(createGenericData(config));
-        deserializer = config.readerSchemaLoading().map(deserializer::withReaderSchemaLoadingEnabled).orElse(deserializer);
+        deserializer = config.readerSchemaLoading()
+                .map(deserializer::withReaderSchemaLoadingEnabled)
+                .orElse(deserializer);
         return deserializer.withReaderReferenceSchemaGenerationEnabled(config.readerReferenceSchemaGeneration());
     }
 

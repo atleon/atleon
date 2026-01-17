@@ -52,11 +52,11 @@ public class IntegrationTest {
 
     private void produceNumber(Number number) {
         RabbitMQConfigSource configSource = RabbitMQConfigSource.unnamed()
-            .withAll(AMQP_CONFIG.asMap())
-            .with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, LongBodySerializer.class);
+                .withAll(AMQP_CONFIG.asMap())
+                .with(AloRabbitMQSender.BODY_SERIALIZER_CONFIG, LongBodySerializer.class);
         try (AloRabbitMQSender<Long> sender = AloRabbitMQSender.create(configSource)) {
             RabbitMQMessage<Long> message =
-                RabbitMQMessage.create(EXCHANGE, INPUT_QUEUE, MessageProperties.MINIMAL_BASIC, number.longValue());
+                    RabbitMQMessage.create(EXCHANGE, INPUT_QUEUE, MessageProperties.MINIMAL_BASIC, number.longValue());
             sender.sendMessage(message).block();
         }
     }
@@ -66,16 +66,15 @@ public class IntegrationTest {
         @Override
         public void initialize(ConfigurableApplicationContext applicationContext) {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(
-                applicationContext,
-                "vars.rabbitmq.host=" + AMQP_CONFIG.getHost(),
-                "vars.rabbitmq.port=" + AMQP_CONFIG.getPort(),
-                "vars.rabbitmq.virtual.host=" + AMQP_CONFIG.getVirtualHost(),
-                "vars.rabbitmq.username=" + AMQP_CONFIG.getUsername(),
-                "vars.rabbitmq.password=" + AMQP_CONFIG.getPassword(),
-                "stream.rabbitmq.exchange=" + EXCHANGE,
-                "stream.rabbitmq.input.queue=" + INPUT_QUEUE,
-                "stream.rabbitmq.output.queue=" + OUTPUT_QUEUE
-            );
+                    applicationContext,
+                    "vars.rabbitmq.host=" + AMQP_CONFIG.getHost(),
+                    "vars.rabbitmq.port=" + AMQP_CONFIG.getPort(),
+                    "vars.rabbitmq.virtual.host=" + AMQP_CONFIG.getVirtualHost(),
+                    "vars.rabbitmq.username=" + AMQP_CONFIG.getUsername(),
+                    "vars.rabbitmq.password=" + AMQP_CONFIG.getPassword(),
+                    "stream.rabbitmq.exchange=" + EXCHANGE,
+                    "stream.rabbitmq.input.queue=" + INPUT_QUEUE,
+                    "stream.rabbitmq.output.queue=" + OUTPUT_QUEUE);
         }
     }
 

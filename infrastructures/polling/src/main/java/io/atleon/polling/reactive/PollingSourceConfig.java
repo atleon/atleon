@@ -14,8 +14,7 @@ public class PollingSourceConfig {
         this(pollingInterval, null);
     }
 
-    public PollingSourceConfig(final Duration pollingInterval,
-                               final AloPollingReceiver.NackStrategy nackStrategy) {
+    public PollingSourceConfig(final Duration pollingInterval, final AloPollingReceiver.NackStrategy nackStrategy) {
         this.pollingInterval = pollingInterval;
         this.nackStrategy = nackStrategy;
     }
@@ -25,7 +24,6 @@ public class PollingSourceConfig {
     }
 
     public AloPollingReceiver.NackStrategy getNackStrategy() {
-        return Optional.ofNullable(nackStrategy)
-                .orElse(AloPollingReceiver.NackStrategy.NACK_EMIT);
+        return Optional.ofNullable(nackStrategy).orElse(AloPollingReceiver.NackStrategy.NACK_EMIT);
     }
 }

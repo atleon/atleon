@@ -32,16 +32,15 @@ public class ConfigSourcesRegistrar implements BeanDefinitionRegistryPostProcess
 
     private static final String SPECS_PROPERTY = "atleon.config.sources";
 
-    private static final ResolvableType ENTRIES_TYPE =
-        ResolvableType.forClassWithGenerics(List.class,
-            ResolvableType.forClassWithGenerics(Map.class, String.class, String.class));
+    private static final ResolvableType ENTRIES_TYPE = ResolvableType.forClassWithGenerics(
+            List.class, ResolvableType.forClassWithGenerics(Map.class, String.class, String.class));
 
     private final List<Map<String, ?>> specs;
 
     public ConfigSourcesRegistrar(Environment environment) {
         this.specs = Binder.get(environment)
-            .bind(SPECS_PROPERTY, Bindable.<List<Map<String, ?>>>of(ENTRIES_TYPE))
-            .orElse(Collections.emptyList());
+                .bind(SPECS_PROPERTY, Bindable.<List<Map<String, ?>>>of(ENTRIES_TYPE))
+                .orElse(Collections.emptyList());
     }
 
     @Override
@@ -50,27 +49,31 @@ public class ConfigSourcesRegistrar implements BeanDefinitionRegistryPostProcess
     }
 
     @Override
-    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {
-
-    }
+    public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException {}
 
     private static void register(Map<String, ?> spec, BiConsumer<String, BeanDefinition> registrar) {
         Map<String, Object> mutableSpec = new HashMap<>(spec);
-        String name = Objects.requireNonNull(mutableSpec.remove("name"), "Spec must have name").toString();
-        String type = Objects.requireNonNull(mutableSpec.remove("type"), "Spec must have type").toString();
+        String name = Objects.requireNonNull(mutableSpec.remove("name"), "Spec must have name")
+                .toString();
+        String type = Objects.requireNonNull(mutableSpec.remove("type"), "Spec must have type")
+                .toString();
         registrar.accept(name, newDefinition(type, name, mutableSpec));
     }
 
     private static BeanDefinition newDefinition(String type, String name, Map<String, ?> properties) {
         switch (type) {
             case "kafka":
-                return newDefinition(KafkaConfigSource.class, () -> KafkaConfigSource.named(name).withAll(properties));
+                return newDefinition(KafkaConfigSource.class, () -> KafkaConfigSource.named(name)
+                        .withAll(properties));
             case "rabbitMQ":
-                return newDefinition(RabbitMQConfigSource.class, () -> RabbitMQConfigSource.named(name).withAll(properties));
+                return newDefinition(RabbitMQConfigSource.class, () -> RabbitMQConfigSource.named(name)
+                        .withAll(properties));
             case "sns":
-                return newDefinition(SnsConfigSource.class, () -> SnsConfigSource.named(name).withAll(properties));
+                return newDefinition(
+                        SnsConfigSource.class, () -> SnsConfigSource.named(name).withAll(properties));
             case "sqs":
-                return newDefinition(SqsConfigSource.class, () -> SqsConfigSource.named(name).withAll(properties));
+                return newDefinition(
+                        SqsConfigSource.class, () -> SqsConfigSource.named(name).withAll(properties));
             default:
                 throw new IllegalArgumentException("Unsupported config source type: " + type);
         }

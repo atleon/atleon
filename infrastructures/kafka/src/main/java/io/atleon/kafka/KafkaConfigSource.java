@@ -16,9 +16,7 @@ import java.util.function.Function;
 
 public class KafkaConfigSource extends ConfigSource<KafkaConfig, KafkaConfigSource> {
 
-    protected KafkaConfigSource() {
-
-    }
+    protected KafkaConfigSource() {}
 
     protected KafkaConfigSource(String name) {
         super(name);

@@ -23,11 +23,12 @@ public final class Proxying {
                 throw e.getCause();
             }
         };
-        return (U) Proxy.newProxyInstance(interfaceType.getClassLoader(), new Class[]{interfaceType}, rawHandler);
+        return (U) Proxy.newProxyInstance(interfaceType.getClassLoader(), new Class[] {interfaceType}, rawHandler);
     }
 
     public interface MethodInvocationHandler {
 
-        @Nullable Object invoke(Method method, Object[] args) throws ReflectiveOperationException;
+        @Nullable
+        Object invoke(Method method, Object[] args) throws ReflectiveOperationException;
     }
 }

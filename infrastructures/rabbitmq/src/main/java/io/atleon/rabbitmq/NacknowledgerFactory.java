@@ -14,21 +14,17 @@ import java.util.function.Consumer;
  */
 public interface NacknowledgerFactory<T> extends Configurable {
 
-    default void configure(Map<String, ?> properties) {
-
-    }
+    default void configure(Map<String, ?> properties) {}
 
     Consumer<Throwable> create(ReceivedRabbitMQMessage<T> message, Nackable nackable, Consumer<Throwable> errorEmitter);
 
     final class Emit<T> implements NacknowledgerFactory<T> {
 
-        Emit() {
-
-        }
+        Emit() {}
 
         @Override
-        public Consumer<Throwable>
-        create(ReceivedRabbitMQMessage<T> message, Nackable nackable, Consumer<Throwable> errorEmitter) {
+        public Consumer<Throwable> create(
+                ReceivedRabbitMQMessage<T> message, Nackable nackable, Consumer<Throwable> errorEmitter) {
             return errorEmitter;
         }
     }
@@ -45,8 +41,8 @@ public interface NacknowledgerFactory<T> extends Configurable {
         }
 
         @Override
-        public Consumer<Throwable>
-        create(ReceivedRabbitMQMessage<T> message, Nackable nackable, Consumer<Throwable> errorEmitter) {
+        public Consumer<Throwable> create(
+                ReceivedRabbitMQMessage<T> message, Nackable nackable, Consumer<Throwable> errorEmitter) {
             return error -> {
                 logger.warn("Nacknowledging RabbitMQ message", error);
                 nackable.nack(requeue);

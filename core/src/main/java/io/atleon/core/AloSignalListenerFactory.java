@@ -15,7 +15,5 @@ import java.util.Map;
 public interface AloSignalListenerFactory<T, STATE> extends SignalListenerFactory<Alo<T>, STATE>, Configurable {
 
     @Override
-    default void configure(Map<String, ?> properties) {
-
-    }
+    default void configure(Map<String, ?> properties) {}
 }

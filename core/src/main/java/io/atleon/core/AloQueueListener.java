@@ -19,18 +19,14 @@ public interface AloQueueListener extends Configurable {
         return listeners.size() == 1 ? listeners.get(0) : new Composite(listeners);
     }
 
-    default void configure(Map<String, ?> properties) {
-
-    }
+    default void configure(Map<String, ?> properties) {}
 
     /**
      * Callback for when a queue has been created
      *
      * @param group The group for which a queue has been created
      */
-    default void created(Object group) {
-
-    }
+    default void created(Object group) {}
 
     /**
      * Callback for when a number of items in a group has been enqueued
@@ -38,9 +34,7 @@ public interface AloQueueListener extends Configurable {
      * @param group The group under which items have been enqueued
      * @param count The number of items that have been enqueued
      */
-    default void enqueued(Object group, long count) {
-
-    }
+    default void enqueued(Object group, long count) {}
 
     /**
      * Callback for when a number of items in a group has been dequeued
@@ -48,22 +42,16 @@ public interface AloQueueListener extends Configurable {
      * @param group The group under which items have been dequeued
      * @param count The number of items that have been dequeued
      */
-    default void dequeued(Object group, long count) {
-
-    }
+    default void dequeued(Object group, long count) {}
 
     /**
      * Callback for when the resource managing queues has been disposed
      */
-    default void close() {
-
-    }
+    default void close() {}
 
     class NoOp implements AloQueueListener {
 
-        private NoOp() {
-
-        }
+        private NoOp() {}
     }
 
     class Composite implements AloQueueListener {

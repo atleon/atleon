@@ -27,11 +27,11 @@ class ContextActivatingAloTest {
         Alo<String> alo = ContextActivatingAlo.create(new TestAlo("test"));
 
         String result = AloFlux.just(alo)
-            .doOnNext(__ -> AloContext.active().set(KEY1, value))
-            .map(String::toUpperCase)
-            .map(string -> string + ":" + AloContext.active().get(KEY1).orElse(null))
-            .consumeAloAndGet(Alo::acknowledge)
-            .blockFirst(Duration.ofSeconds(10));
+                .doOnNext(__ -> AloContext.active().set(KEY1, value))
+                .map(String::toUpperCase)
+                .map(string -> string + ":" + AloContext.active().get(KEY1).orElse(null))
+                .consumeAloAndGet(Alo::acknowledge)
+                .blockFirst(Duration.ofSeconds(10));
 
         assertEquals("TEST:value", result);
     }
@@ -41,14 +41,16 @@ class ContextActivatingAloTest {
         Alo<String> alo = ContextActivatingAlo.create(new TestAlo("test"));
 
         String result = AloFlux.just(alo)
-            .doOnNext(string -> AloContext.active().set(KEY1, string))
-            .flatMapIterable(this::extractCharacters)
-            .doOnNext(string -> AloContext.active().set(KEY2, string))
-            .doOnNext(__ -> assertEquals("test", AloContext.active().get(KEY1).orElse(null)))
-            .map(__ -> AloContext.active().get(KEY2).map(String::toUpperCase).orElse(null))
-            .consumeAloAndGet(Alo::acknowledge)
-            .collect(Collectors.joining(""))
-            .block(Duration.ofSeconds(10));
+                .doOnNext(string -> AloContext.active().set(KEY1, string))
+                .flatMapIterable(this::extractCharacters)
+                .doOnNext(string -> AloContext.active().set(KEY2, string))
+                .doOnNext(
+                        __ -> assertEquals("test", AloContext.active().get(KEY1).orElse(null)))
+                .map(__ ->
+                        AloContext.active().get(KEY2).map(String::toUpperCase).orElse(null))
+                .consumeAloAndGet(Alo::acknowledge)
+                .collect(Collectors.joining(""))
+                .block(Duration.ofSeconds(10));
 
         assertEquals("TEST", result);
     }
@@ -58,23 +60,25 @@ class ContextActivatingAloTest {
         Alo<String> alo = ContextActivatingAlo.create(new TestAlo("test"));
 
         List<String> result = AloFlux.just(alo)
-            .doOnNext(string -> AloContext.active().set(KEY1, string))
-            .flatMapIterable(this::extractCharacters)
-            .doOnNext(string -> AloContext.active().set(KEY2, string))
-            .doOnNext(__ -> assertEquals("test", AloContext.active().get(KEY1).orElse(null)))
-            .bufferTimeout(4, Duration.ofSeconds(10))
-            .doOnNext(__ -> assertEquals("test", AloContext.active().get(KEY1).orElse(null)))
-            .doOnNext(__ -> assertEquals("e", AloContext.active().get(KEY2).orElse(null)))
-            .consumeAloAndGet(Alo::acknowledge)
-            .blockFirst(Duration.ofSeconds(10));
+                .doOnNext(string -> AloContext.active().set(KEY1, string))
+                .flatMapIterable(this::extractCharacters)
+                .doOnNext(string -> AloContext.active().set(KEY2, string))
+                .doOnNext(
+                        __ -> assertEquals("test", AloContext.active().get(KEY1).orElse(null)))
+                .bufferTimeout(4, Duration.ofSeconds(10))
+                .doOnNext(
+                        __ -> assertEquals("test", AloContext.active().get(KEY1).orElse(null)))
+                .doOnNext(__ -> assertEquals("e", AloContext.active().get(KEY2).orElse(null)))
+                .consumeAloAndGet(Alo::acknowledge)
+                .blockFirst(Duration.ofSeconds(10));
 
         assertEquals(Arrays.asList("t", "e", "s", "t"), result);
     }
 
     private Collection<String> extractCharacters(String string) {
         return IntStream.range(0, string.length())
-            .mapToObj(string::charAt)
-            .map(Object::toString)
-            .collect(Collectors.toList());
+                .mapToObj(string::charAt)
+                .map(Object::toString)
+                .collect(Collectors.toList());
     }
 }

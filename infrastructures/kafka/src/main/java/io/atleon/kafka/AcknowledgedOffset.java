@@ -29,7 +29,7 @@ final class AcknowledgedOffset {
         }
         AcknowledgedOffset that = (AcknowledgedOffset) o;
         return Objects.equals(topicPartition, that.topicPartition)
-            && Objects.equals(nextOffsetAndMetadata, that.nextOffsetAndMetadata);
+                && Objects.equals(nextOffsetAndMetadata, that.nextOffsetAndMetadata);
     }
 
     @Override
@@ -39,10 +39,9 @@ final class AcknowledgedOffset {
 
     @Override
     public String toString() {
-        return "AcknowledgedOffset{" +
-            "topicPartition=" + topicPartition +
-            ", nextOffsetAndMetadata=" + nextOffsetAndMetadata +
-            '}';
+        return "AcknowledgedOffset{" + "topicPartition="
+                + topicPartition + ", nextOffsetAndMetadata="
+                + nextOffsetAndMetadata + '}';
     }
 
     public TopicPartition topicPartition() {

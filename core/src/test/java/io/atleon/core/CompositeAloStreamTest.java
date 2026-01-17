@@ -27,7 +27,7 @@ class CompositeAloStreamTest {
         };
 
         AloStream<? super TestAloStreamConfig> stream =
-            CompositeAloStream.nCopies(copyCount, () -> new TestAloStream(configConsumer));
+                CompositeAloStream.nCopies(copyCount, () -> new TestAloStream(configConsumer));
 
         TestAloStreamConfig config = new TestAloStreamConfig("custom1", "custom2");
         stream.start(config);

@@ -18,11 +18,7 @@ public final class TopicPartitionGroupOffsets {
     private final long groupOffset;
 
     public TopicPartitionGroupOffsets(
-        TopicPartition topicPartition,
-        long topicPartitionLatestOffset,
-        String groupId,
-        long groupOffset
-    ) {
+            TopicPartition topicPartition, long topicPartitionLatestOffset, String groupId, long groupOffset) {
         this.topicPartition = topicPartition;
         this.topicPartitionLatestOffset = topicPartitionLatestOffset;
         this.groupId = groupId;

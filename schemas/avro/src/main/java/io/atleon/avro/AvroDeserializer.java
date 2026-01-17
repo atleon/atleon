@@ -54,11 +54,10 @@ public final class AvroDeserializer<T> implements SchematicDeserializer<T, Schem
     }
 
     private AvroDeserializer(
-        GenericData genericData,
-        Function<Type, Schema> typeSchemaLoader,
-        boolean readerSchemaLoadingEnabled,
-        boolean readerReferenceSchemaGenerationEnabled
-    ) {
+            GenericData genericData,
+            Function<Type, Schema> typeSchemaLoader,
+            boolean readerSchemaLoadingEnabled,
+            boolean readerReferenceSchemaGenerationEnabled) {
         this.genericData = genericData;
         this.typeSchemaLoader = typeSchemaLoader;
         this.readerSchemaLoadingEnabled = readerSchemaLoadingEnabled;
@@ -83,20 +82,13 @@ public final class AvroDeserializer<T> implements SchematicDeserializer<T, Schem
 
     public AvroDeserializer<T> withReaderSchemaLoadingEnabled(boolean readerSchemaLoadingEnabled) {
         return new AvroDeserializer<>(
-            genericData,
-            typeSchemaLoader,
-            readerSchemaLoadingEnabled,
-            readerReferenceSchemaGenerationEnabled
-        );
+                genericData, typeSchemaLoader, readerSchemaLoadingEnabled, readerReferenceSchemaGenerationEnabled);
     }
 
-    public AvroDeserializer<T> withReaderReferenceSchemaGenerationEnabled(boolean readerReferenceSchemaGenerationEnabled) {
+    public AvroDeserializer<T> withReaderReferenceSchemaGenerationEnabled(
+            boolean readerReferenceSchemaGenerationEnabled) {
         return new AvroDeserializer<>(
-            genericData,
-            typeSchemaLoader,
-            readerSchemaLoadingEnabled,
-            readerReferenceSchemaGenerationEnabled
-        );
+                genericData, typeSchemaLoader, readerSchemaLoadingEnabled, readerReferenceSchemaGenerationEnabled);
     }
 
     @Override
@@ -108,17 +100,17 @@ public final class AvroDeserializer<T> implements SchematicDeserializer<T, Schem
         }
     }
 
-    private T deserializeUnsafe(
-        byte[] data,
-        Function<ByteBuffer, KeyableSchema<Schema>> dataBufferToWriterSchema
-    ) throws IOException {
+    private T deserializeUnsafe(byte[] data, Function<ByteBuffer, KeyableSchema<Schema>> dataBufferToWriterSchema)
+            throws IOException {
         ByteBuffer buffer = ByteBuffer.wrap(data);
         KeyableSchema<Schema> keyableWriterSchema = dataBufferToWriterSchema.apply(buffer);
-        Schema readerSchema = keyableWriterSchema.key()
-            .map(writerKey -> readerSchemasByWriterKey.load(writerKey, __ -> loadReaderSchema(keyableWriterSchema.schema())))
-            .orElseGet(() -> loadReaderSchema(keyableWriterSchema.schema()));
+        Schema readerSchema = keyableWriterSchema
+                .key()
+                .map(writerKey ->
+                        readerSchemasByWriterKey.load(writerKey, __ -> loadReaderSchema(keyableWriterSchema.schema())))
+                .orElseGet(() -> loadReaderSchema(keyableWriterSchema.schema()));
         Decoder decoder = DecoderFactory.get()
-            .binaryDecoder(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining(), null);
+                .binaryDecoder(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining(), null);
         return createDatumReader(keyableWriterSchema.schema(), readerSchema).read(null, decoder);
     }
 
@@ -139,8 +131,8 @@ public final class AvroDeserializer<T> implements SchematicDeserializer<T, Schem
 
     private Schema loadReaderSchemaUnsafe(Schema writerSchema, Object referenceData) {
         return readerReferenceSchemaGenerationEnabled
-            ? AvroDeserialization.generateReaderReferenceSchema(referenceData, writerSchema, typeSchemaLoader)
-            : typeSchemaLoader.apply(referenceData.getClass());
+                ? AvroDeserialization.generateReaderReferenceSchema(referenceData, writerSchema, typeSchemaLoader)
+                : typeSchemaLoader.apply(referenceData.getClass());
     }
 
     private DatumReader<T> createDatumReader(Schema writerSchema, Schema readerSchema) {

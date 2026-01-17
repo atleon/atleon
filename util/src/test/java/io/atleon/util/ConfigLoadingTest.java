@@ -35,21 +35,19 @@ public class ConfigLoadingTest {
     @Test
     public void parseableConfigsAreLoadedCorrectly() {
         assertEquals(
-            Duration.ofSeconds(10),
-            ConfigLoading.loadDurationOrThrow(Collections.singletonMap("duration", "PT10S"), "duration")
-        );
+                Duration.ofSeconds(10),
+                ConfigLoading.loadDurationOrThrow(Collections.singletonMap("duration", "PT10S"), "duration"));
         assertTrue(ConfigLoading.loadBooleanOrThrow(Collections.singletonMap("boolean", "true"), "boolean"));
         assertEquals(10, ConfigLoading.loadIntOrThrow(Collections.singletonMap("integer", "10"), "integer"));
         assertEquals(15L, ConfigLoading.loadLongOrThrow(Collections.singletonMap("long", "15"), "long"));
         assertEquals("x", ConfigLoading.loadStringOrThrow(Collections.singletonMap("string", "x"), "string"));
         assertEquals(
-            RoundingMode.HALF_UP,
-            ConfigLoading.loadEnumOrThrow(Collections.singletonMap("enum", "HALF_UP"), "enum", RoundingMode.class)
-        );
+                RoundingMode.HALF_UP,
+                ConfigLoading.loadEnumOrThrow(Collections.singletonMap("enum", "HALF_UP"), "enum", RoundingMode.class));
         assertEquals(
-            TestConfigurable.class,
-            ConfigLoading.loadClassOrThrow(Collections.singletonMap("type", TestConfigurable.class.getName()), "type")
-        );
+                TestConfigurable.class,
+                ConfigLoading.loadClassOrThrow(
+                        Collections.singletonMap("type", TestConfigurable.class.getName()), "type"));
     }
 
     @Test
@@ -66,13 +64,11 @@ public class ConfigLoadingTest {
     @Test
     public void configsCanBeLoadedAsSetsOfStrings() {
         assertEquals(
-            Stream.of("one").collect(Collectors.toCollection(LinkedHashSet::new)),
-            ConfigLoading.loadSetOfStringOrEmpty(Collections.singletonMap("list", "one"), "list")
-        );
+                Stream.of("one").collect(Collectors.toCollection(LinkedHashSet::new)),
+                ConfigLoading.loadSetOfStringOrEmpty(Collections.singletonMap("list", "one"), "list"));
         assertEquals(
-            Stream.of("one", "two", "three").collect(Collectors.toCollection(LinkedHashSet::new)),
-            ConfigLoading.loadSetOfStringOrEmpty(Collections.singletonMap("list", "one,two, three"), "list")
-        );
+                Stream.of("one", "two", "three").collect(Collectors.toCollection(LinkedHashSet::new)),
+                ConfigLoading.loadSetOfStringOrEmpty(Collections.singletonMap("list", "one,two, three"), "list"));
     }
 
     @Test
@@ -82,7 +78,7 @@ public class ConfigLoadingTest {
         Map<String, ?> configs = Collections.singletonMap("instances", instance);
 
         List<Configurable> loadedInstances =
-            ConfigLoading.loadListOfInstancesOrEmpty(configs, "instances", Configurable.class);
+                ConfigLoading.loadListOfInstancesOrEmpty(configs, "instances", Configurable.class);
 
         assertEquals(1, loadedInstances.size());
         assertSame(instance, loadedInstances.get(0));
@@ -93,7 +89,7 @@ public class ConfigLoadingTest {
         Map<String, ?> configs = Collections.singletonMap("instances", TestConfigurable.class);
 
         List<Configurable> loadedInstances =
-            ConfigLoading.loadListOfInstancesOrEmpty(configs, "instances", Configurable.class);
+                ConfigLoading.loadListOfInstancesOrEmpty(configs, "instances", Configurable.class);
 
         assertEquals(1, loadedInstances.size());
         assertTrue(loadedInstances.get(0) instanceof TestConfigurable);
@@ -104,7 +100,7 @@ public class ConfigLoadingTest {
         Map<String, ?> configs = Collections.singletonMap("instances", TestConfigurable.class.getName());
 
         List<Configurable> loadedInstances =
-            ConfigLoading.loadListOfInstancesOrEmpty(configs, "instances", Configurable.class);
+                ConfigLoading.loadListOfInstancesOrEmpty(configs, "instances", Configurable.class);
 
         assertEquals(1, loadedInstances.size());
         assertTrue(loadedInstances.get(0) instanceof TestConfigurable);
@@ -115,10 +111,14 @@ public class ConfigLoadingTest {
         Map<String, ?> nullConfigs = Collections.singletonMap("instances", null);
         Map<String, ?> emptyConfigs = Collections.singletonMap("instances", "");
 
-        assertTrue(ConfigLoading.loadListOfInstances(nullConfigs, "instances", Object.class).isPresent());
-        assertTrue(ConfigLoading.loadListOfInstances(emptyConfigs, "instances", Object.class).isPresent());
-        assertTrue(ConfigLoading.loadListOfInstancesOrEmpty(nullConfigs, "instances", Object.class).isEmpty());
-        assertTrue(ConfigLoading.loadListOfInstancesOrEmpty(emptyConfigs, "instances", Object.class).isEmpty());
+        assertTrue(ConfigLoading.loadListOfInstances(nullConfigs, "instances", Object.class)
+                .isPresent());
+        assertTrue(ConfigLoading.loadListOfInstances(emptyConfigs, "instances", Object.class)
+                .isPresent());
+        assertTrue(ConfigLoading.loadListOfInstancesOrEmpty(nullConfigs, "instances", Object.class)
+                .isEmpty());
+        assertTrue(ConfigLoading.loadListOfInstancesOrEmpty(emptyConfigs, "instances", Object.class)
+                .isEmpty());
     }
 
     @Test
@@ -127,7 +127,8 @@ public class ConfigLoadingTest {
         configs.put("configurable", TestConfigurable.class);
         configs.put(TestConfigurable.VALUE_CONFIG, "configured");
 
-        TestConfigurable configurable = ConfigLoading.loadConfiguredOrThrow(configs, "configurable", TestConfigurable.class);
+        TestConfigurable configurable =
+                ConfigLoading.loadConfiguredOrThrow(configs, "configurable", TestConfigurable.class);
 
         assertEquals("configured", configurable.getValue());
     }
@@ -139,13 +140,12 @@ public class ConfigLoadingTest {
         configs.put(TestConfigurable.VALUE_CONFIG, "configured");
 
         Optional<List<TestConfigurable>> result = ConfigLoading.loadListOfConfiguredWithPredefinedTypes(
-            configs,
-            "configurable",
-            TestConfigurable.class,
-            typeName -> typeName.equalsIgnoreCase("test")
-                ? Optional.of(Collections.singletonList(new TestConfigurable()))
-                : Optional.empty()
-        );
+                configs,
+                "configurable",
+                TestConfigurable.class,
+                typeName -> typeName.equalsIgnoreCase("test")
+                        ? Optional.of(Collections.singletonList(new TestConfigurable()))
+                        : Optional.empty());
 
         assertTrue(result.isPresent());
         assertEquals(1, result.get().size());

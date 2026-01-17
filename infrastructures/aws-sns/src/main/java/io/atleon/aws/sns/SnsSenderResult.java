@@ -23,12 +23,7 @@ public final class SnsSenderResult<C> implements SenderResult {
 
     private final C correlationMetadata;
 
-    private SnsSenderResult(
-        String requestId,
-        SuccessMetadata successMetadata,
-        Throwable error,
-        C correlationMetadata
-    ) {
+    private SnsSenderResult(String requestId, SuccessMetadata successMetadata, Throwable error, C correlationMetadata) {
         this.requestId = requestId;
         this.successMetadata = successMetadata;
         this.error = error;
@@ -36,11 +31,7 @@ public final class SnsSenderResult<C> implements SenderResult {
     }
 
     public static <C> SnsSenderResult<C> success(
-        String requestId,
-        String messageId,
-        String sequenceNumber,
-        C correlationMetadata
-    ) {
+            String requestId, String messageId, String sequenceNumber, C correlationMetadata) {
         SuccessMetadata successMetadata = new SuccessMetadata(messageId, sequenceNumber);
         return new SnsSenderResult<>(requestId, successMetadata, null, correlationMetadata);
     }
@@ -51,12 +42,11 @@ public final class SnsSenderResult<C> implements SenderResult {
 
     @Override
     public String toString() {
-        return "SnsSenderResult{" +
-            "requestId='" + requestId + '\'' +
-            ", successMetadata=" + successMetadata +
-            ", error=" + error +
-            ", correlationMetadata=" + correlationMetadata +
-            '}';
+        return "SnsSenderResult{" + "requestId='"
+                + requestId + '\'' + ", successMetadata="
+                + successMetadata + ", error="
+                + error + ", correlationMetadata="
+                + correlationMetadata + '}';
     }
 
     @Override

@@ -23,7 +23,7 @@ public abstract class MeteringAloQueueListener<K> implements AloQueueListener {
     private static final double ABSENT_EVALUATION = Double.NaN;
 
     private static final AuditedMetricRegistry<MeteringAloQueueListener<?>, Object, Double> IN_FLIGHT_GROUP_REGISTRY =
-        new AuditedMetricRegistry<>(MeteringAloQueueListener::evaluateInFlight, ABSENT_EVALUATION);
+            new AuditedMetricRegistry<>(MeteringAloQueueListener::evaluateInFlight, ABSENT_EVALUATION);
 
     private final MeterRegistry meterRegistry;
 
@@ -96,9 +96,9 @@ public abstract class MeteringAloQueueListener<K> implements AloQueueListener {
     private void registerGauge(MeterKey meterKey) {
         try {
             Gauge.builder(meterKey.getName(), meterKey, IN_FLIGHT_GROUP_REGISTRY::evaluate)
-                .description("The number of in-flight Alo items awaiting acknowledgement execution")
-                .tags(meterKey.getTags())
-                .register(meterRegistry);
+                    .description("The number of in-flight Alo items awaiting acknowledgement execution")
+                    .tags(meterKey.getTags())
+                    .register(meterRegistry);
         } catch (Exception e) {
             LOGGER.debug("Failed to register Gauge with key={}", meterKey, e);
         }

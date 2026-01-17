@@ -10,9 +10,7 @@ import java.util.function.Consumer;
  */
 public final class Adapters {
 
-    private Adapters() {
-
-    }
+    private Adapters() {}
 
     public static <T> Subscriber<T> toSubscriber(Consumer<T> consumer) {
         return new ConsumingSubscriber<>(consumer);

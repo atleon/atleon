@@ -45,7 +45,7 @@ public final class SnsSender implements Closeable {
 
     private SnsSender(SnsSenderOptions options) {
         this.futureClient = Mono.fromSupplier(options::createClient)
-            .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SnsAsyncClient::close);
+                .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SnsAsyncClient::close);
         this.batcher = Batcher.create(options.batchSize(), options.batchDuration(), options.batchPrefetch());
         this.maxRequestsInFlight = options.maxRequestsInFlight();
     }
@@ -96,41 +96,41 @@ public final class SnsSender implements Closeable {
         String requestId = message.requestId();
         C correlationMetadata = message.correlationMetadata();
         return Mono.fromFuture(() -> client.publish(request))
-            .retryWhen(DEFAULT_RETRY)
-            .map(response -> createSuccessResult(requestId, response, correlationMetadata))
-            .onErrorResume(error -> Mono.just(createFailureResult(requestId, error, correlationMetadata)));
+                .retryWhen(DEFAULT_RETRY)
+                .map(response -> createSuccessResult(requestId, response, correlationMetadata))
+                .onErrorResume(error -> Mono.just(createFailureResult(requestId, error, correlationMetadata)));
     }
 
-    private <C> Flux<SnsSenderResult<C>> send(SnsAsyncClient client, Flux<SnsSenderMessage<C>> messages, String topicArn) {
+    private <C> Flux<SnsSenderResult<C>> send(
+            SnsAsyncClient client, Flux<SnsSenderMessage<C>> messages, String topicArn) {
         return batcher.applyMapping(
-            messages.map(SnsPublishEntry::create),
-            entries -> send(client, entries, topicArn),
-            maxRequestsInFlight
-        );
+                messages.map(SnsPublishEntry::create), entries -> send(client, entries, topicArn), maxRequestsInFlight);
     }
 
-    private <C> Flux<SnsSenderResult<C>> send(SnsAsyncClient client, List<SnsPublishEntry<C>> entries, String topicArn) {
+    private <C> Flux<SnsSenderResult<C>> send(
+            SnsAsyncClient client, List<SnsPublishEntry<C>> entries, String topicArn) {
         PublishBatchRequest request = PublishBatchRequest.builder()
-            .topicArn(topicArn)
-            .publishBatchRequestEntries(entries.stream().map(SnsPublishEntry::requestEntry).collect(Collectors.toList()))
-            .build();
+                .topicArn(topicArn)
+                .publishBatchRequestEntries(
+                        entries.stream().map(SnsPublishEntry::requestEntry).collect(Collectors.toList()))
+                .build();
         Map<String, C> correlationMetadataByRequestId = entries.stream()
-            .filter(message -> message.correlationMetadata() != null)
-            .collect(Collectors.toMap(SnsPublishEntry::requestId, SnsPublishEntry::correlationMetadata));
+                .filter(message -> message.correlationMetadata() != null)
+                .collect(Collectors.toMap(SnsPublishEntry::requestId, SnsPublishEntry::correlationMetadata));
         return Mono.fromFuture(() -> client.publishBatch(request))
-            .retryWhen(DEFAULT_RETRY)
-            .flatMapIterable(response -> createResults(response, correlationMetadataByRequestId));
+                .retryWhen(DEFAULT_RETRY)
+                .flatMapIterable(response -> createResults(response, correlationMetadataByRequestId));
     }
 
     private <C> PublishRequest createPublishRequest(SnsSenderMessage<C> message, SnsAddress address) {
         return newPublishRequestBuilder(address)
-            .messageDeduplicationId(message.messageDeduplicationId().orElse(null))
-            .messageGroupId(message.messageGroupId().orElse(null))
-            .messageAttributes(message.messageAttributes())
-            .messageStructure(message.messageStructure().orElse(null))
-            .subject(message.subject().orElse(null))
-            .message(message.body())
-            .build();
+                .messageDeduplicationId(message.messageDeduplicationId().orElse(null))
+                .messageGroupId(message.messageGroupId().orElse(null))
+                .messageAttributes(message.messageAttributes())
+                .messageStructure(message.messageStructure().orElse(null))
+                .subject(message.subject().orElse(null))
+                .message(message.body())
+                .build();
     }
 
     private PublishRequest.Builder newPublishRequestBuilder(SnsAddress address) {
@@ -147,13 +147,11 @@ public final class SnsSender implements Closeable {
     }
 
     private <C> List<SnsSenderResult<C>> createResults(
-        PublishBatchResponse response,
-        Map<String, C> correlationMetadataByRequestId
-    ) {
+            PublishBatchResponse response, Map<String, C> correlationMetadataByRequestId) {
         Stream<SnsSenderResult<C>> failures = response.failed().stream()
-            .map(entry -> createFailureResult(entry, correlationMetadataByRequestId.get(entry.id())));
+                .map(entry -> createFailureResult(entry, correlationMetadataByRequestId.get(entry.id())));
         Stream<SnsSenderResult<C>> successes = response.successful().stream()
-            .map(entry -> createSuccessResult(entry, correlationMetadataByRequestId.get(entry.id())));
+                .map(entry -> createSuccessResult(entry, correlationMetadataByRequestId.get(entry.id())));
         return Stream.concat(failures, successes).collect(Collectors.toList());
     }
 
@@ -166,7 +164,8 @@ public final class SnsSender implements Closeable {
         return SnsSenderResult.failure(entry.id(), error, correlationMetadata);
     }
 
-    private <C> SnsSenderResult<C> createSuccessResult(String requestId, PublishResponse response, C correlationMetadata) {
+    private <C> SnsSenderResult<C> createSuccessResult(
+            String requestId, PublishResponse response, C correlationMetadata) {
         return SnsSenderResult.success(requestId, response.messageId(), response.sequenceNumber(), correlationMetadata);
     }
 
@@ -208,14 +207,14 @@ public final class SnsSender implements Closeable {
 
         public static <C> SnsPublishEntry<C> create(SnsSenderMessage<C> message) {
             PublishBatchRequestEntry requestEntry = PublishBatchRequestEntry.builder()
-                .id(message.requestId())
-                .messageDeduplicationId(message.messageDeduplicationId().orElse(null))
-                .messageGroupId(message.messageGroupId().orElse(null))
-                .messageAttributes(message.messageAttributes())
-                .messageStructure(message.messageStructure().orElse(null))
-                .subject(message.subject().orElse(null))
-                .message(message.body())
-                .build();
+                    .id(message.requestId())
+                    .messageDeduplicationId(message.messageDeduplicationId().orElse(null))
+                    .messageGroupId(message.messageGroupId().orElse(null))
+                    .messageAttributes(message.messageAttributes())
+                    .messageStructure(message.messageStructure().orElse(null))
+                    .subject(message.subject().orElse(null))
+                    .message(message.body())
+                    .build();
             return new SnsPublishEntry<>(requestEntry, message.correlationMetadata());
         }
 

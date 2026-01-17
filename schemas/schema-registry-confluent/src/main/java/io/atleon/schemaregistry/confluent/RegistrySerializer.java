@@ -76,7 +76,9 @@ public abstract class RegistrySerializer<T, S> extends RegistrySerDe implements 
     protected final byte[] serialize(T data, Function<ParsedSchema, String> toSubjectName) {
         try {
             SchematicPreSerializer<S> preSerializer = (schema, stream) -> preSerialize(schema, toSubjectName, stream);
-            return data == null ? null : serializer().serialize(data, preSerializer).bytes();
+            return data == null
+                    ? null
+                    : serializer().serialize(data, preSerializer).bytes();
         } catch (RegistrationException e) {
             LOGGER.warn("Error registering Schema", e.getCause());
             throw new SerializationException("Error registering Schema", e.getCause());
@@ -85,7 +87,8 @@ public abstract class RegistrySerializer<T, S> extends RegistrySerDe implements 
 
     protected abstract SchematicSerializer<T, S> serializer();
 
-    protected S preSerialize(S schema, Function<ParsedSchema, String> toSubjectName, ByteArrayOutputStream outputStream) {
+    protected S preSerialize(
+            S schema, Function<ParsedSchema, String> toSubjectName, ByteArrayOutputStream outputStream) {
         RegisteredSchema registeredSchema = registerOrGet(schema, toSubjectName);
         outputStream.write(MAGIC_BYTE);
         registeredSchema.writeIdTo(outputStream);
@@ -104,7 +107,8 @@ public abstract class RegistrySerializer<T, S> extends RegistrySerDe implements 
 
     protected abstract ParsedSchema toParsedSchema(S schema);
 
-    private RegisteredSchema registerOrGet(String subject, ParsedSchema schema) throws IOException, RestClientException {
+    private RegisteredSchema registerOrGet(String subject, ParsedSchema schema)
+            throws IOException, RestClientException {
         if (autoRegisterSchema) {
             int schemaId = register(subject, schema);
             return new RegisteredSchema(schemaId, schema);

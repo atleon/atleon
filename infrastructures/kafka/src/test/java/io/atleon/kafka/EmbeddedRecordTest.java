@@ -17,7 +17,8 @@ public class EmbeddedRecordTest {
 
     private static final String BOOTSTRAP_CONNECT = EmbeddedKafka.startAndGetBootstrapServersConnect(10092);
 
-    private static final KafkaConfigSource KAFKA_CONFIG_SOURCE = TestKafkaConfigSourceFactory.createSource(BOOTSTRAP_CONNECT);
+    private static final KafkaConfigSource KAFKA_CONFIG_SOURCE =
+            TestKafkaConfigSourceFactory.createSource(BOOTSTRAP_CONNECT);
 
     private static final String TOPIC = EmbeddedRecordTest.class.getSimpleName();
 
@@ -26,17 +27,18 @@ public class EmbeddedRecordTest {
         String value = UUID.randomUUID().toString();
 
         AloKafkaSender.<String, String>create(KAFKA_CONFIG_SOURCE)
-            .sendValues(Mono.just(value), TOPIC, Function.identity())
-            .then().block();
+                .sendValues(Mono.just(value), TOPIC, Function.identity())
+                .then()
+                .block();
 
         AloKafkaReceiver.<Object, String>create(KAFKA_CONFIG_SOURCE)
-            .receiveAloValues(Collections.singletonList(TOPIC))
-            .as(StepVerifier::create)
-            .consumeNextWith(aloString -> {
-                assertEquals(value, aloString.get());
-                Alo.acknowledge(aloString);
-            })
-            .thenCancel()
-            .verify(Duration.ofSeconds(30));
+                .receiveAloValues(Collections.singletonList(TOPIC))
+                .as(StepVerifier::create)
+                .consumeNextWith(aloString -> {
+                    assertEquals(value, aloString.get());
+                    Alo.acknowledge(aloString);
+                })
+                .thenCancel()
+                .verify(Duration.ofSeconds(30));
     }
 }

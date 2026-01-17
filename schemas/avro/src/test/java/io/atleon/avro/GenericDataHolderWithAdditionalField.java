@@ -13,9 +13,15 @@ public class GenericDataHolderWithAdditionalField<T> extends GenericDataHolder<T
 
     @Override
     public Schema getSchema() {
-        return Schema.createRecord(GenericDataHolder.class.getName(), null, null, false, Arrays.asList(
-            new Schema.Field("extraData", Schema.create(Schema.Type.STRING), null, Object.class.cast(null)),
-            new Schema.Field("data", AvroSchemas.getOrReflectNullable(getData()), null, JsonProperties.NULL_VALUE)));
+        return Schema.createRecord(
+                GenericDataHolder.class.getName(),
+                null,
+                null,
+                false,
+                Arrays.asList(
+                        new Schema.Field("extraData", Schema.create(Schema.Type.STRING), null, Object.class.cast(null)),
+                        new Schema.Field(
+                                "data", AvroSchemas.getOrReflectNullable(getData()), null, JsonProperties.NULL_VALUE)));
     }
 
     public void setExtraData(String extraData) {
@@ -24,12 +30,9 @@ public class GenericDataHolderWithAdditionalField<T> extends GenericDataHolder<T
 
     @Override
     public boolean equals(Object o) {
-        if (this == o)
-            return true;
-        if (o == null || getClass() != o.getClass())
-            return false;
-        if (!super.equals(o))
-            return false;
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
         GenericDataHolderWithAdditionalField<?> that = (GenericDataHolderWithAdditionalField<?>) o;
         return Objects.equals(extraData, that.extraData);
     }

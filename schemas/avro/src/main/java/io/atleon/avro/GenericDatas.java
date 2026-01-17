@@ -18,9 +18,7 @@ public final class GenericDatas {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GenericDatas.class);
 
-    private GenericDatas() {
-
-    }
+    private GenericDatas() {}
 
     public static void addLogicalTypeConversion(GenericData genericData) {
         instantiateConversionsFrom(Conversions.class).forEach(genericData::addLogicalTypeConversion);
@@ -39,8 +37,8 @@ public final class GenericDatas {
 
     private static Stream<Conversion<?>> instantiateConversionsFrom(Class<?> outerClass) {
         return Stream.of(outerClass.getDeclaredClasses())
-            .filter(Conversion.class::isAssignableFrom)
-            .flatMap(GenericDatas::tryInstantiateConversion);
+                .filter(Conversion.class::isAssignableFrom)
+                .flatMap(GenericDatas::tryInstantiateConversion);
     }
 
     private static Stream<Conversion<?>> tryInstantiateConversion(Class<?> conversionClass) {

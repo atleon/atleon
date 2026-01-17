@@ -25,7 +25,7 @@ public class RegistryDeserializerTest {
 
         deserializer.configure(configs);
 
-        assertNull(deserializer.deserialize(new byte[]{0, 1, 2, 3}));
+        assertNull(deserializer.deserialize(new byte[] {0, 1, 2, 3}));
     }
 
     @Test
@@ -45,7 +45,8 @@ public class RegistryDeserializerTest {
 
         @Override
         public void configure(Map<String, ?> properties) {
-            configure(new RegistryDeserializerConfig(RegistryDeserializerConfig.registryDeserializerConfigDef(), properties));
+            configure(new RegistryDeserializerConfig(
+                    RegistryDeserializerConfig.registryDeserializerConfigDef(), properties));
         }
 
         @Override

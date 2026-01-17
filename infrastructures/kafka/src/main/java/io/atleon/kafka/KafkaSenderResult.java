@@ -29,17 +29,22 @@ public final class KafkaSenderResult<T> implements SenderResult {
     }
 
     static <T> Alo<KafkaSenderResult<T>> invertAlo(KafkaSenderResult<Alo<T>> senderResult) {
-        return senderResult.correlationMetadata().map(correlationMetadata ->
-            new KafkaSenderResult<>(senderResult.recordMetadata, senderResult.exception, correlationMetadata));
+        return senderResult
+                .correlationMetadata()
+                .map(correlationMetadata -> new KafkaSenderResult<>(
+                        senderResult.recordMetadata, senderResult.exception, correlationMetadata));
     }
 
     static <T> KafkaSenderResult<T> fromSenderResult(reactor.kafka.sender.SenderResult<T> senderResult) {
-        return new KafkaSenderResult<>(senderResult.recordMetadata(), senderResult.exception(), senderResult.correlationMetadata());
+        return new KafkaSenderResult<>(
+                senderResult.recordMetadata(), senderResult.exception(), senderResult.correlationMetadata());
     }
 
     static <T> Alo<KafkaSenderResult<T>> fromSenderResultOfAlo(reactor.kafka.sender.SenderResult<Alo<T>> senderResult) {
-        return senderResult.correlationMetadata().map(correlationMetadata ->
-            new KafkaSenderResult<>(senderResult.recordMetadata(), senderResult.exception(), correlationMetadata));
+        return senderResult
+                .correlationMetadata()
+                .map(correlationMetadata -> new KafkaSenderResult<>(
+                        senderResult.recordMetadata(), senderResult.exception(), correlationMetadata));
     }
 
     @Override
@@ -49,11 +54,10 @@ public final class KafkaSenderResult<T> implements SenderResult {
 
     @Override
     public String toString() {
-        return "KafkaSenderResult{" +
-            "recordMetadata=" + recordMetadata +
-            ", exception=" + exception +
-            ", correlationMetadata=" + correlationMetadata +
-            '}';
+        return "KafkaSenderResult{" + "recordMetadata="
+                + recordMetadata + ", exception="
+                + exception + ", correlationMetadata="
+                + correlationMetadata + '}';
     }
 
     public Optional<RecordMetadata> recordMetadata() {

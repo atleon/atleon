@@ -57,8 +57,10 @@ public class AcknowledgementQueueTest {
         AtomicBoolean secondAcknowledged = new AtomicBoolean();
         AtomicReference<Throwable> secondNacknowledged = new AtomicReference<>();
 
-        AcknowledgementQueue.InFlight firstInFlight = queue.add(() -> firstAcknowledged.set(true), firstNacknowledged::set);
-        AcknowledgementQueue.InFlight secondInFlight = queue.add(() -> secondAcknowledged.set(true), secondNacknowledged::set);
+        AcknowledgementQueue.InFlight firstInFlight =
+                queue.add(() -> firstAcknowledged.set(true), firstNacknowledged::set);
+        AcknowledgementQueue.InFlight secondInFlight =
+                queue.add(() -> secondAcknowledged.set(true), secondNacknowledged::set);
 
         long drained = queue.completeExceptionally(secondInFlight, new IllegalStateException());
 
@@ -88,9 +90,12 @@ public class AcknowledgementQueueTest {
         AtomicInteger thirdAcknowledgements = new AtomicInteger();
         AtomicReference<Throwable> thirdNacknowledged = new AtomicReference<>();
 
-        AcknowledgementQueue.InFlight firstInFlight = queue.add(firstAcknowledgements::incrementAndGet, firstNacknowledged::set);
-        AcknowledgementQueue.InFlight secondInFlight = queue.add(secondAcknowledgements::incrementAndGet, secondNacknowledged::set);
-        AcknowledgementQueue.InFlight thirdInFlight = queue.add(thirdAcknowledgements::incrementAndGet, thirdNacknowledged::set);
+        AcknowledgementQueue.InFlight firstInFlight =
+                queue.add(firstAcknowledgements::incrementAndGet, firstNacknowledged::set);
+        AcknowledgementQueue.InFlight secondInFlight =
+                queue.add(secondAcknowledgements::incrementAndGet, secondNacknowledged::set);
+        AcknowledgementQueue.InFlight thirdInFlight =
+                queue.add(thirdAcknowledgements::incrementAndGet, thirdNacknowledged::set);
 
         queue.completeExceptionally(secondInFlight, new IllegalStateException());
         queue.complete(thirdInFlight);
@@ -232,11 +237,10 @@ public class AcknowledgementQueueTest {
         AcknowledgementQueue queue = AcknowledgementQueue.create(mode);
 
         Flux.range(0, count)
-            .map(i -> queue.add(positiveCount::incrementAndGet, error -> negativeCount.incrementAndGet()))
-            .parallel(parallelism)
-            .runOn(Schedulers.boundedElastic())
-            .subscribe(
-                inFlight -> {
+                .map(i -> queue.add(positiveCount::incrementAndGet, error -> negativeCount.incrementAndGet()))
+                .parallel(parallelism)
+                .runOn(Schedulers.boundedElastic())
+                .subscribe(inFlight -> {
                     Timing.pause((long) (10 * Math.random()));
                     if (Math.random() <= .65D) {
                         errorCount.incrementAndGet();
@@ -245,8 +249,7 @@ public class AcknowledgementQueueTest {
                     } else {
                         drained.addAndGet(queue.complete(inFlight));
                     }
-                }
-            );
+                });
 
         Timing.waitForCondition(() -> drained.get() == count, 30000);
 

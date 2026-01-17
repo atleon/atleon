@@ -15,23 +15,22 @@ public abstract class AbstractSnsMessage<T> implements SnsMessage<T> {
     private final String messageDeduplicationId;
 
     private final String messageGroupId;
-    
+
     private final Map<String, MessageAttributeValue> messageAttributes;
-    
+
     private final String messageStructure;
-    
+
     private final String subject;
 
     private final T body;
 
     protected AbstractSnsMessage(
-        String messageDeduplicationId,
-        String messageGroupId,
-        Map<String, MessageAttributeValue> messageAttributes,
-        String messageStructure,
-        String subject,
-        T body
-    ) {
+            String messageDeduplicationId,
+            String messageGroupId,
+            Map<String, MessageAttributeValue> messageAttributes,
+            String messageStructure,
+            String subject,
+            T body) {
         this.messageDeduplicationId = messageDeduplicationId;
         this.messageGroupId = messageGroupId;
         this.messageAttributes = messageAttributes;

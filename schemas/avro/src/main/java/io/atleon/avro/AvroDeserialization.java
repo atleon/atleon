@@ -22,24 +22,22 @@ public final class AvroDeserialization {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AvroDeserialization.class);
 
-    private AvroDeserialization() {
-
-    }
+    private AvroDeserialization() {}
 
     public static Object instantiateReferenceData(Schema writerSchema) {
         Object referenceData = Instantiation.one(ReflectData.get().getClass(writerSchema));
         if (TypeResolution.isGenericClass(referenceData.getClass())) {
-            consumeGenericFields(referenceData.getClass(), writerSchema, (genericField, fieldSchema) ->
-                instantiateGenericReferenceDataField(referenceData, genericField, fieldSchema));
+            consumeGenericFields(
+                    referenceData.getClass(),
+                    writerSchema,
+                    (genericField, fieldSchema) ->
+                            instantiateGenericReferenceDataField(referenceData, genericField, fieldSchema));
         }
         return referenceData;
     }
 
     public static void consumeGenericFields(
-        Class<?> referenceClass,
-        Schema schema,
-        BiConsumer<Field, Schema> genericFieldConsumer
-    ) {
+            Class<?> referenceClass, Schema schema, BiConsumer<Field, Schema> genericFieldConsumer) {
         Set<Type> genericParameters = TypeResolution.getAllTypeParameters(referenceClass);
         Map<String, Field> fieldsByName = FieldResolution.getAllFieldsByName(referenceClass);
         for (Schema.Field schemaField : schema.getFields()) {
@@ -51,25 +49,21 @@ public final class AvroDeserialization {
     }
 
     public static Schema generateReaderReferenceSchema(
-        Object referenceData,
-        Schema writerSchema,
-        Function<Type, Schema> typeSchemaLoader
-    ) {
+            Object referenceData, Schema writerSchema, Function<Type, Schema> typeSchemaLoader) {
         return AvroSchemas.isRecord(writerSchema) && TypeResolution.isGenericClass(referenceData.getClass())
-            ? generateReaderReferenceRecordSchema(referenceData, writerSchema, typeSchemaLoader)
-            : typeSchemaLoader.apply(referenceData.getClass());
+                ? generateReaderReferenceRecordSchema(referenceData, writerSchema, typeSchemaLoader)
+                : typeSchemaLoader.apply(referenceData.getClass());
     }
 
-    private static void instantiateGenericReferenceDataField(Object referenceData, Field genericField, Schema fieldSchema) {
-        AvroSchemas.reduceNonNull(fieldSchema).ifPresent(nonNullFieldSchema ->
-            instantiateNonNullGenericReferenceDataField(referenceData, genericField, nonNullFieldSchema));
+    private static void instantiateGenericReferenceDataField(
+            Object referenceData, Field genericField, Schema fieldSchema) {
+        AvroSchemas.reduceNonNull(fieldSchema)
+                .ifPresent(nonNullFieldSchema ->
+                        instantiateNonNullGenericReferenceDataField(referenceData, genericField, nonNullFieldSchema));
     }
 
     private static void instantiateNonNullGenericReferenceDataField(
-        Object referenceData,
-        Field genericField,
-        Schema nonNullFieldSchema
-    ) {
+            Object referenceData, Field genericField, Schema nonNullFieldSchema) {
         try {
             Object fieldData = instantiateReferenceData(nonNullFieldSchema);
             genericField.setAccessible(true);
@@ -80,54 +74,44 @@ public final class AvroDeserialization {
     }
 
     private static Schema generateReaderReferenceRecordSchema(
-        Object referenceData,
-        Schema writerSchema,
-        Function<Type, Schema> typeSchemaLoader
-    ) {
+            Object referenceData, Schema writerSchema, Function<Type, Schema> typeSchemaLoader) {
         Class<?> referenceDataClass = referenceData.getClass();
         Map<String, Field> fieldsByName = FieldResolution.getAllFieldsByName(referenceDataClass);
         List<Schema.Field> schemaFields = writerSchema.getFields().stream()
-            .filter(writerField -> fieldsByName.containsKey(writerField.name()))
-            .map(it -> generateReaderReferenceSchemaField(referenceData, fieldsByName.get(it.name()), it, typeSchemaLoader))
-            .collect(Collectors.toList());
+                .filter(writerField -> fieldsByName.containsKey(writerField.name()))
+                .map(it -> generateReaderReferenceSchemaField(
+                        referenceData, fieldsByName.get(it.name()), it, typeSchemaLoader))
+                .collect(Collectors.toList());
         return Schema.createRecord(
-            referenceDataClass.getCanonicalName(),
-            writerSchema.getDoc(),
-            null,
-            writerSchema.isError(),
-            schemaFields
-        );
+                referenceDataClass.getCanonicalName(),
+                writerSchema.getDoc(),
+                null,
+                writerSchema.isError(),
+                schemaFields);
     }
 
     private static Schema.Field generateReaderReferenceSchemaField(
-        Object referenceData,
-        Field dataField,
-        Schema.Field writerField,
-        Function<Type, Schema> typeSchemaLoader
-    ) {
+            Object referenceData, Field dataField, Schema.Field writerField, Function<Type, Schema> typeSchemaLoader) {
         Object fieldReferenceData = ValueResolution.getFieldValue(referenceData, dataField);
         Schema fieldReaderSchema = fieldReferenceData == null
-            ? typeSchemaLoader.apply(dataField.getGenericType())
-            : generateFieldReaderReferenceSchema(fieldReferenceData, writerField.schema(), typeSchemaLoader);
+                ? typeSchemaLoader.apply(dataField.getGenericType())
+                : generateFieldReaderReferenceSchema(fieldReferenceData, writerField.schema(), typeSchemaLoader);
         Schema nullSafeFieldReaderSchema = AvroSchemas.isNullable(writerField.schema())
-            ? AvroSchemas.makeNullable(fieldReaderSchema)
-            : fieldReaderSchema;
+                ? AvroSchemas.makeNullable(fieldReaderSchema)
+                : fieldReaderSchema;
         return new Schema.Field(
-            writerField.name(),
-            nullSafeFieldReaderSchema,
-            writerField.doc(),
-            writerField.defaultVal(),
-            writerField.order()
-        );
+                writerField.name(),
+                nullSafeFieldReaderSchema,
+                writerField.doc(),
+                writerField.defaultVal(),
+                writerField.order());
     }
 
     private static Schema generateFieldReaderReferenceSchema(
-        Object fieldReferenceData,
-        Schema fieldWriterSchema,
-        Function<Type, Schema> typeSchemaLoader
-    ) {
+            Object fieldReferenceData, Schema fieldWriterSchema, Function<Type, Schema> typeSchemaLoader) {
         return AvroSchemas.reduceNonNull(fieldWriterSchema)
-            .map(nonNullSchema -> generateReaderReferenceSchema(fieldReferenceData, nonNullSchema, typeSchemaLoader))
-            .orElseGet(() -> typeSchemaLoader.apply(fieldReferenceData.getClass()));
+                .map(nonNullSchema ->
+                        generateReaderReferenceSchema(fieldReferenceData, nonNullSchema, typeSchemaLoader))
+                .orElseGet(() -> typeSchemaLoader.apply(fieldReferenceData.getClass()));
     }
 }

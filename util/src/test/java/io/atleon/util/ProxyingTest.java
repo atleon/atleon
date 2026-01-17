@@ -15,8 +15,8 @@ class ProxyingTest {
     @Test
     public void interfaceMethods_givenNonInterface_expectsIllegalArgumentException() {
         assertThrows(
-            IllegalArgumentException.class,
-            () -> Proxying.interfaceMethods(ProxyingTest.class, (method, args) -> null));
+                IllegalArgumentException.class,
+                () -> Proxying.interfaceMethods(ProxyingTest.class, (method, args) -> null));
     }
 
     @Test

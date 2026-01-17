@@ -20,9 +20,7 @@ public final class AvroSchemas {
 
     private static final ObjectMapper OBJECT_MAPPER = createObjectMapper();
 
-    private AvroSchemas() {
-
-    }
+    private AvroSchemas() {}
 
     public static Schema removeJavaProperties(Schema schema) {
         try {
@@ -45,8 +43,8 @@ public final class AvroSchemas {
     public static Schema getOrSupply(Object data, Supplier<Schema> schemaSupplier) {
         try {
             return data instanceof GenericContainer
-                ? GenericContainer.class.cast(data).getSchema()
-                : SpecificData.get().getSchema(TypeResolution.safelyGetClass(data));
+                    ? GenericContainer.class.cast(data).getSchema()
+                    : SpecificData.get().getSchema(TypeResolution.safelyGetClass(data));
         } catch (AvroRuntimeException e) {
             return schemaSupplier.get();
         }
@@ -82,8 +80,8 @@ public final class AvroSchemas {
 
     private static JsonMapper createObjectMapper() {
         return JsonMapper.builder()
-            .enable(JsonReadFeature.ALLOW_NON_NUMERIC_NUMBERS)
-            .build();
+                .enable(JsonReadFeature.ALLOW_NON_NUMERIC_NUMBERS)
+                .build();
     }
 
     private static Schema.Parser createParser() {

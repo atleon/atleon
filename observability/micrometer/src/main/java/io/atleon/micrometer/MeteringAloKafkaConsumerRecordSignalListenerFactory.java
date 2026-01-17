@@ -19,8 +19,8 @@ import java.util.function.Function;
  * @param <V> The types of values in records consumed by this factory's listeners
  */
 public final class MeteringAloKafkaConsumerRecordSignalListenerFactory<K, V>
-    extends MeteringAloSignalListenerFactory<ConsumerRecord<K, V>, String>
-    implements AloKafkaConsumerRecordSignalListenerFactory<K, V, Void> {
+        extends MeteringAloSignalListenerFactory<ConsumerRecord<K, V>, String>
+        implements AloKafkaConsumerRecordSignalListenerFactory<K, V, Void> {
 
     private String clientId = null;
 
@@ -31,7 +31,8 @@ public final class MeteringAloKafkaConsumerRecordSignalListenerFactory<K, V>
     @Override
     public void configure(Map<String, ?> properties) {
         super.configure(properties);
-        clientId = ConfigLoading.loadString(properties, CommonClientConfigs.CLIENT_ID_CONFIG).orElse(clientId);
+        clientId = ConfigLoading.loadString(properties, CommonClientConfigs.CLIENT_ID_CONFIG)
+                .orElse(clientId);
     }
 
     @Override

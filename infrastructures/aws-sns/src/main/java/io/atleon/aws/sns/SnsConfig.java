@@ -30,10 +30,11 @@ public class SnsConfig {
 
     public SnsAsyncClient buildClient() {
         return SnsAsyncClient.builder()
-            .endpointOverride(ConfigLoading.loadUri(properties, ENDPOINT_OVERRIDE_CONFIG).orElse(null))
-            .credentialsProvider(AwsConfig.loadCredentialsProvider(properties))
-            .region(AwsConfig.loadRegion(properties).orElse(null))
-            .build();
+                .endpointOverride(ConfigLoading.loadUri(properties, ENDPOINT_OVERRIDE_CONFIG)
+                        .orElse(null))
+                .credentialsProvider(AwsConfig.loadCredentialsProvider(properties))
+                .region(AwsConfig.loadRegion(properties).orElse(null))
+                .build();
     }
 
     public <T extends Configurable> T loadConfiguredOrThrow(String property, Class<? extends T> type) {

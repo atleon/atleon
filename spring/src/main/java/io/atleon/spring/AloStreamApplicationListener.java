@@ -9,7 +9,8 @@ import org.springframework.context.event.ApplicationContextEvent;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.ContextRefreshedEvent;
 
-public class AloStreamApplicationListener<C extends AloStreamConfig> extends AbstractConfiguredAloStream<C> implements ApplicationListener<ApplicationContextEvent> {
+public class AloStreamApplicationListener<C extends AloStreamConfig> extends AbstractConfiguredAloStream<C>
+        implements ApplicationListener<ApplicationContextEvent> {
 
     public AloStreamApplicationListener(AloStream<C> stream, C config) {
         super(stream, config);

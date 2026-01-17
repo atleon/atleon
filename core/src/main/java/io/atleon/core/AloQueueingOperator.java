@@ -29,14 +29,13 @@ final class AloQueueingOperator<T, V> implements Publisher<Alo<V>> {
     private final long maxInFlight;
 
     AloQueueingOperator(
-        Publisher<? extends T> source,
-        Function<T, ?> groupExtractor,
-        Supplier<? extends AcknowledgementQueue> queueSupplier,
-        AloQueueListener listener,
-        AloComponentExtractor<T, V> componentExtractor,
-        AloFactory<V> factory,
-        long maxInFlight
-    ) {
+            Publisher<? extends T> source,
+            Function<T, ?> groupExtractor,
+            Supplier<? extends AcknowledgementQueue> queueSupplier,
+            AloQueueListener listener,
+            AloComponentExtractor<T, V> componentExtractor,
+            AloFactory<V> factory,
+            long maxInFlight) {
         this.source = source;
         this.groupExtractor = groupExtractor;
         this.queueSupplier = queueSupplier;
@@ -49,27 +48,20 @@ final class AloQueueingOperator<T, V> implements Publisher<Alo<V>> {
     @Override
     public void subscribe(Subscriber<? super Alo<V>> actual) {
         Subscriber<T> queueingSubscriber = new AloQueueingSubscriber<>(
-            actual,
-            groupExtractor,
-            queueSupplier,
-            listener,
-            componentExtractor,
-            factory,
-            maxInFlight
-        );
+                actual, groupExtractor, queueSupplier, listener, componentExtractor, factory, maxInFlight);
         source.subscribe(queueingSubscriber);
     }
 
     private static final class AloQueueingSubscriber<T, V> implements Subscriber<T>, Subscription {
 
         private static final AtomicLongFieldUpdater<AloQueueingSubscriber> FREE_CAPACITY =
-            AtomicLongFieldUpdater.newUpdater(AloQueueingSubscriber.class, "freeCapacity");
+                AtomicLongFieldUpdater.newUpdater(AloQueueingSubscriber.class, "freeCapacity");
 
         private static final AtomicLongFieldUpdater<AloQueueingSubscriber> REQUEST_OUTSTANDING =
-            AtomicLongFieldUpdater.newUpdater(AloQueueingSubscriber.class, "requestOutstanding");
+                AtomicLongFieldUpdater.newUpdater(AloQueueingSubscriber.class, "requestOutstanding");
 
         private static final AtomicIntegerFieldUpdater<AloQueueingSubscriber> REQUESTS_IN_PROGRESS =
-            AtomicIntegerFieldUpdater.newUpdater(AloQueueingSubscriber.class, "requestsInProgress");
+                AtomicIntegerFieldUpdater.newUpdater(AloQueueingSubscriber.class, "requestsInProgress");
 
         private final Subscriber<? super Alo<V>> actual;
 
@@ -94,14 +86,13 @@ final class AloQueueingOperator<T, V> implements Publisher<Alo<V>> {
         private volatile int requestsInProgress;
 
         public AloQueueingSubscriber(
-            Subscriber<? super Alo<V>> actual,
-            Function<T, ?> groupExtractor,
-            Supplier<? extends AcknowledgementQueue> queueSupplier,
-            AloQueueListener listener,
-            AloComponentExtractor<T, V> componentExtractor,
-            AloFactory<V> factory,
-            long maxInFlight
-        ) {
+                Subscriber<? super Alo<V>> actual,
+                Function<T, ?> groupExtractor,
+                Supplier<? extends AcknowledgementQueue> queueSupplier,
+                AloQueueListener listener,
+                AloComponentExtractor<T, V> componentExtractor,
+                AloFactory<V> factory,
+                long maxInFlight) {
             this.actual = actual;
             this.groupExtractor = groupExtractor;
             this.queueSupplier = queueSupplier;
@@ -123,11 +114,12 @@ final class AloQueueingOperator<T, V> implements Publisher<Alo<V>> {
             AcknowledgementQueue queue = queuesByGroup.computeIfAbsent(group, this::newQueueForGroup);
 
             AcknowledgementQueue.InFlight inFlight =
-                queue.add(componentExtractor.nativeAcknowledger(t), componentExtractor.nativeNacknowledger(t));
+                    queue.add(componentExtractor.nativeAcknowledger(t), componentExtractor.nativeNacknowledger(t));
             listener.enqueued(group, 1);
 
             Runnable acknowledger = () -> postComplete(group, queue.complete(inFlight));
-            Consumer<Throwable> nacknowledger = error -> postComplete(group, queue.completeExceptionally(inFlight, error));
+            Consumer<Throwable> nacknowledger =
+                    error -> postComplete(group, queue.completeExceptionally(inFlight, error));
             actual.onNext(factory.create(componentExtractor.value(t), acknowledger, nacknowledger));
         }
 

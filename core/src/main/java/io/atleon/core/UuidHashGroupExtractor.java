@@ -32,7 +32,7 @@ public abstract class UuidHashGroupExtractor<T> implements Function<T, Integer> 
     protected final byte[] extractUuidBytes(T t) {
         UUID uuid = extractUuid(t);
         ByteBuffer uuidBytes = ByteBuffer.allocate(Long.BYTES * 2);
-        uuidBytes.putLong(uuid == null ? 0L : uuid.getMostSignificantBits());  // Defend against null UUIDs
+        uuidBytes.putLong(uuid == null ? 0L : uuid.getMostSignificantBits()); // Defend against null UUIDs
         uuidBytes.putLong(uuid == null ? 0L : uuid.getLeastSignificantBits());
         return uuidBytes.array();
     }

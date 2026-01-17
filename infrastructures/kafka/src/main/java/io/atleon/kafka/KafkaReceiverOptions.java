@@ -78,25 +78,24 @@ public final class KafkaReceiverOptions<K, V> {
     private final Duration closeTimeout;
 
     private KafkaReceiverOptions(
-        Function<Map<String, Object>, Consumer<K, V>> consumerFactory,
-        ConsumerListenerFactory consumerListenerFactory,
-        ReceptionListenerFactory receptionListenerFactory,
-        PollStrategyFactory pollStrategyFactory,
-        Supplier<Scheduler> auxiliarySchedulerSupplier,
-        Map<String, Object> consumerProperties,
-        int fullPollRecordsPrefetch,
-        long maxActiveInFlight,
-        Duration pollTimeout,
-        AcknowledgementQueueMode acknowledgementQueueMode,
-        int commitBatchSize,
-        Duration commitPeriod,
-        Duration commitTimeout,
-        int maxCommitAttempts,
-        boolean commitlessOffsets,
-        Duration revocationGracePeriod,
-        Duration terminationGracePeriod,
-        Duration closeTimeout
-    ) {
+            Function<Map<String, Object>, Consumer<K, V>> consumerFactory,
+            ConsumerListenerFactory consumerListenerFactory,
+            ReceptionListenerFactory receptionListenerFactory,
+            PollStrategyFactory pollStrategyFactory,
+            Supplier<Scheduler> auxiliarySchedulerSupplier,
+            Map<String, Object> consumerProperties,
+            int fullPollRecordsPrefetch,
+            long maxActiveInFlight,
+            Duration pollTimeout,
+            AcknowledgementQueueMode acknowledgementQueueMode,
+            int commitBatchSize,
+            Duration commitPeriod,
+            Duration commitTimeout,
+            int maxCommitAttempts,
+            boolean commitlessOffsets,
+            Duration revocationGracePeriod,
+            Duration terminationGracePeriod,
+            Duration closeTimeout) {
         this.consumerFactory = consumerFactory;
         this.consumerListenerFactory = consumerListenerFactory;
         this.receptionListenerFactory = receptionListenerFactory;
@@ -131,30 +130,29 @@ public final class KafkaReceiverOptions<K, V> {
      * per-reception, per-subscription basis.
      */
     public static <K, V> KafkaReceiverOptions.Builder<K, V> newBuilder(
-        Function<Map<String, Object>, Consumer<K, V>> consumerFactory
-    ) {
+            Function<Map<String, Object>, Consumer<K, V>> consumerFactory) {
         return new Builder<>(consumerFactory);
     }
 
     public KafkaReceiverOptions.Builder<K, V> toBuilder() {
         return new Builder<>(consumerFactory)
-            .consumerListenerFactory(consumerListenerFactory)
-            .receptionListenerFactory(receptionListenerFactory)
-            .pollStrategyFactory(pollStrategyFactory)
-            .auxiliarySchedulerSupplier(auxiliarySchedulerSupplier)
-            .consumerProperties(consumerProperties)
-            .fullPollRecordsPrefetch(fullPollRecordsPrefetch)
-            .maxActiveInFlight(maxActiveInFlight)
-            .pollTimeout(pollTimeout)
-            .acknowledgementQueueMode(acknowledgementQueueMode)
-            .commitBatchSize(commitBatchSize)
-            .commitPeriod(commitPeriod)
-            .commitTimeout(commitTimeout)
-            .maxCommitAttempts(maxCommitAttempts)
-            .commitlessOffsets(commitlessOffsets)
-            .revocationGracePeriod(revocationGracePeriod)
-            .terminationGracePeriod(terminationGracePeriod)
-            .closeTimeout(closeTimeout);
+                .consumerListenerFactory(consumerListenerFactory)
+                .receptionListenerFactory(receptionListenerFactory)
+                .pollStrategyFactory(pollStrategyFactory)
+                .auxiliarySchedulerSupplier(auxiliarySchedulerSupplier)
+                .consumerProperties(consumerProperties)
+                .fullPollRecordsPrefetch(fullPollRecordsPrefetch)
+                .maxActiveInFlight(maxActiveInFlight)
+                .pollTimeout(pollTimeout)
+                .acknowledgementQueueMode(acknowledgementQueueMode)
+                .commitBatchSize(commitBatchSize)
+                .commitPeriod(commitPeriod)
+                .commitTimeout(commitTimeout)
+                .maxCommitAttempts(maxCommitAttempts)
+                .commitlessOffsets(commitlessOffsets)
+                .revocationGracePeriod(revocationGracePeriod)
+                .terminationGracePeriod(terminationGracePeriod)
+                .closeTimeout(closeTimeout);
     }
 
     /**
@@ -214,7 +212,7 @@ public final class KafkaReceiverOptions<K, V> {
 
     public int loadMaxPollRecords() {
         return ConfigLoading.loadInt(consumerProperties, ConsumerConfig.MAX_POLL_RECORDS_CONFIG)
-            .orElse(ConsumerConfig.DEFAULT_MAX_POLL_RECORDS);
+                .orElse(ConsumerConfig.DEFAULT_MAX_POLL_RECORDS);
     }
 
     /**
@@ -301,7 +299,7 @@ public final class KafkaReceiverOptions<K, V> {
         return closeTimeout;
     }
 
-    //FUTURE Consider making ReactiveAdmin abstract and allow clients to set factory method
+    // FUTURE Consider making ReactiveAdmin abstract and allow clients to set factory method
     ReactiveAdmin createAdmin() {
         return ReactiveAdmin.create(consumerProperties);
     }
@@ -586,24 +584,24 @@ public final class KafkaReceiverOptions<K, V> {
 
         public KafkaReceiverOptions<K, V> build() {
             return new KafkaReceiverOptions<>(
-                consumerFactory,
-                consumerListenerFactory,
-                receptionListenerFactory,
-                pollStrategyFactory,
-                auxiliarySchedulerSupplier,
-                consumerProperties,
-                fullPollRecordsPrefetch,
-                maxActiveInFlight,
-                pollTimeout,
-                acknowledgementQueueMode,
-                commitBatchSize,
-                commitPeriod,
-                commitTimeout,
-                maxCommitAttempts,
-                commitlessOffsets,
-                revocationGracePeriod,
-                terminationGracePeriod,
-                closeTimeout);
+                    consumerFactory,
+                    consumerListenerFactory,
+                    receptionListenerFactory,
+                    pollStrategyFactory,
+                    auxiliarySchedulerSupplier,
+                    consumerProperties,
+                    fullPollRecordsPrefetch,
+                    maxActiveInFlight,
+                    pollTimeout,
+                    acknowledgementQueueMode,
+                    commitBatchSize,
+                    commitPeriod,
+                    commitTimeout,
+                    maxCommitAttempts,
+                    commitlessOffsets,
+                    revocationGracePeriod,
+                    terminationGracePeriod,
+                    closeTimeout);
         }
     }
 }

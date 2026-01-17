@@ -1,7 +1,5 @@
 package io.atleon.kafka.embedded;
 
-import kafka.server.KafkaConfig;
-import kafka.server.KafkaRaftServer;
 import org.apache.kafka.common.utils.Time;
 
 import java.io.IOException;
@@ -13,15 +11,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import kafka.server.KafkaConfig;
+import kafka.server.KafkaRaftServer;
+
 public final class EmbeddedKafka {
 
     public static final int DEFAULT_PORT = 9092;
 
     private static EmbeddedKafkaConfig config;
 
-    private EmbeddedKafka() {
-
-    }
+    private EmbeddedKafka() {}
 
     public static String startAndGetBootstrapServersConnect() {
         return start(DEFAULT_PORT).getConnect();
@@ -73,7 +72,8 @@ public final class EmbeddedKafka {
         // SocketServerConfigs
         kafkaBrokerConfig.put("advertised.listeners", "PLAINTEXT://localhost:" + port);
         kafkaBrokerConfig.put("listener.security.protocol.map", "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT");
-        kafkaBrokerConfig.put("listeners", "PLAINTEXT://localhost:" + port + ",CONTROLLER://localhost:" + controllerPort);
+        kafkaBrokerConfig.put(
+                "listeners", "PLAINTEXT://localhost:" + port + ",CONTROLLER://localhost:" + controllerPort);
 
         // QuorumConfig
         kafkaBrokerConfig.put("controller.quorum.voters", "1@localhost:" + controllerPort);
@@ -95,7 +95,8 @@ public final class EmbeddedKafka {
 
     private static Path createLogDirectory() {
         try {
-            Path path = Files.createTempDirectory(EmbeddedKafka.class.getSimpleName() + "_" + System.currentTimeMillis());
+            Path path =
+                    Files.createTempDirectory(EmbeddedKafka.class.getSimpleName() + "_" + System.currentTimeMillis());
             writeMetaProperties(path);
             return path;
         } catch (Exception e) {

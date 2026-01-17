@@ -28,13 +28,12 @@ public final class AloQueueingTransformer<T, V> implements Function<Publisher<T>
     private final long maxInFlight;
 
     private AloQueueingTransformer(
-        Function<T, ?> groupExtractor,
-        AcknowledgementQueueMode queueMode,
-        AloQueueListener listener,
-        AloComponentExtractor<T, V> componentExtractor,
-        AloFactory<V> factory,
-        long maxInFlight
-    ) {
+            Function<T, ?> groupExtractor,
+            AcknowledgementQueueMode queueMode,
+            AloQueueListener listener,
+            AloComponentExtractor<T, V> componentExtractor,
+            AloFactory<V> factory,
+            long maxInFlight) {
         this.groupExtractor = groupExtractor;
         this.queueMode = queueMode;
         this.listener = listener;
@@ -55,46 +54,49 @@ public final class AloQueueingTransformer<T, V> implements Function<Publisher<T>
      */
     public static <T, V> AloQueueingTransformer<T, V> create(AloComponentExtractor<T, V> componentExtractor) {
         return new AloQueueingTransformer<>(
-            __ -> "singleton",
-            AcknowledgementQueueMode.STRICT,
-            AloQueueListener.noOp(),
-            componentExtractor,
-            ComposedAlo.factory(),
-            Long.MAX_VALUE
-        );
+                __ -> "singleton",
+                AcknowledgementQueueMode.STRICT,
+                AloQueueListener.noOp(),
+                componentExtractor,
+                ComposedAlo.factory(),
+                Long.MAX_VALUE);
     }
 
     public AloQueueingTransformer<T, V> withGroupExtractor(Function<T, ?> groupExtractor) {
-        return new AloQueueingTransformer<>(groupExtractor, queueMode, listener, componentExtractor, factory, maxInFlight);
+        return new AloQueueingTransformer<>(
+                groupExtractor, queueMode, listener, componentExtractor, factory, maxInFlight);
     }
 
     public AloQueueingTransformer<T, V> withQueueMode(AcknowledgementQueueMode queueMode) {
-        return new AloQueueingTransformer<>(groupExtractor, queueMode, listener, componentExtractor, factory, maxInFlight);
+        return new AloQueueingTransformer<>(
+                groupExtractor, queueMode, listener, componentExtractor, factory, maxInFlight);
     }
 
     public AloQueueingTransformer<T, V> withListener(AloQueueListener listener) {
-        return new AloQueueingTransformer<>(groupExtractor, queueMode, listener, componentExtractor, factory, maxInFlight);
+        return new AloQueueingTransformer<>(
+                groupExtractor, queueMode, listener, componentExtractor, factory, maxInFlight);
     }
 
     public AloQueueingTransformer<T, V> withFactory(AloFactory<V> factory) {
-        return new AloQueueingTransformer<>(groupExtractor, queueMode, listener, componentExtractor, factory, maxInFlight);
+        return new AloQueueingTransformer<>(
+                groupExtractor, queueMode, listener, componentExtractor, factory, maxInFlight);
     }
 
     public AloQueueingTransformer<T, V> withMaxInFlight(long maxInFlight) {
-        return new AloQueueingTransformer<>(groupExtractor, queueMode, listener, componentExtractor, factory, maxInFlight);
+        return new AloQueueingTransformer<>(
+                groupExtractor, queueMode, listener, componentExtractor, factory, maxInFlight);
     }
 
     @Override
     public Publisher<Alo<V>> apply(Publisher<T> publisher) {
         return new AloQueueingOperator<>(
-            publisher,
-            groupExtractor,
-            newQueueSupplier(queueMode),
-            listener,
-            componentExtractor,
-            factory,
-            maxInFlight
-        );
+                publisher,
+                groupExtractor,
+                newQueueSupplier(queueMode),
+                listener,
+                componentExtractor,
+                factory,
+                maxInFlight);
     }
 
     private static Supplier<? extends AcknowledgementQueue> newQueueSupplier(AcknowledgementQueueMode mode) {
