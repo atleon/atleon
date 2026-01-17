@@ -30,11 +30,10 @@ public final class EnvironmentalConfigs implements ConfigInterceptor {
     }
 
     private static <K> void consumePrefixed(
-        Map<K, ?> source,
-        Function<K, String> keyToPropertyKey,
-        String prefix,
-        BiConsumer<String, Object> consumer
-    ) {
+            Map<K, ?> source,
+            Function<K, String> keyToPropertyKey,
+            String prefix,
+            BiConsumer<String, Object> consumer) {
         source.forEach((key, value) -> {
             String propertyKey = keyToPropertyKey.apply(key);
             if (propertyKey.startsWith(prefix)) {

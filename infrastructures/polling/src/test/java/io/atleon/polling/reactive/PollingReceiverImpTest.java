@@ -18,13 +18,14 @@ public class PollingReceiverImpTest extends AbstractPollingTest {
     public void init() {
         List<String> events = Arrays.asList("Test", "Test2", "Test3");
         Pollable<String, String> pollable = new TestPollable(events);
-        pollingReceiver = PollingReceiver.create(pollable,
-                PollerOptions.create(Duration.ofSeconds(2), () -> Schedulers.newSingle("Testing")));
+        pollingReceiver = PollingReceiver.create(
+                pollable, PollerOptions.create(Duration.ofSeconds(2), () -> Schedulers.newSingle("Testing")));
     }
 
     @Test
     public void testReceive() {
-        pollingReceiver.receive()
+        pollingReceiver
+                .receive()
                 .as(StepVerifier::create)
                 .expectNextMatches(r -> r.getRecord().getPayload().equals("Test"))
                 .expectNextMatches(r -> r.getRecord().getPayload().equals("Test2"))

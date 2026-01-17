@@ -29,12 +29,11 @@ public final class SnsSenderOptions {
     private final int maxRequestsInFlight;
 
     private SnsSenderOptions(
-        Supplier<SnsAsyncClient> clientSupplier,
-        int batchSize,
-        Duration batchDuration,
-        int batchPrefetch,
-        int maxRequestsInFlight
-    ) {
+            Supplier<SnsAsyncClient> clientSupplier,
+            int batchSize,
+            Duration batchDuration,
+            int batchPrefetch,
+            int maxRequestsInFlight) {
         this.clientSupplier = clientSupplier;
         this.batchSize = batchSize;
         this.batchDuration = batchDuration;

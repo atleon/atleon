@@ -11,21 +11,21 @@ import java.util.UUID;
 
 public final class TestKafkaConfigSourceFactory {
 
-    private TestKafkaConfigSourceFactory() {
-
-    }
+    private TestKafkaConfigSourceFactory() {}
 
     public static KafkaConfigSource createSource(String bootstrapServers) {
         return KafkaConfigSource.useClientIdAsName()
-            .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
-            .with(CommonClientConfigs.CLIENT_ID_CONFIG, "TEST_CLIENT")
-            .with(AloKafkaReceiver.AUTO_INCREMENT_CLIENT_ID_CONFIG, true)
-            .with(AloKafkaSender.AUTO_INCREMENT_CLIENT_ID_CONFIG, true)
-            .with(ConsumerConfig.GROUP_ID_CONFIG, "TEST_GROUP-" + UUID.randomUUID())
-            .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase())
-            .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
-            .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+                .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
+                .with(CommonClientConfigs.CLIENT_ID_CONFIG, "TEST_CLIENT")
+                .with(AloKafkaReceiver.AUTO_INCREMENT_CLIENT_ID_CONFIG, true)
+                .with(AloKafkaSender.AUTO_INCREMENT_CLIENT_ID_CONFIG, true)
+                .with(ConsumerConfig.GROUP_ID_CONFIG, "TEST_GROUP-" + UUID.randomUUID())
+                .with(
+                        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+                        OffsetResetStrategy.EARLIEST.name().toLowerCase())
+                .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
+                .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
+                .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
+                .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     }
 }

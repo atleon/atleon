@@ -6,13 +6,11 @@ import reactor.kafka.receiver.ReceiverRecord;
 
 public final class ConsumerRecordExtraction {
 
-    private ConsumerRecordExtraction() {
-
-    }
+    private ConsumerRecordExtraction() {}
 
     public static TopicPartition topicPartition(ConsumerRecord<?, ?> consumerRecord) {
         return consumerRecord instanceof ReceiverRecord
-            ? ReceiverRecord.class.cast(consumerRecord).receiverOffset().topicPartition()
-            : new TopicPartition(consumerRecord.topic(), consumerRecord.partition());
+                ? ReceiverRecord.class.cast(consumerRecord).receiverOffset().topicPartition()
+                : new TopicPartition(consumerRecord.topic(), consumerRecord.partition());
     }
 }

@@ -17,8 +17,8 @@ import java.util.function.Function;
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedRabbitMQMessage}s
  */
 public final class MeteringAloReceivedRabbitMQMessageSignalListenerFactory<T>
-    extends MeteringAloSignalListenerFactory<ReceivedRabbitMQMessage<T>, Void>
-    implements AloReceivedRabbitMQMessageSignalListenerFactory<T, Void> {
+        extends MeteringAloSignalListenerFactory<ReceivedRabbitMQMessage<T>, Void>
+        implements AloReceivedRabbitMQMessageSignalListenerFactory<T, Void> {
 
     private String queue = null;
 

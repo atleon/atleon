@@ -84,13 +84,15 @@ public class AloSqsReceiver<T> {
      * List of Message System Attributes to request on each message received from SQS. For a full
      * list of available Attributes, see {@link software.amazon.awssdk.services.sqs.model.MessageSystemAttributeName}.
      */
-    public static final String MESSAGE_SYSTEM_ATTRIBUTES_TO_REQUEST_CONFIG = CONFIG_PREFIX + "message.system.attributes.to.request";
+    public static final String MESSAGE_SYSTEM_ATTRIBUTES_TO_REQUEST_CONFIG =
+            CONFIG_PREFIX + "message.system.attributes.to.request";
 
     /**
      * Configures the "wait time" (in seconds) for each Receive Message Request to SQS. Any value
      * greater than zero activates "long polling".
      */
-    public static final String WAIT_TIME_SECONDS_PER_RECEPTION_CONFIG = CONFIG_PREFIX + "wait.time.seconds.per.reception";
+    public static final String WAIT_TIME_SECONDS_PER_RECEPTION_CONFIG =
+            CONFIG_PREFIX + "wait.time.seconds.per.reception";
 
     /**
      * Configures the visibility timeout (in seconds) for each received Message. Note that if
@@ -162,8 +164,7 @@ public class AloSqsReceiver<T> {
      * @return A Publisher of Alo items referencing deserialized SQS message bodies
      */
     public AloFlux<T> receiveAloBodies(String queueUrl) {
-        return receiveAloMessages(queueUrl)
-            .map(SqsMessage::body);
+        return receiveAloMessages(queueUrl).map(SqsMessage::body);
     }
 
     /**
@@ -174,10 +175,11 @@ public class AloSqsReceiver<T> {
      * @return A Publisher of Alo items referencing {@link ReceivedSqsMessage}s
      */
     public AloFlux<ReceivedSqsMessage<T>> receiveAloMessages(String queueUrl) {
-        return configSource.create()
-            .map(ReceiveResources<T>::new)
-            .flatMapMany(resources -> resources.receive(queueUrl))
-            .as(AloFlux::wrap);
+        return configSource
+                .create()
+                .map(ReceiveResources<T>::new)
+                .flatMapMany(resources -> resources.receive(queueUrl))
+                .as(AloFlux::wrap);
     }
 
     private static final class ReceiveResources<T> {
@@ -197,46 +199,55 @@ public class AloSqsReceiver<T> {
         public Flux<Alo<ReceivedSqsMessage<T>>> receive(String queueUrl) {
             AloFactory<ReceivedSqsMessage<T>> aloFactory = loadAloFactory(queueUrl);
             ErrorEmitter<Alo<ReceivedSqsMessage<T>>> errorEmitter = newErrorEmitter();
-            return newReceiver().receiveManual(queueUrl)
-                .map(message -> deserialize(message, aloFactory, errorEmitter::safelyEmit))
-                .transform(errorEmitter::applyTo)
-                .transform(aloMessages -> applySignalListenerFactories(aloMessages, queueUrl));
+            return newReceiver()
+                    .receiveManual(queueUrl)
+                    .map(message -> deserialize(message, aloFactory, errorEmitter::safelyEmit))
+                    .transform(errorEmitter::applyTo)
+                    .transform(aloMessages -> applySignalListenerFactories(aloMessages, queueUrl));
         }
 
         private AloFactory<ReceivedSqsMessage<T>> loadAloFactory(String queueUrl) {
-            Map<String, Object> factoryConfig = config.modifyAndGetProperties(it ->
-                it.put(AloReceivedSqsMessageDecorator.QUEUE_URL_CONFIG, queueUrl)
-            );
+            Map<String, Object> factoryConfig = config.modifyAndGetProperties(
+                    it -> it.put(AloReceivedSqsMessageDecorator.QUEUE_URL_CONFIG, queueUrl));
             return AloFactoryConfig.loadDecorated(factoryConfig, AloReceivedSqsMessageDecorator.class);
         }
 
         private ErrorEmitter<Alo<ReceivedSqsMessage<T>>> newErrorEmitter() {
-            Duration timeout = config.loadDuration(ERROR_EMISSION_TIMEOUT_CONFIG).orElse(ErrorEmitter.DEFAULT_TIMEOUT);
+            Duration timeout =
+                    config.loadDuration(ERROR_EMISSION_TIMEOUT_CONFIG).orElse(ErrorEmitter.DEFAULT_TIMEOUT);
             return ErrorEmitter.create(timeout);
         }
 
         private SqsReceiver newReceiver() {
             SqsReceiverOptions receiverOptions = SqsReceiverOptions.newBuilder(config::buildClient)
-                .maxMessagesPerReception(config.loadInt(MAX_MESSAGES_PER_RECEPTION_CONFIG).orElse(SqsReceiverOptions.DEFAULT_MAX_MESSAGES_PER_RECEPTION))
-                .messageAttributesToRequest(config.loadSetOfStringOrEmpty(MESSAGE_ATTRIBUTES_TO_REQUEST_CONFIG))
-                .messageSystemAttributesToRequest(config.loadSetOfStringOrEmpty(MESSAGE_SYSTEM_ATTRIBUTES_TO_REQUEST_CONFIG))
-                .waitTimeSecondsPerReception(config.loadInt(WAIT_TIME_SECONDS_PER_RECEPTION_CONFIG).orElse(SqsReceiverOptions.DEFAULT_WAIT_TIME_SECONDS_PER_RECEPTION))
-                .visibilityTimeoutSeconds(config.loadInt(VISIBILITY_TIMEOUT_SECONDS_CONFIG).orElse(SqsReceiverOptions.DEFAULT_VISIBILITY_TIMEOUT_SECONDS))
-                .maxInFlightPerSubscription(config.loadInt(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG).orElse(SqsReceiverOptions.DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION))
-                .deleteBatchSize(config.loadInt(DELETE_BATCH_SIZE_CONFIG).orElse(SqsReceiverOptions.DEFAULT_DELETE_BATCH_SIZE))
-                .deleteInterval(config.loadDuration(DELETE_BATCH_INTERVAL_CONFIG).orElse(SqsReceiverOptions.DEFAULT_DELETE_INTERVAL))
-                .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(SqsReceiverOptions.DEFAULT_CLOSE_TIMEOUT))
-                .build();
+                    .maxMessagesPerReception(config.loadInt(MAX_MESSAGES_PER_RECEPTION_CONFIG)
+                            .orElse(SqsReceiverOptions.DEFAULT_MAX_MESSAGES_PER_RECEPTION))
+                    .messageAttributesToRequest(config.loadSetOfStringOrEmpty(MESSAGE_ATTRIBUTES_TO_REQUEST_CONFIG))
+                    .messageSystemAttributesToRequest(
+                            config.loadSetOfStringOrEmpty(MESSAGE_SYSTEM_ATTRIBUTES_TO_REQUEST_CONFIG))
+                    .waitTimeSecondsPerReception(config.loadInt(WAIT_TIME_SECONDS_PER_RECEPTION_CONFIG)
+                            .orElse(SqsReceiverOptions.DEFAULT_WAIT_TIME_SECONDS_PER_RECEPTION))
+                    .visibilityTimeoutSeconds(config.loadInt(VISIBILITY_TIMEOUT_SECONDS_CONFIG)
+                            .orElse(SqsReceiverOptions.DEFAULT_VISIBILITY_TIMEOUT_SECONDS))
+                    .maxInFlightPerSubscription(config.loadInt(MAX_IN_FLIGHT_PER_SUBSCRIPTION_CONFIG)
+                            .orElse(SqsReceiverOptions.DEFAULT_MAX_IN_FLIGHT_PER_SUBSCRIPTION))
+                    .deleteBatchSize(config.loadInt(DELETE_BATCH_SIZE_CONFIG)
+                            .orElse(SqsReceiverOptions.DEFAULT_DELETE_BATCH_SIZE))
+                    .deleteInterval(config.loadDuration(DELETE_BATCH_INTERVAL_CONFIG)
+                            .orElse(SqsReceiverOptions.DEFAULT_DELETE_INTERVAL))
+                    .closeTimeout(
+                            config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(SqsReceiverOptions.DEFAULT_CLOSE_TIMEOUT))
+                    .build();
             return SqsReceiver.create(receiverOptions);
         }
 
-        private Flux<Alo<ReceivedSqsMessage<T>>>
-        applySignalListenerFactories(Flux<Alo<ReceivedSqsMessage<T>>> aloMessages, String queueUrl) {
+        private Flux<Alo<ReceivedSqsMessage<T>>> applySignalListenerFactories(
+                Flux<Alo<ReceivedSqsMessage<T>>> aloMessages, String queueUrl) {
             Map<String, Object> factoryConfig = config.modifyAndGetProperties(properties ->
-                properties.put(AloReceivedSqsMessageSignalListenerFactory.QUEUE_URL_CONFIG, queueUrl)
-            );
+                    properties.put(AloReceivedSqsMessageSignalListenerFactory.QUEUE_URL_CONFIG, queueUrl));
             List<AloSignalListenerFactory<ReceivedSqsMessage<T>, ?>> factories =
-                AloSignalListenerFactoryConfig.loadList(factoryConfig, AloReceivedSqsMessageSignalListenerFactory.class);
+                    AloSignalListenerFactoryConfig.loadList(
+                            factoryConfig, AloReceivedSqsMessageSignalListenerFactory.class);
             for (AloSignalListenerFactory<ReceivedSqsMessage<T>, ?> factory : factories) {
                 aloMessages = aloMessages.tap(factory);
             }
@@ -244,27 +255,27 @@ public class AloSqsReceiver<T> {
         }
 
         private Alo<ReceivedSqsMessage<T>> deserialize(
-            SqsReceiverMessage message,
-            AloFactory<ReceivedSqsMessage<T>> aloFactory,
-            Consumer<Throwable> errorEmitter
-        ) {
+                SqsReceiverMessage message,
+                AloFactory<ReceivedSqsMessage<T>> aloFactory,
+                Consumer<Throwable> errorEmitter) {
             ReceivedSqsMessage<T> deserialized = DeserializedSqsMessage.deserialize(message, bodyDeserializer);
             return aloFactory.create(
-                deserialized,
-                message.deleter(),
-                nacknowledgerFactory.create(deserialized, message.visibilityChanger(), errorEmitter)
-            );
+                    deserialized,
+                    message.deleter(),
+                    nacknowledgerFactory.create(deserialized, message.visibilityChanger(), errorEmitter));
         }
 
         private static <T> NacknowledgerFactory<T> createNacknowledgerFactory(SqsConfig config) {
             Optional<NacknowledgerFactory<T>> nacknowledgerFactory =
-                loadNacknowledgerFactory(config, NACKNOWLEDGER_TYPE_CONFIG, NacknowledgerFactory.class);
+                    loadNacknowledgerFactory(config, NACKNOWLEDGER_TYPE_CONFIG, NacknowledgerFactory.class);
             return nacknowledgerFactory.orElseGet(NacknowledgerFactory.Emit::new);
         }
 
-        private static <T, N extends NacknowledgerFactory<T>> Optional<NacknowledgerFactory<T>>
-        loadNacknowledgerFactory(SqsConfig config, String key, Class<N> type) {
-            return config.loadConfiguredWithPredefinedTypes(key, type, ReceiveResources::newPredefinedNacknowledgerFactory);
+        private static <T, N extends NacknowledgerFactory<T>>
+                Optional<NacknowledgerFactory<T>> loadNacknowledgerFactory(
+                        SqsConfig config, String key, Class<N> type) {
+            return config.loadConfiguredWithPredefinedTypes(
+                    key, type, ReceiveResources::newPredefinedNacknowledgerFactory);
         }
 
         private static <T> Optional<NacknowledgerFactory<T>> newPredefinedNacknowledgerFactory(String typeName) {

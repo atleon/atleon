@@ -52,9 +52,10 @@ class PollManagerTest {
 
         pollManager.activateAssigned(consumer, Collections.singletonList(partition), Function.identity());
 
-        assertThrows(IllegalStateException.class, () ->
-            pollManager.activateAssigned(consumer, Collections.singletonList(partition), Function.identity())
-        );
+        assertThrows(
+                IllegalStateException.class,
+                () -> pollManager.activateAssigned(
+                        consumer, Collections.singletonList(partition), Function.identity()));
     }
 
     @Test

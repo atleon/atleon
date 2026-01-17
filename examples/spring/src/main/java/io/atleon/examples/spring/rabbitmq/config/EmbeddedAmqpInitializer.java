@@ -20,8 +20,9 @@ public class EmbeddedAmqpInitializer implements EnvironmentPostProcessor {
         Set<String> activeProfiles = Stream.of(environment.getActiveProfiles()).collect(Collectors.toSet());
         if (activeProfiles.contains("rabbitmq") && !activeProfiles.contains("integrationTest")) {
             EmbeddedAmqpConfig embeddedAmqpConfig = EmbeddedAmqp.start(15672);
-            environment.getPropertySources()
-                .addFirst(new MapPropertySource("embedded-amqp", createProperties(embeddedAmqpConfig)));
+            environment
+                    .getPropertySources()
+                    .addFirst(new MapPropertySource("embedded-amqp", createProperties(embeddedAmqpConfig)));
         }
     }
 

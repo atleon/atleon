@@ -37,20 +37,27 @@ final class BoundedPolling implements ConsumerListener, ReceptionListener, PollS
 
     private final Sinks.Empty<Void> closed = Sinks.unsafe().empty();
 
-    private final Sinks.Many<Integer> polledRecordCounts = Sinks.unsafe().many().unicast().onBackpressureError();
+    private final Sinks.Many<Integer> polledRecordCounts =
+            Sinks.unsafe().many().unicast().onBackpressureError();
 
-    private final Sinks.Many<Long> deactivatedRecordCounts = Sinks.unsafe().many().unicast().onBackpressureError();
+    private final Sinks.Many<Long> deactivatedRecordCounts =
+            Sinks.unsafe().many().unicast().onBackpressureError();
 
     private final SerialQueue<Long> deactivatedRecordCountQueue = SerialQueue.onEmitNext(deactivatedRecordCounts);
 
-    private final Flux<Long> deactivatedRecordCountTotals =
-        deactivatedRecordCounts.asFlux().scan(0L, Long::sum).cache(1).publish().autoConnect(0);
+    private final Flux<Long> deactivatedRecordCountTotals = deactivatedRecordCounts
+            .asFlux()
+            .scan(0L, Long::sum)
+            .cache(1)
+            .publish()
+            .autoConnect(0);
 
     public BoundedPolling(Collection<RecordRange> recordRanges, int maxConcurrentPartitions) {
-        this.minInclusiveOffsets = recordRanges.stream().collect(
-            Collectors.toMap(RecordRange::topicPartition, RecordRange::minInclusive));
-        this.maxInclusiveOffsets = recordRanges.stream().collect(
-            Collectors.toMap(RecordRange::topicPartition, RecordRange::maxInclusive, (l, r) -> l, LinkedHashMap::new));
+        this.minInclusiveOffsets =
+                recordRanges.stream().collect(Collectors.toMap(RecordRange::topicPartition, RecordRange::minInclusive));
+        this.maxInclusiveOffsets = recordRanges.stream()
+                .collect(Collectors.toMap(
+                        RecordRange::topicPartition, RecordRange::maxInclusive, (l, r) -> l, LinkedHashMap::new));
         this.maxConcurrentPartitions = maxConcurrentPartitions;
     }
 
@@ -87,9 +94,9 @@ final class BoundedPolling implements ConsumerListener, ReceptionListener, PollS
     @Override
     public void prepareForPoll(PollSelectionContext context) {
         Set<TopicPartition> partitions = maxInclusiveOffsets.keySet().stream()
-            .filter(permittedPartitions::contains)
-            .limit(maxConcurrentPartitions)
-            .collect(Collectors.toSet());
+                .filter(permittedPartitions::contains)
+                .limit(maxConcurrentPartitions)
+                .collect(Collectors.toSet());
         context.selectExclusively(partitions);
     }
 
@@ -109,7 +116,8 @@ final class BoundedPolling implements ConsumerListener, ReceptionListener, PollS
             }
         }
 
-        int recordCount = truncatedConsumerRecords.values().stream().mapToInt(List::size).sum();
+        int recordCount =
+                truncatedConsumerRecords.values().stream().mapToInt(List::size).sum();
         if (recordCount != 0) {
             polledRecordCounts.emitNext(recordCount, Sinks.EmitFailureHandler.FAIL_FAST);
         }
@@ -122,9 +130,10 @@ final class BoundedPolling implements ConsumerListener, ReceptionListener, PollS
     }
 
     public Mono<Long> pollingAndProcessingCompleted(Duration processingGracePeriod, Scheduler timer) {
-        return polledRecordCounts.asFlux()
-            .reduce(0L, Long::sum)
-            .delayUntil(pollTotal -> awaitProcessingCompletion(pollTotal, processingGracePeriod, timer));
+        return polledRecordCounts
+                .asFlux()
+                .reduce(0L, Long::sum)
+                .delayUntil(pollTotal -> awaitProcessingCompletion(pollTotal, processingGracePeriod, timer));
     }
 
     public <T> Mono<T> closed() {
@@ -133,16 +142,15 @@ final class BoundedPolling implements ConsumerListener, ReceptionListener, PollS
 
     private Mono<Void> awaitProcessingCompletion(Long pollTotal, Duration timeout, Scheduler timer) {
         String timeoutMessage = "Processing timed out. You must acknowledge received records within timeout=" + timeout;
-        return deactivatedRecordCountTotals.takeUntil(pollTotal::equals)
-            .then()
-            .timeout(timeout, timer)
-            .onErrorMap(TimeoutException.class, __ -> new TimeoutException(timeoutMessage));
+        return deactivatedRecordCountTotals
+                .takeUntil(pollTotal::equals)
+                .then()
+                .timeout(timeout, timer)
+                .onErrorMap(TimeoutException.class, __ -> new TimeoutException(timeoutMessage));
     }
 
     private static <K, V> List<ConsumerRecord<K, V>> truncate(
-        List<ConsumerRecord<K, V>> records,
-        long maxInclusiveOffset
-    ) {
+            List<ConsumerRecord<K, V>> records, long maxInclusiveOffset) {
         for (int i = records.size() - 1; i >= 0; i--) {
             if (records.get(i).offset() <= maxInclusiveOffset) {
                 return records.subList(0, i + 1);

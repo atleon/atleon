@@ -96,9 +96,7 @@ public interface PollStrategy {
      *
      * @param partitions the collection of partitions that are now permitted for polling
      */
-    default void onPollingPermitted(Collection<TopicPartition> partitions) {
-
-    }
+    default void onPollingPermitted(Collection<TopicPartition> partitions) {}
 
     /**
      * Called when partitions are no longer permissible for polling. This allows the strategy to
@@ -106,9 +104,7 @@ public interface PollStrategy {
      *
      * @param partitions the collection of partitions that are now prohibited from polling
      */
-    default void onPollingProhibited(Collection<TopicPartition> partitions) {
-
-    }
+    default void onPollingProhibited(Collection<TopicPartition> partitions) {}
 
     /**
      * Prepares the consumer for the next poll operation by selecting which partitions should be
@@ -139,9 +135,7 @@ public interface PollStrategy {
 
     final class Natural implements PollStrategy {
 
-        private Natural() {
-
-        }
+        private Natural() {}
 
         @Override
         public void prepareForPoll(PollSelectionContext context) {
@@ -157,9 +151,7 @@ public interface PollStrategy {
 
         private int cycle = 0;
 
-        private BinaryStrides() {
-
-        }
+        private BinaryStrides() {}
 
         @Override
         public void onPollingPermitted(Collection<TopicPartition> partitions) {
@@ -195,9 +187,7 @@ public interface PollStrategy {
 
         private final Set<TopicPartition> permittedPartitions = new LinkedHashSet<>();
 
-        private GreatestBatchLag() {
-
-        }
+        private GreatestBatchLag() {}
 
         @Override
         public void onPollingPermitted(Collection<TopicPartition> partitions) {
@@ -245,7 +235,7 @@ public interface PollStrategy {
         public void prepareForPoll(PollSelectionContext context) {
             Map<TopicPartition, Long> lag = context.currentLag(permittedPartitions, 0);
             context.selectExclusively(
-                Collecting.takeUntil(permittedPartitions, it -> lag.get(it) >= lagCutoffThreshold, HashSet::new));
+                    Collecting.takeUntil(permittedPartitions, it -> lag.get(it) >= lagCutoffThreshold, HashSet::new));
         }
 
         @Override

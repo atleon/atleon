@@ -39,13 +39,12 @@ public final class KafkaSenderOptions<K, V> {
     private final Duration closeTimeout;
 
     private KafkaSenderOptions(
-        Function<Map<String, Object>, Producer<K, V>> producerFactory,
-        ProducerListenerFactory producerListenerFactory,
-        Map<String, Object> producerProperties,
-        int maxInFlight,
-        boolean sendImmediate,
-        Duration closeTimeout
-    ) {
+            Function<Map<String, Object>, Producer<K, V>> producerFactory,
+            ProducerListenerFactory producerListenerFactory,
+            Map<String, Object> producerProperties,
+            int maxInFlight,
+            boolean sendImmediate,
+            Duration closeTimeout) {
         this.producerFactory = producerFactory;
         this.producerListenerFactory = producerListenerFactory;
         this.producerProperties = producerProperties;
@@ -224,13 +223,12 @@ public final class KafkaSenderOptions<K, V> {
 
         public KafkaSenderOptions<K, V> build() {
             return new KafkaSenderOptions<>(
-                producerFactory,
-                producerListenerFactory,
-                producerProperties,
-                maxInFlight,
-                sendImmediate,
-                closeTimeout
-            );
+                    producerFactory,
+                    producerListenerFactory,
+                    producerProperties,
+                    maxInFlight,
+                    sendImmediate,
+                    closeTimeout);
         }
     }
 }

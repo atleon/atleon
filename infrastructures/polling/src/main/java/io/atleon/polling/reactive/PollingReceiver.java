@@ -18,8 +18,7 @@ public interface PollingReceiver<P, O> {
      * @param <O> The type of the offsets.
      * @return - A PollingReceived instance.
      */
-    static <P, O> PollingReceiverImp<P, O> create(final Pollable<P, O> pollable,
-                                                  final PollerOptions pollerOptions) {
+    static <P, O> PollingReceiverImp<P, O> create(final Pollable<P, O> pollable, final PollerOptions pollerOptions) {
         return new PollingReceiverImp<>(pollable, pollerOptions);
     }
 
@@ -28,5 +27,4 @@ public interface PollingReceiver<P, O> {
      * @return A {@link Flux} representing the stream.
      */
     Flux<ReceiverRecord<P, O>> receive();
-
 }

@@ -27,16 +27,16 @@ class SerialQueueTest {
         AtomicInteger finished = new AtomicInteger();
 
         sink.asFlux()
-            .doOnNext(next -> {
-                started.countDown();
-                try {
-                    permitToProceed.await();
-                    finished.incrementAndGet();
-                } catch (Exception e) {
-                    throw new IllegalStateException("Permit was not awaited properly", e);
-                }
-            })
-            .subscribe();
+                .doOnNext(next -> {
+                    started.countDown();
+                    try {
+                        permitToProceed.await();
+                        finished.incrementAndGet();
+                    } catch (Exception e) {
+                        throw new IllegalStateException("Permit was not awaited properly", e);
+                    }
+                })
+                .subscribe();
 
         // Add and drain an item from the queue
         Future<?> future = executorService.submit(() -> queue.addAndDrain(System.currentTimeMillis()));
@@ -45,8 +45,9 @@ class SerialQueueTest {
         assertTrue(started.await(10, TimeUnit.SECONDS));
 
         // Add and drain another item from the queue, which should not block since previous thread is emitting
-        executorService.submit(() -> queue.addAndDrain(System.currentTimeMillis()))
-            .get(10, TimeUnit.SECONDS);
+        executorService
+                .submit(() -> queue.addAndDrain(System.currentTimeMillis()))
+                .get(10, TimeUnit.SECONDS);
 
         // Nothing should be finished yet
         assertEquals(0, finished.get());

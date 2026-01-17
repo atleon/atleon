@@ -22,9 +22,7 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
 
     public static final String PROCESSORS_PROPERTY = "atleon.config.processors";
 
-    protected ConfigSource() {
-
-    }
+    protected ConfigSource() {}
 
     protected ConfigSource(String name) {
         super(name);
@@ -37,15 +35,13 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
     @Override
     protected final Mono<T> create(String name, Map<String, Object> properties) {
         return applyProcessors(name, properties)
-            .doOnNext(this::validateProperties)
-            .map(this::postProcessProperties);
+                .doOnNext(this::validateProperties)
+                .map(this::postProcessProperties);
     }
 
     @Override
     protected final Mono<T> create(Map<String, Object> properties) {
-        return applyProcessors(properties)
-            .doOnNext(this::validateProperties)
-            .map(this::postProcessProperties);
+        return applyProcessors(properties).doOnNext(this::validateProperties).map(this::postProcessProperties);
     }
 
     protected final Mono<Map<String, Object>> applyProcessors(String name, Map<String, Object> properties) {
@@ -66,9 +62,10 @@ public abstract class ConfigSource<T, S extends ConfigSource<T, S>> extends Conf
 
     protected List<ConfigProcessor> loadProcessors(Map<String, Object> properties) {
         List<ConfigProcessor> processors = defaultInterceptors().stream()
-            .map(ConfigInterceptor::asProcessor)
-            .collect(Collectors.toList());
-        processors.addAll(ConfigLoading.loadListOfInstancesOrEmpty(properties, PROCESSORS_PROPERTY, ConfigProcessor.class));
+                .map(ConfigInterceptor::asProcessor)
+                .collect(Collectors.toList());
+        processors.addAll(
+                ConfigLoading.loadListOfInstancesOrEmpty(properties, PROCESSORS_PROPERTY, ConfigProcessor.class));
         return processors;
     }
 

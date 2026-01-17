@@ -51,9 +51,10 @@ public abstract class ConfigProvider<T, P extends ConfigProvider<T, P>> {
     }
 
     public final T create() {
-        return propertiesToName.apply(properties)
-            .map(name -> create(name, properties))
-            .orElseGet(() -> create(properties));
+        return propertiesToName
+                .apply(properties)
+                .map(name -> create(name, properties))
+                .orElseGet(() -> create(properties));
     }
 
     public final P rename(String name) {

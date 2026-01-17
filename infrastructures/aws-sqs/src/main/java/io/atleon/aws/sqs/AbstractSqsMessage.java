@@ -21,10 +21,9 @@ public abstract class AbstractSqsMessage<T> implements SqsMessage<T> {
     private final T body;
 
     protected AbstractSqsMessage(
-        Map<String, MessageAttributeValue> messageAttributes,
-        Map<String, MessageSystemAttributeValue> messageSystemAttributes,
-        T body
-    ) {
+            Map<String, MessageAttributeValue> messageAttributes,
+            Map<String, MessageSystemAttributeValue> messageSystemAttributes,
+            T body) {
         this.messageAttributes = messageAttributes;
         this.messageSystemAttributes = messageSystemAttributes;
         this.body = body;

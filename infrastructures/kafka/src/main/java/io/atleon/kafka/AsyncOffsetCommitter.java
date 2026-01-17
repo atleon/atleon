@@ -49,28 +49,28 @@ final class AsyncOffsetCommitter {
     private final Map<TopicPartition, AtomicInteger> commitRetries = new ConcurrentHashMap<>();
 
     private final Sinks.Many<CommittableOffset> committableOffsets =
-        Sinks.unsafe().many().unicast().onBackpressureError();
+            Sinks.unsafe().many().unicast().onBackpressureError();
 
     // Only reason emission failure could/should happen is if/when we're terminating with
     // concurrent committable offset emission, hence provided failure handler.
     private final SerialQueue<CommittableOffset> committableOffsetQueue =
-        SerialQueue.onEmitNext(committableOffsets, new ShouldBeTerminatedEmitFailureHandler(LOGGER));
+            SerialQueue.onEmitNext(committableOffsets, new ShouldBeTerminatedEmitFailureHandler(LOGGER));
 
     public AsyncOffsetCommitter(
-        int maxAttempts,
-        ConsumerTaskScheduler consumerTaskScheduler,
-        java.util.function.Consumer<Throwable> errorEmitter
-    ) {
+            int maxAttempts,
+            ConsumerTaskScheduler consumerTaskScheduler,
+            java.util.function.Consumer<Throwable> errorEmitter) {
         this.maxAttempts = maxAttempts;
         this.consumerTaskScheduler = consumerTaskScheduler;
         this.errorEmitter = errorEmitter;
     }
 
     public Disposable schedulePeriodically(int batchSize, Duration period, Scheduler scheduler) {
-        return committableOffsets.asFlux()
-            .windowTimeout(batchSize, period, scheduler)
-            .concatMap(it -> it.collectMap(CommittableOffset::topicPartition, CommittableOffset::sequencedOffset))
-            .subscribe(this::scheduleCommit, errorEmitter);
+        return committableOffsets
+                .asFlux()
+                .windowTimeout(batchSize, period, scheduler)
+                .concatMap(it -> it.collectMap(CommittableOffset::topicPartition, CommittableOffset::sequencedOffset))
+                .subscribe(this::scheduleCommit, errorEmitter);
     }
 
     public java.util.function.Consumer<AcknowledgedOffset> acknowledgementHandlerForAssigned(TopicPartition partition) {
@@ -111,25 +111,25 @@ final class AsyncOffsetCommitter {
         // Calculate commit sequence numbers eagerly such that invalidation may happen quickly in
         // the case that commits are being rapidly scheduled.
         Map<TopicPartition, Long> commitSequences = assignedOffsets.keySet().stream()
-            .collect(Collectors.toMap(Function.identity(), this::incrementAndGetCommit));
+                .collect(Collectors.toMap(Function.identity(), this::incrementAndGetCommit));
         consumerTaskScheduler.schedule(consumer -> {
             // Only need to check assignment sequence number on initial commit attempt, because we
             // are now executing on the polling thread, and therefore any assignment changes are
             // guaranteed to visibly increase associated commit sequence counter(s), so we can rely
             // on that for invalidation (i.e. on retries).
             Map<TopicPartition, OffsetAndMetadata> validatedOffsets = assignedOffsets.entrySet().stream()
-                .filter(it -> it.getValue().sequence() == getAssignment(it.getKey()))
-                .filter(it -> commitSequences.get(it.getKey()) == getCommit(it.getKey()))
-                .collect(Collectors.toMap(Map.Entry::getKey, it -> it.getValue().offsetAndMetadata()));
+                    .filter(it -> it.getValue().sequence() == getAssignment(it.getKey()))
+                    .filter(it -> commitSequences.get(it.getKey()) == getCommit(it.getKey()))
+                    .collect(Collectors.toMap(
+                            Map.Entry::getKey, it -> it.getValue().offsetAndMetadata()));
             commit(consumer, validatedOffsets, commitSequences);
         });
     }
 
     private void commit(
-        Consumer<?, ?> consumer,
-        Map<TopicPartition, OffsetAndMetadata> validatedOffsets,
-        Map<TopicPartition, Long> commitSequences
-    ) {
+            Consumer<?, ?> consumer,
+            Map<TopicPartition, OffsetAndMetadata> validatedOffsets,
+            Map<TopicPartition, Long> commitSequences) {
         if (validatedOffsets.isEmpty()) {
             return;
         }
@@ -144,8 +144,8 @@ final class AsyncOffsetCommitter {
             }
 
             int remainingAttempts = offsets.keySet().stream()
-                .mapToInt(this::calculateRemainingCommitAttempts)
-                .reduce(maxAttempts, Math::min);
+                    .mapToInt(this::calculateRemainingCommitAttempts)
+                    .reduce(maxAttempts, Math::min);
 
             if (remainingAttempts == 0) {
                 errorEmitter.accept(new KafkaException("Retries exhausted", exception));
@@ -157,14 +157,12 @@ final class AsyncOffsetCommitter {
     }
 
     private void scheduleCommitRetry(
-        Map<TopicPartition, OffsetAndMetadata> offsets,
-        Map<TopicPartition, Long> commitSequences
-    ) {
+            Map<TopicPartition, OffsetAndMetadata> offsets, Map<TopicPartition, Long> commitSequences) {
         consumerTaskScheduler.schedule(consumer -> {
             Map<TopicPartition, OffsetAndMetadata> validatedOffsets = offsets.entrySet().stream()
-                .filter(it -> commitSequences.get(it.getKey()) == getCommit(it.getKey()))
-                .peek(it -> incrementCommitRetry(it.getKey()))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                    .filter(it -> commitSequences.get(it.getKey()) == getCommit(it.getKey()))
+                    .peek(it -> incrementCommitRetry(it.getKey()))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
             commit(consumer, validatedOffsets, commitSequences);
         });
     }

@@ -33,18 +33,21 @@ public final class ConditionallyRandomizedConfigs implements ConfigInterceptor {
         return conditionallyRandomize(configs, ConditionallyRandomizedConfigs::randomize);
     }
 
-    private Map<String, Object> conditionallyRandomize(Map<String, Object> configs, Function<Object, String> randomizer) {
+    private Map<String, Object> conditionallyRandomize(
+            Map<String, Object> configs, Function<Object, String> randomizer) {
         return configs.entrySet().stream()
-            .filter(entry -> !entry.getKey().endsWith(PROPERTY_SUFFIX))
-            .collect(Collectors.toMap(
-                Map.Entry::getKey,
-                entry -> shouldRandomize(configs, entry.getKey())
-                    ? randomizer.apply(entry.getValue()) : entry.getValue()));
+                .filter(entry -> !entry.getKey().endsWith(PROPERTY_SUFFIX))
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> shouldRandomize(configs, entry.getKey())
+                                ? randomizer.apply(entry.getValue())
+                                : entry.getValue()));
     }
 
     private static Function<Object, String> createNamedRandomizer(String name) {
-        return value -> RANDOMIZATIONS_BY_NAME.computeIfAbsent(name, unused -> new ConcurrentHashMap<>())
-            .computeIfAbsent(value, ConditionallyRandomizedConfigs::randomize);
+        return value -> RANDOMIZATIONS_BY_NAME
+                .computeIfAbsent(name, unused -> new ConcurrentHashMap<>())
+                .computeIfAbsent(value, ConditionallyRandomizedConfigs::randomize);
     }
 
     private static boolean shouldRandomize(Map<String, Object> configs, String property) {

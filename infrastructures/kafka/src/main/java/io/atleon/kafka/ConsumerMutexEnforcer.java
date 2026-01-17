@@ -56,7 +56,8 @@ class ConsumerMutexEnforcer {
     }
 
     protected <K, V> Consumer<K, V> newConsumer(ReceiverOptions<K, V> options) {
-        return new KafkaConsumer<>(options.consumerProperties(), options.keyDeserializer(), options.valueDeserializer());
+        return new KafkaConsumer<>(
+                options.consumerProperties(), options.keyDeserializer(), options.valueDeserializer());
     }
 
     private interface Invoker {
@@ -116,12 +117,12 @@ class ConsumerMutexEnforcer {
                 Instant deadline = consumptionDeadline;
                 if (deadline != null && Instant.now().compareTo(deadline) > 0) {
                     RuntimeException exception =
-                        new IllegalStateException("Consumer invocations prohibited, but invoked: " + clientId);
+                            new IllegalStateException("Consumer invocations prohibited, but invoked: " + clientId);
                     LOGGER.error(exception.getMessage(), exception);
                     throw exception;
                 } else if (deadline == null && ticket != ticketCounter.get()) {
                     RuntimeException exception =
-                        new IllegalStateException("Detected orphaned Consumer instance: " + clientId);
+                            new IllegalStateException("Detected orphaned Consumer instance: " + clientId);
                     LOGGER.error(exception.getMessage(), exception);
                     throw exception;
                 } else {
@@ -331,7 +332,8 @@ class ConsumerMutexEnforcer {
         }
 
         @Override
-        public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch, Duration timeout) {
+        public Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes(
+                Map<TopicPartition, Long> timestampsToSearch, Duration timeout) {
             return delegate.offsetsForTimes(timestampsToSearch, timeout);
         }
 

@@ -6,9 +6,7 @@ import java.util.Comparator;
 
 final class KafkaComparators {
 
-    private KafkaComparators() {
-
-    }
+    private KafkaComparators() {}
 
     public static Comparator<TopicPartition> topicThenPartition() {
         return Comparator.comparing(TopicPartition::topic).thenComparing(TopicPartition::partition);

@@ -17,8 +17,8 @@ import java.util.function.Function;
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedSqsMessage}s
  */
 public final class MeteringAloReceivedSqsMessageSignalListenerFactory<T>
-    extends MeteringAloSignalListenerFactory<ReceivedSqsMessage<T>, Void>
-    implements AloReceivedSqsMessageSignalListenerFactory<T, Void> {
+        extends MeteringAloSignalListenerFactory<ReceivedSqsMessage<T>, Void>
+        implements AloReceivedSqsMessageSignalListenerFactory<T, Void> {
 
     private String queueUrl = null;
 

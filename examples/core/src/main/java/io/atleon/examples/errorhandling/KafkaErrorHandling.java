@@ -43,31 +43,31 @@ public class KafkaErrorHandling {
     private static final String TOPIC_2 = "TOPIC_2";
 
     public static void main(String[] args) throws Exception {
-        //Step 1) Create Kafka Config for Producer that backs Sender
+        // Step 1) Create Kafka Config for Producer that backs Sender
         KafkaConfigSource kafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
-            .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
-            .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())
-            .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+                .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
+                .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())
+                .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
+                .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-        //Step 2) Create "faulty" Kafka Config where the second value we try to process will throw
+        // Step 2) Create "faulty" Kafka Config where the second value we try to process will throw
         // an Exception at serialization time
         KafkaConfigSource faultyKafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
-            .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
-            .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())
-            .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, SecondTimeFailingSerializer.class.getName());
+                .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
+                .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())
+                .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
+                .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, SecondTimeFailingSerializer.class.getName());
 
-        //Step 3) Create Kafka Config for Consumer that backs Receiver
+        // Step 3) Create Kafka Config for Consumer that backs Receiver
         KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
-            .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
-            .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())
-            .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())
-            .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-            .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
-            .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+                .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
+                .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())
+                .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaErrorHandling.class.getSimpleName())
+                .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+                .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
+                .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
-        //Step 4) Apply stream processing to the Kafka topic we'll produce records to. The
+        // Step 4) Apply stream processing to the Kafka topic we'll produce records to. The
         // "processing" in this case is contrived to block a particular record, "TEST_1", from
         // proceeding while a record that comes strictly after it, "TEST_2", has finished
         // processing. At that point, "TEST_1" will fail due to our "faulty" configuration where
@@ -79,41 +79,41 @@ public class KafkaErrorHandling {
         List<String> successfullyProcessed = new CopyOnWriteArrayList<>();
         AloKafkaSender<String, String> faultySender = AloKafkaSender.create(faultyKafkaSenderConfig);
         AloKafkaReceiver.<Object, String>create(kafkaReceiverConfig)
-            .receiveAloValues(TOPIC_1)
-            .groupBy(Function.identity(), Integer.MAX_VALUE)
-            .innerPublishOn(Schedulers.boundedElastic())
-            .innerMap(String::toUpperCase)
-            .innerDoOnNext(next -> {
-                try {
-                    if (next.equals("TEST_1")) {
-                        latch.await();
+                .receiveAloValues(TOPIC_1)
+                .groupBy(Function.identity(), Integer.MAX_VALUE)
+                .innerPublishOn(Schedulers.boundedElastic())
+                .innerMap(String::toUpperCase)
+                .innerDoOnNext(next -> {
+                    try {
+                        if (next.equals("TEST_1")) {
+                            latch.await();
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Unexpected failure=" + e);
                     }
-                } catch (Exception e) {
-                    System.err.println("Unexpected failure=" + e);
-                }
-            })
-            .flatMapAlo(faultySender.sendAloValues(TOPIC_2, Function.identity()))
-            .doOnNext(next -> latch.countDown())
-            .doOnNext(senderResult -> {
-                if (!senderResult.isFailure()) {
-                    successfullyProcessed.add(senderResult.correlationMetadata());
-                }
-            })
-            .resubscribeOnError(KafkaErrorHandling.class.getSimpleName(), Duration.ofSeconds(2L))
-            .doFinally(faultySender::close)
-            .subscribe(new DefaultAloSenderResultSubscriber<>());
+                })
+                .flatMapAlo(faultySender.sendAloValues(TOPIC_2, Function.identity()))
+                .doOnNext(next -> latch.countDown())
+                .doOnNext(senderResult -> {
+                    if (!senderResult.isFailure()) {
+                        successfullyProcessed.add(senderResult.correlationMetadata());
+                    }
+                })
+                .resubscribeOnError(KafkaErrorHandling.class.getSimpleName(), Duration.ofSeconds(2L))
+                .doFinally(faultySender::close)
+                .subscribe(new DefaultAloSenderResultSubscriber<>());
 
-        //Step 5) Produce the records to be consumed above. Note that we are using the same record
+        // Step 5) Produce the records to be consumed above. Note that we are using the same record
         // key for each data item, which will cause these items to show up in the order we emit
         // them on the same topic-partition
         AloKafkaSender<String, String> sender = AloKafkaSender.create(kafkaSenderConfig);
         Flux.just("test_1", "test_2")
-            .subscribeOn(Schedulers.boundedElastic())
-            .transform(sender.sendValues(TOPIC_1, string -> "KEY"))
-            .doFinally(sender::close)
-            .subscribe();
+                .subscribeOn(Schedulers.boundedElastic())
+                .transform(sender.sendValues(TOPIC_1, string -> "KEY"))
+                .doFinally(sender::close)
+                .subscribe();
 
-        //Step 6) Await the successful completion of the data we emitted. There should be exactly
+        // Step 6) Await the successful completion of the data we emitted. There should be exactly
         // three successfully processed elements, since we end up successfully processing "test_2"
         // twice
         while (successfullyProcessed.size() < 3) {

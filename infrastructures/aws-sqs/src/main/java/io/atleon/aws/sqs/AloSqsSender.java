@@ -72,9 +72,10 @@ public class AloSqsSender<T> implements Closeable {
     private final Sinks.Many<Long> closeSink = Sinks.many().multicast().directBestEffort();
 
     private AloSqsSender(SqsConfigSource configSource) {
-        this.futureResources = configSource.create()
-            .map(SendResources::<T>fromConfig)
-            .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SendResources::close);
+        this.futureResources = configSource
+                .create()
+                .map(SendResources::<T>fromConfig)
+                .cacheInvalidateWhen(client -> closeSink.asFlux().next().then(), SendResources::close);
     }
 
     /**
@@ -107,7 +108,8 @@ public class AloSqsSender<T> implements Closeable {
      * @param queueUrl       URL of the queue to send messages to
      * @return a Publisher of the results of each sent message
      */
-    public Flux<SqsSenderResult<T>> sendBodies(Publisher<T> bodies, SqsMessageCreator<T> messageCreator, String queueUrl) {
+    public Flux<SqsSenderResult<T>> sendBodies(
+            Publisher<T> bodies, SqsMessageCreator<T> messageCreator, String queueUrl) {
         return futureResources.flatMapMany(resources -> resources.send(bodies, messageCreator, queueUrl));
     }
 
@@ -147,9 +149,7 @@ public class AloSqsSender<T> implements Closeable {
      * @return A {@link Function} useful for Publisher transformations
      */
     public Function<Publisher<Alo<T>>, AloFlux<SqsSenderResult<T>>> sendAloBodies(
-        SqsMessageCreator<T> messageCreator,
-        String queueUrl
-    ) {
+            SqsMessageCreator<T> messageCreator, String queueUrl) {
         return aloBodies -> sendAloBodies(aloBodies, messageCreator, queueUrl);
     }
 
@@ -168,13 +168,11 @@ public class AloSqsSender<T> implements Closeable {
      * @return a Publisher of Alo items referencing the result of each sent message
      */
     public AloFlux<SqsSenderResult<T>> sendAloBodies(
-        Publisher<Alo<T>> aloBodies,
-        SqsMessageCreator<T> messageCreator,
-        String queueUrl
-    ) {
-        return futureResources.flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator, queueUrl))
-            .as(AloFlux::wrap)
-            .processFailure(SenderResult::isFailure, SenderResult::toError);
+            Publisher<Alo<T>> aloBodies, SqsMessageCreator<T> messageCreator, String queueUrl) {
+        return futureResources
+                .flatMapMany(resources -> resources.sendAlos(aloBodies, messageCreator, queueUrl))
+                .as(AloFlux::wrap)
+                .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     /**
@@ -186,8 +184,7 @@ public class AloSqsSender<T> implements Closeable {
      * @return A {@link Function} useful for Publisher transformations
      */
     public Function<Publisher<Alo<SqsMessage<T>>>, AloFlux<SqsSenderResult<SqsMessage<T>>>> sendAloMessages(
-        String queueUrl
-    ) {
+            String queueUrl) {
         return aloMessages -> sendAloMessages(aloMessages, queueUrl);
     }
 
@@ -204,12 +201,11 @@ public class AloSqsSender<T> implements Closeable {
      * @return A Publisher of Alo items referencing the result of each sent message
      */
     public AloFlux<SqsSenderResult<SqsMessage<T>>> sendAloMessages(
-        Publisher<Alo<SqsMessage<T>>> aloMessages,
-        String queueUrl
-    ) {
-        return futureResources.flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity(), queueUrl))
-            .as(AloFlux::wrap)
-            .processFailure(SenderResult::isFailure, SenderResult::toError);
+            Publisher<Alo<SqsMessage<T>>> aloMessages, String queueUrl) {
+        return futureResources
+                .flatMapMany(resources -> resources.sendAlos(aloMessages, Function.identity(), queueUrl))
+                .as(AloFlux::wrap)
+                .processFailure(SenderResult::isFailure, SenderResult::toError);
     }
 
     /**
@@ -240,15 +236,17 @@ public class AloSqsSender<T> implements Closeable {
 
         public static <T> SendResources<T> fromConfig(SqsConfig config) {
             SqsSenderOptions options = SqsSenderOptions.newBuilder(config::buildClient)
-                .batchSize(config.loadInt(BATCH_SIZE_CONFIG).orElse(SqsSenderOptions.DEFAULT_BATCH_SIZE))
-                .batchDuration(config.loadDuration(BATCH_DURATION_CONFIG).orElse(SqsSenderOptions.DEFAULT_BATCH_DURATION))
-                .batchPrefetch(config.loadInt(BATCH_PREFETCH_CONFIG).orElse(SqsSenderOptions.DEFAULT_BATCH_PREFETCH))
-                .maxRequestsInFlight(config.loadInt(MAX_REQUESTS_IN_FLIGHT_CONFIG).orElse(SqsSenderOptions.DEFAULT_MAX_REQUESTS_IN_FLIGHT))
-                .build();
+                    .batchSize(config.loadInt(BATCH_SIZE_CONFIG).orElse(SqsSenderOptions.DEFAULT_BATCH_SIZE))
+                    .batchDuration(
+                            config.loadDuration(BATCH_DURATION_CONFIG).orElse(SqsSenderOptions.DEFAULT_BATCH_DURATION))
+                    .batchPrefetch(
+                            config.loadInt(BATCH_PREFETCH_CONFIG).orElse(SqsSenderOptions.DEFAULT_BATCH_PREFETCH))
+                    .maxRequestsInFlight(config.loadInt(MAX_REQUESTS_IN_FLIGHT_CONFIG)
+                            .orElse(SqsSenderOptions.DEFAULT_MAX_REQUESTS_IN_FLIGHT))
+                    .build();
             return new SendResources<T>(
-                SqsSender.create(options),
-                config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG, BodySerializer.class)
-            );
+                    SqsSender.create(options),
+                    config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG, BodySerializer.class));
         }
 
         public Mono<SqsSenderResult<SqsMessage<T>>> send(SqsMessage<T> message, String queueUrl) {
@@ -256,24 +254,18 @@ public class AloSqsSender<T> implements Closeable {
         }
 
         public <R> Flux<SqsSenderResult<R>> send(
-            Publisher<R> items,
-            Function<R, SqsMessage<T>> messageCreator,
-            String queueUrl
-        ) {
+                Publisher<R> items, Function<R, SqsMessage<T>> messageCreator, String queueUrl) {
             return Flux.from(items)
-                .map(item -> toSenderMessage(item, messageCreator))
-                .transform(senderMessages -> sender.send(senderMessages, queueUrl));
+                    .map(item -> toSenderMessage(item, messageCreator))
+                    .transform(senderMessages -> sender.send(senderMessages, queueUrl));
         }
 
         public <R> Flux<Alo<SqsSenderResult<R>>> sendAlos(
-            Publisher<Alo<R>> alos,
-            Function<R, SqsMessage<T>> messageCreator,
-            String queueUrl
-        ) {
+                Publisher<Alo<R>> alos, Function<R, SqsMessage<T>> messageCreator, String queueUrl) {
             return AloFlux.toFlux(alos)
-                .handle(newAloEmitter(messageCreator.compose(Alo::get)))
-                .transform(senderMessages -> sender.send(senderMessages, queueUrl))
-                .map(result -> result.correlationMetadata().map(result::replaceCorrelationMetadata));
+                    .handle(newAloEmitter(messageCreator.compose(Alo::get)))
+                    .transform(senderMessages -> sender.send(senderMessages, queueUrl))
+                    .map(result -> result.correlationMetadata().map(result::replaceCorrelationMetadata));
         }
 
         public void close() {
@@ -281,22 +273,21 @@ public class AloSqsSender<T> implements Closeable {
         }
 
         private <R> BiConsumer<Alo<R>, SynchronousSink<SqsSenderMessage<Alo<R>>>> newAloEmitter(
-            Function<Alo<R>, SqsMessage<T>> aloToSqsMessage
-        ) {
+                Function<Alo<R>, SqsMessage<T>> aloToSqsMessage) {
             return (alo, sink) -> alo.runInContext(() -> sink.next(toSenderMessage(alo, aloToSqsMessage)));
         }
 
         private <R> SqsSenderMessage<R> toSenderMessage(R data, Function<R, SqsMessage<T>> dataToSqsMessage) {
             SqsMessage<T> sqsMessage = dataToSqsMessage.apply(data);
             return SqsSenderMessage.<R>newBuilder()
-                .messageDeduplicationId(sqsMessage.messageDeduplicationId().orElse(null))
-                .messageGroupId(sqsMessage.messageGroupId().orElse(null))
-                .messageAttributes(sqsMessage.messageAttributes())
-                .messageSystemAttributes(sqsMessage.messageSystemAttributes())
-                .body(bodySerializer.serialize(sqsMessage.body()))
-                .delaySeconds(sqsMessage.senderDelaySeconds().orElse(null))
-                .correlationMetadata(data)
-                .build();
+                    .messageDeduplicationId(sqsMessage.messageDeduplicationId().orElse(null))
+                    .messageGroupId(sqsMessage.messageGroupId().orElse(null))
+                    .messageAttributes(sqsMessage.messageAttributes())
+                    .messageSystemAttributes(sqsMessage.messageSystemAttributes())
+                    .body(bodySerializer.serialize(sqsMessage.body()))
+                    .delaySeconds(sqsMessage.senderDelaySeconds().orElse(null))
+                    .correlationMetadata(data)
+                    .build();
         }
     }
 }

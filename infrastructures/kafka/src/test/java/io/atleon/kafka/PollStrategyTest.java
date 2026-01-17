@@ -31,8 +31,8 @@ class PollStrategyTest {
     @Test
     public void prepareForPoll_givenConsecutiveBinaryStridesPreparation_expectsStridedPauseResume() {
         List<TopicPartition> partitions = IntStream.range(0, 7)
-            .mapToObj(it -> new TopicPartition("topic", it))
-            .collect(Collectors.toList());
+                .mapToObj(it -> new TopicPartition("topic", it))
+                .collect(Collectors.toList());
 
         PollSelectionContext context = mock(PollSelectionContext.class);
 
@@ -61,11 +61,10 @@ class PollStrategyTest {
     @Test
     public void prepareForPoll_givenPartitionsWithBatchLag_expectsSelectionOfPartitionsWithHighestBatchLag() {
         List<TopicPartition> topicPartitions = Arrays.asList(
-            new TopicPartition("topic", 0),
-            new TopicPartition("topic", 1),
-            new TopicPartition("topic", 2),
-            new TopicPartition("topic", 3)
-        );
+                new TopicPartition("topic", 0),
+                new TopicPartition("topic", 1),
+                new TopicPartition("topic", 2),
+                new TopicPartition("topic", 3));
 
         Map<TopicPartition, Long> batchLag = new HashMap<>();
         batchLag.put(topicPartitions.get(0), 1L);
@@ -86,11 +85,10 @@ class PollStrategyTest {
     @Test
     public void prepareForPoll_givenPriorityCutoffOnLag_expectsPrioritizedSelectionWithLagCutoff() {
         List<TopicPartition> topicPartitions = Arrays.asList(
-            new TopicPartition("topic", 0),
-            new TopicPartition("topic", 1),
-            new TopicPartition("topic", 2),
-            new TopicPartition("topic", 3)
-        );
+                new TopicPartition("topic", 0),
+                new TopicPartition("topic", 1),
+                new TopicPartition("topic", 2),
+                new TopicPartition("topic", 3));
 
         Map<TopicPartition, Long> lag = new HashMap<>();
         lag.put(topicPartitions.get(0), 0L);
@@ -112,25 +110,24 @@ class PollStrategyTest {
     @Test
     public void onPoll_givenPriorityCutoffOnLag_expectsConsumerRecordsOrderedByPriority() {
         List<TopicPartition> orderedPartitions = Arrays.asList(
-            new TopicPartition("topic", 0),
-            new TopicPartition("topic", 1),
-            new TopicPartition("topic", 2),
-            new TopicPartition("topic", 3)
-        );
+                new TopicPartition("topic", 0),
+                new TopicPartition("topic", 1),
+                new TopicPartition("topic", 2),
+                new TopicPartition("topic", 3));
 
         Map<TopicPartition, List<ConsumerRecord<String, String>>> consumerRecords = new LinkedHashMap<>();
         consumerRecords.put(
-            orderedPartitions.get(0),
-            Collections.singletonList(createConsumerRecord(orderedPartitions.get(0), 0L, "key", "value")));
+                orderedPartitions.get(0),
+                Collections.singletonList(createConsumerRecord(orderedPartitions.get(0), 0L, "key", "value")));
         consumerRecords.put(
-            orderedPartitions.get(2),
-            Collections.singletonList(createConsumerRecord(orderedPartitions.get(2), 0L, "key", "value")));
+                orderedPartitions.get(2),
+                Collections.singletonList(createConsumerRecord(orderedPartitions.get(2), 0L, "key", "value")));
         consumerRecords.put(
-            orderedPartitions.get(3),
-            Collections.singletonList(createConsumerRecord(orderedPartitions.get(3), 0L, "key", "value")));
+                orderedPartitions.get(3),
+                Collections.singletonList(createConsumerRecord(orderedPartitions.get(3), 0L, "key", "value")));
         consumerRecords.put(
-            orderedPartitions.get(1),
-            Collections.singletonList(createConsumerRecord(orderedPartitions.get(1), 0L, "key", "value")));
+                orderedPartitions.get(1),
+                Collections.singletonList(createConsumerRecord(orderedPartitions.get(1), 0L, "key", "value")));
 
         Comparator<TopicPartition> priorityComparator = Comparator.comparing(TopicPartition::partition);
         PollStrategy pollStrategy = PollStrategy.priorityCutoffOnLag(priorityComparator, 2);

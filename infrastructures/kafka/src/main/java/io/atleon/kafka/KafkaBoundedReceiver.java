@@ -94,10 +94,11 @@ public class KafkaBoundedReceiver<K, V> {
      * @return A bounded {@link Flux} of {@link ConsumerRecord}
      */
     public Flux<ConsumerRecord<K, V>> receiveRecords(Collection<String> topics, OffsetRangeProvider rangeProvider) {
-        return configSource.create()
-            .flatMapMany(it -> listRecordRanges(it, topics, rangeProvider))
-            .filter(RecordRange::hasNonNegativeLength)
-            .flatMap(this::receiveRecordsInRange, rangeProvider.maxConcurrentTopicPartitions());
+        return configSource
+                .create()
+                .flatMapMany(it -> listRecordRanges(it, topics, rangeProvider))
+                .filter(RecordRange::hasNonNegativeLength)
+                .flatMap(this::receiveRecordsInRange, rangeProvider.maxConcurrentTopicPartitions());
     }
 
     Flux<ConsumerRecord<K, V>> receiveRecordsInRange(RecordRange recordRange) {
@@ -106,28 +107,25 @@ public class KafkaBoundedReceiver<K, V> {
 
     private Flux<ConsumerRecord<K, V>> receiveRecordsInRange(KafkaConfig kafkaConfig, RecordRange recordRange) {
         KafkaReceiverOptions<K, V> receiverOptions = KafkaReceiverOptions.<K, V>newBuilder()
-            .consumerListener(ConsumerListener.seekOnce(recordRange.topicPartition(), recordRange.minInclusive()))
-            .consumerProperties(kafkaConfig.nativeProperties())
-            .commitlessOffsets(true)
-            .pollTimeout(kafkaConfig.loadDuration(POLL_TIMEOUT_CONFIG).orElse(DEFAULT_POLL_TIMEOUT))
-            .closeTimeout(kafkaConfig.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
-            .build();
+                .consumerListener(ConsumerListener.seekOnce(recordRange.topicPartition(), recordRange.minInclusive()))
+                .consumerProperties(kafkaConfig.nativeProperties())
+                .commitlessOffsets(true)
+                .pollTimeout(kafkaConfig.loadDuration(POLL_TIMEOUT_CONFIG).orElse(DEFAULT_POLL_TIMEOUT))
+                .closeTimeout(kafkaConfig.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
+                .build();
 
         return KafkaReceiver.create(receiverOptions)
-            .receiveAutoAckWithAssignment(Collections.singletonList(recordRange.topicPartition()))
-            .concatMap(Function.identity())
-            .takeWhile(it -> it.offset() <= recordRange.maxInclusive())
-            .takeUntil(it -> it.offset() == recordRange.maxInclusive());
+                .receiveAutoAckWithAssignment(Collections.singletonList(recordRange.topicPartition()))
+                .concatMap(Function.identity())
+                .takeWhile(it -> it.offset() <= recordRange.maxInclusive())
+                .takeUntil(it -> it.offset() == recordRange.maxInclusive());
     }
 
     private static Flux<RecordRange> listRecordRanges(
-        KafkaConfig config,
-        Collection<String> topics,
-        OffsetRangeProvider rangeProvider
-    ) {
+            KafkaConfig config, Collection<String> topics, OffsetRangeProvider rangeProvider) {
         return Flux.using(
-            () -> ReactiveAdmin.create(config.nativeProperties()),
-            it -> RecordRange.list(it, topics, rangeProvider),
-            ReactiveAdmin::close);
+                () -> ReactiveAdmin.create(config.nativeProperties()),
+                it -> RecordRange.list(it, topics, rangeProvider),
+                ReactiveAdmin::close);
     }
 }

@@ -30,26 +30,25 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
     private static final Logger LOGGER = LoggerFactory.getLogger(ReceivingConsumer.class);
 
     private static final Set<String> ALLOWED_EXTERNAL_CONSUMER_INVOCATIONS = new HashSet<>(Arrays.asList(
-        "assignment",
-        "beginningOffsets",
-        "clientInstanceId",
-        "committed",
-        "currentLag",
-        "endOffsets",
-        "groupMetadata",
-        "listTopics",
-        "metrics",
-        "offsetsForTimes",
-        "partitionsFor",
-        "pause",
-        "paused",
-        "position",
-        "resume",
-        "seek",
-        "seekToBeginning",
-        "seekToEnd",
-        "subscription"
-    ));
+            "assignment",
+            "beginningOffsets",
+            "clientInstanceId",
+            "committed",
+            "currentLag",
+            "endOffsets",
+            "groupMetadata",
+            "listTopics",
+            "metrics",
+            "offsetsForTimes",
+            "partitionsFor",
+            "pause",
+            "paused",
+            "position",
+            "resume",
+            "seek",
+            "seekToBeginning",
+            "seekToEnd",
+            "subscription"));
 
     private final Consumer<K, V> consumer;
 
@@ -66,10 +65,9 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
     private final Set<TopicPartition> validAssignment = new HashSet<>();
 
     public ReceivingConsumer(
-        KafkaReceiverOptions<K, V> options,
-        PartitionListener partitionListener,
-        java.util.function.Consumer<Throwable> errorHandler
-    ) {
+            KafkaReceiverOptions<K, V> options,
+            PartitionListener partitionListener,
+            java.util.function.Consumer<Throwable> errorHandler) {
         this.consumer = options.createConsumer();
         this.externalConsumerProxy = Proxying.interfaceMethods(Consumer.class, this::invokeConsumerFromExternal);
         this.partitionListener = partitionListener;
@@ -104,17 +102,17 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         // of assigned partitions, and/or skipping of records. For more info:
         // - https://github.com/atleon/atleon/issues/422
         // - https://github.com/atleon/atleon/issues/445
-        Collection<TopicPartition> invalidAssignment = assignment.stream()
-            .filter(it -> !validAssignment.contains(it))
-            .collect(Collectors.toList());
+        Collection<TopicPartition> invalidAssignment =
+                assignment.stream().filter(it -> !validAssignment.contains(it)).collect(Collectors.toList());
         if (!invalidAssignment.isEmpty()) {
-            throw new IllegalStateException("After rebalancing, there are partitions currently assigned that are" +
-                " missing from the onPartitionsAssigned callback. These partitions have either never been assigned to" +
-                " this consumer, or (more likely) were just recently revoked. This is suspected to be a bug in the" +
-                " Kafka Consumer implementation that could lead to skipped records due to improper position" +
-                " management on partition reassignment. For future debugging, this condition tends to be correlated" +
-                " with paused partitions being revoked, followed by interruption to the rebalance process due to" +
-                " invoking Consumer.wakeup(). The affected partitions are: " + invalidAssignment);
+            throw new IllegalStateException("After rebalancing, there are partitions currently assigned that are"
+                    + " missing from the onPartitionsAssigned callback. These partitions have either never been assigned to"
+                    + " this consumer, or (more likely) were just recently revoked. This is suspected to be a bug in the"
+                    + " Kafka Consumer implementation that could lead to skipped records due to improper position"
+                    + " management on partition reassignment. For future debugging, this condition tends to be correlated"
+                    + " with paused partitions being revoked, followed by interruption to the rebalance process due to"
+                    + " invoking Consumer.wakeup(). The affected partitions are: "
+                    + invalidAssignment);
         }
 
         if (partitions.size() != assignment.size()) {
@@ -128,9 +126,9 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
     @Override
     public <T> Mono<T> invokeAndGet(Function<? super Consumer<?, ?>, T> invocation) {
         if (taskLoop.isSourceOfCurrentThread()) {
-            throw new UnsupportedOperationException("ConsumerInvocable::invokeAndGet must not be called from the" +
-                " polling thread. It should rather be the case that the Consumer is directly passed to the call site" +
-                " in some way, for example with ConsumerListener::onPartitionsAssigned.");
+            throw new UnsupportedOperationException("ConsumerInvocable::invokeAndGet must not be called from the"
+                    + " polling thread. It should rather be the case that the Consumer is directly passed to the call site"
+                    + " in some way, for example with ConsumerListener::onPartitionsAssigned.");
         }
         return taskLoop.publish(() -> invocation.apply(externalConsumerProxy));
     }
@@ -166,10 +164,9 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
     }
 
     private void onRebalance(
-        BiConsumer<Consumer<?, ?>, Collection<TopicPartition>> internalHandler,
-        BiConsumer<Consumer<?, ?>, Collection<TopicPartition>> externalHandler,
-        Collection<TopicPartition> partitions
-    ) {
+            BiConsumer<Consumer<?, ?>, Collection<TopicPartition>> internalHandler,
+            BiConsumer<Consumer<?, ?>, Collection<TopicPartition>> externalHandler,
+            Collection<TopicPartition> partitions) {
         internalHandler.accept(consumer, partitions);
 
         // Not wrapping with try-catch. If user does something naughty, let the error be emitted.

@@ -47,17 +47,16 @@ public final class SqsReceiverOptions {
     private final Duration closeTimeout;
 
     private SqsReceiverOptions(
-        Supplier<SqsAsyncClient> clientSupplier,
-        int maxMessagesPerReception,
-        Set<String> messageAttributesToRequest,
-        Set<String> messageSystemAttributesToRequest,
-        int waitTimeSecondsPerReception,
-        int visibilityTimeoutSeconds,
-        int maxInFlightPerSubscription,
-        int deleteBatchSize,
-        Duration deleteInterval,
-        Duration closeTimeout
-    ) {
+            Supplier<SqsAsyncClient> clientSupplier,
+            int maxMessagesPerReception,
+            Set<String> messageAttributesToRequest,
+            Set<String> messageSystemAttributesToRequest,
+            int waitTimeSecondsPerReception,
+            int visibilityTimeoutSeconds,
+            int maxInFlightPerSubscription,
+            int deleteBatchSize,
+            Duration deleteInterval,
+            Duration closeTimeout) {
         this.clientSupplier = clientSupplier;
         this.maxMessagesPerReception = maxMessagesPerReception;
         this.messageAttributesToRequest = messageAttributesToRequest;
@@ -212,17 +211,16 @@ public final class SqsReceiverOptions {
          */
         public SqsReceiverOptions build() {
             return new SqsReceiverOptions(
-                clientSupplier,
-                maxMessagesPerReception,
-                messageAttributesToRequest,
-                messageSystemAttributesToRequest,
-                waitTimeSecondsPerReception,
-                visibilityTimeoutSeconds,
-                maxInFlightPerSubscription,
-                deleteBatchSize,
-                deleteInterval,
-                closeTimeout
-            );
+                    clientSupplier,
+                    maxMessagesPerReception,
+                    messageAttributesToRequest,
+                    messageSystemAttributesToRequest,
+                    waitTimeSecondsPerReception,
+                    visibilityTimeoutSeconds,
+                    maxInFlightPerSubscription,
+                    deleteBatchSize,
+                    deleteInterval,
+                    closeTimeout);
         }
 
         /**
@@ -230,7 +228,8 @@ public final class SqsReceiverOptions {
          */
         public Builder maxMessagesPerReception(int maxMessagesPerReception) {
             if (maxMessagesPerReception < 1 || maxMessagesPerReception > 10) {
-                throw new IllegalArgumentException("maxMessagesPerReception must be 1-10, got " + maxMessagesPerReception);
+                throw new IllegalArgumentException(
+                        "maxMessagesPerReception must be 1-10, got " + maxMessagesPerReception);
             }
             this.maxMessagesPerReception = maxMessagesPerReception;
             return this;

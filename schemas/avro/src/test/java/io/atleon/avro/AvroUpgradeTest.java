@@ -25,26 +25,20 @@ public class AvroUpgradeTest {
 
         SchemaBytes<Schema> schemaBytes = AvroSerializer.reflect().serialize(data);
 
-        Schema readerMapSchema = Schema.createMap(
-            Schema.createRecord(
+        Schema readerMapSchema = Schema.createMap(Schema.createRecord(
                 TestData.class.getName(),
                 null,
                 null,
                 false,
                 Collections.singletonList(
-                    new Schema.Field("data1", Schema.create(Schema.Type.STRING), null, Object.class.cast(null))
-                )
-            )
-        );
+                        new Schema.Field("data1", Schema.create(Schema.Type.STRING), null, Object.class.cast(null)))));
         Schema readerSchema = Schema.createRecord(
-            TestDataWithNullableMap.class.getName(),
-            null,
-            null,
-            false,
-            Collections.singletonList(
-                new Schema.Field("map", ReflectData.makeNullable(readerMapSchema), null, Object.class.cast(null))
-            )
-        );
+                TestDataWithNullableMap.class.getName(),
+                null,
+                null,
+                false,
+                Collections.singletonList(new Schema.Field(
+                        "map", ReflectData.makeNullable(readerMapSchema), null, Object.class.cast(null))));
 
         ReflectData testReflectData = new ReflectData() {
             @Override
@@ -53,17 +47,20 @@ public class AvroUpgradeTest {
             }
         };
 
-        Object deserialized = AvroDeserializer.create(testReflectData)
-            .deserialize(schemaBytes.bytes(), schemaBytes.schema());
+        Object deserialized =
+                AvroDeserializer.create(testReflectData).deserialize(schemaBytes.bytes(), schemaBytes.schema());
 
         assertTrue(deserialized instanceof TestDataWithNullableMap);
         assertEquals(
-            data.getMap().get("KEY").getData1(),
-            TestDataWithNullableMap.class.cast(deserialized).getMap().get("KEY").getData1()
-        );
+                data.getMap().get("KEY").getData1(),
+                TestDataWithNullableMap.class
+                        .cast(deserialized)
+                        .getMap()
+                        .get("KEY")
+                        .getData1());
     }
 
-    //TODO This test exposes a backward incompatible change when upgrading to Avro >=1.9.0. In
+    // TODO This test exposes a backward incompatible change when upgrading to Avro >=1.9.0. In
     // the case of Jackson, Avro has switched to using the FasterXML variant of Jackson which
     // results in NoSuchMethodErrors when looking for the CodeHaus method variants targeted by
     // jackson-dataformat-avro. That dependency needs to be patched to use the newer version of

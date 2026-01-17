@@ -24,8 +24,7 @@ public interface Poller<P, O> {
      * @param <O> - The type of the object used for ack and nack.
      * @return - A new PollingHandler instance.
      */
-    static <P, O> Poller<P, O> create(final Pollable<P, O> pollable,
-                                      final Duration pollingInterval) {
+    static <P, O> Poller<P, O> create(final Pollable<P, O> pollable, final Duration pollingInterval) {
         return new PollerImp<>(pollable, pollingInterval);
     }
 

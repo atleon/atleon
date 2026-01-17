@@ -26,8 +26,7 @@ final class RateLimitingTransformer<T> implements Function<Publisher<T>, Publish
 
     private UnaryOperator<Publisher<T>> createRateLimiter(RateLimitingConfig config) {
         RateLimiter rateLimiter = RateLimiter.create(config.getPermitsPerSecond());
-        return publisher -> Flux.from(publisher)
-            .publishOn(scheduler, config.getPrefetch())
-            .doOnNext(t -> rateLimiter.acquire());
+        return publisher ->
+                Flux.from(publisher).publishOn(scheduler, config.getPrefetch()).doOnNext(t -> rateLimiter.acquire());
     }
 }

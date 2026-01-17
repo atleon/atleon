@@ -27,11 +27,10 @@ public final class RoutingInitializer implements Runnable {
     }
 
     private RoutingInitializer(
-        ConnectionClosure connectionClosure,
-        List<ExchangeDeclaration> exchangeDeclarations,
-        List<QueueDeclaration> queueDeclarations,
-        List<QueueBinding> queueBindings
-    ) {
+            ConnectionClosure connectionClosure,
+            List<ExchangeDeclaration> exchangeDeclarations,
+            List<QueueDeclaration> queueDeclarations,
+            List<QueueBinding> queueBindings) {
         this.connectionClosure = connectionClosure;
         this.exchangeDeclarations = exchangeDeclarations;
         this.queueDeclarations = queueDeclarations;
@@ -86,31 +85,28 @@ public final class RoutingInitializer implements Runnable {
     private void initializeRouting(Channel channel) throws IOException {
         for (ExchangeDeclaration exchangeDeclaration : exchangeDeclarations) {
             channel.exchangeDeclare(
-                exchangeDeclaration.getName(),
-                exchangeDeclaration.getType(),
-                exchangeDeclaration.isDurable(),
-                exchangeDeclaration.isAutoDelete(),
-                exchangeDeclaration.getArguments()
-            );
+                    exchangeDeclaration.getName(),
+                    exchangeDeclaration.getType(),
+                    exchangeDeclaration.isDurable(),
+                    exchangeDeclaration.isAutoDelete(),
+                    exchangeDeclaration.getArguments());
         }
 
         for (QueueDeclaration queueDeclaration : queueDeclarations) {
             channel.queueDeclare(
-                queueDeclaration.getName(),
-                queueDeclaration.isDurable(),
-                queueDeclaration.isExclusive(),
-                queueDeclaration.isAutoDelete(),
-                queueDeclaration.getArguments()
-            );
+                    queueDeclaration.getName(),
+                    queueDeclaration.isDurable(),
+                    queueDeclaration.isExclusive(),
+                    queueDeclaration.isAutoDelete(),
+                    queueDeclaration.getArguments());
         }
 
         for (QueueBinding queueBinding : queueBindings) {
             channel.queueBind(
-                queueBinding.getQueue(),
-                queueBinding.getExchange(),
-                queueBinding.getRoutingKey(),
-                queueBinding.getArguments()
-            );
+                    queueBinding.getQueue(),
+                    queueBinding.getExchange(),
+                    queueBinding.getRoutingKey(),
+                    queueBinding.getArguments());
         }
     }
 

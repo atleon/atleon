@@ -21,8 +21,7 @@ import java.util.Map;
  * @param <V> The types of values in records decorated by this decorator
  */
 public final class TracingAloKafkaConsumerRecordDecorator<K, V>
-    extends TracingAloConsumptionDecorator<ConsumerRecord<K, V>>
-    implements AloKafkaConsumerRecordDecorator<K, V> {
+        extends TracingAloConsumptionDecorator<ConsumerRecord<K, V>> implements AloKafkaConsumerRecordDecorator<K, V> {
 
     private String clientId = null;
 
@@ -31,18 +30,21 @@ public final class TracingAloKafkaConsumerRecordDecorator<K, V>
     @Override
     public void configure(Map<String, ?> properties) {
         super.configure(properties);
-        clientId = ConfigLoading.loadString(properties, CommonClientConfigs.CLIENT_ID_CONFIG).orElse(clientId);
-        groupId = ConfigLoading.loadString(properties, ConsumerConfig.GROUP_ID_CONFIG).orElse(groupId);
+        clientId = ConfigLoading.loadString(properties, CommonClientConfigs.CLIENT_ID_CONFIG)
+                .orElse(clientId);
+        groupId = ConfigLoading.loadString(properties, ConsumerConfig.GROUP_ID_CONFIG)
+                .orElse(groupId);
     }
 
     @Override
     protected Tracer.SpanBuilder newSpanBuilder(SpanBuilderFactory spanBuilderFactory, ConsumerRecord<K, V> record) {
-        return spanBuilderFactory.newSpanBuilder("atleon.receive.kafka")
-            .withTag("client_id", clientId)
-            .withTag("group_id", groupId)
-            .withTag("topic", record.topic())
-            .withTag("partition", record.partition())
-            .withTag("offset", record.offset());
+        return spanBuilderFactory
+                .newSpanBuilder("atleon.receive.kafka")
+                .withTag("client_id", clientId)
+                .withTag("group_id", groupId)
+                .withTag("topic", record.topic())
+                .withTag("partition", record.partition())
+                .withTag("offset", record.offset());
     }
 
     @Override

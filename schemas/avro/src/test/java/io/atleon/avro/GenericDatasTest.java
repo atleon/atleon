@@ -16,6 +16,7 @@ public class GenericDatasTest {
         GenericDatas.addLogicalTypeConversion(genericData);
 
         assertTrue(genericData.getConversions().stream().anyMatch(Conversions.DecimalConversion.class::isInstance));
-        assertTrue(genericData.getConversions().stream().anyMatch(TimeConversions.TimeMillisConversion.class::isInstance));
+        assertTrue(
+                genericData.getConversions().stream().anyMatch(TimeConversions.TimeMillisConversion.class::isInstance));
     }
 }

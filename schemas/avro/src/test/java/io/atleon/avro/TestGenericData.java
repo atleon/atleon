@@ -24,8 +24,12 @@ public class TestGenericData<T> implements GenericContainer {
      */
     @Override
     public Schema getSchema() {
-        return Schema.createRecord(TestGenericData.class.getCanonicalName(), null, null, false,
-            data == null ? Collections.emptyList() : Collections.singletonList(createDataSchemaField()));
+        return Schema.createRecord(
+                TestGenericData.class.getCanonicalName(),
+                null,
+                null,
+                false,
+                data == null ? Collections.emptyList() : Collections.singletonList(createDataSchemaField()));
     }
 
     /**
@@ -36,9 +40,9 @@ public class TestGenericData<T> implements GenericContainer {
      * that the Schema for that field can be made nullable with a default (JSON) value of NULL
      */
     protected Schema.Field createDataSchemaField() {
-        return data instanceof TestGenericData ?
-            new Schema.Field("data", AvroSchemas.getOrReflect(data), null, (Object) null) :
-            new Schema.Field("data", AvroSchemas.getOrReflectNullable(data), null, JsonProperties.NULL_VALUE);
+        return data instanceof TestGenericData
+                ? new Schema.Field("data", AvroSchemas.getOrReflect(data), null, (Object) null)
+                : new Schema.Field("data", AvroSchemas.getOrReflectNullable(data), null, JsonProperties.NULL_VALUE);
     }
 
     public T getData() {
@@ -51,10 +55,8 @@ public class TestGenericData<T> implements GenericContainer {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o)
-            return true;
-        if (o == null || getClass() != o.getClass())
-            return false;
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
         TestGenericData<?> that = (TestGenericData<?>) o;
         return Objects.equals(data, that.data);
     }

@@ -14,9 +14,8 @@ import java.util.Objects;
  * Implementation of {@link MeteringAloQueueListener} that decorates metrics with Kafka-specific
  * information (Client ID, topic, partition, etc.)
  */
-public final class MeteringAloKafkaQueueListener
-    extends MeteringAloQueueListener<TopicPartition>
-    implements AloKafkaQueueListener {
+public final class MeteringAloKafkaQueueListener extends MeteringAloQueueListener<TopicPartition>
+        implements AloKafkaQueueListener {
 
     private String clientId = null;
 
@@ -27,7 +26,8 @@ public final class MeteringAloKafkaQueueListener
     @Override
     public void configure(Map<String, ?> properties) {
         super.configure(properties);
-        clientId = ConfigLoading.loadString(properties, CommonClientConfigs.CLIENT_ID_CONFIG).orElse(clientId);
+        clientId = ConfigLoading.loadString(properties, CommonClientConfigs.CLIENT_ID_CONFIG)
+                .orElse(clientId);
     }
 
     @Override
@@ -38,9 +38,8 @@ public final class MeteringAloKafkaQueueListener
     @Override
     protected Iterable<Tag> extractTags(TopicPartition topicPartition) {
         return Tags.of(
-            Tag.of("client_id", Objects.toString(clientId)),
-            Tag.of("topic", topicPartition.topic()),
-            Tag.of("partition", Integer.toString(topicPartition.partition()))
-        );
+                Tag.of("client_id", Objects.toString(clientId)),
+                Tag.of("topic", topicPartition.topic()),
+                Tag.of("partition", Integer.toString(topicPartition.partition())));
     }
 }

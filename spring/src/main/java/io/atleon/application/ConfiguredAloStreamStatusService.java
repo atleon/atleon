@@ -17,12 +17,12 @@ public class ConfiguredAloStreamStatusService implements AloStreamStatusService 
     private final SortedMap<String, ConfiguredAloStream> streamsByName;
 
     public ConfiguredAloStreamStatusService(Collection<? extends ConfiguredAloStream> streams) {
-        this.streamsByName = streams.stream().collect(Collectors.toMap(
-            ConfiguredAloStream::name,
-            Function.identity(),
-            ConfiguredAloStreamStatusService::logConflictingStreamsAndChooseFirst,
-            TreeMap::new
-        ));
+        this.streamsByName = streams.stream()
+                .collect(Collectors.toMap(
+                        ConfiguredAloStream::name,
+                        Function.identity(),
+                        ConfiguredAloStreamStatusService::logConflictingStreamsAndChooseFirst,
+                        TreeMap::new));
     }
 
     @Override
@@ -53,8 +53,8 @@ public class ConfiguredAloStreamStatusService implements AloStreamStatusService 
         return new AloStreamStatusDto(stream.name(), stream.state().name());
     }
 
-    private static ConfiguredAloStream
-    logConflictingStreamsAndChooseFirst(ConfiguredAloStream first, ConfiguredAloStream second) {
+    private static ConfiguredAloStream logConflictingStreamsAndChooseFirst(
+            ConfiguredAloStream first, ConfiguredAloStream second) {
         LOGGER.warn("Conflicting Streams! Choosing first. name={} first={} second={}", first.name(), first, second);
         return first;
     }

@@ -19,7 +19,10 @@ import java.util.function.Consumer;
  */
 public abstract class MeteringAloDecorator<T, K> implements AloDecorator<T> {
 
-    private enum AloMeterType {SUCCESS_TIMER, FAILURE_TIMER}
+    private enum AloMeterType {
+        SUCCESS_TIMER,
+        FAILURE_TIMER
+    }
 
     private final MeterFacade<TypeKey<AloMeterType, K>> meterFacade;
 
@@ -68,9 +71,11 @@ public abstract class MeteringAloDecorator<T, K> implements AloDecorator<T> {
     protected final MeterKey toMeterKey(String name, TypeKey<AloMeterType, K> typeKey) {
         switch (typeKey.type()) {
             case SUCCESS_TIMER:
-                return new MeterKey(name + ".duration", Tags.of("result", "success").and(extractTags(typeKey.key())));
+                return new MeterKey(
+                        name + ".duration", Tags.of("result", "success").and(extractTags(typeKey.key())));
             case FAILURE_TIMER:
-                return new MeterKey(name + ".duration", Tags.of("result", "failure").and(extractTags(typeKey.key())));
+                return new MeterKey(
+                        name + ".duration", Tags.of("result", "failure").and(extractTags(typeKey.key())));
             default:
                 throw new IllegalStateException("Unimplemented aloMeterType=" + typeKey.type());
         }
@@ -91,8 +96,8 @@ public abstract class MeteringAloDecorator<T, K> implements AloDecorator<T> {
         };
     }
 
-    private static Consumer<Throwable>
-    applyMetering(Consumer<? super Throwable> nacknowledger, Timer timer, long startedAtNano) {
+    private static Consumer<Throwable> applyMetering(
+            Consumer<? super Throwable> nacknowledger, Timer timer, long startedAtNano) {
         return error -> {
             try {
                 nacknowledger.accept(error);

@@ -32,8 +32,10 @@ class ConsumerMutexEnforcerTest {
     public void newProhibitableConsumerFactory_givenDetectionOfOrphanedConsumer_expectsIllegalStateOnOldConsumer() {
         ConsumerMutexEnforcer enforcer = new TestConsumerMutexEnforcer();
 
-        Consumer<Object, Object> oldConsumer = enforcer.newProhibitableConsumerFactory().createConsumer(ReceiverOptions.create());
-        Consumer<Object, Object> newConsumer = enforcer.newProhibitableConsumerFactory().createConsumer(ReceiverOptions.create());
+        Consumer<Object, Object> oldConsumer =
+                enforcer.newProhibitableConsumerFactory().createConsumer(ReceiverOptions.create());
+        Consumer<Object, Object> newConsumer =
+                enforcer.newProhibitableConsumerFactory().createConsumer(ReceiverOptions.create());
 
         assertThrows(IllegalStateException.class, () -> oldConsumer.poll(Duration.ZERO));
         assertDoesNotThrow(() -> newConsumer.poll(Duration.ZERO));

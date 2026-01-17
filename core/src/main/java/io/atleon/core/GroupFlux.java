@@ -184,11 +184,7 @@ public class GroupFlux<K, T> {
      * @return a transformed {@link GroupFlux}
      */
     public GroupFlux<K, List<T>> innerBufferTimeout(
-        int maxSize,
-        Duration maxTime,
-        Scheduler scheduler,
-        boolean fairBackpressure
-    ) {
+            int maxSize, Duration maxTime, Scheduler scheduler, boolean fairBackpressure) {
         return map(group -> group.bufferTimeout(maxSize, maxTime, scheduler, fairBackpressure));
     }
 

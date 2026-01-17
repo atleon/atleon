@@ -39,7 +39,5 @@ interface ConsumptionSpec {
 
     void onInit(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener);
 
-    default void onClose(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener) {
-
-    }
+    default void onClose(Consumer<?, ?> consumer, ConsumerRebalanceListener rebalanceListener) {}
 }

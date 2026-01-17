@@ -25,29 +25,26 @@ public final class AloQueueListenerConfig {
      */
     public static final String LISTENER_TYPE_AUTO = "auto";
 
-    private AloQueueListenerConfig() {
+    private AloQueueListenerConfig() {}
 
-    }
-
-    public static <L extends AloQueueListener> Optional<AloQueueListener>
-    load(Map<String, ?> properties, Class<L> superType) {
+    public static <L extends AloQueueListener> Optional<AloQueueListener> load(
+            Map<String, ?> properties, Class<L> superType) {
         List<AloQueueListener> listeners = loadExplicit(properties, superType)
-            .orElseGet(() -> ConfigLoading.loadListOfConfiguredServices(superType, properties));
+                .orElseGet(() -> ConfigLoading.loadListOfConfiguredServices(superType, properties));
         return listeners.isEmpty() ? Optional.empty() : Optional.of(AloQueueListener.combine(listeners));
     }
 
-    private static <L extends AloQueueListener> Optional<List<AloQueueListener>>
-    loadExplicit(Map<String, ?> properties, Class<L> superType) {
+    private static <L extends AloQueueListener> Optional<List<AloQueueListener>> loadExplicit(
+            Map<String, ?> properties, Class<L> superType) {
         return ConfigLoading.loadListOfConfiguredWithPredefinedTypes(
-            properties,
-            LISTENER_TYPES_CONFIG,
-            superType,
-            typeName -> instantiatePredefined(properties, superType, typeName)
-        );
+                properties,
+                LISTENER_TYPES_CONFIG,
+                superType,
+                typeName -> instantiatePredefined(properties, superType, typeName));
     }
 
-    private static Optional<List<AloQueueListener>>
-    instantiatePredefined(Map<String, ?> properties, Class<? extends AloQueueListener> superType, String typeName) {
+    private static Optional<List<AloQueueListener>> instantiatePredefined(
+            Map<String, ?> properties, Class<? extends AloQueueListener> superType, String typeName) {
         if (typeName.equalsIgnoreCase(LISTENER_TYPE_AUTO)) {
             return Optional.of(ConfigLoading.loadListOfConfiguredServices(superType, properties));
         } else {

@@ -16,8 +16,8 @@ import java.util.Objects;
  * @param <T> The types of (deserialized) body payloads referenced by {@link ReceivedRabbitMQMessage}s
  */
 public final class MeteringAloReceivedRabbitMQMessageDecorator<T>
-    extends MeteringAloDecorator<ReceivedRabbitMQMessage<T>, Void>
-    implements AloReceivedRabbitMQMessageDecorator<T> {
+        extends MeteringAloDecorator<ReceivedRabbitMQMessage<T>, Void>
+        implements AloReceivedRabbitMQMessageDecorator<T> {
 
     private String queue = null;
 

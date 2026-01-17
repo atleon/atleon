@@ -32,7 +32,9 @@ import java.util.function.Supplier;
  */
 public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
 
-    private enum Transform {REMOVE_JAVA_PROPERTIES}
+    private enum Transform {
+        REMOVE_JAVA_PROPERTIES
+    }
 
     private final GenericData genericData;
 
@@ -53,12 +55,11 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
     }
 
     private AvroSerializer(
-        GenericData genericData,
-        Function<Type, Schema> typeSchemaLoader,
-        boolean schemaCachingEnabled,
-        boolean schemaGenerationEnabled,
-        EnumSet<Transform> transforms
-    ) {
+            GenericData genericData,
+            Function<Type, Schema> typeSchemaLoader,
+            boolean schemaCachingEnabled,
+            boolean schemaGenerationEnabled,
+            EnumSet<Transform> transforms) {
         this.genericData = genericData;
         this.typeSchemaLoader = typeSchemaLoader;
         this.schemaCachingEnabled = schemaCachingEnabled;
@@ -80,32 +81,21 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
 
     public AvroSerializer<T> withSchemaCachingEnabled(boolean schemaCachingEnabled) {
         return new AvroSerializer<>(
-            genericData,
-            typeSchemaLoader,
-            schemaCachingEnabled,
-            schemaGenerationEnabled,
-            transforms
-        );
+                genericData, typeSchemaLoader, schemaCachingEnabled, schemaGenerationEnabled, transforms);
     }
 
     public AvroSerializer<T> withSchemaGenerationEnabled(boolean schemaGenerationEnabled) {
         return new AvroSerializer<>(
-            genericData,
-            typeSchemaLoader,
-            schemaCachingEnabled,
-            schemaGenerationEnabled,
-            transforms
-        );
+                genericData, typeSchemaLoader, schemaCachingEnabled, schemaGenerationEnabled, transforms);
     }
 
     public AvroSerializer<T> withRemoveJavaProperties(boolean removeJavaProperties) {
         return new AvroSerializer<>(
-            genericData,
-            typeSchemaLoader,
-            schemaCachingEnabled,
-            schemaGenerationEnabled,
-            modifyIfNecessary(transforms, Transform.REMOVE_JAVA_PROPERTIES, removeJavaProperties)
-        );
+                genericData,
+                typeSchemaLoader,
+                schemaCachingEnabled,
+                schemaGenerationEnabled,
+                modifyIfNecessary(transforms, Transform.REMOVE_JAVA_PROPERTIES, removeJavaProperties));
     }
 
     @Override
@@ -117,8 +107,10 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
         }
     }
 
-    private SchemaBytes<Schema> serializeUnsafe(T data, SchematicPreSerializer<Schema> preSerializer) throws IOException {
-        Schema schema = schemaCachingEnabled ? schemaCache.load(data.getClass(), __ -> loadSchema(data)) : loadSchema(data);
+    private SchemaBytes<Schema> serializeUnsafe(T data, SchematicPreSerializer<Schema> preSerializer)
+            throws IOException {
+        Schema schema =
+                schemaCachingEnabled ? schemaCache.load(data.getClass(), __ -> loadSchema(data)) : loadSchema(data);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         Schema writerSchema = preSerializer.apply(schema, outputStream);
         createDatumWriter(writerSchema).write(data, EncoderFactory.get().directBinaryEncoder(outputStream, null));
@@ -127,16 +119,16 @@ public final class AvroSerializer<T> implements SchematicSerializer<T, Schema> {
 
     private Schema loadSchema(T data) {
         Supplier<Schema> supplier = schemaGenerationEnabled
-            ? () -> AvroSerialization.generateWriterSchema(data, typeSchemaLoader)
-            : () -> typeSchemaLoader.apply(data.getClass());
+                ? () -> AvroSerialization.generateWriterSchema(data, typeSchemaLoader)
+                : () -> typeSchemaLoader.apply(data.getClass());
         Schema schema = AvroSchemas.getOrSupply(data, supplier);
         return transforms.isEmpty() ? schema : transformSchema(schema);
     }
 
     private Schema transformSchema(Schema schema) {
         return schemaCachingEnabled // Avoid redundant caching
-            ? transformUncachedSchema(schema)
-            : transformedSchemas.load(schema, this::transformUncachedSchema);
+                ? transformUncachedSchema(schema)
+                : transformedSchemas.load(schema, this::transformUncachedSchema);
     }
 
     private Schema transformUncachedSchema(Schema schema) {

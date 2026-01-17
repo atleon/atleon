@@ -41,7 +41,7 @@ class ActivePartitionTest {
         activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
 
         Optional<KafkaReceiverRecord<String, String>> activated =
-            activePartition.activateForProcessing(newConsumerRecord(0));
+                activePartition.activateForProcessing(newConsumerRecord(0));
 
         assertTrue(activated.isPresent());
         assertTrue(acknowledgedOffsets.isEmpty());
@@ -60,7 +60,7 @@ class ActivePartitionTest {
         Long deactivatedRecordCount = activePartition.deactivateForcefully().block();
 
         Optional<KafkaReceiverRecord<String, String>> activated =
-            activePartition.activateForProcessing(newConsumerRecord(0));
+                activePartition.activateForProcessing(newConsumerRecord(0));
 
         assertEquals(0L, deactivatedRecordCount);
         assertFalse(activated.isPresent());
@@ -82,7 +82,9 @@ class ActivePartitionTest {
 
         assertEquals(1, acknowledgedOffsets.size());
         assertEquals(TOPIC_PARTITION, acknowledgedOffsets.get(0).topicPartition());
-        assertEquals(consumerRecord.offset() + 1, acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
+        assertEquals(
+                consumerRecord.offset() + 1,
+                acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
         assertEquals(Collections.singletonList(1L), deactivatedRecordCounts);
     }
 
@@ -96,11 +98,11 @@ class ActivePartitionTest {
         activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
 
         KafkaReceiverRecord<String, String> receiverRecord1 =
-            activePartition.activateForProcessing(newConsumerRecord(0)).get();
+                activePartition.activateForProcessing(newConsumerRecord(0)).get();
         KafkaReceiverRecord<String, String> receiverRecord2 =
-            activePartition.activateForProcessing(newConsumerRecord(1)).get();
+                activePartition.activateForProcessing(newConsumerRecord(1)).get();
         KafkaReceiverRecord<String, String> receiverRecord3 =
-            activePartition.activateForProcessing(newConsumerRecord(2)).get();
+                activePartition.activateForProcessing(newConsumerRecord(2)).get();
 
         receiverRecord3.acknowledge();
         receiverRecord1.acknowledge();
@@ -111,14 +113,14 @@ class ActivePartitionTest {
         assertEquals(TOPIC_PARTITION, acknowledgedOffsets.get(1).topicPartition());
         assertEquals(TOPIC_PARTITION, acknowledgedOffsets.get(2).topicPartition());
         assertEquals(
-            receiverRecord1.consumerRecord().offset() + 1,
-            acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
+                receiverRecord1.consumerRecord().offset() + 1,
+                acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
         assertEquals(
-            receiverRecord2.consumerRecord().offset() + 1,
-            acknowledgedOffsets.get(1).nextOffsetAndMetadata().offset());
+                receiverRecord2.consumerRecord().offset() + 1,
+                acknowledgedOffsets.get(1).nextOffsetAndMetadata().offset());
         assertEquals(
-            receiverRecord3.consumerRecord().offset() + 1,
-            acknowledgedOffsets.get(2).nextOffsetAndMetadata().offset());
+                receiverRecord3.consumerRecord().offset() + 1,
+                acknowledgedOffsets.get(2).nextOffsetAndMetadata().offset());
         assertEquals(Arrays.asList(1L, 2L), deactivatedRecordCounts);
     }
 
@@ -131,16 +133,18 @@ class ActivePartitionTest {
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
         ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
-        activePartition.acknowledgedOffsets()
-            .subscribe(acknowledgedOffsets::add, acknowledgedOffsetsError::set);
-        activePartition.deactivatedRecordCounts().subscribe(
-            deactivatedRecordCounts::add,
-            deactivatedRecordCountsError::set,
-            () -> deactivatedRecordCountsCompleted.set(true));
+        activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add, acknowledgedOffsetsError::set);
+        activePartition
+                .deactivatedRecordCounts()
+                .subscribe(
+                        deactivatedRecordCounts::add,
+                        deactivatedRecordCountsError::set,
+                        () -> deactivatedRecordCountsCompleted.set(true));
 
         ConsumerRecord<String, String> consumerRecord = newConsumerRecord(0);
-        activePartition.activateForProcessing(consumerRecord)
-            .ifPresent(it -> it.nacknowledge(new IllegalStateException("Boom")));
+        activePartition
+                .activateForProcessing(consumerRecord)
+                .ifPresent(it -> it.nacknowledge(new IllegalStateException("Boom")));
 
         assertTrue(acknowledgedOffsets.isEmpty());
         assertInstanceOf(IllegalStateException.class, acknowledgedOffsetsError.get());
@@ -158,21 +162,22 @@ class ActivePartitionTest {
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
         ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
-        activePartition.acknowledgedOffsets()
-            .subscribe(acknowledgedOffsets::add, acknowledgedOffsetsError::set);
-        activePartition.deactivatedRecordCounts().subscribe(
-            deactivatedRecordCounts::add,
-            deactivatedRecordCountsError::set,
-            () -> deactivatedRecordCountsCompleted.set(true));
+        activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add, acknowledgedOffsetsError::set);
+        activePartition
+                .deactivatedRecordCounts()
+                .subscribe(
+                        deactivatedRecordCounts::add,
+                        deactivatedRecordCountsError::set,
+                        () -> deactivatedRecordCountsCompleted.set(true));
 
         KafkaReceiverRecord<String, String> receiverRecord1 =
-            activePartition.activateForProcessing(newConsumerRecord(0)).get();
+                activePartition.activateForProcessing(newConsumerRecord(0)).get();
         KafkaReceiverRecord<String, String> receiverRecord2 =
-            activePartition.activateForProcessing(newConsumerRecord(1)).get();
+                activePartition.activateForProcessing(newConsumerRecord(1)).get();
         KafkaReceiverRecord<String, String> receiverRecord3 =
-            activePartition.activateForProcessing(newConsumerRecord(2)).get();
+                activePartition.activateForProcessing(newConsumerRecord(2)).get();
         KafkaReceiverRecord<String, String> receiverRecord4 =
-            activePartition.activateForProcessing(newConsumerRecord(2)).get();
+                activePartition.activateForProcessing(newConsumerRecord(2)).get();
 
         receiverRecord3.acknowledge();
         receiverRecord4.nacknowledge(new UnsupportedOperationException("Boom"));
@@ -181,8 +186,8 @@ class ActivePartitionTest {
 
         assertEquals(1, acknowledgedOffsets.size());
         assertEquals(
-            receiverRecord1.consumerRecord().offset() + 1,
-            acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
+                receiverRecord1.consumerRecord().offset() + 1,
+                acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
         assertInstanceOf(IllegalStateException.class, acknowledgedOffsetsError.get());
         assertEquals(Arrays.asList(1L, 3L), deactivatedRecordCounts);
         assertNull(deactivatedRecordCountsError.get());
@@ -199,22 +204,27 @@ class ActivePartitionTest {
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
         ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
-        activePartition.acknowledgedOffsets().subscribe(
-            acknowledgedOffsets::add,
-            acknowledgedOffsetsError::set,
-            () -> acknowledgedOffsetsCompleted.set(true));
-        activePartition.deactivatedRecordCounts().subscribe(
-            deactivatedRecordCounts::add,
-            deactivatedRecordCountsError::set,
-            () -> deactivatedRecordCountsCompleted.set(true));
+        activePartition
+                .acknowledgedOffsets()
+                .subscribe(
+                        acknowledgedOffsets::add,
+                        acknowledgedOffsetsError::set,
+                        () -> acknowledgedOffsetsCompleted.set(true));
+        activePartition
+                .deactivatedRecordCounts()
+                .subscribe(
+                        deactivatedRecordCounts::add,
+                        deactivatedRecordCountsError::set,
+                        () -> deactivatedRecordCountsCompleted.set(true));
 
         KafkaReceiverRecord<String, String> receiverRecord =
-            activePartition.activateForProcessing(newConsumerRecord(0)).get();
+                activePartition.activateForProcessing(newConsumerRecord(0)).get();
 
         receiverRecord.acknowledge();
 
-        AcknowledgedOffset lastAcknowledgedOffset =
-            activePartition.deactivateLatest(Duration.ofDays(1), Schedulers.parallel(), Mono.never()).block();
+        AcknowledgedOffset lastAcknowledgedOffset = activePartition
+                .deactivateLatest(Duration.ofDays(1), Schedulers.parallel(), Mono.never())
+                .block();
 
         assertNotNull(lastAcknowledgedOffset);
         assertEquals(Collections.singletonList(lastAcknowledgedOffset), acknowledgedOffsets);
@@ -235,23 +245,28 @@ class ActivePartitionTest {
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
         ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
-        activePartition.acknowledgedOffsets().subscribe(
-            acknowledgedOffsets::add,
-            acknowledgedOffsetsError::set,
-            () -> acknowledgedOffsetsCompleted.set(true));
-        activePartition.deactivatedRecordCounts().subscribe(
-            deactivatedRecordCounts::add,
-            deactivatedRecordCountsError::set,
-            () -> deactivatedRecordCountsCompleted.set(true));
+        activePartition
+                .acknowledgedOffsets()
+                .subscribe(
+                        acknowledgedOffsets::add,
+                        acknowledgedOffsetsError::set,
+                        () -> acknowledgedOffsetsCompleted.set(true));
+        activePartition
+                .deactivatedRecordCounts()
+                .subscribe(
+                        deactivatedRecordCounts::add,
+                        deactivatedRecordCountsError::set,
+                        () -> deactivatedRecordCountsCompleted.set(true));
 
         KafkaReceiverRecord<String, String> receiverRecord1 =
-            activePartition.activateForProcessing(newConsumerRecord(0)).get();
+                activePartition.activateForProcessing(newConsumerRecord(0)).get();
         KafkaReceiverRecord<String, String> receiverRecord2 =
-            activePartition.activateForProcessing(newConsumerRecord(0)).get();
+                activePartition.activateForProcessing(newConsumerRecord(0)).get();
 
         AtomicReference<AcknowledgedOffset> lastAcknowledgedOffset = new AtomicReference<>();
-        activePartition.deactivateLatest(Duration.ofDays(1), Schedulers.parallel(), Mono.never())
-            .subscribe(lastAcknowledgedOffset::set);
+        activePartition
+                .deactivateLatest(Duration.ofDays(1), Schedulers.parallel(), Mono.never())
+                .subscribe(lastAcknowledgedOffset::set);
 
         assertTrue(acknowledgedOffsets.isEmpty());
         assertTrue(deactivatedRecordCounts.isEmpty());
@@ -262,11 +277,11 @@ class ActivePartitionTest {
         assertNotNull(lastAcknowledgedOffset.get());
         assertEquals(2, acknowledgedOffsets.size());
         assertEquals(
-            receiverRecord1.consumerRecord().offset() + 1,
-            acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
+                receiverRecord1.consumerRecord().offset() + 1,
+                acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
         assertEquals(
-            receiverRecord2.consumerRecord().offset() + 1,
-            acknowledgedOffsets.get(1).nextOffsetAndMetadata().offset());
+                receiverRecord2.consumerRecord().offset() + 1,
+                acknowledgedOffsets.get(1).nextOffsetAndMetadata().offset());
         assertEquals(lastAcknowledgedOffset.get(), acknowledgedOffsets.get(1));
         assertNull(acknowledgedOffsetsError.get());
         assertTrue(acknowledgedOffsetsCompleted.get());
@@ -285,24 +300,29 @@ class ActivePartitionTest {
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
         ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
-        activePartition.acknowledgedOffsets().subscribe(
-            acknowledgedOffsets::add,
-            acknowledgedOffsetsError::set,
-            () -> acknowledgedOffsetsCompleted.set(true));
-        activePartition.deactivatedRecordCounts().subscribe(
-            deactivatedRecordCounts::add,
-            deactivatedRecordCountsError::set,
-            () -> deactivatedRecordCountsCompleted.set(true));
+        activePartition
+                .acknowledgedOffsets()
+                .subscribe(
+                        acknowledgedOffsets::add,
+                        acknowledgedOffsetsError::set,
+                        () -> acknowledgedOffsetsCompleted.set(true));
+        activePartition
+                .deactivatedRecordCounts()
+                .subscribe(
+                        deactivatedRecordCounts::add,
+                        deactivatedRecordCountsError::set,
+                        () -> deactivatedRecordCountsCompleted.set(true));
 
         KafkaReceiverRecord<String, String> receiverRecord1 =
-            activePartition.activateForProcessing(newConsumerRecord(0)).get();
+                activePartition.activateForProcessing(newConsumerRecord(0)).get();
         KafkaReceiverRecord<String, String> receiverRecord2 =
-            activePartition.activateForProcessing(newConsumerRecord(1)).get();
+                activePartition.activateForProcessing(newConsumerRecord(1)).get();
 
         Sinks.Empty<Void> disposal = Sinks.one();
         AtomicReference<AcknowledgedOffset> lastAcknowledgedOffset = new AtomicReference<>();
-        activePartition.deactivateLatest(Duration.ofDays(1), Schedulers.parallel(), disposal.asMono())
-            .subscribe(lastAcknowledgedOffset::set);
+        activePartition
+                .deactivateLatest(Duration.ofDays(1), Schedulers.parallel(), disposal.asMono())
+                .subscribe(lastAcknowledgedOffset::set);
         receiverRecord1.acknowledge();
         disposal.tryEmitEmpty();
         receiverRecord2.acknowledge();
@@ -326,28 +346,33 @@ class ActivePartitionTest {
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
         ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
-        activePartition.acknowledgedOffsets().subscribe(
-            acknowledgedOffsets::add,
-            acknowledgedOffsetsError::set,
-            () -> acknowledgedOffsetsCompleted.set(true));
-        activePartition.deactivatedRecordCounts().subscribe(
-            deactivatedRecordCounts::add,
-            deactivatedRecordCountsError::set,
-            () -> deactivatedRecordCountsCompleted.set(true));
+        activePartition
+                .acknowledgedOffsets()
+                .subscribe(
+                        acknowledgedOffsets::add,
+                        acknowledgedOffsetsError::set,
+                        () -> acknowledgedOffsetsCompleted.set(true));
+        activePartition
+                .deactivatedRecordCounts()
+                .subscribe(
+                        deactivatedRecordCounts::add,
+                        deactivatedRecordCountsError::set,
+                        () -> deactivatedRecordCountsCompleted.set(true));
 
         KafkaReceiverRecord<String, String> receiverRecord1 =
-            activePartition.activateForProcessing(newConsumerRecord(0)).get();
+                activePartition.activateForProcessing(newConsumerRecord(0)).get();
         KafkaReceiverRecord<String, String> receiverRecord2 =
-            activePartition.activateForProcessing(newConsumerRecord(1)).get();
+                activePartition.activateForProcessing(newConsumerRecord(1)).get();
         KafkaReceiverRecord<String, String> receiverRecord3 =
-            activePartition.activateForProcessing(newConsumerRecord(2)).get();
+                activePartition.activateForProcessing(newConsumerRecord(2)).get();
 
         receiverRecord3.acknowledge();
         receiverRecord1.acknowledge();
 
         AtomicReference<AcknowledgedOffset> lastAcknowledgedOffset = new AtomicReference<>();
-        activePartition.deactivateLatest(Duration.ZERO, Schedulers.parallel(), Mono.never())
-            .subscribe(lastAcknowledgedOffset::set);
+        activePartition
+                .deactivateLatest(Duration.ZERO, Schedulers.parallel(), Mono.never())
+                .subscribe(lastAcknowledgedOffset::set);
         receiverRecord2.acknowledge();
 
         assertNotNull(lastAcknowledgedOffset.get());
@@ -369,16 +394,22 @@ class ActivePartitionTest {
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
         ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
-        activePartition.acknowledgedOffsets().subscribe(
-            acknowledgedOffsets::add,
-            acknowledgedOffsetsError::set,
-            () -> acknowledgedOffsetsCompleted.set(true));
-        activePartition.deactivatedRecordCounts().subscribe(
-            deactivatedRecordCounts::add,
-            deactivatedRecordCountsError::set,
-            () -> deactivatedRecordCountsCompleted.set(true));
+        activePartition
+                .acknowledgedOffsets()
+                .subscribe(
+                        acknowledgedOffsets::add,
+                        acknowledgedOffsetsError::set,
+                        () -> acknowledgedOffsetsCompleted.set(true));
+        activePartition
+                .deactivatedRecordCounts()
+                .subscribe(
+                        deactivatedRecordCounts::add,
+                        deactivatedRecordCountsError::set,
+                        () -> deactivatedRecordCountsCompleted.set(true));
 
-        activePartition.deactivateTimeout(Duration.ofSeconds(-1), Schedulers.immediate()).block();
+        activePartition
+                .deactivateTimeout(Duration.ofSeconds(-1), Schedulers.immediate())
+                .block();
 
         assertTrue(acknowledgedOffsets.isEmpty());
         assertNull(acknowledgedOffsetsError.get());
@@ -399,28 +430,30 @@ class ActivePartitionTest {
         CompletableFuture<Void> deactivatedRecordCountsCompletion = new CompletableFuture<>();
 
         ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
-        activePartition.acknowledgedOffsets().publishOn(Schedulers.boundedElastic()).subscribe(
-            acknowledgedOffsets::add,
-            acknowledgedOffsetsError::set,
-            () -> {
-                try {
-                    acknowledgedOffsetsCompletionLatch.await();
-                } catch (InterruptedException e) {
-                    fail("Interrupted while awaiting acknowledged offsets completion");
-                }
-                acknowledgedOffsetsCompletion.complete(null);
-            });
-        activePartition.deactivatedRecordCounts().subscribe(
-            deactivatedRecordCounts::add,
-            deactivatedRecordCountsError::set,
-            () -> deactivatedRecordCountsCompletion.complete(null));
+        activePartition
+                .acknowledgedOffsets()
+                .publishOn(Schedulers.boundedElastic())
+                .subscribe(acknowledgedOffsets::add, acknowledgedOffsetsError::set, () -> {
+                    try {
+                        acknowledgedOffsetsCompletionLatch.await();
+                    } catch (InterruptedException e) {
+                        fail("Interrupted while awaiting acknowledged offsets completion");
+                    }
+                    acknowledgedOffsetsCompletion.complete(null);
+                });
+        activePartition
+                .deactivatedRecordCounts()
+                .subscribe(
+                        deactivatedRecordCounts::add,
+                        deactivatedRecordCountsError::set,
+                        () -> deactivatedRecordCountsCompletion.complete(null));
 
         KafkaReceiverRecord<String, String> receiverRecord1 =
-            activePartition.activateForProcessing(newConsumerRecord(0)).get();
+                activePartition.activateForProcessing(newConsumerRecord(0)).get();
         KafkaReceiverRecord<String, String> receiverRecord2 =
-            activePartition.activateForProcessing(newConsumerRecord(1)).get();
+                activePartition.activateForProcessing(newConsumerRecord(1)).get();
         KafkaReceiverRecord<String, String> receiverRecord3 =
-            activePartition.activateForProcessing(newConsumerRecord(2)).get();
+                activePartition.activateForProcessing(newConsumerRecord(2)).get();
 
         receiverRecord3.acknowledge();
         receiverRecord1.acknowledge();
@@ -435,8 +468,8 @@ class ActivePartitionTest {
         assertEquals(TOPIC_PARTITION, activePartition.topicPartition());
         assertEquals(1, acknowledgedOffsets.size());
         assertEquals(
-            receiverRecord1.consumerRecord().offset() + 1,
-            acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
+                receiverRecord1.consumerRecord().offset() + 1,
+                acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
         assertNull(acknowledgedOffsetsError.get());
         assertEquals(Arrays.asList(1L, 2L), deactivatedRecordCounts);
         assertNull(deactivatedRecordCountsError.get());

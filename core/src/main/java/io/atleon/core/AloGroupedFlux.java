@@ -29,13 +29,13 @@ public class AloGroupedFlux<K, T> extends AloFlux<T> {
         return new AloGroupedFlux<>(groupedFlux, groupedFlux.key());
     }
 
-    static <K, T, R> AloGroupedFlux<K, R>
-    create(GroupedFlux<? extends K, Alo<T>> groupedFlux, BiConsumer<Alo<T>, SynchronousSink<Alo<R>>> mappingHandler) {
+    static <K, T, R> AloGroupedFlux<K, R> create(
+            GroupedFlux<? extends K, Alo<T>> groupedFlux, BiConsumer<Alo<T>, SynchronousSink<Alo<R>>> mappingHandler) {
         return new AloGroupedFlux<>(groupedFlux.handle(mappingHandler), groupedFlux.key());
     }
 
-    public <V> AloGroupedFlux<K, V>
-    transformGrouped(Function<? super AloGroupedFlux<K, T>, ? extends Publisher<Alo<V>>> transformer) {
+    public <V> AloGroupedFlux<K, V> transformGrouped(
+            Function<? super AloGroupedFlux<K, T>, ? extends Publisher<Alo<V>>> transformer) {
         return new AloGroupedFlux<>(AloFlux.toFlux(transformer.apply(this)), key);
     }
 

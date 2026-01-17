@@ -19,8 +19,9 @@ public class EmbeddedKafkaInitializer implements EnvironmentPostProcessor {
         Set<String> activeProfiles = Stream.of(environment.getActiveProfiles()).collect(Collectors.toSet());
         if (activeProfiles.contains("kafka") && !activeProfiles.contains("integrationTest")) {
             String bootstrapServers = EmbeddedKafka.startAndGetBootstrapServersConnect();
-            environment.getPropertySources()
-                .addFirst(new MapPropertySource("embedded-kafka", createProperties(bootstrapServers)));
+            environment
+                    .getPropertySources()
+                    .addFirst(new MapPropertySource("embedded-kafka", createProperties(bootstrapServers)));
         }
     }
 

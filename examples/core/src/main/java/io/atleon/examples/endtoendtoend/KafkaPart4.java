@@ -27,58 +27,59 @@ public class KafkaPart4 {
     private static final String TOPIC_2 = KafkaPart4.class.getSimpleName() + "-2";
 
     public static void main(String[] args) throws Exception {
-        //Step 1) Create Kafka Config for Producer that backs Sender
+        // Step 1) Create Kafka Config for Producer that backs Sender
         KafkaConfigSource kafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
-            .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
-            .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaPart4.class.getSimpleName())
-            .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-            .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+                .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
+                .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaPart4.class.getSimpleName())
+                .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
+                .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-        //Step 2) Create Kafka Config for Consumer that backs Receiver. Note that we use an Auto
+        // Step 2) Create Kafka Config for Consumer that backs Receiver. Note that we use an Auto
         // Offset Reset of 'earliest' to ensure we receive Records produced before subscribing with
         // our new consumer group
         KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
-            .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
-            .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaPart4.class.getSimpleName())
-            .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaPart4.class.getSimpleName())
-            .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
-            .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
-            .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+                .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
+                .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaPart4.class.getSimpleName())
+                .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaPart4.class.getSimpleName())
+                .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+                .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
+                .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
 
-        //Step 3) Create a Sender which we'll reuse to produce Records
+        // Step 3) Create a Sender which we'll reuse to produce Records
         AloKafkaSender<String, String> sender = AloKafkaSender.create(kafkaSenderConfig);
 
-        //Step 4) Create a Receiver which we'll reuse to subscribe to Records
+        // Step 4) Create a Receiver which we'll reuse to subscribe to Records
         AloKafkaReceiver<Object, String> receiver = AloKafkaReceiver.create(kafkaReceiverConfig);
 
-        //Step 5) Send some Record values to a hardcoded topic, using values as Record keys
+        // Step 5) Send some Record values to a hardcoded topic, using values as Record keys
         sender.sendValues(Flux.just("Test"), TOPIC_1, Function.identity())
-            .collectList()
-            .doOnNext(senderResults -> System.out.println("senderResults: " + senderResults))
-            .block();
+                .collectList()
+                .doOnNext(senderResults -> System.out.println("senderResults: " + senderResults))
+                .block();
 
-        //Step 6) Apply consumption of the Kafka topic we've produced data to as a stream process.
+        // Step 6) Apply consumption of the Kafka topic we've produced data to as a stream process.
         // The "process" in this stream upper-cases the values we sent previously, producing the
         // result to another topic. This portion also adheres to the responsibilities obliged by
         // the consumption of Alo data (by acknowledging). Note that we again need to explicitly
         // limit the number of results we expect ('.take(1)'), or else this Flow would never
         // complete.
         receiver.receiveAloValues(TOPIC_1)
-            .map(String::toUpperCase)
-            .transform(sender.sendAloValues(TOPIC_2, Function.identity()))
-            .consumeAloAndGet(Alo::acknowledge)
-            .take(1)
-            .collectList()
-            .doOnNext(processedSenderResults -> System.out.println("processedSenderResults: " + processedSenderResults))
-            .block();
+                .map(String::toUpperCase)
+                .transform(sender.sendAloValues(TOPIC_2, Function.identity()))
+                .consumeAloAndGet(Alo::acknowledge)
+                .take(1)
+                .collectList()
+                .doOnNext(processedSenderResults ->
+                        System.out.println("processedSenderResults: " + processedSenderResults))
+                .block();
 
-        //Step 7) Consume the now-processed results
+        // Step 7) Consume the now-processed results
         receiver.receiveAloValues(TOPIC_2)
-            .consumeAloAndGet(Alo::acknowledge)
-            .take(1)
-            .collectList()
-            .doOnNext(downstreamResults -> System.out.println("downstreamResults: " + downstreamResults))
-            .block();
+                .consumeAloAndGet(Alo::acknowledge)
+                .take(1)
+                .collectList()
+                .doOnNext(downstreamResults -> System.out.println("downstreamResults: " + downstreamResults))
+                .block();
 
         System.exit(0);
     }

@@ -40,7 +40,11 @@ public class AloRabbitMQReceiver<T> {
      * {@link #NACKNOWLEDGER_TYPE_DISCARD}
      */
     @Deprecated
-    public enum NackStrategy {EMIT, REQUEUE, DISCARD}
+    public enum NackStrategy {
+        EMIT,
+        REQUEUE,
+        DISCARD
+    }
 
     /**
      * Prefix used on all AloRabbitMQReceiver-specific configurations
@@ -121,8 +125,7 @@ public class AloRabbitMQReceiver<T> {
      * @return A Publisher of Alo items referencing deserialized RabbitMQ message bodies
      */
     public AloFlux<T> receiveAloBodies(String queue) {
-        return receiveAloMessages(queue)
-            .mapNotNull(ReceivedRabbitMQMessage::body);
+        return receiveAloMessages(queue).mapNotNull(ReceivedRabbitMQMessage::body);
     }
 
     /**
@@ -133,10 +136,11 @@ public class AloRabbitMQReceiver<T> {
      * @return A Publisher of Alo items referencing ReceivedRabbitMQMessages
      */
     public AloFlux<ReceivedRabbitMQMessage<T>> receiveAloMessages(String queue) {
-        return configSource.create()
-            .map(ReceiveResources<T>::new)
-            .flatMapMany(resources -> resources.receive(queue))
-            .as(AloFlux::wrap);
+        return configSource
+                .create()
+                .map(ReceiveResources<T>::new)
+                .flatMapMany(resources -> resources.receive(queue))
+                .as(AloFlux::wrap);
     }
 
     private static final class ReceiveResources<T> {
@@ -157,41 +161,39 @@ public class AloRabbitMQReceiver<T> {
             AloFactory<ReceivedRabbitMQMessage<T>> aloFactory = loadAloFactory(queue);
             ErrorEmitter<Alo<ReceivedRabbitMQMessage<T>>> errorEmitter = newErrorEmitter();
             return Flux.using(this::newReceiver, it -> it.consumeManualAck(queue, newConsumeOptions()), Receiver::close)
-                .map(delivery -> deserialize(delivery, aloFactory, errorEmitter::safelyEmit))
-                .transform(errorEmitter::applyTo)
-                .transform(aloMessages -> applySignalListenerFactories(aloMessages, queue));
+                    .map(delivery -> deserialize(delivery, aloFactory, errorEmitter::safelyEmit))
+                    .transform(errorEmitter::applyTo)
+                    .transform(aloMessages -> applySignalListenerFactories(aloMessages, queue));
         }
 
         private AloFactory<ReceivedRabbitMQMessage<T>> loadAloFactory(String queue) {
-            Map<String, Object> factoryConfig = config.modifyAndGetProperties(it ->
-                it.put(AloReceivedRabbitMQMessageDecorator.QUEUE_CONFIG, queue)
-            );
+            Map<String, Object> factoryConfig = config.modifyAndGetProperties(
+                    it -> it.put(AloReceivedRabbitMQMessageDecorator.QUEUE_CONFIG, queue));
             return AloFactoryConfig.loadDecorated(factoryConfig, AloReceivedRabbitMQMessageDecorator.class);
         }
 
         private ErrorEmitter<Alo<ReceivedRabbitMQMessage<T>>> newErrorEmitter() {
-            Duration timeout = config.loadDuration(ERROR_EMISSION_TIMEOUT_CONFIG).orElse(ErrorEmitter.DEFAULT_TIMEOUT);
+            Duration timeout =
+                    config.loadDuration(ERROR_EMISSION_TIMEOUT_CONFIG).orElse(ErrorEmitter.DEFAULT_TIMEOUT);
             return ErrorEmitter.create(timeout);
         }
 
         private Receiver newReceiver() {
-            ReceiverOptions receiverOptions = new ReceiverOptions()
-                .connectionFactory(config.buildConnectionFactory());
+            ReceiverOptions receiverOptions = new ReceiverOptions().connectionFactory(config.buildConnectionFactory());
             return new Receiver(receiverOptions);
         }
 
         private ConsumeOptions newConsumeOptions() {
-            return new ConsumeOptions()
-                .qos(config.loadInt(QOS_CONFIG).orElse(Defaults.PREFETCH));
+            return new ConsumeOptions().qos(config.loadInt(QOS_CONFIG).orElse(Defaults.PREFETCH));
         }
 
-        private Flux<Alo<ReceivedRabbitMQMessage<T>>>
-        applySignalListenerFactories(Flux<Alo<ReceivedRabbitMQMessage<T>>> aloMessages, String queue) {
-            Map<String, Object> factoryConfig = config.modifyAndGetProperties(properties ->
-                properties.put(AloReceivedRabbitMQMessageSignalListenerFactory.QUEUE_CONFIG, queue)
-            );
+        private Flux<Alo<ReceivedRabbitMQMessage<T>>> applySignalListenerFactories(
+                Flux<Alo<ReceivedRabbitMQMessage<T>>> aloMessages, String queue) {
+            Map<String, Object> factoryConfig = config.modifyAndGetProperties(
+                    properties -> properties.put(AloReceivedRabbitMQMessageSignalListenerFactory.QUEUE_CONFIG, queue));
             List<AloSignalListenerFactory<ReceivedRabbitMQMessage<T>, ?>> factories =
-                AloSignalListenerFactoryConfig.loadList(factoryConfig, AloReceivedRabbitMQMessageSignalListenerFactory.class);
+                    AloSignalListenerFactoryConfig.loadList(
+                            factoryConfig, AloReceivedRabbitMQMessageSignalListenerFactory.class);
             for (AloSignalListenerFactory<ReceivedRabbitMQMessage<T>, ?> factory : factories) {
                 aloMessages = aloMessages.tap(factory);
             }
@@ -199,48 +201,51 @@ public class AloRabbitMQReceiver<T> {
         }
 
         private Alo<ReceivedRabbitMQMessage<T>> deserialize(
-            AcknowledgableDelivery delivery,
-            AloFactory<ReceivedRabbitMQMessage<T>> aloFactory,
-            Consumer<Throwable> errorEmitter
-        ) {
+                AcknowledgableDelivery delivery,
+                AloFactory<ReceivedRabbitMQMessage<T>> aloFactory,
+                Consumer<Throwable> errorEmitter) {
             SerializedBody body = SerializedBody.ofBytes(delivery.getBody());
             ReceivedRabbitMQMessage<T> message = ReceivedRabbitMQMessage.create(
-                delivery.getEnvelope().getExchange(),
-                delivery.getEnvelope().getRoutingKey(),
-                delivery.getProperties(),
-                bodyDeserializer.deserialize(body),
-                delivery.getEnvelope().isRedeliver()
-            );
+                    delivery.getEnvelope().getExchange(),
+                    delivery.getEnvelope().getRoutingKey(),
+                    delivery.getProperties(),
+                    bodyDeserializer.deserialize(body),
+                    delivery.getEnvelope().isRedeliver());
 
             Acknowledgement acknowledgement = Acknowledgement.create(
-                () -> ack(delivery, errorEmitter),
-                nacknowledgerFactory.create(message, requeue -> nack(delivery, requeue, errorEmitter), errorEmitter)
-            );
+                    () -> ack(delivery, errorEmitter),
+                    nacknowledgerFactory.create(
+                            message, requeue -> nack(delivery, requeue, errorEmitter), errorEmitter));
 
             return aloFactory.create(message, acknowledgement::positive, acknowledgement::negative);
         }
 
         private static <T> NacknowledgerFactory<T> createNacknowledgerFactory(RabbitMQConfig config) {
             Optional<NacknowledgerFactory<T>> nacknowledgerFactory =
-                loadNacknowledgerFactory(config, NACKNOWLEDGER_TYPE_CONFIG, NacknowledgerFactory.class);
+                    loadNacknowledgerFactory(config, NACKNOWLEDGER_TYPE_CONFIG, NacknowledgerFactory.class);
             if (nacknowledgerFactory.isPresent()) {
                 return nacknowledgerFactory.get();
             }
 
             Optional<NackStrategy> deprecatedNackStrategy = config.loadEnum(NACK_STRATEGY_CONFIG, NackStrategy.class);
             if (deprecatedNackStrategy.isPresent()) {
-                LOGGER.warn("The configuration " + NACK_STRATEGY_CONFIG + " is deprecated. Use " + NACKNOWLEDGER_TYPE_CONFIG);
-                return deprecatedNackStrategy.map(Enum::name)
-                    .<NacknowledgerFactory<T>>flatMap(ReceiveResources::newPredefinedNacknowledgerFactory)
-                    .orElseThrow(() -> new IllegalStateException("Failed to convert NackStrategy to NacknowledgerFactory"));
+                LOGGER.warn("The configuration " + NACK_STRATEGY_CONFIG + " is deprecated. Use "
+                        + NACKNOWLEDGER_TYPE_CONFIG);
+                return deprecatedNackStrategy
+                        .map(Enum::name)
+                        .<NacknowledgerFactory<T>>flatMap(ReceiveResources::newPredefinedNacknowledgerFactory)
+                        .orElseThrow(() ->
+                                new IllegalStateException("Failed to convert NackStrategy to NacknowledgerFactory"));
             }
 
             return new NacknowledgerFactory.Emit<>();
         }
 
-        private static <T, N extends NacknowledgerFactory<T>> Optional<NacknowledgerFactory<T>>
-        loadNacknowledgerFactory(RabbitMQConfig config, String key, Class<N> type) {
-            return config.loadConfiguredWithPredefinedTypes(key, type, ReceiveResources::newPredefinedNacknowledgerFactory);
+        private static <T, N extends NacknowledgerFactory<T>>
+                Optional<NacknowledgerFactory<T>> loadNacknowledgerFactory(
+                        RabbitMQConfig config, String key, Class<N> type) {
+            return config.loadConfiguredWithPredefinedTypes(
+                    key, type, ReceiveResources::newPredefinedNacknowledgerFactory);
         }
 
         private static <T> Optional<NacknowledgerFactory<T>> newPredefinedNacknowledgerFactory(String typeName) {
@@ -264,7 +269,8 @@ public class AloRabbitMQReceiver<T> {
             }
         }
 
-        private static void nack(AcknowledgableDelivery delivery, boolean requeue, Consumer<? super Throwable> errorEmitter) {
+        private static void nack(
+                AcknowledgableDelivery delivery, boolean requeue, Consumer<? super Throwable> errorEmitter) {
             try {
                 delivery.nack(false, requeue);
             } catch (Throwable fatalError) {

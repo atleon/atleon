@@ -32,16 +32,17 @@ public class SnsGenerationStream extends SpringAloStream {
         AloSnsSender<Long> sender = buildSender();
 
         return Flux.interval(Duration.ofMillis(100))
-            .transform(sender.sendBodies(ComposedSnsMessage::fromBody, topicArn))
-            .doFinally(sender::close)
-            .subscribe();
+                .transform(sender.sendBodies(ComposedSnsMessage::fromBody, topicArn))
+                .doFinally(sender::close)
+                .subscribe();
     }
 
     private AloSnsSender<Long> buildSender() {
-        return configSource.rename(name())
-            .with(AloSnsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName())
-            .with(AloSnsSender.BATCH_SIZE_CONFIG, 10)
-            .with(AloSnsSender.BATCH_DURATION_CONFIG, "PT0.1S")
-            .as(AloSnsSender::create);
+        return configSource
+                .rename(name())
+                .with(AloSnsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName())
+                .with(AloSnsSender.BATCH_SIZE_CONFIG, 10)
+                .with(AloSnsSender.BATCH_DURATION_CONFIG, "PT0.1S")
+                .as(AloSnsSender::create);
     }
 }

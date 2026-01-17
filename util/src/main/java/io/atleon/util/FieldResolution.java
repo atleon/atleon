@@ -10,9 +10,7 @@ import java.util.stream.Collectors;
 
 public final class FieldResolution {
 
-    private FieldResolution() {
-
-    }
+    private FieldResolution() {}
 
     public static Map<String, Field> getAllFieldsByName(Class<?> clazz) {
         return getAllFields(clazz).stream().collect(Collectors.toMap(Field::getName, Function.identity()));

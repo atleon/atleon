@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 public final class SerialQueue<T> {
 
     private static final AtomicIntegerFieldUpdater<SerialQueue> DRAINS_IN_PROGRESS =
-        AtomicIntegerFieldUpdater.newUpdater(SerialQueue.class, "drainsInProgress");
+            AtomicIntegerFieldUpdater.newUpdater(SerialQueue.class, "drainsInProgress");
 
     private volatile int drainsInProgress;
 

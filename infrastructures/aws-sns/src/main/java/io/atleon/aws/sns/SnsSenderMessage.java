@@ -13,21 +13,20 @@ import java.util.UUID;
  * @param <C> The type of correlated metadata propagated from this Message to its send Result
  */
 public final class SnsSenderMessage<C> extends AbstractSnsMessage<String> {
-    
+
     private final String requestId;
 
     private final C correlationMetadata;
 
     private SnsSenderMessage(
-        String requestId,
-        String messageDeduplicationId,
-        String messageGroupId,
-        Map<String, MessageAttributeValue> messageAttributes,
-        String messageStructure,
-        String subject,
-        String body,
-        C correlationMetadata
-    ) {
+            String requestId,
+            String messageDeduplicationId,
+            String messageGroupId,
+            Map<String, MessageAttributeValue> messageAttributes,
+            String messageStructure,
+            String subject,
+            String body,
+            C correlationMetadata) {
         super(messageDeduplicationId, messageGroupId, messageAttributes, messageStructure, subject, body);
         this.requestId = requestId;
         this.correlationMetadata = correlationMetadata;
@@ -72,15 +71,14 @@ public final class SnsSenderMessage<C> extends AbstractSnsMessage<String> {
 
         public SnsSenderMessage<C> build() {
             return new SnsSenderMessage<>(
-                requestId,
-                messageDeduplicationId,
-                messageGroupId,
-                messageAttributes,
-                messageStructure,
-                subject,
-                body,
-                correlationMetadata
-            );
+                    requestId,
+                    messageDeduplicationId,
+                    messageGroupId,
+                    messageAttributes,
+                    messageStructure,
+                    subject,
+                    body,
+                    correlationMetadata);
         }
 
         public Builder<C> messageDeduplicationId(String messageDeduplicationId) {

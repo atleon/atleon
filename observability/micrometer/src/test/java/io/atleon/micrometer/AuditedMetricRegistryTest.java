@@ -9,7 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 class AuditedMetricRegistryTest {
 
-    private final AuditedMetricRegistry<TestAuditor, Integer, Integer> registry = new AuditedMetricRegistry<>(TestAuditor::evaluate, Integer.MIN_VALUE);
+    private final AuditedMetricRegistry<TestAuditor, Integer, Integer> registry =
+            new AuditedMetricRegistry<>(TestAuditor::evaluate, Integer.MIN_VALUE);
 
     @Test
     public void auditorCanBeRegistered() {

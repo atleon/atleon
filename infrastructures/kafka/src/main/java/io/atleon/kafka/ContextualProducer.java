@@ -47,18 +47,15 @@ final class ContextualProducer<K, V> implements Producer<K, V> {
     }
 
     @Override
-    public void sendOffsetsToTransaction(
-        Map<TopicPartition, OffsetAndMetadata> offsets,
-        String consumerGroupId
-    ) throws ProducerFencedException {
+    public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId)
+            throws ProducerFencedException {
         delegate.sendOffsetsToTransaction(offsets, consumerGroupId);
     }
 
     @Override
     public void sendOffsetsToTransaction(
-        Map<TopicPartition, OffsetAndMetadata> offsets,
-        ConsumerGroupMetadata groupMetadata
-    ) throws ProducerFencedException {
+            Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata groupMetadata)
+            throws ProducerFencedException {
         delegate.sendOffsetsToTransaction(offsets, groupMetadata);
     }
 
@@ -75,21 +72,21 @@ final class ContextualProducer<K, V> implements Producer<K, V> {
     @Override
     public Future<RecordMetadata> send(ProducerRecord<K, V> record) {
         Object correlationMetadata = record instanceof SenderRecord
-            ? SenderRecord.class.cast(record).correlationMetadata()
-            : KafkaSenderRecord.class.cast(record).correlationMetadata();
+                ? SenderRecord.class.cast(record).correlationMetadata()
+                : KafkaSenderRecord.class.cast(record).correlationMetadata();
         return correlationMetadata instanceof Contextual
-            ? Contextual.class.cast(correlationMetadata).supplyInContext(() -> delegate.send(record))
-            : delegate.send(record);
+                ? Contextual.class.cast(correlationMetadata).supplyInContext(() -> delegate.send(record))
+                : delegate.send(record);
     }
 
     @Override
     public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
         Object correlationMetadata = record instanceof SenderRecord
-            ? SenderRecord.class.cast(record).correlationMetadata()
-            : KafkaSenderRecord.class.cast(record).correlationMetadata();
+                ? SenderRecord.class.cast(record).correlationMetadata()
+                : KafkaSenderRecord.class.cast(record).correlationMetadata();
         return correlationMetadata instanceof Contextual
-            ? Contextual.class.cast(correlationMetadata).supplyInContext(() -> delegate.send(record, callback))
-            : delegate.send(record, callback);
+                ? Contextual.class.cast(correlationMetadata).supplyInContext(() -> delegate.send(record, callback))
+                : delegate.send(record, callback);
     }
 
     @Override

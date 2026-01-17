@@ -42,9 +42,11 @@ final class ActivePartition {
 
     private final AtomicInteger deactivationDrainsInProgress = new AtomicInteger();
 
-    private final Sinks.Many<OffsetAndMetadata> nextOffsetsOfAcknowledged = Sinks.unsafe().many().replay().latest();
+    private final Sinks.Many<OffsetAndMetadata> nextOffsetsOfAcknowledged =
+            Sinks.unsafe().many().replay().latest();
 
-    private final Sinks.Many<Long> deactivatedRecordCounts = Sinks.unsafe().many().unicast().onBackpressureError();
+    private final Sinks.Many<Long> deactivatedRecordCounts =
+            Sinks.unsafe().many().unicast().onBackpressureError();
 
     public ActivePartition(TopicPartition topicPartition, AcknowledgementQueueMode acknowledgementQueueMode) {
         this.topicPartition = topicPartition;
@@ -57,7 +59,7 @@ final class ActivePartition {
      */
     public <K, V> Optional<KafkaReceiverRecord<K, V>> activateForProcessing(ConsumerRecord<K, V> consumerRecord) {
         return activate(new OffsetAndMetadata(consumerRecord.offset() + 1, consumerRecord.leaderEpoch(), ""))
-            .map(it -> KafkaReceiverRecord.create(consumerRecord, () -> ack(it), error -> nack(it, error)));
+                .map(it -> KafkaReceiverRecord.create(consumerRecord, () -> ack(it), error -> nack(it, error)));
     }
 
     /**
@@ -68,10 +70,10 @@ final class ActivePartition {
      */
     public Mono<AcknowledgedOffset> deactivateLatest(Duration gracePeriod, Scheduler scheduler, Mono<?> forcedTimeout) {
         return deactivateTimeout(gracePeriod, scheduler)
-            .timeout(forcedTimeout)
-            .onErrorComplete(GracelessTimeoutException.class)
-            .onErrorResume(TimeoutException.class, __ -> deactivateForcefully())
-            .then(acknowledgedOffsets().onErrorComplete().takeLast(1).next());
+                .timeout(forcedTimeout)
+                .onErrorComplete(GracelessTimeoutException.class)
+                .onErrorResume(TimeoutException.class, __ -> deactivateForcefully())
+                .then(acknowledgedOffsets().onErrorComplete().takeLast(1).next());
     }
 
     /**
@@ -84,12 +86,13 @@ final class ActivePartition {
     public <T> Mono<T> deactivateTimeout(Duration gracePeriod, Scheduler scheduler) {
         if (gracePeriod.isZero() || gracePeriod.isNegative()) {
             return deactivateForcefully()
-                .flatMap(it -> it > 0 ? Mono.error(new GracelessTimeoutException()) : Mono.empty());
+                    .flatMap(it -> it > 0 ? Mono.error(new GracelessTimeoutException()) : Mono.empty());
         } else {
-            Mono<T> acknowledgementCompletion = nextOffsetsOfAcknowledged.asFlux()
-                .onErrorComplete()
-                .then(Mono.<T>empty())
-                .timeout(gracePeriod, scheduler);
+            Mono<T> acknowledgementCompletion = nextOffsetsOfAcknowledged
+                    .asFlux()
+                    .onErrorComplete()
+                    .then(Mono.<T>empty())
+                    .timeout(gracePeriod, scheduler);
             return deactivateGracefully().then(acknowledgementCompletion);
         }
     }
@@ -222,9 +225,7 @@ final class ActivePartition {
         } while (missed != 0);
     }
 
-    private static final class GracelessTimeoutException extends TimeoutException {
-
-    }
+    private static final class GracelessTimeoutException extends TimeoutException {}
 
     private interface Deactivation {
 

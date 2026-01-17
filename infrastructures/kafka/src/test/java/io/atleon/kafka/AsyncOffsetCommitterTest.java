@@ -33,18 +33,21 @@ class AsyncOffsetCommitterTest {
         AtomicReference<Throwable> error = new AtomicReference<>();
 
         AsyncOffsetCommitter committer =
-            new AsyncOffsetCommitter(Integer.MAX_VALUE, it -> it.accept(consumer), error::set);
+                new AsyncOffsetCommitter(Integer.MAX_VALUE, it -> it.accept(consumer), error::set);
         committer.schedulePeriodically(1, Duration.ofSeconds(1), Schedulers.parallel());
 
         doAnswer(invocation -> {
-            Map<TopicPartition, OffsetAndMetadata> offsets = invocation.getArgument(0);
-            OffsetCommitCallback callback = invocation.getArgument(1);
-            callback.onComplete(offsets, new UnsupportedOperationException("Boom"));
-            return null;
-        }).when(consumer).commitAsync(anyMap(), any(OffsetCommitCallback.class));
+                    Map<TopicPartition, OffsetAndMetadata> offsets = invocation.getArgument(0);
+                    OffsetCommitCallback callback = invocation.getArgument(1);
+                    callback.onComplete(offsets, new UnsupportedOperationException("Boom"));
+                    return null;
+                })
+                .when(consumer)
+                .commitAsync(anyMap(), any(OffsetCommitCallback.class));
 
-        committer.acknowledgementHandlerForAssigned(topicPartition)
-            .accept(new AcknowledgedOffset(topicPartition, new OffsetAndMetadata(1L)));
+        committer
+                .acknowledgementHandlerForAssigned(topicPartition)
+                .accept(new AcknowledgedOffset(topicPartition, new OffsetAndMetadata(1L)));
 
         assertInstanceOf(UnsupportedOperationException.class, error.get());
         assertFalse(committer.isCommitTrialExhausted(topicPartition));
@@ -57,26 +60,29 @@ class AsyncOffsetCommitterTest {
         AtomicReference<Throwable> error = new AtomicReference<>();
 
         AsyncOffsetCommitter committer =
-            new AsyncOffsetCommitter(Integer.MAX_VALUE, it -> it.accept(consumer), error::set);
+                new AsyncOffsetCommitter(Integer.MAX_VALUE, it -> it.accept(consumer), error::set);
         committer.schedulePeriodically(1, Duration.ofSeconds(1), Schedulers.parallel());
 
         AtomicInteger commitAttempts = new AtomicInteger(0);
         doAnswer(invocation -> {
-            Map<TopicPartition, OffsetAndMetadata> offsets = invocation.getArgument(0);
-            OffsetCommitCallback callback = invocation.getArgument(1);
-            int attempt = commitAttempts.incrementAndGet();
-            if (attempt == 1) {
-                // First attempt fails with retriable error
-                callback.onComplete(offsets, new RetriableCommitFailedException("Persistent error"));
-            } else {
-                // Subsequent attempts succeed
-                callback.onComplete(offsets, null);
-            }
-            return null;
-        }).when(consumer).commitAsync(anyMap(), any(OffsetCommitCallback.class));
+                    Map<TopicPartition, OffsetAndMetadata> offsets = invocation.getArgument(0);
+                    OffsetCommitCallback callback = invocation.getArgument(1);
+                    int attempt = commitAttempts.incrementAndGet();
+                    if (attempt == 1) {
+                        // First attempt fails with retriable error
+                        callback.onComplete(offsets, new RetriableCommitFailedException("Persistent error"));
+                    } else {
+                        // Subsequent attempts succeed
+                        callback.onComplete(offsets, null);
+                    }
+                    return null;
+                })
+                .when(consumer)
+                .commitAsync(anyMap(), any(OffsetCommitCallback.class));
 
-        committer.acknowledgementHandlerForAssigned(topicPartition)
-            .accept(new AcknowledgedOffset(topicPartition, new OffsetAndMetadata(1L)));
+        committer
+                .acknowledgementHandlerForAssigned(topicPartition)
+                .accept(new AcknowledgedOffset(topicPartition, new OffsetAndMetadata(1L)));
 
         assertEquals(2, commitAttempts.get());
         assertNull(error.get());
@@ -91,21 +97,24 @@ class AsyncOffsetCommitterTest {
         AtomicReference<Throwable> error = new AtomicReference<>();
 
         AsyncOffsetCommitter committer =
-            new AsyncOffsetCommitter(maxCommitAttempts, it -> it.accept(consumer), error::set);
+                new AsyncOffsetCommitter(maxCommitAttempts, it -> it.accept(consumer), error::set);
         committer.schedulePeriodically(1, Duration.ofSeconds(1), Schedulers.parallel());
 
         AtomicInteger commitAttempts = new AtomicInteger(0);
         doAnswer(invocation -> {
-            Map<TopicPartition, OffsetAndMetadata> offsets = invocation.getArgument(0);
-            OffsetCommitCallback callback = invocation.getArgument(1);
-            commitAttempts.incrementAndGet();
-            // Always fail with retriable error
-            callback.onComplete(offsets, new RetriableCommitFailedException("Persistent error"));
-            return null;
-        }).when(consumer).commitAsync(anyMap(), any(OffsetCommitCallback.class));
+                    Map<TopicPartition, OffsetAndMetadata> offsets = invocation.getArgument(0);
+                    OffsetCommitCallback callback = invocation.getArgument(1);
+                    commitAttempts.incrementAndGet();
+                    // Always fail with retriable error
+                    callback.onComplete(offsets, new RetriableCommitFailedException("Persistent error"));
+                    return null;
+                })
+                .when(consumer)
+                .commitAsync(anyMap(), any(OffsetCommitCallback.class));
 
-        committer.acknowledgementHandlerForAssigned(topicPartition)
-            .accept(new AcknowledgedOffset(topicPartition, new OffsetAndMetadata(1L)));
+        committer
+                .acknowledgementHandlerForAssigned(topicPartition)
+                .accept(new AcknowledgedOffset(topicPartition, new OffsetAndMetadata(1L)));
 
         assertEquals(maxCommitAttempts, commitAttempts.get());
         assertInstanceOf(KafkaException.class, error.get());

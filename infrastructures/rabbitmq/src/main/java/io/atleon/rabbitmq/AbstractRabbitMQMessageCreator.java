@@ -16,11 +16,10 @@ public abstract class AbstractRabbitMQMessageCreator<T> implements RabbitMQMessa
     @Override
     public RabbitMQMessage<T> apply(T body) {
         return RabbitMQMessage.create(
-            extractExchange(body),
-            extractRoutingKey(body),
-            createMessagePropertiesBuilder(body).build(),
-            body
-        );
+                extractExchange(body),
+                extractRoutingKey(body),
+                createMessagePropertiesBuilder(body).build(),
+                body);
     }
 
     protected abstract String extractExchange(T body);
@@ -28,8 +27,9 @@ public abstract class AbstractRabbitMQMessageCreator<T> implements RabbitMQMessa
     protected abstract String extractRoutingKey(T body);
 
     protected AMQP.BasicProperties.Builder createMessagePropertiesBuilder(T body) {
-        return initialProperties.builder()
-            .messageId(UUID.randomUUID().toString())
-            .timestamp(new Date());
+        return initialProperties
+                .builder()
+                .messageId(UUID.randomUUID().toString())
+                .timestamp(new Date());
     }
 }

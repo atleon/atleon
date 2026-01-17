@@ -16,17 +16,13 @@ import java.util.function.Consumer;
 public interface NacknowledgerFactory<K, V> extends Configurable {
 
     @Override
-    default void configure(Map<String, ?> properties) {
-
-    }
+    default void configure(Map<String, ?> properties) {}
 
     Consumer<Throwable> create(ConsumerRecord<K, V> consumerRecord, Consumer<Throwable> errorEmitter);
 
     final class Emit<K, V> implements NacknowledgerFactory<K, V> {
 
-        Emit() {
-
-        }
+        Emit() {}
 
         @Override
         public Consumer<Throwable> create(ConsumerRecord<K, V> consumerRecord, Consumer<Throwable> errorEmitter) {

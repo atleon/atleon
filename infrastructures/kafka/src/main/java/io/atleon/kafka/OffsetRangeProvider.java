@@ -41,11 +41,9 @@ public interface OffsetRangeProvider {
      * Consume Records starting from a "raw" offset to the offset that matches the max Criteria
      */
     static OffsetRangeProvider inOffsetRangeFromTopicPartition(
-        TopicPartition topicPartition,
-        long rawOffset,
-        OffsetCriteria maxInclusive
-    ) {
-        return inOffsetRangeFromTopicPartition(topicPartition, OffsetCriteria.raw(rawOffset).to(maxInclusive));
+            TopicPartition topicPartition, long rawOffset, OffsetCriteria maxInclusive) {
+        return inOffsetRangeFromTopicPartition(
+                topicPartition, OffsetCriteria.raw(rawOffset).to(maxInclusive));
     }
 
     /**
@@ -73,8 +71,11 @@ public interface OffsetRangeProvider {
      * Consume Records from provided TopicPartitions that are in the provided mapped "raw" Offset
      * ranges
      */
-    static OffsetRangeProvider usingRawOffsetRanges(Map<TopicPartition, RawOffsetRange> rawOffsetRangesByTopicPartition) {
-        return new Builder().usingRawOffsetRanges(rawOffsetRangesByTopicPartition).build();
+    static OffsetRangeProvider usingRawOffsetRanges(
+            Map<TopicPartition, RawOffsetRange> rawOffsetRangesByTopicPartition) {
+        return new Builder()
+                .usingRawOffsetRanges(rawOffsetRangesByTopicPartition)
+                .build();
     }
 
     /**
@@ -83,10 +84,7 @@ public interface OffsetRangeProvider {
      * "subsequent" is determined by the default Comparator (sort by Topic, then Partition)
      */
     static OffsetRangeProvider startingFromRawOffsetInTopicPartition(
-        TopicPartition topicPartition,
-        long rawOffset,
-        OffsetRange offsetRange
-    ) {
+            TopicPartition topicPartition, long rawOffset, OffsetRange offsetRange) {
         return new StartingFromRawOffsetInTopicPartition(topicPartition, rawOffset, offsetRange);
     }
 
@@ -115,9 +113,7 @@ public interface OffsetRangeProvider {
 
         private int maxConcurrentTopicPartitions = 1;
 
-        private Builder() {
-
-        }
+        private Builder() {}
 
         /**
          * Consume all Records across all TopicPartitions from the earliest to latest (at time of
@@ -138,11 +134,9 @@ public interface OffsetRangeProvider {
          * Consume Records starting from a "raw" offset to the offset that matches the max Criteria
          */
         public Builder inOffsetRangeFromTopicPartition(
-            TopicPartition topicPartition,
-            long rawOffset,
-            OffsetCriteria maxInclusive
-        ) {
-            return inOffsetRangeFromTopicPartition(topicPartition, OffsetCriteria.raw(rawOffset).to(maxInclusive));
+                TopicPartition topicPartition, long rawOffset, OffsetCriteria maxInclusive) {
+            return inOffsetRangeFromTopicPartition(
+                    topicPartition, OffsetCriteria.raw(rawOffset).to(maxInclusive));
         }
 
         /**
@@ -172,7 +166,7 @@ public interface OffsetRangeProvider {
          */
         public Builder usingRawOffsetRanges(Map<TopicPartition, RawOffsetRange> rawOffsetRangesByTopicPartition) {
             return topicPartitionToRange(it ->
-                Optional.ofNullable(rawOffsetRangesByTopicPartition.get(it)).map(RawOffsetRange::toOffsetRange));
+                    Optional.ofNullable(rawOffsetRangesByTopicPartition.get(it)).map(RawOffsetRange::toOffsetRange));
         }
 
         /**
@@ -219,10 +213,9 @@ public interface OffsetRangeProvider {
         private final int maxConcurrentTopicPartitions;
 
         private Composed(
-            Function<TopicPartition, Optional<OffsetRange>> topicPartitionToRange,
-            Comparator<? super TopicPartition> topicPartitionComparator,
-            int maxConcurrentTopicPartitions
-        ) {
+                Function<TopicPartition, Optional<OffsetRange>> topicPartitionToRange,
+                Comparator<? super TopicPartition> topicPartitionComparator,
+                int maxConcurrentTopicPartitions) {
             this.topicPartitionToRange = topicPartitionToRange;
             this.topicPartitionComparator = topicPartitionComparator;
             this.maxConcurrentTopicPartitions = maxConcurrentTopicPartitions;
@@ -253,10 +246,7 @@ public interface OffsetRangeProvider {
         private final OffsetRange offsetRange;
 
         private StartingFromRawOffsetInTopicPartition(
-            TopicPartition topicPartition,
-            long rawOffset,
-            OffsetRange offsetRange
-        ) {
+                TopicPartition topicPartition, long rawOffset, OffsetRange offsetRange) {
             this.startingTopicPartition = topicPartition;
             this.startingRawOffset = rawOffset;
             this.offsetRange = offsetRange;

@@ -33,25 +33,27 @@ final class RecordRange {
         this.maxInclusive = maxExclusive;
     }
 
-    public static Flux<RecordRange> list(ReactiveAdmin admin, Collection<String> topics, OffsetRangeProvider rangeProvider) {
+    public static Flux<RecordRange> list(
+            ReactiveAdmin admin, Collection<String> topics, OffsetRangeProvider rangeProvider) {
         return admin.listTopicPartitions(topics)
-            .collectMap(Function.identity(), rangeProvider::forTopicPartition)
-            .map(it -> sortPresent(it, rangeProvider.topicPartitionComparator()))
-            .flatMapMany(it -> list(admin, it));
+                .collectMap(Function.identity(), rangeProvider::forTopicPartition)
+                .map(it -> sortPresent(it, rangeProvider.topicPartitionComparator()))
+                .flatMapMany(it -> list(admin, it));
     }
 
     public static Flux<RecordRange> list(ReactiveAdmin admin, Map<TopicPartition, OffsetRange> ranges) {
-        Map<TopicPartition, OffsetCriteria> minCriteria = ranges.entrySet().stream().collect(
-            Collectors.toMap(Map.Entry::getKey, it -> it.getValue().minInclusive()));
-        Map<TopicPartition, OffsetCriteria> maxCriteria = ranges.entrySet().stream().collect(
-            Collectors.toMap(Map.Entry::getKey, it -> it.getValue().maxInclusive()));
+        Map<TopicPartition, OffsetCriteria> minCriteria = ranges.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, it -> it.getValue().minInclusive()));
+        Map<TopicPartition, OffsetCriteria> maxCriteria = ranges.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, it -> it.getValue().maxInclusive()));
 
         return Mono.zip(
-                calculateRawOffsets(admin, minCriteria, Extrema.MIN),
-                calculateRawOffsets(admin, maxCriteria, Extrema.MAX),
-                admin.listOffsets(minCriteria.keySet(), OffsetSpec.earliest()),
-                admin.listOffsets(maxCriteria.keySet(), OffsetSpec.latest()))
-            .flatMapIterable(it -> createRecordRanges(ranges.keySet(), it.getT1(), it.getT2(), it.getT3(), it.getT4()));
+                        calculateRawOffsets(admin, minCriteria, Extrema.MIN),
+                        calculateRawOffsets(admin, maxCriteria, Extrema.MAX),
+                        admin.listOffsets(minCriteria.keySet(), OffsetSpec.earliest()),
+                        admin.listOffsets(maxCriteria.keySet(), OffsetSpec.latest()))
+                .flatMapIterable(
+                        it -> createRecordRanges(ranges.keySet(), it.getT1(), it.getT2(), it.getT3(), it.getT4()));
     }
 
     public TopicPartition topicPartition() {
@@ -71,66 +73,67 @@ final class RecordRange {
     }
 
     private static Mono<Map<TopicPartition, Long>> calculateRawOffsets(
-        ReactiveAdmin admin,
-        Map<TopicPartition, OffsetCriteria> criteria,
-        Extrema extrema
-    ) {
+            ReactiveAdmin admin, Map<TopicPartition, OffsetCriteria> criteria, Extrema extrema) {
         Map<Class<? extends OffsetCriteria>, Map<TopicPartition, OffsetCriteria>> typedCriteria =
-            criteria.entrySet().stream().collect(Collectors.groupingBy(it -> it.getValue().getClass(),
-                Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+                criteria.entrySet().stream()
+                        .collect(Collectors.groupingBy(
+                                it -> it.getValue().getClass(),
+                                Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
 
         Map<TopicPartition, Long> rawOffsets =
-            typedCriteria.getOrDefault(OffsetCriteria.Raw.class, Collections.emptyMap()).entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, it -> toRawOffset(it.getValue(), extrema)));
+                typedCriteria.getOrDefault(OffsetCriteria.Raw.class, Collections.emptyMap()).entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey, it -> toRawOffset(it.getValue(), extrema)));
         Map<TopicPartition, OffsetCriteria.ConsumerGroup> consumerGroups =
-            typedCriteria.getOrDefault(OffsetCriteria.ConsumerGroup.class, Collections.emptyMap()).entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, it -> (OffsetCriteria.ConsumerGroup) it.getValue()));
+                typedCriteria
+                        .getOrDefault(OffsetCriteria.ConsumerGroup.class, Collections.emptyMap())
+                        .entrySet()
+                        .stream()
+                        .collect(Collectors.toMap(
+                                Map.Entry::getKey, it -> (OffsetCriteria.ConsumerGroup) it.getValue()));
         Map<TopicPartition, OffsetSpec> timestampSpecs =
-            typedCriteria.getOrDefault(OffsetCriteria.Timestamp.class, Collections.emptyMap()).entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, it -> toTimestampSpec(it.getValue(), extrema)));
+                typedCriteria.getOrDefault(OffsetCriteria.Timestamp.class, Collections.emptyMap()).entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey, it -> toTimestampSpec(it.getValue(), extrema)));
         Map<TopicPartition, OffsetSpec> earliestSpecs =
-            typedCriteria.getOrDefault(OffsetCriteria.Earliest.class, Collections.emptyMap()).entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, __ -> OffsetSpec.earliest()));
+                typedCriteria.getOrDefault(OffsetCriteria.Earliest.class, Collections.emptyMap()).entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey, __ -> OffsetSpec.earliest()));
         Map<TopicPartition, OffsetSpec> latestSpecs =
-            typedCriteria.getOrDefault(OffsetCriteria.Latest.class, Collections.emptyMap()).entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, __ -> OffsetSpec.latest()));
+                typedCriteria.getOrDefault(OffsetCriteria.Latest.class, Collections.emptyMap()).entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey, __ -> OffsetSpec.latest()));
 
         return Mono.just(rawOffsets)
-            .mergeWith(listConsumerGroupOffsets(admin, consumerGroups))
-            .mergeWith(admin.listOffsets(timestampSpecs, offset -> offset == -1 ? Long.MAX_VALUE : offset))
-            .mergeWith(admin.listOffsets(earliestSpecs, offset -> offset + (extrema == Extrema.MAX ? 1 : 0)))
-            .mergeWith(admin.listOffsets(latestSpecs, offset -> offset - (extrema == Extrema.MIN ? 1 : 0)))
-            .flatMapIterable(Map::entrySet)
-            .collectMap(Map.Entry::getKey, Map.Entry::getValue);
+                .mergeWith(listConsumerGroupOffsets(admin, consumerGroups))
+                .mergeWith(admin.listOffsets(timestampSpecs, offset -> offset == -1 ? Long.MAX_VALUE : offset))
+                .mergeWith(admin.listOffsets(earliestSpecs, offset -> offset + (extrema == Extrema.MAX ? 1 : 0)))
+                .mergeWith(admin.listOffsets(latestSpecs, offset -> offset - (extrema == Extrema.MIN ? 1 : 0)))
+                .flatMapIterable(Map::entrySet)
+                .collectMap(Map.Entry::getKey, Map.Entry::getValue);
     }
 
     private static Mono<Map<TopicPartition, Long>> listConsumerGroupOffsets(
-        ReactiveAdmin admin,
-        Map<TopicPartition, OffsetCriteria.ConsumerGroup> groups
-    ) {
+            ReactiveAdmin admin, Map<TopicPartition, OffsetCriteria.ConsumerGroup> groups) {
         Map<Tuple2<String, OffsetResetStrategy>, List<TopicPartition>> topicPartitions = groups.entrySet().stream()
-            .collect(Collectors.groupingBy(
-                it -> Tuples.of(it.getValue().groupId(), it.getValue().resetStrategy()),
-                Collectors.mapping(Map.Entry::getKey, Collectors.toList())));
+                .collect(Collectors.groupingBy(
+                        it -> Tuples.of(it.getValue().groupId(), it.getValue().resetStrategy()),
+                        Collectors.mapping(Map.Entry::getKey, Collectors.toList())));
         return Flux.fromIterable(topicPartitions.entrySet())
-            .concatMap(it -> admin.listTopicPartitionGroupOffsets(it.getKey().getT1(), it.getKey().getT2(), it.getValue()))
-            .collectMap(TopicPartitionGroupOffsets::topicPartition, TopicPartitionGroupOffsets::groupOffset);
+                .concatMap(it -> admin.listTopicPartitionGroupOffsets(
+                        it.getKey().getT1(), it.getKey().getT2(), it.getValue()))
+                .collectMap(TopicPartitionGroupOffsets::topicPartition, TopicPartitionGroupOffsets::groupOffset);
     }
 
     private static List<RecordRange> createRecordRanges(
-        Collection<TopicPartition> topicPartitions,
-        Map<TopicPartition, Long> minOffsets,
-        Map<TopicPartition, Long> maxOffsets,
-        Map<TopicPartition, Long> earliestOffsets,
-        Map<TopicPartition, Long> latestOffsets
-    ) {
+            Collection<TopicPartition> topicPartitions,
+            Map<TopicPartition, Long> minOffsets,
+            Map<TopicPartition, Long> maxOffsets,
+            Map<TopicPartition, Long> earliestOffsets,
+            Map<TopicPartition, Long> latestOffsets) {
         return topicPartitions.stream()
-            .filter(it -> minOffsets.containsKey(it) && maxOffsets.containsKey(it))
-            .map(topicPartition -> new RecordRange(
-                topicPartition,
-                Math.max(earliestOffsets.get(topicPartition), minOffsets.get(topicPartition)),
-                Math.min(latestOffsets.get(topicPartition), maxOffsets.get(topicPartition)) - 1))
-            .collect(Collectors.toList());
+                .filter(it -> minOffsets.containsKey(it) && maxOffsets.containsKey(it))
+                .map(topicPartition -> new RecordRange(
+                        topicPartition,
+                        Math.max(earliestOffsets.get(topicPartition), minOffsets.get(topicPartition)),
+                        Math.min(latestOffsets.get(topicPartition), maxOffsets.get(topicPartition)) - 1))
+                .collect(Collectors.toList());
     }
 
     private static long toRawOffset(OffsetCriteria endpoint, Extrema extrema) {
@@ -144,13 +147,16 @@ final class RecordRange {
 
     private static <K, V> SortedMap<K, V> sortPresent(Map<K, Optional<V>> map, Comparator<? super K> comparator) {
         return map.entrySet().stream()
-            .filter(it -> it.getValue().isPresent())
-            .collect(Collectors.toMap(
-                Map.Entry::getKey,
-                it -> it.getValue().get(),
-                (l, r) -> l, // Won't be called, since we know the keys are unique
-                () -> new TreeMap<>(comparator)));
+                .filter(it -> it.getValue().isPresent())
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        it -> it.getValue().get(),
+                        (l, r) -> l, // Won't be called, since we know the keys are unique
+                        () -> new TreeMap<>(comparator)));
     }
 
-    private enum Extrema {MIN, MAX}
+    private enum Extrema {
+        MIN,
+        MAX
+    }
 }

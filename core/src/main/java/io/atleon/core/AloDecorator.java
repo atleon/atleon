@@ -24,9 +24,7 @@ public interface AloDecorator<T> extends Configurable {
     }
 
     @Override
-    default void configure(Map<String, ?> properties) {
-
-    }
+    default void configure(Map<String, ?> properties) {}
 
     default int order() {
         return 0;
@@ -40,8 +38,8 @@ public interface AloDecorator<T> extends Configurable {
 
         private Composite(List<AloDecorator<T>> decorators) {
             this.decorators = decorators.stream()
-                .sorted(Comparator.comparing(AloDecorator::order))
-                .collect(Collectors.toList());
+                    .sorted(Comparator.comparing(AloDecorator::order))
+                    .collect(Collectors.toList());
         }
 
         @Override
@@ -51,7 +49,9 @@ public interface AloDecorator<T> extends Configurable {
 
         @Override
         public int order() {
-            return decorators.isEmpty() ? OUTERMOST_ORDER : decorators.get(decorators.size() - 1).order();
+            return decorators.isEmpty()
+                    ? OUTERMOST_ORDER
+                    : decorators.get(decorators.size() - 1).order();
         }
 
         @Override

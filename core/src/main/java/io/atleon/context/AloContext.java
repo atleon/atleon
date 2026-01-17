@@ -39,9 +39,7 @@ public abstract class AloContext {
 
     private static final ThreadLocal<AloContext> ACTIVE_CONTEXT = new ThreadLocal<>();
 
-    private AloContext() {
-
-    }
+    private AloContext() {}
 
     /**
      * Get the currently active context. If none is active, a no-op context is provided.
@@ -175,14 +173,10 @@ public abstract class AloContext {
         }
 
         @Override
-        void merge(AloContext other) {
-
-        }
+        void merge(AloContext other) {}
 
         @Override
-        void forEach(BiConsumer<Key<?>, Object> consumer) {
-
-        }
+        void forEach(BiConsumer<Key<?>, Object> consumer) {}
     }
 
     private static final class Impl extends AloContext {
@@ -208,7 +202,8 @@ public abstract class AloContext {
 
         @Override
         void merge(AloContext other) {
-            other.forEach((key, value) -> map.compute(key, (__, previous) -> remap((Key<Object>) key, previous, value)));
+            other.forEach(
+                    (key, value) -> map.compute(key, (__, previous) -> remap((Key<Object>) key, previous, value)));
         }
 
         @Override

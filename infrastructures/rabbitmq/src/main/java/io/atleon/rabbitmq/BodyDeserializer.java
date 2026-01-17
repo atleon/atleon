@@ -12,9 +12,7 @@ import java.util.Map;
 public interface BodyDeserializer<T> extends Configurable {
 
     @Override
-    default void configure(Map<String, ?> properties) {
-
-    }
+    default void configure(Map<String, ?> properties) {}
 
     T deserialize(SerializedBody data);
 }

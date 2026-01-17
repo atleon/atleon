@@ -47,17 +47,14 @@ final class PollingSubscriptionFactory<K, V> {
     }
 
     public Subscription periodicCommit(
-        ConsumptionSpec consumptionSpec,
-        Subscriber<? super KafkaReceiverRecord<K, V>> subscriber
-    ) {
+            ConsumptionSpec consumptionSpec, Subscriber<? super KafkaReceiverRecord<K, V>> subscriber) {
         return new PeriodicCommitPoller(consumptionSpec, subscriber);
     }
 
     public Subscription transactional(
-        KafkaTxManager txManager,
-        ConsumptionSpec consumptionSpec,
-        Subscriber<? super KafkaReceiverRecord<K, V>> subscriber
-    ) {
+            KafkaTxManager txManager,
+            ConsumptionSpec consumptionSpec,
+            Subscriber<? super KafkaReceiverRecord<K, V>> subscriber) {
         return new TransactionalPoller(txManager, consumptionSpec, subscriber);
     }
 
@@ -107,8 +104,8 @@ final class PollingSubscriptionFactory<K, V> {
             this.consumptionSpec = consumptionSpec;
             this.subscriber = subscriber;
             this.listener = options.createReceptionListener();
-            this.pollManager =
-                new PollManager<>(options.createPollStrategy(), options.loadMaxPollRecords(), options.pollTimeout());
+            this.pollManager = new PollManager<>(
+                    options.createPollStrategy(), options.loadMaxPollRecords(), options.pollTimeout());
         }
 
         @Override
@@ -141,8 +138,9 @@ final class PollingSubscriptionFactory<K, V> {
                 onPartitionActivated(consumer, activePartition);
                 listener.onPartitionActivated(partition);
 
-                activePartition.deactivatedRecordCounts()
-                    .subscribe(it -> handleRecordsDeactivated(partition, it), this::failSafely);
+                activePartition
+                        .deactivatedRecordCounts()
+                        .subscribe(it -> handleRecordsDeactivated(partition, it), this::failSafely);
 
                 return activePartition;
             });
@@ -163,10 +161,10 @@ final class PollingSubscriptionFactory<K, V> {
         public final void onPartitionsLost(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
             // No longer assigned, so impossible to commit, and all we can do is clean up.
             Map<TopicPartition, Long> lostPartitionRecordCounts = pollManager.unassigned(partitions).stream()
-                .map(active -> active.deactivateForcefully().map(it -> Tuples.of(active.topicPartition(), it)))
-                .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
-                .collectMap(Tuple2::getT1, Tuple2::getT2)
-                .block();
+                    .map(active -> active.deactivateForcefully().map(it -> Tuples.of(active.topicPartition(), it)))
+                    .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
+                    .collectMap(Tuple2::getT1, Tuple2::getT2)
+                    .block();
 
             try {
                 onActivePartitionsLost(lostPartitionRecordCounts);
@@ -188,9 +186,7 @@ final class PollingSubscriptionFactory<K, V> {
         protected abstract void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition partition);
 
         protected abstract void onActivePartitionsRevoked(
-            Consumer<?, ?> consumer,
-            Collection<ActivePartition> partitions
-        );
+                Consumer<?, ?> consumer, Collection<ActivePartition> partitions);
 
         protected abstract void onActivePartitionsLost(Map<TopicPartition, Long> lostPartitionRecordCounts);
 
@@ -272,7 +268,7 @@ final class PollingSubscriptionFactory<K, V> {
                 return;
             }
 
-            //FUTURE Could wrap this in protected "poll" method, override to support at-most-once
+            // FUTURE Could wrap this in protected "poll" method, override to support at-most-once
             ConsumerRecords<K, V> consumerRecords = pollManager.pollWakeably(consumer, freePrefetchCapacity::get);
 
             int queuedForEmission = 0;
@@ -300,7 +296,8 @@ final class PollingSubscriptionFactory<K, V> {
                     receivingConsumer.wakeupSafely();
                 }
 
-                KafkaReceiverRecord<K, V> activated = emittable.activateForProcessing().orElse(null);
+                KafkaReceiverRecord<K, V> activated =
+                        emittable.activateForProcessing().orElse(null);
                 try {
                     if (activated != null) {
                         handleRecordActivated(emittable.topicPartition());
@@ -321,10 +318,11 @@ final class PollingSubscriptionFactory<K, V> {
 
         private void terminateSafely() {
             runSafely(this::terminate, "this::terminate");
-            receivingConsumer.closeSafely(consumptionSpec)
-                .doOnTerminate(() -> runSafely(listener::close, "listener::close"))
-                .doOnTerminate(() -> runSafely(auxiliaryScheduler::dispose, "auxiliaryScheduler::dispose"))
-                .subscribe();
+            receivingConsumer
+                    .closeSafely(consumptionSpec)
+                    .doOnTerminate(() -> runSafely(listener::close, "listener::close"))
+                    .doOnTerminate(() -> runSafely(auxiliaryScheduler::dispose, "auxiliaryScheduler::dispose"))
+                    .subscribe();
 
             // Error emission after termination scheduling matches legacy Reactor behavior
             Throwable errorToEmit = error.get();
@@ -350,21 +348,19 @@ final class PollingSubscriptionFactory<K, V> {
         private final Sinks.Empty<Void> termination = Sinks.empty();
 
         public PeriodicCommitPoller(
-            ConsumptionSpec consumptionSpec,
-            Subscriber<? super KafkaReceiverRecord<K, V>> subscriber
-        ) {
+                ConsumptionSpec consumptionSpec, Subscriber<? super KafkaReceiverRecord<K, V>> subscriber) {
             super(consumptionSpec, subscriber);
             this.asyncOffsetCommitter = new AsyncOffsetCommitter(
-                options.maxCommitAttempts(), receivingConsumer::schedule, this::failSafely);
+                    options.maxCommitAttempts(), receivingConsumer::schedule, this::failSafely);
             this.periodicOffsetCommit = asyncOffsetCommitter.schedulePeriodically(
-                options.commitBatchSize(), options.commitPeriod(), auxiliaryScheduler);
+                    options.commitBatchSize(), options.commitPeriod(), auxiliaryScheduler);
         }
 
         @Override
         protected void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition partition) {
             java.util.function.Consumer<AcknowledgedOffset> acknowledgementHandler = options.commitlessOffsets()
-                ? Consuming.noOp()
-                : asyncOffsetCommitter.acknowledgementHandlerForAssigned(partition.topicPartition());
+                    ? Consuming.noOp()
+                    : asyncOffsetCommitter.acknowledgementHandlerForAssigned(partition.topicPartition());
             partition.acknowledgedOffsets().subscribe(acknowledgementHandler, this::failSafely);
         }
 
@@ -379,11 +375,11 @@ final class PollingSubscriptionFactory<K, V> {
             // offsets, and it becomes more desirable to attempt to honor that progress.
             Duration gracePeriod = options.revocationGracePeriod();
             Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = partitions.stream()
-                .map(it -> it.deactivateLatest(gracePeriod, auxiliaryScheduler, termination.asMono()))
-                .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
-                .filter(it -> !asyncOffsetCommitter.isCommitTrialExhausted(it.topicPartition()))
-                .collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffsetAndMetadata)
-                .block();
+                    .map(it -> it.deactivateLatest(gracePeriod, auxiliaryScheduler, termination.asMono()))
+                    .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
+                    .filter(it -> !asyncOffsetCommitter.isCommitTrialExhausted(it.topicPartition()))
+                    .collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffsetAndMetadata)
+                    .block();
 
             try {
                 if (!offsetsToCommit.isEmpty() && !options.commitlessOffsets()) {
@@ -428,8 +424,8 @@ final class PollingSubscriptionFactory<K, V> {
                 termination.tryEmitEmpty();
             } else {
                 Mono.fromRunnable(termination::tryEmitEmpty)
-                    .delaySubscription(gracePeriod, auxiliaryScheduler)
-                    .subscribe();
+                        .delaySubscription(gracePeriod, auxiliaryScheduler)
+                        .subscribe();
             }
         }
     }
@@ -452,28 +448,28 @@ final class PollingSubscriptionFactory<K, V> {
         private final AtomicLong activeInTransaction = new AtomicLong(0L);
 
         private final Sinks.Many<TxOffsetsState> offsetsStates =
-            Sinks.many().replay().latestOrDefault(TxOffsetsState.INACTIVE);
+                Sinks.many().replay().latestOrDefault(TxOffsetsState.INACTIVE);
 
         private final Sinks.Many<AcknowledgedOffset> acknowledgedOffsets =
-            Sinks.unsafe().many().unicast().onBackpressureError();
+                Sinks.unsafe().many().unicast().onBackpressureError();
 
         private final SerialQueue<AcknowledgedOffset> acknowledgedOffsetsQueue =
-            SerialQueue.onEmitNext(acknowledgedOffsets, new ShouldBeTerminatedEmitFailureHandler(LOGGER));
+                SerialQueue.onEmitNext(acknowledgedOffsets, new ShouldBeTerminatedEmitFailureHandler(LOGGER));
 
         private ConsumerGroupMetadata groupMetadata = null;
 
         public TransactionalPoller(
-            KafkaTxManager txManager,
-            ConsumptionSpec consumptionSpec,
-            Subscriber<? super KafkaReceiverRecord<K, V>> subscriber
-        ) {
+                KafkaTxManager txManager,
+                ConsumptionSpec consumptionSpec,
+                Subscriber<? super KafkaReceiverRecord<K, V>> subscriber) {
             super(consumptionSpec, subscriber);
             this.txManager = txManager;
-            this.transactionalOffsetsSend = acknowledgedOffsets.asFlux()
-                .windowWhen(offsetsState(TxOffsetsState.PROCESSING), __ -> offsetsState(TxOffsetsState.COMMITTING))
-                .concatMap(it ->
-                    it.collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffsetAndMetadata))
-                .subscribe(this::maybeSendOffsetsInCurrentTransaction, this::failSafely);
+            this.transactionalOffsetsSend = acknowledgedOffsets
+                    .asFlux()
+                    .windowWhen(offsetsState(TxOffsetsState.PROCESSING), __ -> offsetsState(TxOffsetsState.COMMITTING))
+                    .concatMap(it -> it.collectMap(
+                            AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffsetAndMetadata))
+                    .subscribe(this::maybeSendOffsetsInCurrentTransaction, this::failSafely);
         }
 
         @Override
@@ -485,14 +481,15 @@ final class PollingSubscriptionFactory<K, V> {
         @Override
         protected void onActivePartitionsRevoked(Consumer<?, ?> consumer, Collection<ActivePartition> partitions) {
             groupMetadata = consumer.groupMetadata();
-            Mono<TxOffsetsState> txClosure = offsetsState(TxOffsetsState.INACTIVE).next().cache();
+            Mono<TxOffsetsState> txClosure =
+                    offsetsState(TxOffsetsState.INACTIVE).next().cache();
             partitions.stream()
-                .map(it -> it.deactivateTimeout(options.revocationGracePeriod(), auxiliaryScheduler))
-                .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
-                .onErrorMap(TimeoutException.class, __ -> new TimeoutException("Revocation deactivation timeout"))
-                .takeUntilOther(txClosure)
-                .then(txClosure.timeout(options.closeTimeout(), auxiliaryScheduler))
-                .block();
+                    .map(it -> it.deactivateTimeout(options.revocationGracePeriod(), auxiliaryScheduler))
+                    .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
+                    .onErrorMap(TimeoutException.class, __ -> new TimeoutException("Revocation deactivation timeout"))
+                    .takeUntilOther(txClosure)
+                    .then(txClosure.timeout(options.closeTimeout(), auxiliaryScheduler))
+                    .block();
         }
 
         @Override
@@ -570,8 +567,8 @@ final class PollingSubscriptionFactory<K, V> {
         protected void terminate() {
             transactionalOffsetsSend.dispose();
 
-            long previousState =
-                capState.getAndUpdate(it -> it > TxCapStates.UNOPENED ? TxCapStates.ABORTABLE : TxCapStates.TERMINATED);
+            long previousState = capState.getAndUpdate(
+                    it -> it > TxCapStates.UNOPENED ? TxCapStates.ABORTABLE : TxCapStates.TERMINATED);
             if (previousState > TxCapStates.UNOPENED) {
                 maybeAbortCurrentTransaction();
             } else {
@@ -591,10 +588,10 @@ final class PollingSubscriptionFactory<K, V> {
 
                     if (capState.compareAndSet(TxCapStates.OPENING, options.commitBatchSize())) {
                         Mono.delay(options.commitPeriod(), auxiliaryScheduler)
-                            .takeUntilOther(offsetsStates.asFlux().filter(it -> it != TxOffsetsState.PROCESSING))
-                            .filter(__ -> capState.getAndUpdate(it -> Math.min(0, it)) > 0)
-                            .doOnNext(__ -> activeInTransaction.decrementAndGet())
-                            .subscribe(__ -> drain());
+                                .takeUntilOther(offsetsStates.asFlux().filter(it -> it != TxOffsetsState.PROCESSING))
+                                .filter(__ -> capState.getAndUpdate(it -> Math.min(0, it)) > 0)
+                                .doOnNext(__ -> activeInTransaction.decrementAndGet())
+                                .subscribe(__ -> drain());
 
                         drain();
                     }
@@ -686,10 +683,12 @@ final class PollingSubscriptionFactory<K, V> {
         // A new transaction has been requested for opening and awaiting completion
         public static final long OPENING = Long.MIN_VALUE + 7;
 
-        private TxCapStates() {
-
-        }
+        private TxCapStates() {}
     }
 
-    private enum TxOffsetsState {INACTIVE, PROCESSING, COMMITTING}
+    private enum TxOffsetsState {
+        INACTIVE,
+        PROCESSING,
+        COMMITTING
+    }
 }

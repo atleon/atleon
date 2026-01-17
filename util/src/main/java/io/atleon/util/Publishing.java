@@ -12,9 +12,7 @@ import java.util.Collection;
  */
 public final class Publishing {
 
-    private Publishing() {
-
-    }
+    private Publishing() {}
 
     /**
      * Caches the first successful signal from subscribing to the provided {@link Mono}

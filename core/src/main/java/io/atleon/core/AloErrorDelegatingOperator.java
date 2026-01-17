@@ -26,9 +26,7 @@ final class AloErrorDelegatingOperator<T> extends FluxOperator<Alo<T>, Alo<T>> {
     private final BiFunction<? super T, ? super Throwable, ? extends Publisher<?>> delegator;
 
     AloErrorDelegatingOperator(
-        Flux<Alo<T>> source,
-        BiFunction<? super T, ? super Throwable, ? extends Publisher<?>> delegator
-    ) {
+            Flux<Alo<T>> source, BiFunction<? super T, ? super Throwable, ? extends Publisher<?>> delegator) {
         super(source);
         this.delegator = delegator;
     }
@@ -43,7 +41,7 @@ final class AloErrorDelegatingOperator<T> extends FluxOperator<Alo<T>, Alo<T>> {
         private final CoreSubscriber<? super Alo<T>> actual;
 
         private final SerialQueue<Consumer<Collection<Disposable>>> inFlight =
-            SerialQueue.on(Collections.newSetFromMap(new IdentityHashMap<>()));
+                SerialQueue.on(Collections.newSetFromMap(new IdentityHashMap<>()));
 
         private volatile boolean unsuccessfullyDone = false;
 
@@ -98,8 +96,9 @@ final class AloErrorDelegatingOperator<T> extends FluxOperator<Alo<T>, Alo<T>> {
         private void delegateAloError(Alo<T> alo, Throwable error) {
             AtomicReference<Disposable> disposableReference = new AtomicReference<>();
             ConnectableFlux<?> connectableFlux = delegateError(alo.get(), error)
-                .doAfterTerminate(() -> inFlight.addAndDrain(disposables -> disposables.remove(disposableReference.get())))
-                .publish();
+                    .doAfterTerminate(
+                            () -> inFlight.addAndDrain(disposables -> disposables.remove(disposableReference.get())))
+                    .publish();
             connectableFlux.subscribe(Consuming.noOp(), alo.getNacknowledger(), alo.getAcknowledger());
             inFlight.addAndDrain(disposables -> {
                 if (!unsuccessfullyDone) {
@@ -122,7 +121,7 @@ final class AloErrorDelegatingOperator<T> extends FluxOperator<Alo<T>, Alo<T>> {
         private Flux<?> delegateError(T t, Throwable error) {
             try {
                 return Flux.from(delegator.apply(t, error))
-                    .onErrorMap(delegateError -> consolidateErrors(error, delegateError));
+                        .onErrorMap(delegateError -> consolidateErrors(error, delegateError));
             } catch (Throwable delegateError) {
                 return Flux.error(consolidateErrors(error, delegateError));
             }

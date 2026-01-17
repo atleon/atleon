@@ -48,11 +48,10 @@ public final class DeduplicationConfig {
      * @param deduplicationSourcePrefetch Prefetch on the deduplicated source
      */
     public DeduplicationConfig(
-        Duration deduplicationTimeout,
-        long maxDeduplicationSize,
-        int deduplicationConcurrency,
-        int deduplicationSourcePrefetch
-    ) {
+            Duration deduplicationTimeout,
+            long maxDeduplicationSize,
+            int deduplicationConcurrency,
+            int deduplicationSourcePrefetch) {
         this.deduplicationTimeout = deduplicationTimeout;
         this.maxDeduplicationSize = maxDeduplicationSize;
         this.deduplicationConcurrency = deduplicationConcurrency;

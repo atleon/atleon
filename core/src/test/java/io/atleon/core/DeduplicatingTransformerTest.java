@@ -26,79 +26,79 @@ class DeduplicatingTransformerTest {
     private final Sinks.Many<String> sink = Sinks.many().multicast().onBackpressureBuffer();
 
     private final Flux<String> downstream = sink.asFlux()
-        .transform(DeduplicatingTransformer.identity(CONFIG, Deduplication.identity(), Schedulers.boundedElastic()));
+            .transform(
+                    DeduplicatingTransformer.identity(CONFIG, Deduplication.identity(), Schedulers.boundedElastic()));
 
     @Test
     public void duplicatesAreNotEmitted() {
         StepVerifier.withVirtualTime(() -> downstream)
-            .expectSubscription()
-            .then(() -> {
-                sink.tryEmitNext("ONE");
-                sink.tryEmitNext("ONE");
-            })
-            .expectNoEvent(CONFIG.getDeduplicationTimeout())
-            .expectNext("ONE")
-            .expectNoEvent(CONFIG.getDeduplicationTimeout())
-            .thenCancel()
-            .verify();
+                .expectSubscription()
+                .then(() -> {
+                    sink.tryEmitNext("ONE");
+                    sink.tryEmitNext("ONE");
+                })
+                .expectNoEvent(CONFIG.getDeduplicationTimeout())
+                .expectNext("ONE")
+                .expectNoEvent(CONFIG.getDeduplicationTimeout())
+                .thenCancel()
+                .verify();
     }
 
     @Test
     public void deduplicatesOnlyWithinDuration() {
         StepVerifier.withVirtualTime(() -> downstream)
-            .expectSubscription()
-            .then(() -> sink.tryEmitNext("ONE"))
-            .thenAwait(CONFIG.getDeduplicationTimeout())
-            .expectNext("ONE")
-            .then(() -> sink.tryEmitNext("ONE"))
-            .thenAwait(CONFIG.getDeduplicationTimeout())
-            .expectNext("ONE")
-            .expectNoEvent(CONFIG.getDeduplicationTimeout())
-            .thenCancel()
-            .verify();
+                .expectSubscription()
+                .then(() -> sink.tryEmitNext("ONE"))
+                .thenAwait(CONFIG.getDeduplicationTimeout())
+                .expectNext("ONE")
+                .then(() -> sink.tryEmitNext("ONE"))
+                .thenAwait(CONFIG.getDeduplicationTimeout())
+                .expectNext("ONE")
+                .expectNoEvent(CONFIG.getDeduplicationTimeout())
+                .thenCancel()
+                .verify();
     }
 
     @Test
     public void deduplicatesOnlyWithinMaxSize() {
         StepVerifier.withVirtualTime(() -> downstream)
-            .expectSubscription()
-            .then(() -> {
-                sink.tryEmitNext("ONE");
-                sink.tryEmitNext("ONE");
-                sink.tryEmitNext("ONE");
-                sink.tryEmitNext("ONE");
-                sink.tryEmitNext("ONE");
-            })
-            .expectNext("ONE")
-            .expectNoEvent(CONFIG.getDeduplicationTimeout())
-            .expectNext("ONE")
-            .expectNoEvent(CONFIG.getDeduplicationTimeout())
-            .thenCancel()
-            .verify();
-
+                .expectSubscription()
+                .then(() -> {
+                    sink.tryEmitNext("ONE");
+                    sink.tryEmitNext("ONE");
+                    sink.tryEmitNext("ONE");
+                    sink.tryEmitNext("ONE");
+                    sink.tryEmitNext("ONE");
+                })
+                .expectNext("ONE")
+                .expectNoEvent(CONFIG.getDeduplicationTimeout())
+                .expectNext("ONE")
+                .expectNoEvent(CONFIG.getDeduplicationTimeout())
+                .thenCancel()
+                .verify();
     }
 
     @Test
     public void dataAreSequentiallyProcessed() {
         DeduplicatingTransformer<String> transformer = DeduplicatingTransformer.identity(
-            CONFIG, Deduplication.emitLast(Function.identity()), Schedulers.parallel());
+                CONFIG, Deduplication.emitLast(Function.identity()), Schedulers.parallel());
         Flux<String> invertedDownstream = sink.asFlux().transform(transformer);
 
         StepVerifier.create(invertedDownstream)
-            .expectSubscription()
-            .then(() -> sink.tryEmitNext("ONE"))
-            .thenAwait(Duration.ofMillis(200))
-            .then(() -> {
-                sink.tryEmitNext("TWO");
-                sink.tryEmitNext("TWO");
-                sink.tryEmitNext("ONE");
-            })
-            .thenAwait(CONFIG.getDeduplicationTimeout())
-            .expectNext("ONE")
-            .expectNext("TWO")
-            .expectNoEvent(CONFIG.getDeduplicationTimeout())
-            .thenCancel()
-            .verify();
+                .expectSubscription()
+                .then(() -> sink.tryEmitNext("ONE"))
+                .thenAwait(Duration.ofMillis(200))
+                .then(() -> {
+                    sink.tryEmitNext("TWO");
+                    sink.tryEmitNext("TWO");
+                    sink.tryEmitNext("ONE");
+                })
+                .thenAwait(CONFIG.getDeduplicationTimeout())
+                .expectNext("ONE")
+                .expectNext("TWO")
+                .expectNoEvent(CONFIG.getDeduplicationTimeout())
+                .thenCancel()
+                .verify();
     }
 
     @Test
@@ -107,33 +107,43 @@ class DeduplicatingTransformerTest {
         AtomicLong downstream = new AtomicLong(0L);
         CountDownLatch latch = new CountDownLatch(1);
 
-        Flux.fromStream(Stream.iterate(randomLong(CONFIG.getDeduplicationConcurrency()), last -> randomLong(CONFIG.getDeduplicationConcurrency())))
-            .flatMap(number -> Flux.concat(
-                    Mono.just(number).repeat(CONFIG.getMaxDeduplicationSize() - 1),
-                    Mono.just(number).delayElement(randomDuration(CONFIG.getDeduplicationTimeout().multipliedBy(2)))),
-                CONFIG.getDeduplicationConcurrency())
-            .take(Duration.ofSeconds(10L))
-            .doOnNext(next -> upstream.incrementAndGet())
-            .map(Collections::singletonList)
-            .transform(DeduplicatingTransformer.identity(CONFIG, new Deduplication<List<Long>>() {
+        Flux.fromStream(Stream.iterate(
+                        randomLong(CONFIG.getDeduplicationConcurrency()),
+                        last -> randomLong(CONFIG.getDeduplicationConcurrency())))
+                .flatMap(
+                        number -> Flux.concat(
+                                Mono.just(number).repeat(CONFIG.getMaxDeduplicationSize() - 1),
+                                Mono.just(number)
+                                        .delayElement(randomDuration(
+                                                CONFIG.getDeduplicationTimeout().multipliedBy(2)))),
+                        CONFIG.getDeduplicationConcurrency())
+                .take(Duration.ofSeconds(10L))
+                .doOnNext(next -> upstream.incrementAndGet())
+                .map(Collections::singletonList)
+                .transform(DeduplicatingTransformer.identity(
+                        CONFIG,
+                        new Deduplication<List<Long>>() {
 
-                @Override
-                public Object extractKey(List<Long> longs) {
-                    return longs.get(0);
-                }
+                            @Override
+                            public Object extractKey(List<Long> longs) {
+                                return longs.get(0);
+                            }
 
-                @Override
-                public List<Long> reduceDuplicates(List<Long> first, List<Long> second) {
-                    return Stream.concat(first.stream(), second.stream()).collect(Collectors.toList());
-                }
-            }, Schedulers.parallel()))
-            .doOnNext(buffer -> {
-                // Mimic real-world computationally-bound processing overhead
-                long startNano = System.nanoTime();
-                while (System.nanoTime() - startNano < 1_000_000) ;
-            })
-            .map(Collection::size)
-            .subscribe(downstream::addAndGet, System.err::println, latch::countDown);
+                            @Override
+                            public List<Long> reduceDuplicates(List<Long> first, List<Long> second) {
+                                return Stream.concat(first.stream(), second.stream())
+                                        .collect(Collectors.toList());
+                            }
+                        },
+                        Schedulers.parallel()))
+                .doOnNext(buffer -> {
+                    // Mimic real-world computationally-bound processing overhead
+                    long startNano = System.nanoTime();
+                    while (System.nanoTime() - startNano < 1_000_000)
+                        ;
+                })
+                .map(Collection::size)
+                .subscribe(downstream::addAndGet, System.err::println, latch::countDown);
 
         latch.await();
         assertEquals(upstream.get(), downstream.get());

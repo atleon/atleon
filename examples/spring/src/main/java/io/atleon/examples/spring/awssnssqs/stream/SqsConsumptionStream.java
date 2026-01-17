@@ -28,14 +28,15 @@ public class SqsConsumptionStream extends SpringAloStream {
     @Override
     protected Disposable startDisposable() {
         return buildReceiver()
-            .receiveAloBodies(queueUrl)
-            .consume(service::handleNumber)
-            .resubscribeOnError(name())
-            .subscribe();
+                .receiveAloBodies(queueUrl)
+                .consume(service::handleNumber)
+                .resubscribeOnError(name())
+                .subscribe();
     }
 
     private AloSqsReceiver<Long> buildReceiver() {
-        return configSource.with(AloSqsReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class)
-            .as(AloSqsReceiver::create);
+        return configSource
+                .with(AloSqsReceiver.BODY_DESERIALIZER_CONFIG, LongBodyDeserializer.class)
+                .as(AloSqsReceiver::create);
     }
 }

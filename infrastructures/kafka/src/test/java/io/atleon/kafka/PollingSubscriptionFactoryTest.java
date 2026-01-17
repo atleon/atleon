@@ -31,26 +31,26 @@ class PollingSubscriptionFactoryTest {
         schedulePollEventing(mockConsumer, polled);
 
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
-            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)
-            .fullPollRecordsPrefetch(1)
-            .build();
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)
+                .fullPollRecordsPrefetch(1)
+                .build();
 
         KafkaReceiver.create(options)
-            .receiveManual(Collections.singletonList(topic))
-            .as(it -> StepVerifier.create(it, 1))
-            .then(polled.asFlux().take(5).then()::block)
-            .then(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 0L, "key", "value")))
-            .then(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 1L, "key", "value")))
-            .expectNextCount(1L)
-            .then(polled.asFlux().take(5).then()::block)
-            .then(() -> assertEquals(beginningOffsets.keySet(), mockConsumer.paused()))
-            .thenRequest(1L)
-            .expectNextCount(1)
-            .then(polled.asFlux().take(5).then()::block)
-            .then(() -> assertTrue(mockConsumer.paused().isEmpty()))
-            .thenCancel()
-            .verify();
+                .receiveManual(Collections.singletonList(topic))
+                .as(it -> StepVerifier.create(it, 1))
+                .then(polled.asFlux().take(5).then()::block)
+                .then(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 0L, "key", "value")))
+                .then(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 1L, "key", "value")))
+                .expectNextCount(1L)
+                .then(polled.asFlux().take(5).then()::block)
+                .then(() -> assertEquals(beginningOffsets.keySet(), mockConsumer.paused()))
+                .thenRequest(1L)
+                .expectNextCount(1)
+                .then(polled.asFlux().take(5).then()::block)
+                .then(() -> assertTrue(mockConsumer.paused().isEmpty()))
+                .thenCancel()
+                .verify();
     }
 
     @Test
@@ -74,29 +74,29 @@ class PollingSubscriptionFactoryTest {
             }
         });
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
-            .consumerListener(consumerListener)
-            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)
-            .fullPollRecordsPrefetch(1)
-            .build();
+                .consumerListener(consumerListener)
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)
+                .fullPollRecordsPrefetch(1)
+                .build();
 
         KafkaReceiver.create(options)
-            .receiveManual(Collections.singletonList(topic))
-            .as(it -> StepVerifier.create(it, 1))
-            .then(polled.asFlux().take(5).then()::block)
-            .then(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 0L, "key", "value")))
-            .then(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 1, 0L, "key", "value")))
-            .then(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 1L, "key", "value")))
-            .then(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 1, 1L, "key", "value")))
-            .expectNextMatches(it -> it.topicPartition().equals(secondTopicPartition))
-            .then(polled.asFlux().take(5).then()::block)
-            .then(() -> assertEquals(beginningOffsets.keySet(), mockConsumer.paused()))
-            .thenRequest(1L)
-            .expectNextCount(1)
-            .then(polled.asFlux().take(5).then()::block)
-            .then(() -> assertEquals(Collections.singleton(firstTopicPartition), mockConsumer.paused()))
-            .thenCancel()
-            .verify();
+                .receiveManual(Collections.singletonList(topic))
+                .as(it -> StepVerifier.create(it, 1))
+                .then(polled.asFlux().take(5).then()::block)
+                .then(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 0L, "key", "value")))
+                .then(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 1, 0L, "key", "value")))
+                .then(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 1L, "key", "value")))
+                .then(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 1, 1L, "key", "value")))
+                .expectNextMatches(it -> it.topicPartition().equals(secondTopicPartition))
+                .then(polled.asFlux().take(5).then()::block)
+                .then(() -> assertEquals(beginningOffsets.keySet(), mockConsumer.paused()))
+                .thenRequest(1L)
+                .expectNextCount(1)
+                .then(polled.asFlux().take(5).then()::block)
+                .then(() -> assertEquals(Collections.singleton(firstTopicPartition), mockConsumer.paused()))
+                .thenCancel()
+                .verify();
     }
 
     @Test
@@ -111,19 +111,19 @@ class PollingSubscriptionFactoryTest {
         schedulePollEventing(mockConsumer, polled);
 
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
-            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
-            .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)
-            .fullPollRecordsPrefetch(1)
-            .build();
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)
+                .fullPollRecordsPrefetch(1)
+                .build();
 
         KafkaReceiver.create(options)
-            .receiveManual(Collections.singletonList(topic))
-            .as(it -> StepVerifier.create(it, 1))
-            .then(polled.asFlux().take(5).then()::block)
-            .then(() -> mockConsumer.rebalance(Collections.emptyList()))
-            .then(polled.asFlux().take(5).then()::block)
-            .thenCancel()
-            .verify();
+                .receiveManual(Collections.singletonList(topic))
+                .as(it -> StepVerifier.create(it, 1))
+                .then(polled.asFlux().take(5).then()::block)
+                .then(() -> mockConsumer.rebalance(Collections.emptyList()))
+                .then(polled.asFlux().take(5).then()::block)
+                .thenCancel()
+                .verify();
     }
 
     private static void schedulePollEventing(MockConsumer<String, String> mockConsumer, Sinks.Many<Long> polled) {

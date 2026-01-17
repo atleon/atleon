@@ -40,8 +40,7 @@ class AbstractConfiguredAloStreamTest {
 
         @Override
         protected Disposable startDisposable(AloStreamConfig config) {
-            return () -> {
-            };
+            return () -> {};
         }
     }
 

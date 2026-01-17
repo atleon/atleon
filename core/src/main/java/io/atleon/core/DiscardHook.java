@@ -23,7 +23,8 @@ interface DiscardHook extends Consumer<Object> {
 
         return context -> {
             DiscardHook contextualHook = context.getOrDefault(DiscardHook.class, null);
-            return context.put(DiscardHook.class, contextualHook == null ? discardHook : discardHook.andThen(contextualHook));
+            return context.put(
+                    DiscardHook.class, contextualHook == null ? discardHook : discardHook.andThen(contextualHook));
         };
     }
 
@@ -32,9 +33,7 @@ interface DiscardHook extends Consumer<Object> {
     }
 
     static DiscardHook noOp() {
-        return __ -> {
-
-        };
+        return __ -> {};
     }
 
     @Override

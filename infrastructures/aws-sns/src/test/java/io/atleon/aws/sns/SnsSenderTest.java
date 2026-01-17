@@ -22,14 +22,17 @@ class SnsSenderTest extends LocalStackDependentTest {
     public void aMessageCanBeSentToSnsAndReceivedFromSubscribers() {
         String messageBody = UUID.randomUUID().toString();
 
-        sender.send(toSenderMessage(messageBody), SnsAddress.topicArn(topicArn)).then().block();
+        sender.send(toSenderMessage(messageBody), SnsAddress.topicArn(topicArn))
+                .then()
+                .block();
 
-        Set<String> receivedBodies = SqsReceiver.create(newReceiverOptions()).receiveManual(queueUrl)
-            .doOnNext(SqsReceiverMessage::delete)
-            .map(SqsReceiverMessage::body)
-            .take(1)
-            .collect(Collectors.toSet())
-            .block();
+        Set<String> receivedBodies = SqsReceiver.create(newReceiverOptions())
+                .receiveManual(queueUrl)
+                .doOnNext(SqsReceiverMessage::delete)
+                .map(SqsReceiverMessage::body)
+                .take(1)
+                .collect(Collectors.toSet())
+                .block();
 
         assertEquals(Collections.singleton(messageBody), receivedBodies);
     }
@@ -37,20 +40,22 @@ class SnsSenderTest extends LocalStackDependentTest {
     @Test
     public void manyMessagesCanBeSentToAndReceivedFromSubscribers() {
         Set<String> messageBodies = IntStream.range(0, 10)
-            .mapToObj(i -> UUID.randomUUID().toString())
-            .collect(Collectors.toSet());
+                .mapToObj(i -> UUID.randomUUID().toString())
+                .collect(Collectors.toSet());
 
         Flux.fromIterable(messageBodies)
-            .map(SnsSenderTest::toSenderMessage)
-            .transform(messages -> sender.send(messages, topicArn))
-            .then().block();
+                .map(SnsSenderTest::toSenderMessage)
+                .transform(messages -> sender.send(messages, topicArn))
+                .then()
+                .block();
 
-        Set<String> receivedBodies = SqsReceiver.create(newReceiverOptions()).receiveManual(queueUrl)
-            .doOnNext(SqsReceiverMessage::delete)
-            .map(SqsReceiverMessage::body)
-            .take(messageBodies.size())
-            .collect(Collectors.toSet())
-            .block();
+        Set<String> receivedBodies = SqsReceiver.create(newReceiverOptions())
+                .receiveManual(queueUrl)
+                .doOnNext(SqsReceiverMessage::delete)
+                .map(SqsReceiverMessage::body)
+                .take(messageBodies.size())
+                .collect(Collectors.toSet())
+                .block();
 
         assertEquals(messageBodies, receivedBodies);
     }

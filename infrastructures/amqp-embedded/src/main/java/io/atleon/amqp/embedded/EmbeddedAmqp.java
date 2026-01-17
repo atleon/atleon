@@ -51,8 +51,11 @@ public final class EmbeddedAmqp {
     private static void startLocalBroker(EmbeddedAmqpConfig config) {
         try {
             LOGGER.info("BEGINNING STARTUP OF LOCAL AMQP BROKER");
-            Path tempDirectory = Files.createTempDirectory(EmbeddedAmqp.class.getSimpleName() + "_" + System.currentTimeMillis());
-            System.getProperties().putIfAbsent("derby.stream.error.file", new File(tempDirectory.toFile(), "derby.log").getAbsolutePath());
+            Path tempDirectory =
+                    Files.createTempDirectory(EmbeddedAmqp.class.getSimpleName() + "_" + System.currentTimeMillis());
+            System.getProperties()
+                    .putIfAbsent(
+                            "derby.stream.error.file", new File(tempDirectory.toFile(), "derby.log").getAbsolutePath());
             Map<String, Object> attributes = createAttributes(config, tempDirectory);
             SystemLauncher systemLauncher = new SystemLauncher();
             systemLauncher.startup(attributes);
@@ -62,7 +65,8 @@ public final class EmbeddedAmqp {
         }
     }
 
-    private static Map<String, Object> createAttributes(EmbeddedAmqpConfig config, Path tempDirectory) throws Exception {
+    private static Map<String, Object> createAttributes(EmbeddedAmqpConfig config, Path tempDirectory)
+            throws Exception {
         Map<String, String> context = new HashMap<>();
         context.put(PORT_PROPERTY, Integer.toString(config.getPort()));
         context.put(USERNAME_PROPERTY, config.getUsername());
@@ -71,13 +75,16 @@ public final class EmbeddedAmqp {
 
         Map<String, Object> attributes = new HashMap<>();
         attributes.put(SystemConfig.TYPE, "JSON");
-        attributes.put(SystemConfig.INITIAL_CONFIGURATION_LOCATION, createAmqpConfig(tempDirectory).getCanonicalPath());
+        attributes.put(
+                SystemConfig.INITIAL_CONFIGURATION_LOCATION,
+                createAmqpConfig(tempDirectory).getCanonicalPath());
         attributes.put(SystemConfig.CONTEXT, context);
         return attributes;
     }
 
     private static File createAmqpConfig(Path directory) throws Exception {
-        File configFile = Files.createTempFile(directory, "amqp", SystemConfig.DEFAULT_INITIAL_CONFIG_NAME).toFile();
+        File configFile = Files.createTempFile(directory, "amqp", SystemConfig.DEFAULT_INITIAL_CONFIG_NAME)
+                .toFile();
         PrintWriter configWriter = new PrintWriter(configFile);
         configWriter.println("{");
         configWriter.println("    \"name\": \"broker\",");

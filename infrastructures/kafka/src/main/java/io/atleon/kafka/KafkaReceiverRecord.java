@@ -21,20 +21,14 @@ public final class KafkaReceiverRecord<K, V> {
     private final Consumer<Throwable> nacknowledger;
 
     private KafkaReceiverRecord(
-        ConsumerRecord<K, V> consumerRecord,
-        Runnable acknowledger,
-        Consumer<Throwable> nacknowledger
-    ) {
+            ConsumerRecord<K, V> consumerRecord, Runnable acknowledger, Consumer<Throwable> nacknowledger) {
         this.consumerRecord = consumerRecord;
         this.acknowledger = acknowledger;
         this.nacknowledger = nacknowledger;
     }
 
     public static <K, V> KafkaReceiverRecord<K, V> create(
-        ConsumerRecord<K, V> consumerRecord,
-        Runnable acknowledger,
-        Consumer<Throwable> nacknowledger
-    ) {
+            ConsumerRecord<K, V> consumerRecord, Runnable acknowledger, Consumer<Throwable> nacknowledger) {
         return new KafkaReceiverRecord<>(consumerRecord, acknowledger, nacknowledger);
     }
 

@@ -18,10 +18,10 @@ import java.util.function.Predicate;
 public final class AcknowledgementQueue {
 
     private static final AtomicReferenceFieldUpdater<AcknowledgementQueue, InFlight> TAIL =
-        AtomicReferenceFieldUpdater.newUpdater(AcknowledgementQueue.class, InFlight.class, "tail");
+            AtomicReferenceFieldUpdater.newUpdater(AcknowledgementQueue.class, InFlight.class, "tail");
 
     private static final AtomicIntegerFieldUpdater<AcknowledgementQueue> DRAINS_IN_PROGRESS =
-        AtomicIntegerFieldUpdater.newUpdater(AcknowledgementQueue.class, "drainsInProgress");
+            AtomicIntegerFieldUpdater.newUpdater(AcknowledgementQueue.class, "drainsInProgress");
 
     private final AcknowledgementQueueMode mode;
 
@@ -126,16 +126,20 @@ public final class AcknowledgementQueue {
 
     public static final class InFlight {
 
-        private enum State {IN_PROCESS, COMPLETED, EXECUTED}
+        private enum State {
+            IN_PROCESS,
+            COMPLETED,
+            EXECUTED
+        }
 
         private static final AtomicReferenceFieldUpdater<InFlight, InFlight> NEXT =
-            AtomicReferenceFieldUpdater.newUpdater(InFlight.class, InFlight.class, "next");
+                AtomicReferenceFieldUpdater.newUpdater(InFlight.class, InFlight.class, "next");
 
         private static final AtomicReferenceFieldUpdater<InFlight, State> STATE =
-            AtomicReferenceFieldUpdater.newUpdater(InFlight.class, State.class, "state");
+                AtomicReferenceFieldUpdater.newUpdater(InFlight.class, State.class, "state");
 
         private static final AtomicReferenceFieldUpdater<InFlight, Throwable> ERROR =
-            AtomicReferenceFieldUpdater.newUpdater(InFlight.class, Throwable.class, "error");
+                AtomicReferenceFieldUpdater.newUpdater(InFlight.class, Throwable.class, "error");
 
         private final Runnable acknowledger;
 

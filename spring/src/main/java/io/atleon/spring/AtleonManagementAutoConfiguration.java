@@ -35,7 +35,7 @@ public class AtleonManagementAutoConfiguration {
         @Override
         public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
             return Contexts.isClassPresent(context, "org.springframework.web.bind.annotation.RestController")
-                && Contexts.isPropertySetToTrue(context, "atleon.management.rest.enabled");
+                    && Contexts.isPropertySetToTrue(context, "atleon.management.rest.enabled");
         }
     }
 }

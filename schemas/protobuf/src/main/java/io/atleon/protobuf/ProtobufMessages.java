@@ -11,23 +11,15 @@ import java.util.function.Function;
 
 public final class ProtobufMessages {
 
-    private ProtobufMessages() {
-
-    }
+    private ProtobufMessages() {}
 
     public static <I, M extends Message> Optional<Function<I, M>> loadParser(
-        Map<String, ?> configs,
-        String key,
-        Class<I> inputType
-    ) {
+            Map<String, ?> configs, String key, Class<I> inputType) {
         return ConfigLoading.loadClass(configs, key).map(it -> createParser(it, inputType));
     }
 
     public static <I, M extends Message> Function<I, M> loadParserOrThrow(
-        Map<String, ?> configs,
-        String key,
-        Class<I> inputType
-    ) {
+            Map<String, ?> configs, String key, Class<I> inputType) {
         return createParser(ConfigLoading.loadClassOrThrow(configs, key), inputType);
     }
 
@@ -36,9 +28,8 @@ public final class ProtobufMessages {
             Method method = messageType.getDeclaredMethod("parseFrom", inputType);
             return input -> invoke(method, input);
         } catch (NoSuchMethodException e) {
-            throw new IllegalArgumentException(
-                "Either type=" + messageType + " is not a Message or there is no parser for inputType=" + inputType
-            );
+            throw new IllegalArgumentException("Either type=" + messageType
+                    + " is not a Message or there is no parser for inputType=" + inputType);
         }
     }
 

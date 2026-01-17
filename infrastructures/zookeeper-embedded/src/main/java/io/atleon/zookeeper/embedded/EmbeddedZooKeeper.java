@@ -10,9 +10,7 @@ public final class EmbeddedZooKeeper {
 
     private static URL zooKeeperConnect;
 
-    private EmbeddedZooKeeper() {
-
-    }
+    private EmbeddedZooKeeper() {}
 
     public static URL startAndGetConnectUrl() {
         return startAndGetConnectUrl(DEFAULT_PORT);

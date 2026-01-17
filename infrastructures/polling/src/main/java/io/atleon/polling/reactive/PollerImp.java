@@ -20,8 +20,7 @@ public class PollerImp<P, O> implements Poller<P, O> {
     private final Sinks.Many<Collection<Polled<P, O>>> sink;
     private final PollingEventLoop<P, O> eventLoop;
 
-    protected PollerImp(final Pollable<P, O> pollable,
-                        final Duration pollingInterval) {
+    protected PollerImp(final Pollable<P, O> pollable, final Duration pollingInterval) {
         this.pollable = pollable;
         this.sink = Sinks.many().unicast().onBackpressureBuffer();
         this.scheduler = Schedulers.newSingle(new EventThreadFactory());
@@ -44,7 +43,7 @@ public class PollerImp<P, O> implements Poller<P, O> {
         return eventLoop.stop().doFinally(s -> scheduler.dispose());
     }
 
-    final static class EventThreadFactory implements ThreadFactory {
+    static final class EventThreadFactory implements ThreadFactory {
 
         static final String PREFIX = "reactive-polling";
         static final AtomicLong COUNTER_REFERENCE = new AtomicLong();
@@ -66,8 +65,7 @@ public class PollerImp<P, O> implements Poller<P, O> {
     }
 
     static void defaultUncaughtException(Thread t, Throwable e) {
-        System.out.println("Polling worker in group " + t.getThreadGroup().getName()
-                + " failed with an uncaught exception");
+        System.out.println(
+                "Polling worker in group " + t.getThreadGroup().getName() + " failed with an uncaught exception");
     }
-
 }
