@@ -139,7 +139,7 @@ public final class SqsReceiver {
         private Mono<?> doDispose() {
             return executionPhaser.arriveAndAwaitAdvanceReactively()
                 .then(Mono.fromRunnable(receiptHandlesToDelete::tryEmitComplete))
-                .then(Mono.defer(() -> createChangeMessageVisibilities(inProcessReceiptHandles, Duration.ZERO, __ -> true)))
+                .then(Mono.defer(() -> changeMessageVisibilities(inProcessReceiptHandles, Duration.ZERO, __ -> true)))
                 .then(executionPhaser.arriveAndAwaitAdvanceReactively())
                 .timeout(options.closeTimeout())
                 .doFinally(__ -> client.close())
@@ -229,17 +229,17 @@ public final class SqsReceiver {
         }
 
         private void maybeChangeMessageVisibility(String receiptHandle, Duration timeout) {
-            createChangeMessageVisibilities(Collections.singletonList(receiptHandle), timeout, phase -> phase == 0)
+            changeMessageVisibilities(Collections.singletonList(receiptHandle), timeout, phase -> phase == 0)
                 .subscribe(response -> handleMessageVisibilitiesChanged(response, Collections.emptyList()), this::doError);
         }
 
         private void maybeChangeMessageVisibilityAndMarkNotInFlight(String receiptHandle, Duration timeout) {
             List<String> receiptHandles = Collections.singletonList(receiptHandle);
-            createChangeMessageVisibilities(receiptHandles, timeout, phase -> phase == 0)
+            changeMessageVisibilities(receiptHandles, timeout, phase -> phase == 0)
                 .subscribe(response -> handleMessageVisibilitiesChanged(response, receiptHandles), this::doError);
         }
 
-        private Mono<ChangeMessageVisibilityBatchResponse> createChangeMessageVisibilities(
+        private Mono<ChangeMessageVisibilityBatchResponse> changeMessageVisibilities(
             Collection<String> receiptHandles,
             Duration timeout,
             IntPredicate phaseMustMatch
@@ -285,7 +285,7 @@ public final class SqsReceiver {
         ) {
             return Mono.fromSupplier(() -> phaseMustMatch.test(executionPhaser.register()))
                 .cache()
-                .flatMap(phaseMatched -> phaseMatched ? Mono.fromFuture(method.apply(client, request)) : Mono.empty())
+                .flatMap(it -> it ? Mono.fromFuture(method.apply(client, request)) : Mono.empty())
                 .retryWhen(DEFAULT_RETRY)
                 .doFinally(__ -> executionPhaser.arriveAndDeregister());
         }
