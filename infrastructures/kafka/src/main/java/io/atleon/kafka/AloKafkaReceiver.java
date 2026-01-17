@@ -14,7 +14,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.kafka.receiver.ReceiverOptions;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -180,13 +179,6 @@ public class AloKafkaReceiver<K, V> {
      * partitions are assigned to a possibly different consumer instance.
      */
     public static final String TERMINATION_GRACE_PERIOD_CONFIG = CONFIG_PREFIX + "termination.grace.period";
-
-    /**
-     * This is a temporary configuration to enable and test usage of re-optimized Kafka receiver.
-     * Set to "OPTIMIZED" to enable.
-     */
-    @Deprecated
-    public static final String RECEPTION_TYPE_CONFIG = CONFIG_PREFIX + "reception.type";
 
     private static final AcknowledgementQueueMode DEFAULT_ACKNOWLEDGEMENT_QUEUE_MODE = AcknowledgementQueueMode.STRICT;
 
@@ -413,27 +405,18 @@ public class AloKafkaReceiver<K, V> {
 
         private final ReceptionInvocation<K, V> receptionInvocation;
 
-        private final LegacyReceiveResources.OptionsInitializer<K, V> optionsInitializer;
-
         private final Map<Object, ConsumerMutexEnforcer> consumerMutexEnforcers = new ConcurrentHashMap<>();
 
-        private ReceptionFactory(
-                ReceptionInvocation<K, V> receptionInvocation,
-                LegacyReceiveResources.OptionsInitializer<K, V> optionsInitializer) {
+        private ReceptionFactory(ReceptionInvocation<K, V> receptionInvocation) {
             this.receptionInvocation = receptionInvocation;
-            this.optionsInitializer = optionsInitializer;
         }
 
         public static <K, V> ReceptionFactory<K, V> topics(Collection<String> topics) {
-            return new ReceptionFactory<>(
-                    receiver -> receiver.receiveManual(topics),
-                    config -> ReceiverOptions.<K, V>create(config).subscription(topics));
+            return new ReceptionFactory<>(receiver -> receiver.receiveManual(topics));
         }
 
         public static <K, V> ReceptionFactory<K, V> topicsPattern(Pattern topicsPattern) {
-            return new ReceptionFactory<>(
-                    receiver -> receiver.receiveManual(topicsPattern),
-                    config -> ReceiverOptions.<K, V>create(config).subscription(topicsPattern));
+            return new ReceptionFactory<>(receiver -> receiver.receiveManual(topicsPattern));
         }
 
         @SuppressWarnings("unchecked")
@@ -452,11 +435,7 @@ public class AloKafkaReceiver<K, V> {
         private Flux<Alo<ConsumerRecord<K, V>>> receive(Object configKey, KafkaConfig config) {
             ConsumerMutexEnforcer consumerMutexEnforcer =
                     consumerMutexEnforcers.computeIfAbsent(configKey, __ -> new ConsumerMutexEnforcer());
-            if (config.loadString(RECEPTION_TYPE_CONFIG).orElse("OPTIMIZED").equalsIgnoreCase("OPTIMIZED")) {
-                return new ReceiveResources<K, V>(config).receive(receptionInvocation, consumerMutexEnforcer);
-            } else {
-                return new LegacyReceiveResources<K, V>(config).receive(optionsInitializer, consumerMutexEnforcer);
-            }
+            return new ReceiveResources<K, V>(config).receive(receptionInvocation, consumerMutexEnforcer);
         }
     }
 

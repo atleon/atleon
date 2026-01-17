@@ -13,7 +13,6 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.Uuid;
 import org.apache.kafka.common.errors.ProducerFencedException;
-import reactor.kafka.sender.SenderRecord;
 
 import java.time.Duration;
 import java.util.List;
@@ -71,9 +70,7 @@ final class ContextualProducer<K, V> implements Producer<K, V> {
 
     @Override
     public Future<RecordMetadata> send(ProducerRecord<K, V> record) {
-        Object correlationMetadata = record instanceof SenderRecord
-                ? SenderRecord.class.cast(record).correlationMetadata()
-                : KafkaSenderRecord.class.cast(record).correlationMetadata();
+        Object correlationMetadata = KafkaSenderRecord.class.cast(record).correlationMetadata();
         return correlationMetadata instanceof Contextual
                 ? Contextual.class.cast(correlationMetadata).supplyInContext(() -> delegate.send(record))
                 : delegate.send(record);
@@ -81,9 +78,7 @@ final class ContextualProducer<K, V> implements Producer<K, V> {
 
     @Override
     public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
-        Object correlationMetadata = record instanceof SenderRecord
-                ? SenderRecord.class.cast(record).correlationMetadata()
-                : KafkaSenderRecord.class.cast(record).correlationMetadata();
+        Object correlationMetadata = KafkaSenderRecord.class.cast(record).correlationMetadata();
         return correlationMetadata instanceof Contextual
                 ? Contextual.class.cast(correlationMetadata).supplyInContext(() -> delegate.send(record, callback))
                 : delegate.send(record, callback);

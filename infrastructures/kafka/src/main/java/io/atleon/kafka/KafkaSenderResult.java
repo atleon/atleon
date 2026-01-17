@@ -35,18 +35,6 @@ public final class KafkaSenderResult<T> implements SenderResult {
                         senderResult.recordMetadata, senderResult.exception, correlationMetadata));
     }
 
-    static <T> KafkaSenderResult<T> fromSenderResult(reactor.kafka.sender.SenderResult<T> senderResult) {
-        return new KafkaSenderResult<>(
-                senderResult.recordMetadata(), senderResult.exception(), senderResult.correlationMetadata());
-    }
-
-    static <T> Alo<KafkaSenderResult<T>> fromSenderResultOfAlo(reactor.kafka.sender.SenderResult<Alo<T>> senderResult) {
-        return senderResult
-                .correlationMetadata()
-                .map(correlationMetadata -> new KafkaSenderResult<>(
-                        senderResult.recordMetadata(), senderResult.exception(), correlationMetadata));
-    }
-
     @Override
     public Optional<Throwable> failureCause() {
         return Optional.ofNullable(exception);

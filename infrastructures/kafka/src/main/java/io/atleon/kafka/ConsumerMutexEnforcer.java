@@ -15,10 +15,8 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.Uuid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import reactor.kafka.receiver.ReceiverOptions;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -47,17 +45,8 @@ class ConsumerMutexEnforcer {
         return config -> new ConsumerProxy<>(newConsumer(config), new TicketedInvoker(ticketCounter.incrementAndGet()));
     }
 
-    public final ProhibitableConsumerFactory newProhibitableConsumerFactory() {
-        return new ProhibitableConsumerFactory(ticketCounter.incrementAndGet());
-    }
-
     protected <K, V> Consumer<K, V> newConsumer(Map<String, Object> config) {
         return new KafkaConsumer<>(config);
-    }
-
-    protected <K, V> Consumer<K, V> newConsumer(ReceiverOptions<K, V> options) {
-        return new KafkaConsumer<>(
-                options.consumerProperties(), options.keyDeserializer(), options.valueDeserializer());
     }
 
     private interface Invoker {
@@ -81,53 +70,6 @@ class ConsumerMutexEnforcer {
                 throw exception;
             } else {
                 return supplier.get();
-            }
-        }
-    }
-
-    final class ProhibitableConsumerFactory extends reactor.kafka.receiver.internals.ConsumerFactory {
-
-        private final int ticket;
-
-        private volatile Instant consumptionDeadline = null;
-
-        private ProhibitableConsumerFactory(int ticket) {
-            this.ticket = ticket;
-        }
-
-        @Override
-        public <K, V> Consumer<K, V> createConsumer(ReceiverOptions<K, V> config) {
-            return new ConsumerProxy<>(newConsumer(config), new InvokerImpl(config.clientId()));
-        }
-
-        public void prohibitFurtherConsumption(Duration gracePeriod) {
-            consumptionDeadline = Instant.now().plus(gracePeriod);
-        }
-
-        private final class InvokerImpl implements Invoker {
-
-            private final String clientId;
-
-            public InvokerImpl(String clientId) {
-                this.clientId = clientId;
-            }
-
-            @Override
-            public <T> T invokeIfAllowed(Supplier<T> supplier) {
-                Instant deadline = consumptionDeadline;
-                if (deadline != null && Instant.now().compareTo(deadline) > 0) {
-                    RuntimeException exception =
-                            new IllegalStateException("Consumer invocations prohibited, but invoked: " + clientId);
-                    LOGGER.error(exception.getMessage(), exception);
-                    throw exception;
-                } else if (deadline == null && ticket != ticketCounter.get()) {
-                    RuntimeException exception =
-                            new IllegalStateException("Detected orphaned Consumer instance: " + clientId);
-                    LOGGER.error(exception.getMessage(), exception);
-                    throw exception;
-                } else {
-                    return supplier.get();
-                }
             }
         }
     }
