@@ -163,7 +163,7 @@ final class PollingSubscriptionFactory<K, V> {
         public final void onPartitionsLost(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
             // No longer assigned, so impossible to commit, and all we can do is clean up.
             Map<TopicPartition, Long> lostPartitionRecordCounts = pollManager.unassigned(partitions).stream()
-                .map(it -> it.deactivateForcefully().map(recordCount -> Tuples.of(it.topicPartition(), recordCount)))
+                .map(active -> active.deactivateForcefully().map(it -> Tuples.of(active.topicPartition(), it)))
                 .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
                 .collectMap(Tuple2::getT1, Tuple2::getT2)
                 .block();
@@ -489,7 +489,7 @@ final class PollingSubscriptionFactory<K, V> {
             partitions.stream()
                 .map(it -> it.deactivateTimeout(options.revocationGracePeriod(), auxiliaryScheduler))
                 .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
-                .onErrorMap(TimeoutException.class, __ -> new TimeoutException("Timed out on revocation deactivation"))
+                .onErrorMap(TimeoutException.class, __ -> new TimeoutException("Revocation deactivation timeout"))
                 .takeUntilOther(txClosure)
                 .then(txClosure.timeout(options.closeTimeout(), auxiliaryScheduler))
                 .block();

@@ -56,7 +56,7 @@ public class ReactiveAdmin implements Closeable {
     public Mono<Void> alterRawConsumerGroupOffsets(String groupId, Map<TopicPartition, Long> offsets) {
         Map<TopicPartition, OffsetAndMetadata> offsetsAndMetadata = offsets.entrySet().stream()
             .collect(Collectors.toMap(Map.Entry::getKey, it -> new OffsetAndMetadata(it.getValue())));
-        return execute(admin -> admin.alterConsumerGroupOffsets(groupId, offsetsAndMetadata).all());
+        return execute(it -> it.alterConsumerGroupOffsets(groupId, offsetsAndMetadata).all());
     }
 
     /**
@@ -90,7 +90,7 @@ public class ReactiveAdmin implements Closeable {
     public Flux<TopicPartitionGroupOffsets> listTopicPartitionGroupOffsets(Collection<String> groupIds) {
         Map<String, ListConsumerGroupOffsetsSpec> offsetSpecs = groupIds.stream()
             .collect(Collectors.toMap(Function.identity(), __ -> new ListConsumerGroupOffsetsSpec()));
-        return execute(admin -> admin.listConsumerGroupOffsets(offsetSpecs).all())
+        return execute(it -> it.listConsumerGroupOffsets(offsetSpecs).all())
             .flatMapMany(this::listTopicPartitionGroupOffsets);
     }
 
@@ -133,7 +133,7 @@ public class ReactiveAdmin implements Closeable {
         Map<String, ListConsumerGroupOffsetsSpec> offsetSpecs = groupIds.keySet().stream()
             .collect(Collectors.toMap(Function.identity(), __ -> offsetsSpec));
         return Mono.zip(
-            execute(admin -> admin.listConsumerGroupOffsets(offsetSpecs).all()),
+            execute(it -> it.listConsumerGroupOffsets(offsetSpecs).all()),
             listOffsets(topicPartitions, OffsetSpec.earliest()),
             listOffsets(topicPartitions, OffsetSpec.latest())
         ).flatMapIterable(it -> createTopicPartitionGroupOffsets(groupIds, it.getT1(), it.getT2(), it.getT3()));
@@ -176,7 +176,7 @@ public class ReactiveAdmin implements Closeable {
         if (offsetSpecs.isEmpty()) {
             return Mono.empty();
         } else {
-            return execute(admin -> admin.listOffsets(offsetSpecs, LIST_OFFSETS_OPTIONS).all())
+            return execute(it -> it.listOffsets(offsetSpecs, LIST_OFFSETS_OPTIONS).all())
                 .flatMapIterable(Map::entrySet)
                 .collectMap(Map.Entry::getKey, it -> adjustment.applyAsLong(it.getValue().offset()));
         }
@@ -199,7 +199,7 @@ public class ReactiveAdmin implements Closeable {
      * @return A {@link Flux} of {@link TopicPartition} for each of the topics' partitions
      */
     public Flux<TopicPartition> listTopicPartitions(Collection<String> topics) {
-        return execute(admin -> admin.describeTopics(topics).allTopicNames())
+        return execute(it -> it.describeTopics(topics).allTopicNames())
             .flatMapIterable(Map::values)
             .flatMapIterable(ReactiveAdmin::extractTopicPartitions);
     }

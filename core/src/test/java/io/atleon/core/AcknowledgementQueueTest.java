@@ -229,10 +229,10 @@ public class AcknowledgementQueueTest {
         AtomicInteger errorCount = new AtomicInteger(0);
         AtomicLong drained = new AtomicLong();
 
-        AcknowledgementQueue acknowledgementQueue = AcknowledgementQueue.create(mode);
+        AcknowledgementQueue queue = AcknowledgementQueue.create(mode);
 
         Flux.range(0, count)
-            .map(i -> acknowledgementQueue.add(positiveCount::incrementAndGet, error -> negativeCount.incrementAndGet()))
+            .map(i -> queue.add(positiveCount::incrementAndGet, error -> negativeCount.incrementAndGet()))
             .parallel(parallelism)
             .runOn(Schedulers.boundedElastic())
             .subscribe(
@@ -241,9 +241,9 @@ public class AcknowledgementQueueTest {
                     if (Math.random() <= .65D) {
                         errorCount.incrementAndGet();
                         IllegalArgumentException error = new IllegalArgumentException("Boom");
-                        drained.addAndGet(acknowledgementQueue.completeExceptionally(inFlight, error));
+                        drained.addAndGet(queue.completeExceptionally(inFlight, error));
                     } else {
-                        drained.addAndGet(acknowledgementQueue.complete(inFlight));
+                        drained.addAndGet(queue.complete(inFlight));
                     }
                 }
             );

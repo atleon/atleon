@@ -162,8 +162,8 @@ public final class AcknowledgementQueue {
             }
 
             InFlight left = previous;
-            if (left.isCompletedWithoutError() && !left.isHead()) { // Don't sever head; Its completion must cause execution
-                left.sever(); // Need to sever left since it could be queued for draining and should then result in no-op
+            if (left.isCompletedWithoutError() && !left.isHead()) { // Don't sever head: Must execute on completion
+                left.sever(); // Need to sever left: It could be queued for draining and should then result in no-op
                 left = left.previous;
                 left.next.previous = null; // Enable efficient GC
                 compacted++;
@@ -216,7 +216,8 @@ public final class AcknowledgementQueue {
         }
 
         private boolean isCompletedWithoutError() {
-            return state == State.COMPLETED && error == null; // Ordering is important: State may be set after reading error
+            // Ordering is important: State may be set after reading error
+            return state == State.COMPLETED && error == null;
         }
 
         private boolean completeExceptionally(Throwable error) {
