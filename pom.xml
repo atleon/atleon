@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.atleon</groupId>
     <artifactId>atleon</artifactId>
-    <version>0.36.3-SNAPSHOT</version>
+    <version>0.37.0</version>
     <packaging>pom</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
     <description>Reactive streaming library targeting continuous pipelines with at-least-once processing guarantees. Backed by Project Reactor.</description>
@@ -28,7 +28,7 @@
         <connection>scm:git:git@github.com:atleon/atleon.git</connection>
         <developerConnection>scm:git:git@github.com:atleon/atleon.git</developerConnection>
         <url>http://github.com/atleon/atleon</url>
-        <tag>HEAD</tag>
+        <tag>atleon-0.37.0</tag>
     </scm>
 
     <distributionManagement>
@@ -79,7 +79,7 @@
                 <version>2.43.0</version>
                 <configuration>
                     <java>
-                        <palantirJavaFormat/>
+                        <palantirJavaFormat />
                         <importOrder>
                             <!-- Group with ordering using '|', split/space groups with ',', and put statics last -->
                             <order>com|io|net|org|reactor|software,java,\#</order>
