@@ -9,6 +9,7 @@ import reactor.core.scheduler.Schedulers;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -216,6 +217,16 @@ public class GroupFlux<K, T> {
      */
     public GroupFlux<K, T> innerTap(SignalListenerFactory<Alo<T>, ?> signalListenerFactory) {
         return map(group -> group.tap(signalListenerFactory));
+    }
+
+    /**
+     * Convenience method for applying {@link AloFlux#addAloErrorDelegation(BiFunction)} to each inner
+     * grouped sequence.
+     *
+     * @return a transformed {@link GroupFlux}
+     */
+    public GroupFlux<K, T> innerAddAloErrorDelegation(ErrorDelegator<T> errorDelegator) {
+        return map(group -> group.addAloErrorDelegation(errorDelegator));
     }
 
     /**
