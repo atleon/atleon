@@ -497,7 +497,6 @@
                                 <link>https://docs.spring.io/spring-framework/docs/${spring.version}/javadoc-api</link>
                                 <link>https://kafka.apache.org/${apache-kafka-doc.version}/javadoc</link>
                                 <link>https://projectreactor.io/docs/core/${reactor.version}/api</link>
-                                <link>https://projectreactor.io/docs/kafka/${reactor-kafka.version}/api</link>
                             </links>
                         </configuration>
                         <executions>
