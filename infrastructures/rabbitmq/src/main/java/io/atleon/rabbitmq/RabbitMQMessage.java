@@ -30,15 +30,27 @@ public class RabbitMQMessage<T> {
         return new RabbitMQMessage<>(exchange, routingKey, properties, body);
     }
 
+    public String exchange() {
+        return exchange;
+    }
+
+    public String routingKey() {
+        return routingKey;
+    }
+
+    public AMQP.BasicProperties properties() {
+        return properties;
+    }
+
+    public T body() {
+        return body;
+    }
+
     /**
      * @deprecated Use {@link #exchange()}
      */
     @Deprecated
     public String getExchange() {
-        return exchange;
-    }
-
-    public String exchange() {
         return exchange;
     }
 
@@ -50,10 +62,6 @@ public class RabbitMQMessage<T> {
         return routingKey;
     }
 
-    public String routingKey() {
-        return routingKey;
-    }
-
     /**
      * @deprecated Use {@link #properties()}
      */
@@ -62,19 +70,11 @@ public class RabbitMQMessage<T> {
         return properties;
     }
 
-    public AMQP.BasicProperties properties() {
-        return properties;
-    }
-
     /**
      * @deprecated Use {@link #body()}
      */
     @Deprecated
     public T getBody() {
-        return body;
-    }
-
-    public T body() {
         return body;
     }
 }

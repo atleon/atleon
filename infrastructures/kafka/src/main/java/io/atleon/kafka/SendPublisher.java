@@ -149,8 +149,7 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
                 } else if (shouldEmitFailureAsResult(exception) && !KafkaErrors.isFatalSendFailure(exception)) {
                     enqueueNext(KafkaSenderResult.failure(exception, correlationMetadata));
                 } else if (subscriptionState == State.ACTIVE) {
-                    cancel();
-                    onError(exception);
+                    handleFatalPublishingFailure(exception);
                 }
             });
         }
@@ -198,8 +197,7 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
                     subscriber.onNext(result);
                 } catch (Throwable error) {
                     LOGGER.error("Emission failure (§2.13)", error);
-                    cancel();
-                    onError(error);
+                    handleFatalPublishingFailure(error);
                     return;
                 }
 
@@ -237,6 +235,11 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
             // upstream AND inFlight has reached zero. This could race with cancellation, but it's
             // not a spec violation if upstream termination is concurrent with downstream cancel.
             emissionQueue.addAndDrain(subscriber -> runSafely(() -> terminator.accept(subscriber), "Termination"));
+        }
+
+        private void handleFatalPublishingFailure(Throwable error) {
+            cancel();
+            onError(error);
         }
 
         private void drainSubscription() {
