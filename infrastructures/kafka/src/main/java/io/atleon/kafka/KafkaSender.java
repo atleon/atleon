@@ -40,9 +40,7 @@ public final class KafkaSender<K, V> {
         this.options = options;
         this.futureProducer = Mono.fromSupplier(() -> new SendingProducer<>(options))
                 .cacheInvalidateWhen(
-                        it -> Mono.firstWithSignal(
-                                it.closed(), closeSink.asFlux().next().then()),
-                        SendingProducer::closeSafelyAsync);
+                        it -> closeSink.asFlux().next().then().or(it.closed()), SendingProducer::closeSafelyAsync);
     }
 
     public static <K, V> KafkaSender<K, V> create(KafkaSenderOptions<K, V> options) {
