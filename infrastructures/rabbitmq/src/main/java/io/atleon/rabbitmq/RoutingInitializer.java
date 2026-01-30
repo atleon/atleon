@@ -3,6 +3,7 @@ package io.atleon.rabbitmq;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
+import io.atleon.util.IOSupplier;
 import io.atleon.util.Throwing;
 
 import java.io.IOException;
@@ -38,7 +39,11 @@ public final class RoutingInitializer implements Runnable {
     }
 
     public static RoutingInitializer using(ConnectionFactory connectionFactory) {
-        return new RoutingInitializer(toConnectionClosure(connectionFactory));
+        return using(IOSupplier.wrap(connectionFactory::newConnection));
+    }
+
+    public static RoutingInitializer using(IOSupplier<Connection> connectionSupplier) {
+        return new RoutingInitializer(toConnectionClosure(connectionSupplier));
     }
 
     public static RoutingInitializer using(Connection connection) {
@@ -110,11 +115,11 @@ public final class RoutingInitializer implements Runnable {
         }
     }
 
-    private static ConnectionClosure toConnectionClosure(ConnectionFactory connectionFactory) {
+    private static ConnectionClosure toConnectionClosure(IOSupplier<Connection> connectionSupplier) {
         return connectionConsumer -> {
-            try (Connection connection = connectionFactory.newConnection()) {
+            try (Connection connection = connectionSupplier.get()) {
                 connectionConsumer.accept(connection);
-            } catch (IOException | TimeoutException e) {
+            } catch (IOException e) {
                 throw Throwing.propagate(e);
             }
         };

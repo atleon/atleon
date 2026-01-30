@@ -86,7 +86,7 @@ final class PollingSubscriptionFactory<K, V> {
         // negative == TERMINABLE or TERMINATED) and (when non-negative) our count of activated
         // in-flight records. As such, when this first becomes negative, it means we have entered a
         // TERMINABLE state (error or cancellation). When it is set to Long.MIN_VALUE it means
-        // we've reached TERMINATED state and termination has been enqueued.
+        // we've reached TERMINATED state and termination has (at least) been enqueued.
         private final AtomicLong freeActiveInFlightCapacity = new AtomicLong(options.maxActiveInFlight());
 
         // Initialized as negative to indicate "no initial request" (yet).

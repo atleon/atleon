@@ -17,15 +17,15 @@ public class ReceivedRabbitMQMessage<T> extends RabbitMQMessage<T> {
         return new ReceivedRabbitMQMessage<>(exchange, routingKey, properties, body, redeliver);
     }
 
+    public boolean redeliver() {
+        return redeliver;
+    }
+
     /**
      * @deprecated Use {@link #redeliver()}
      */
     @Deprecated
     public boolean isRedeliver() {
-        return redeliver;
-    }
-
-    public boolean redeliver() {
         return redeliver;
     }
 }
