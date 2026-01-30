@@ -20,7 +20,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -95,11 +94,11 @@ final class SendingProducer<K, V> implements ProducerInvocable {
         return doOnProducer(Producer::abortTransaction);
     }
 
-    public void sendSafely(ProducerRecord<K, V> producerRecord, BooleanSupplier producePredicate, Callback callback) {
+    public void sendSafely(Consumer<Runnable> runner, ProducerRecord<K, V> producerRecord, Callback callback) {
         if (sendImmediate) {
-            send(producerRecord, producePredicate, callback);
+            runner.accept(() -> send(runner, producerRecord, callback));
         } else {
-            taskLoop.schedule(() -> send(producerRecord, producePredicate, callback));
+            taskLoop.schedule(() -> runner.accept(() -> send(runner, producerRecord, callback)));
         }
     }
 
@@ -134,11 +133,9 @@ final class SendingProducer<K, V> implements ProducerInvocable {
         });
     }
 
-    private void send(ProducerRecord<K, V> producerRecord, BooleanSupplier producePredicate, Callback callback) {
+    private void send(Consumer<Runnable> runner, ProducerRecord<K, V> producerRecord, Callback callback) {
         try {
-            if (producePredicate.getAsBoolean()) {
-                producer.send(producerRecord, callback);
-            }
+            runner.accept(() -> producer.send(producerRecord, callback));
         } catch (Exception error) {
             onProducerTaskFailure(error);
             callback.onCompletion(null, error);
