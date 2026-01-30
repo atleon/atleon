@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -131,6 +132,22 @@ public class ConfigLoadingTest {
                 ConfigLoading.loadConfiguredOrThrow(configs, "configurable", TestConfigurable.class);
 
         assertEquals("configured", configurable.getValue());
+    }
+
+    @Test
+    public void loadConfigured_givenConfigurations_expectsConfiguredInstance() {
+        Map<String, Object> configs = new HashMap<>();
+        configs.put("configurable", TestConfigurable.class);
+        configs.put(TestConfigurable.VALUE_CONFIG, "configured");
+
+        TestConfigurable explicitResult =
+                ConfigLoading.loadConfigured(configs, "configurable", TestConfigurable.class, TestConfigurable::new);
+        Configurable defaultResult =
+                ConfigLoading.loadConfigured(configs, "nokey", Configurable.class, TestConfigurable::new);
+
+        assertEquals("configured", explicitResult.getValue());
+        assertInstanceOf(TestConfigurable.class, defaultResult);
+        assertEquals("configured", TestConfigurable.class.cast(defaultResult).getValue());
     }
 
     @Test
