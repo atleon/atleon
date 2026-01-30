@@ -2,9 +2,9 @@ package io.atleon.kafka;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
+import io.atleon.core.Contextual;
 import io.atleon.core.SenderResult;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -322,12 +322,12 @@ public class AloKafkaSender<K, V> implements Closeable {
 
     private static final class SendResources<K, V> {
 
-        private final KafkaSender<K, V> optimizedSender;
+        private final KafkaSender<K, V> sender;
 
         private final boolean stopOnError;
 
-        private SendResources(KafkaSender<K, V> optimizedSender, boolean stopOnError) {
-            this.optimizedSender = optimizedSender;
+        private SendResources(KafkaSender<K, V> sender, boolean stopOnError) {
+            this.sender = sender;
             this.stopOnError = stopOnError;
         }
 
@@ -335,11 +335,11 @@ public class AloKafkaSender<K, V> implements Closeable {
             boolean stopOnError = config.loadBoolean(STOP_ON_ERROR_CONFIG).orElse(DEFAULT_STOP_ON_ERROR);
 
             KafkaSenderOptions<K, V> defaultOptions = KafkaSenderOptions.defaultOptions();
-            KafkaSenderOptions<K, V> options = KafkaSenderOptions.<K, V>newBuilder(
-                            properties -> new ContextualProducer<>(new KafkaProducer<>(properties)))
+            KafkaSenderOptions<K, V> options = KafkaSenderOptions.<K, V>newBuilder()
                     .producerProperties(newProducerConfig(config))
                     .maxInFlight(config.loadInt(MAX_IN_FLIGHT_PER_SEND_CONFIG).orElse(defaultOptions.maxInFlight()))
                     .sendImmediate(config.loadBoolean(SEND_IMMEDIATE_CONFIG).orElse(defaultOptions.sendImmediate()))
+                    .correlationRunnerFactory(Contextual.class, it -> it::runInContext)
                     .build();
 
             return new SendResources<>(KafkaSender.create(options), stopOnError);
@@ -349,19 +349,19 @@ public class AloKafkaSender<K, V> implements Closeable {
                 Publisher<T> publisher, Function<T, ProducerRecord<K, V>> recordCreator) {
             return Flux.from(publisher)
                     .map(item -> KafkaSenderRecord.create(recordCreator.apply(item), item))
-                    .transform(stopOnError ? optimizedSender::send : optimizedSender::sendDelayError);
+                    .transform(stopOnError ? sender::send : sender::sendDelayError);
         }
 
         public <T> Flux<Alo<KafkaSenderResult<T>>> sendAlos(
                 Publisher<Alo<T>> alos, Function<T, ProducerRecord<K, V>> recordCreator) {
             return AloFlux.toFlux(alos)
                     .map(alo -> KafkaSenderRecord.create(recordCreator.apply(alo.get()), alo))
-                    .transform(stopOnError ? optimizedSender::send : optimizedSender::sendDelegateError)
+                    .transform(stopOnError ? sender::send : sender::sendDelegateError)
                     .map(KafkaSenderResult::invertAlo);
         }
 
         public void close() {
-            optimizedSender.close();
+            sender.close();
         }
 
         private static Map<String, Object> newProducerConfig(KafkaConfig config) {
