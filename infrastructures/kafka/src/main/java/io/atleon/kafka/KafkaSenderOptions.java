@@ -7,6 +7,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.jspecify.annotations.Nullable;
 import reactor.util.concurrent.Queues;
 
 import java.time.Duration;
@@ -14,6 +15,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
@@ -38,19 +40,23 @@ public final class KafkaSenderOptions<K, V> {
 
     private final Duration closeTimeout;
 
+    private final Function<@Nullable Object, Consumer<Runnable>> correlationRunnerFactory;
+
     private KafkaSenderOptions(
             Function<Map<String, Object>, Producer<K, V>> producerFactory,
             ProducerListenerFactory producerListenerFactory,
             Map<String, Object> producerProperties,
             int maxInFlight,
             boolean sendImmediate,
-            Duration closeTimeout) {
+            Duration closeTimeout,
+            Function<@Nullable Object, Consumer<Runnable>> correlationRunnerFactory) {
         this.producerFactory = producerFactory;
         this.producerListenerFactory = producerListenerFactory;
         this.producerProperties = producerProperties;
         this.maxInFlight = maxInFlight;
         this.sendImmediate = sendImmediate;
         this.closeTimeout = closeTimeout;
+        this.correlationRunnerFactory = correlationRunnerFactory;
         validate();
     }
 
@@ -126,6 +132,13 @@ public final class KafkaSenderOptions<K, V> {
         return closeTimeout;
     }
 
+    /**
+     * @see Builder#correlationRunnerFactory(Class, Function)
+     */
+    public Consumer<Runnable> createCorrelationRunner(@Nullable Object correlationMetadata) {
+        return correlationRunnerFactory.apply(correlationMetadata);
+    }
+
     private void validate() {
         if (maxInFlight <= 0) {
             throw new IllegalArgumentException("maxInFlight must be positive");
@@ -145,6 +158,8 @@ public final class KafkaSenderOptions<K, V> {
         private boolean sendImmediate = false;
 
         private Duration closeTimeout = DEFAULT_CLOSE_TIMEOUT;
+
+        private Function<@Nullable Object, Consumer<Runnable>> correlationRunnerFactory = __ -> Runnable::run;
 
         private Builder(Function<Map<String, Object>, Producer<K, V>> producerFactory) {
             this.producerFactory = producerFactory;
@@ -221,6 +236,24 @@ public final class KafkaSenderOptions<K, V> {
             return this;
         }
 
+        /**
+         * Sets a factory which is used to create "runners" (immediate invocators of
+         * {@link Runnable#run()}) from individual {@link KafkaSenderRecord#correlationMetadata()}
+         * values. This can be useful in cases where correlation metadata may provide execution
+         * context (like thread locals or scoped values) around low-level sending operations, e.g.
+         * distributed tracing.
+         *
+         * @param metadataType The type of correlation metadata from which runners can be created
+         * @param factory      Function used to derive a runner from an instance the metadata type
+         * @return This builder
+         */
+        <T> Builder<K, V> correlationRunnerFactory(
+                Class<T> metadataType, Function<? super T, ? extends Consumer<Runnable>> factory) {
+            this.correlationRunnerFactory = metadata ->
+                    metadataType.isInstance(metadata) ? factory.apply(metadataType.cast(metadata)) : Runnable::run;
+            return this;
+        }
+
         public KafkaSenderOptions<K, V> build() {
             return new KafkaSenderOptions<>(
                     producerFactory,
@@ -228,7 +261,8 @@ public final class KafkaSenderOptions<K, V> {
                     producerProperties,
                     maxInFlight,
                     sendImmediate,
-                    closeTimeout);
+                    closeTimeout,
+                    correlationRunnerFactory);
         }
     }
 }

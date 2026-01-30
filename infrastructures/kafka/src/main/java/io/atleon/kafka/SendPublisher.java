@@ -143,7 +143,14 @@ final class SendPublisher<K, V, T> implements Publisher<KafkaSenderResult<T>> {
             }
 
             T correlationMetadata = senderRecord.correlationMetadata();
-            producer.sendSafely(senderRecord, () -> subscriptionState == State.ACTIVE, (recordMetadata, exception) -> {
+            Consumer<Runnable> correlationRunner = options.createCorrelationRunner(correlationMetadata);
+            Consumer<Runnable> conditionalCorrelationRunner = runnable -> {
+                if (subscriptionState == State.ACTIVE) {
+                    correlationRunner.accept(runnable);
+                }
+            };
+
+            producer.sendSafely(conditionalCorrelationRunner, senderRecord, (recordMetadata, exception) -> {
                 if (exception == null) {
                     enqueueNext(KafkaSenderResult.success(recordMetadata, correlationMetadata));
                 } else if (shouldEmitFailureAsResult(exception) && !KafkaErrors.isFatalSendFailure(exception)) {
