@@ -38,7 +38,7 @@ class TaskLoopTest {
     }
 
     @Test
-    public void disposeSafely_givenSchedulingAfterDisposal_expectsRejectedExecution() {
+    public void disposeSafely_givenSchedulingAfterDisposed_expectsRejectedExecution() {
         TaskLoop taskLoop = TaskLoop.start("test");
 
         assertTrue(taskLoop.schedule(() -> {}));

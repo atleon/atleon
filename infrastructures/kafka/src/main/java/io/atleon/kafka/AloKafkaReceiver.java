@@ -538,11 +538,11 @@ public class AloKafkaReceiver<K, V> {
         }
 
         private static PollStrategyFactory createPollStrategyFactory(KafkaConfig config) {
-            Optional<PollStrategyFactory> pollStrategyFactory1 = config.loadInstanceWithPredefinedTypes(
+            Optional<PollStrategyFactory> pollStrategyFactory = config.loadInstanceWithPredefinedTypes(
                     POLL_STRATEGY_FACTORY_CONFIG,
                     PollStrategyFactory.class,
                     ReceiveResources::newPredefinedPollStrategyFactory);
-            return pollStrategyFactory1.orElseGet(PollStrategyFactory::natural);
+            return pollStrategyFactory.orElseGet(PollStrategyFactory::natural);
         }
 
         private static Optional<PollStrategyFactory> newPredefinedPollStrategyFactory(String typeName) {

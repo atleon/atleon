@@ -89,6 +89,14 @@ public final class ConfigLoading {
         return load(configs, property, value -> coerce(value, type, instantiator));
     }
 
+    public static <T extends Configurable> T loadConfigured(
+            Map<String, ?> configs, String property, Class<T> type, Supplier<? extends T> defaultSupplier) {
+        T configurable = loadParseable(configs, property, type, typeName -> Instantiation.oneTyped(type, typeName))
+                .orElseGet(defaultSupplier);
+        configurable.configure(configs);
+        return configurable;
+    }
+
     public static Optional<URI> loadUri(Map<String, ?> configs, String property) {
         return loadParseable(configs, property, URI.class, URI::create);
     }

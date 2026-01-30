@@ -318,13 +318,13 @@ class ActivePartitionTest {
         KafkaReceiverRecord<String, String> receiverRecord2 =
                 activePartition.activateForProcessing(newConsumerRecord(1)).get();
 
-        Sinks.Empty<Void> disposal = Sinks.one();
+        Sinks.Empty<Void> forcedTimeout = Sinks.one();
         AtomicReference<AcknowledgedOffset> lastAcknowledgedOffset = new AtomicReference<>();
         activePartition
-                .deactivateLatest(Duration.ofDays(1), Schedulers.parallel(), disposal.asMono())
+                .deactivateLatest(Duration.ofDays(1), Schedulers.parallel(), forcedTimeout.asMono())
                 .subscribe(lastAcknowledgedOffset::set);
         receiverRecord1.acknowledge();
-        disposal.tryEmitEmpty();
+        forcedTimeout.tryEmitEmpty();
         receiverRecord2.acknowledge();
 
         assertNotNull(lastAcknowledgedOffset.get());

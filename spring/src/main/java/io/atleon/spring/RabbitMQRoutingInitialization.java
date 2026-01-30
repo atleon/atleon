@@ -6,6 +6,7 @@ import io.atleon.rabbitmq.ExchangeDeclaration;
 import io.atleon.rabbitmq.QueueBinding;
 import io.atleon.rabbitmq.QueueDeclaration;
 import io.atleon.rabbitmq.RoutingInitializer;
+import io.atleon.util.IOSupplier;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ApplicationContextEvent;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -23,6 +24,10 @@ public class RabbitMQRoutingInitialization implements ApplicationListener<Applic
 
     public static RabbitMQRoutingInitialization using(ConnectionFactory connectionFactory) {
         return new RabbitMQRoutingInitialization(RoutingInitializer.using(connectionFactory));
+    }
+
+    public static RabbitMQRoutingInitialization using(IOSupplier<Connection> connectionSupplier) {
+        return new RabbitMQRoutingInitialization(RoutingInitializer.using(connectionSupplier));
     }
 
     public static RabbitMQRoutingInitialization using(Connection connection) {
