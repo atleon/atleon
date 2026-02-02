@@ -1,9 +1,11 @@
 package io.atleon.rabbitmq;
 
+import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +23,11 @@ public class RabbitMQConfig {
 
     public static RabbitMQConfig create(Map<String, ?> properties) {
         return new RabbitMQConfig(properties);
+    }
+
+    public Connection buildConnection() throws IOException {
+        return ConfigurableConnectionSupplier.load(properties, AloConfiguratorConnectionSupplier::new)
+                .getConnection();
     }
 
     public ConnectionFactory buildConnectionFactory() {
