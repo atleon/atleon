@@ -18,15 +18,48 @@ public final class RabbitMQSenderResult<T> implements SenderResult {
 
     private final T correlationMetadata;
 
-    private final boolean ack;
+    private final Throwable error;
 
     private RabbitMQSenderResult(
-            String exchange, String routingKey, AMQP.BasicProperties properties, T correlationMetadata, boolean ack) {
+            String exchange,
+            String routingKey,
+            AMQP.BasicProperties properties,
+            T correlationMetadata,
+            Throwable error) {
         this.exchange = exchange;
         this.routingKey = routingKey;
         this.properties = properties;
         this.correlationMetadata = correlationMetadata;
-        this.ack = ack;
+        this.error = error;
+    }
+
+    static <T> RabbitMQSenderResult<T> success(OutboundDelivery<T> outboundDelivery) {
+        return new RabbitMQSenderResult<>(
+                outboundDelivery.exchange(),
+                outboundDelivery.routingKey(),
+                outboundDelivery.properties(),
+                outboundDelivery.correlationMetadata(),
+                null);
+    }
+
+    static <T> RabbitMQSenderResult<T> failure(OutboundDelivery<T> outboundDelivery, Throwable error) {
+        return new RabbitMQSenderResult<>(
+                outboundDelivery.exchange(),
+                outboundDelivery.routingKey(),
+                outboundDelivery.properties(),
+                outboundDelivery.correlationMetadata(),
+                error);
+    }
+
+    static <T> Alo<RabbitMQSenderResult<T>> invertAlo(RabbitMQSenderResult<Alo<T>> senderResult) {
+        return senderResult
+                .correlationMetadata()
+                .map(correlationMetadata -> new RabbitMQSenderResult<>(
+                        senderResult.exchange,
+                        senderResult.routingKey,
+                        senderResult.properties,
+                        correlationMetadata,
+                        senderResult.error));
     }
 
     static <T> RabbitMQSenderResult<T> fromMessageResult(
@@ -36,7 +69,7 @@ public final class RabbitMQSenderResult<T> implements SenderResult {
                 messageResult.getOutboundMessage().getRoutingKey(),
                 messageResult.getOutboundMessage().getProperties(),
                 messageResult.getOutboundMessage().getCorrelationMetadata(),
-                messageResult.isAck());
+                messageResult.isAck() ? null : new UnackedRabbitMQMessageException());
     }
 
     static <T> Alo<RabbitMQSenderResult<T>> fromMessageResultOfAlo(
@@ -49,12 +82,12 @@ public final class RabbitMQSenderResult<T> implements SenderResult {
                         messageResult.getOutboundMessage().getRoutingKey(),
                         messageResult.getOutboundMessage().getProperties(),
                         correlationMetadata,
-                        messageResult.isAck()));
+                        messageResult.isAck() ? null : new UnackedRabbitMQMessageException()));
     }
 
     @Override
     public Optional<Throwable> failureCause() {
-        return ack ? Optional.empty() : Optional.of(new UnackedRabbitMQMessageException());
+        return Optional.ofNullable(error);
     }
 
     @Override
@@ -63,27 +96,63 @@ public final class RabbitMQSenderResult<T> implements SenderResult {
                 + exchange + '\'' + ", routingKey='"
                 + routingKey + '\'' + ", properties="
                 + properties + ", correlationMetadata="
-                + correlationMetadata + ", ack="
-                + ack + '}';
+                + correlationMetadata + ", error="
+                + error + '}';
     }
 
+    public String exchange() {
+        return exchange;
+    }
+
+    public String routingKey() {
+        return routingKey;
+    }
+
+    public AMQP.BasicProperties properties() {
+        return properties;
+    }
+
+    public T correlationMetadata() {
+        return correlationMetadata;
+    }
+
+    /**
+     * @deprecated Use {@link #exchange()}
+     */
+    @Deprecated
     public String getExchange() {
         return exchange;
     }
 
+    /**
+     * @deprecated Use {@link #routingKey()}
+     */
+    @Deprecated
     public String getRoutingKey() {
         return routingKey;
     }
 
+    /**
+     * @deprecated Use {@link #properties()}
+     */
+    @Deprecated
     public AMQP.BasicProperties getProperties() {
         return properties;
     }
 
+    /**
+     * @deprecated Use {@link #correlationMetadata()}
+     */
+    @Deprecated
     public T getCorrelationMetadata() {
         return correlationMetadata;
     }
 
+    /**
+     * @deprecated Use complement of {@link #isFailure()}
+     */
+    @Deprecated
     public boolean isAck() {
-        return ack;
+        return error == null;
     }
 }
