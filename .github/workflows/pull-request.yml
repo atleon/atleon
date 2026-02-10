@@ -1,0 +1,23 @@
+name: Pull Request
+on:
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Compile and Test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set Up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Maven Package Caching
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      - name: Maven Verify
+        run: ./mvnw clean verify -B -U
