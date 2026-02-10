@@ -1,7 +1,6 @@
 package io.atleon.rabbitmq;
 
 import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
 import io.atleon.amqp.embedded.EmbeddedAmqp;
 import io.atleon.amqp.embedded.EmbeddedAmqpConfig;
 import io.atleon.core.Alo;
@@ -25,8 +24,7 @@ public class AloProcessingTest {
 
     @BeforeEach
     public void setup() throws Exception {
-        ConnectionFactory connectionFactory = RABBIT_MQ_CONFIG_SOURCE.createConnectionFactoryNow();
-        try (Connection connection = connectionFactory.newConnection()) {
+        try (Connection connection = RABBIT_MQ_CONFIG_SOURCE.createConnectionNow()) {
             connection.createChannel().queueDeclare(queue, false, false, false, null);
         }
     }

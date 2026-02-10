@@ -30,6 +30,10 @@ public class RabbitMQConfig {
                 .getConnection();
     }
 
+    /**
+     * @deprecated Use {@link #buildConnection()}
+     */
+    @Deprecated
     public ConnectionFactory buildConnectionFactory() {
         return AloConnectionFactory.create(properties);
     }

@@ -2,6 +2,7 @@ package io.atleon.rabbitmq;
 
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
+import io.atleon.core.Contextual;
 import io.atleon.core.SenderResult;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
@@ -40,6 +41,26 @@ public class AloRabbitMQSender<T> implements Closeable {
      * An implementation of {@link BodySerializer} used to serialize message bodies
      */
     public static final String BODY_SERIALIZER_CONFIG = CONFIG_PREFIX + "body.serializer";
+
+    /**
+     * Configures the maximum number of published messages that can be "in flight" per sent
+     * publisher. An "in flight" publish is one for which have published (or are about to), and are
+     * waiting for an acknowledgement (positively or negatively).
+     */
+    public static final String MAX_PUBLISH_IN_FLIGHT_CONFIG = CONFIG_PREFIX + "max.publish.in.flight";
+
+    /**
+     * Closing the underlying RabbitMQ Connection is a fallible process. In order to not infinitely
+     * deadlock during this process, a timeout is used and configurable through this property.
+     */
+    public static final String CLOSE_TIMEOUT_CONFIG = CONFIG_PREFIX + "close.timeout";
+
+    /**
+     * This is a temporary configuration to enable and test usage of re-optimized RabbitMQ sender.
+     * Set to "OPTIMIZED" to enable.
+     */
+    @Deprecated
+    public static final String SENDING_TYPE_CONFIG = CONFIG_PREFIX + "sending.type";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloRabbitMQSender.class);
 
@@ -197,43 +218,74 @@ public class AloRabbitMQSender<T> implements Closeable {
 
     private static final class SendResources<T> {
 
-        private final Sender sender;
+        private final Sender legacySender;
+
+        private final RabbitMQSender sender;
 
         private final BodySerializer<T> bodySerializer;
 
-        public SendResources(Sender sender, BodySerializer<T> bodySerializer) {
+        private final boolean optimized;
+
+        public SendResources(
+                Sender legacySender, RabbitMQSender sender, BodySerializer<T> bodySerializer, boolean optimized) {
+            this.legacySender = legacySender;
             this.sender = sender;
             this.bodySerializer = bodySerializer;
+            this.optimized = optimized;
         }
 
         public static <T> SendResources<T> fromConfig(RabbitMQConfig config) {
-            SenderOptions senderOptions = new SenderOptions().connectionFactory(config.buildConnectionFactory());
+            SenderOptions legacySenderOptions = new SenderOptions().connectionFactory(config.buildConnectionFactory());
+
+            RabbitMQSenderOptions defaultOptions = RabbitMQSenderOptions.defaultOptions();
+            RabbitMQSenderOptions options = RabbitMQSenderOptions.newBuilder(config::buildConnection)
+                    .maxInFlight(config.loadInt(MAX_PUBLISH_IN_FLIGHT_CONFIG).orElse(defaultOptions.maxInFlight()))
+                    .closeTimeout(config.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(defaultOptions.closeTimeout()))
+                    .correlationRunnerFactory(Contextual.class, it -> it::runInContext)
+                    .build();
+
             return new SendResources<T>(
-                    new Sender(senderOptions),
-                    config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG, BodySerializer.class));
+                    new Sender(legacySenderOptions),
+                    RabbitMQSender.create(options),
+                    config.loadConfiguredOrThrow(BODY_SERIALIZER_CONFIG, BodySerializer.class),
+                    config.loadString(SENDING_TYPE_CONFIG).orElse("LEGACY").equalsIgnoreCase("OPTIMIZED"));
         }
 
         public <R> Flux<RabbitMQSenderResult<R>> send(
                 Publisher<R> items, Function<R, RabbitMQMessage<T>> messageCreator) {
-            return Flux.from(items)
-                    .map(item -> toOutboundMessage(item, messageCreator))
-                    .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, SEND_OPTIONS))
-                    .map(RabbitMQSenderResult::fromMessageResult);
+            if (optimized) {
+                return Flux.from(items)
+                        .map(it -> toSenderMessage(it, messageCreator))
+                        .transform(sender::send);
+            } else {
+                return Flux.from(items)
+                        .map(item -> toOutboundMessage(item, messageCreator))
+                        .transform(it -> legacySender.sendWithTypedPublishConfirms(it, SEND_OPTIONS))
+                        .map(RabbitMQSenderResult::fromMessageResult);
+            }
         }
 
         public <R> Flux<Alo<RabbitMQSenderResult<R>>> sendAlos(
                 Publisher<Alo<R>> alos, Function<R, RabbitMQMessage<T>> messageCreator) {
-            return AloFlux.toFlux(alos)
-                    .handle(newAloEmitter(messageCreator.compose(Alo::get)))
-                    .transform(outboundMessages -> sender.sendWithTypedPublishConfirms(outboundMessages, SEND_OPTIONS))
-                    .map(RabbitMQSenderResult::fromMessageResultOfAlo);
+            if (optimized) {
+                return AloFlux.toFlux(alos)
+                        .handle(newAloEmitter(messageCreator.compose(Alo::get)))
+                        .transform(sender::send)
+                        .map(RabbitMQSenderResult::invertAlo);
+            } else {
+                return AloFlux.toFlux(alos)
+                        .handle(newLegacyAloEmitter(messageCreator.compose(Alo::get)))
+                        .transform(it -> legacySender.sendWithTypedPublishConfirms(it, SEND_OPTIONS))
+                        .map(RabbitMQSenderResult::fromMessageResultOfAlo);
+            }
         }
 
         public void close() {
+            legacySender.close();
             sender.close();
         }
 
-        private <R> BiConsumer<Alo<R>, SynchronousSink<CorrelableOutboundMessage<Alo<R>>>> newAloEmitter(
+        private <R> BiConsumer<Alo<R>, SynchronousSink<CorrelableOutboundMessage<Alo<R>>>> newLegacyAloEmitter(
                 Function<Alo<R>, RabbitMQMessage<T>> aloToRabbitMQMessage) {
             return (alo, sink) -> alo.runInContext(() -> sink.next(toOutboundMessage(alo, aloToRabbitMQMessage)));
         }
@@ -247,6 +299,23 @@ public class AloRabbitMQSender<T> implements Closeable {
                     message.properties(),
                     bodySerializer.serialize(message.body()).bytes(),
                     data);
+        }
+
+        private <R> BiConsumer<Alo<R>, SynchronousSink<RabbitMQSenderMessage<Alo<R>>>> newAloEmitter(
+                Function<Alo<R>, RabbitMQMessage<T>> aloToRabbitMQMessage) {
+            return (alo, sink) -> alo.runInContext(() -> sink.next(toSenderMessage(alo, aloToRabbitMQMessage)));
+        }
+
+        private <R> RabbitMQSenderMessage<R> toSenderMessage(
+                R data, Function<R, RabbitMQMessage<T>> dataToRabbitMQMessage) {
+            RabbitMQMessage<T> message = dataToRabbitMQMessage.apply(data);
+            return RabbitMQSenderMessage.<R>newBuilder()
+                    .exchange(message.exchange())
+                    .routingKey(message.routingKey())
+                    .properties(message.properties())
+                    .body(bodySerializer.serialize(message.body()).bytes())
+                    .correlationMetadata(data)
+                    .build();
         }
     }
 }

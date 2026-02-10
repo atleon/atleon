@@ -91,6 +91,13 @@ public class AloRabbitMQReceiver<T> {
      */
     public static final String ERROR_EMISSION_TIMEOUT_CONFIG = CONFIG_PREFIX + "error.emission.timeout";
 
+    /**
+     * This is a temporary configuration to enable and test usage of re-optimized RabbitMQ
+     * receiver. Set to "OPTIMIZED" to enable.
+     */
+    @Deprecated
+    public static final String RECEPTION_TYPE_CONFIG = CONFIG_PREFIX + "reception.type";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(AloRabbitMQReceiver.class);
 
     private final RabbitMQConfigSource configSource;
@@ -160,10 +167,22 @@ public class AloRabbitMQReceiver<T> {
         public Flux<Alo<ReceivedRabbitMQMessage<T>>> receive(String queue) {
             AloFactory<ReceivedRabbitMQMessage<T>> aloFactory = loadAloFactory(queue);
             ErrorEmitter<Alo<ReceivedRabbitMQMessage<T>>> errorEmitter = newErrorEmitter();
-            return Flux.using(this::newReceiver, it -> it.consumeManualAck(queue, newConsumeOptions()), Receiver::close)
-                    .map(delivery -> deserialize(delivery, aloFactory, errorEmitter::safelyEmit))
-                    .transform(errorEmitter::applyTo)
-                    .transform(aloMessages -> applySignalListenerFactories(aloMessages, queue));
+
+            if (config.loadString(RECEPTION_TYPE_CONFIG).orElse("LEGACY").equalsIgnoreCase("OPTIMIZED")) {
+                return RabbitMQReceiver.create(newReceiverOptions())
+                        .receiveManual(queue)
+                        .map(message -> deserialize(message, aloFactory, errorEmitter::safelyEmit))
+                        .transform(errorEmitter::applyTo)
+                        .transform(aloMessages -> applySignalListenerFactories(aloMessages, queue));
+            } else {
+                return Flux.using(
+                                this::newLegacyReceiver,
+                                it -> it.consumeManualAck(queue, newConsumeOptions()),
+                                Receiver::close)
+                        .map(delivery -> deserializeDelivery(delivery, aloFactory, errorEmitter::safelyEmit))
+                        .transform(errorEmitter::applyTo)
+                        .transform(aloMessages -> applySignalListenerFactories(aloMessages, queue));
+            }
         }
 
         private AloFactory<ReceivedRabbitMQMessage<T>> loadAloFactory(String queue) {
@@ -178,7 +197,14 @@ public class AloRabbitMQReceiver<T> {
             return ErrorEmitter.create(timeout);
         }
 
-        private Receiver newReceiver() {
+        private RabbitMQReceiverOptions newReceiverOptions() {
+            RabbitMQReceiverOptions defaultOptions = RabbitMQReceiverOptions.defaultOptions();
+            return RabbitMQReceiverOptions.newBuilder(config::buildConnection)
+                    .prefetch(config.loadInt(QOS_CONFIG).orElse(defaultOptions.prefetch()))
+                    .build();
+        }
+
+        private Receiver newLegacyReceiver() {
             ReceiverOptions receiverOptions = new ReceiverOptions().connectionFactory(config.buildConnectionFactory());
             return new Receiver(receiverOptions);
         }
@@ -201,6 +227,25 @@ public class AloRabbitMQReceiver<T> {
         }
 
         private Alo<ReceivedRabbitMQMessage<T>> deserialize(
+                RabbitMQReceiverMessage receiverMessage,
+                AloFactory<ReceivedRabbitMQMessage<T>> aloFactory,
+                Consumer<Throwable> errorEmitter) {
+            SerializedBody body = SerializedBody.ofBytes(receiverMessage.body());
+            ReceivedRabbitMQMessage<T> message = ReceivedRabbitMQMessage.create(
+                    receiverMessage.exchange(),
+                    receiverMessage.routingKey(),
+                    receiverMessage.properties(),
+                    bodyDeserializer.deserialize(body),
+                    receiverMessage.redeliver());
+
+            RabbitMQDeliverySettler deliverySettler = receiverMessage.deliverySettler();
+            Nackable nackable = requeue -> nack(deliverySettler, requeue);
+            Consumer<Throwable> nacknowledger = nacknowledgerFactory.create(message, nackable, errorEmitter);
+
+            return aloFactory.create(message, deliverySettler::ack, nacknowledger);
+        }
+
+        private Alo<ReceivedRabbitMQMessage<T>> deserializeDelivery(
                 AcknowledgableDelivery delivery,
                 AloFactory<ReceivedRabbitMQMessage<T>> aloFactory,
                 Consumer<Throwable> errorEmitter) {
@@ -257,6 +302,14 @@ public class AloRabbitMQReceiver<T> {
                 return Optional.of(new NacknowledgerFactory.Nack<>(LOGGER, false));
             } else {
                 return Optional.empty();
+            }
+        }
+
+        private static void nack(RabbitMQDeliverySettler deliverySettler, boolean requeue) {
+            if (requeue) {
+                deliverySettler.requeue();
+            } else {
+                deliverySettler.reject();
             }
         }
 

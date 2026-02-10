@@ -77,7 +77,7 @@ public class KafkaToRabbitMQ {
 
         // Step 5) Producing to RabbitMQ requires that we declare a Queue to serve as the destination
         // and source of messages that we want to send/receive
-        RoutingInitializer.using(rabbitMQConfig.createConnectionFactoryNow())
+        RoutingInitializer.using(rabbitMQConfig::createConnectionNow)
                 .addQueueDeclaration(QueueDeclaration.named(QUEUE))
                 .run();
 

@@ -1,10 +1,12 @@
 package io.atleon.rabbitmq;
 
+import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.ConnectionFactoryConfigurator;
 import io.atleon.core.ConfigSource;
 import reactor.core.publisher.Mono;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -29,10 +31,22 @@ public class RabbitMQConfigSource extends ConfigSource<RabbitMQConfig, RabbitMQC
         return new RabbitMQConfigSource(name);
     }
 
+    public Connection createConnectionNow() throws IOException {
+        return create().block().buildConnection();
+    }
+
+    /**
+     * @deprecated Use {@link #createConnectionNow()}
+     */
+    @Deprecated
     public ConnectionFactory createConnectionFactoryNow() {
         return createConnectionFactory().block();
     }
 
+    /**
+     * @deprecated Use {@link #createConnectionNow()}
+     */
+    @Deprecated
     public Mono<ConnectionFactory> createConnectionFactory() {
         return create().map(RabbitMQConfig::buildConnectionFactory);
     }
