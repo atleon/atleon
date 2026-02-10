@@ -20,7 +20,7 @@ public class RabbitMQConfiguration {
             @Value("${stream.rabbitmq.input.queue}") String inputQueue,
             @Value("${stream.rabbitmq.output.queue}") String outputQueue) {
         RabbitMQConfig config = exampleRabbitMQConfigSource.create().block();
-        return RabbitMQRoutingInitialization.using(config.buildConnectionFactory())
+        return RabbitMQRoutingInitialization.using(config::buildConnection)
                 .addExchangeDeclaration(ExchangeDeclaration.direct(exchange))
                 .addQueueDeclaration(QueueDeclaration.named(inputQueue))
                 .addQueueDeclaration(QueueDeclaration.named(outputQueue))
