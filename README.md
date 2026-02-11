@@ -1,6 +1,6 @@
 # Atleon
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Main Build Workflow](https://github.com/atleon/atleon/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/atleon/atleon/actions/workflows/build.yml)
+[![Main Build Workflow](https://github.com/atleon/atleon/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/atleon/atleon/actions/workflows/main.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/io.atleon/atleon-core)](
 https://search.maven.org/artifact/io.atleon/atleon-core)
 [![Javadoc](https://javadoc.io/badge2/io.atleon/atleon-core/javadoc.svg)](https://javadoc.io/doc/io.atleon/atleon-core)
