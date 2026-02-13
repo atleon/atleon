@@ -3,19 +3,19 @@ package io.atleon.kafka;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
 import io.atleon.kafka.embedded.EmbeddedKafka;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.UUID;
-import java.util.function.Function;
 
 class AloKafkaReceiverTest {
 
@@ -23,20 +23,21 @@ class AloKafkaReceiverTest {
 
     private final String topic = AloKafkaReceiverTest.class.getSimpleName() + UUID.randomUUID();
 
+    @BeforeEach
+    public void setup() {
+        TestKafkaSetup.createTopics(BOOTSTRAP_CONNECT, new NewTopic(topic, 2, (short) 1));
+    }
+
     @Test
     public void receiveAloRecords_givenMultipleSubscriptionAttempts_expectsEnforcementOfMutualExclusion() {
         KafkaConfigSource configSource = TestKafkaConfigSourceFactory.createSource(BOOTSTRAP_CONNECT);
-
-        AloKafkaSender.create(configSource)
-                .sendValues(Mono.just("DATA"), topic, Function.identity())
-                .then()
-                .block();
 
         AloFlux<ConsumerRecord<Object, Object>> aloFlux =
                 AloKafkaReceiver.create(configSource).receiveAloRecords(Collections.singletonList(topic));
 
         StepVerifier.create(aloFlux)
-                .consumeNextWith(Alo::acknowledge)
+                .expectSubscription()
+                .thenAwait(Duration.ofSeconds(1))
                 .then(() ->
                         aloFlux.unwrap().timeout(Duration.ZERO, Flux.empty()).blockFirst())
                 .expectError(IllegalStateException.class)
