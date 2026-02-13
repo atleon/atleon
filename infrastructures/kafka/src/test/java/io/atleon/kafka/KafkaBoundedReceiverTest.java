@@ -1,6 +1,7 @@
 package io.atleon.kafka;
 
 import io.atleon.kafka.embedded.EmbeddedKafka;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
@@ -12,6 +13,7 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.Serializer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -35,11 +37,17 @@ class KafkaBoundedReceiverTest {
 
     private static final String BOOTSTRAP_CONNECT = EmbeddedKafka.startAndGetBootstrapServersConnect(10092);
 
+    private final String topic = KafkaBoundedReceiverTest.class.getSimpleName() + UUID.randomUUID();
+
     private final String groupId = KafkaBoundedReceiverTest.class.getSimpleName();
+
+    @BeforeEach
+    public void setup() {
+        TestKafkaSetup.createTopics(BOOTSTRAP_CONNECT, new NewTopic(topic, 2, (short) 1));
+    }
 
     @Test
     public void allDataCurrentlyOnATopicCanBeConsumed() {
-        String topic = UUID.randomUUID().toString();
         Set<Long> producedValues = produceRecordsFromValues(
                 newProducerConfigs(LongSerializer.class, LongSerializer.class),
                 createRandomLongValues(1000, Collectors.toSet()),
@@ -53,7 +61,6 @@ class KafkaBoundedReceiverTest {
 
     @Test
     public void theEarliestRecordOnATopicPartitionCanBeConsumed() {
-        String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
                 newProducerConfigs(LongSerializer.class, LongSerializer.class),
                 createRandomLongValues(4, Collectors.toList()),
@@ -67,7 +74,6 @@ class KafkaBoundedReceiverTest {
 
     @Test
     public void theLatestRecordOnATopicPartitionCanBeConsumed() {
-        String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
                 newProducerConfigs(LongSerializer.class, LongSerializer.class),
                 createRandomLongValues(4, Collectors.toList()),
@@ -80,7 +86,6 @@ class KafkaBoundedReceiverTest {
 
     @Test
     public void recordAtASpecificOffsetCanBeConsumed() {
-        String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
                 newProducerConfigs(LongSerializer.class, LongSerializer.class),
                 createRandomLongValues(4, Collectors.toList()),
@@ -93,7 +98,6 @@ class KafkaBoundedReceiverTest {
 
     @Test
     public void recordsInASpecificOffsetRangeCanBeConsumed() {
-        String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
                 newProducerConfigs(LongSerializer.class, LongSerializer.class),
                 createRandomLongValues(4, Collectors.toList()),
@@ -115,7 +119,6 @@ class KafkaBoundedReceiverTest {
 
     @Test
     public void recordAtASpecificTimestampCanBeConsumed() {
-        String topic = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
         List<Long> producedTimestamps = produceRecordsFromValues(
                 newProducerConfigs(LongSerializer.class, LongSerializer.class),
@@ -130,7 +133,6 @@ class KafkaBoundedReceiverTest {
 
     @Test
     public void recordsInATimestampRangeCanBeConsumed() {
-        String topic = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
         List<Long> producedTimestamps = produceRecordsFromValues(
                 newProducerConfigs(LongSerializer.class, LongSerializer.class),
@@ -182,7 +184,6 @@ class KafkaBoundedReceiverTest {
 
     @Test
     public void recordsCanBeConsumedBasedOnCommittedConsumerOffsets() {
-        String topic = UUID.randomUUID().toString();
         KafkaConfigSource configSource = newProducerConfigs(LongSerializer.class, LongSerializer.class);
         TopicPartition topicPartition = new TopicPartition(topic, 0);
         List<Long> producedValues = produceRecordsFromValues(
@@ -208,7 +209,6 @@ class KafkaBoundedReceiverTest {
 
     @Test
     public void recordsCanBeConsumedFromASingleTopicPartition() {
-        String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
                 newProducerConfigs(LongSerializer.class, LongSerializer.class),
                 LongStream.range(0, 6).boxed().collect(Collectors.toList()),
@@ -225,7 +225,6 @@ class KafkaBoundedReceiverTest {
 
     @Test
     public void recordsCanBeConsumedStartingFromASpecificPartitionAndOffset() {
-        String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
                 newProducerConfigs(LongSerializer.class, LongSerializer.class),
                 LongStream.range(0, 6).boxed().collect(Collectors.toList()),
@@ -239,7 +238,6 @@ class KafkaBoundedReceiverTest {
 
     @Test
     public void recordsCanBeConsumedUsingRawOffsets() {
-        String topic = UUID.randomUUID().toString();
         List<Long> producedValues = produceRecordsFromValues(
                 newProducerConfigs(LongSerializer.class, LongSerializer.class),
                 LongStream.range(0, 6).boxed().collect(Collectors.toList()),
