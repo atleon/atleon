@@ -39,7 +39,7 @@
         <spring.version>5.3.31</spring.version>
         <spring-boot.version>2.7.18</spring-boot.version>
         <swagger3.version>2.1.13</swagger3.version>
-        <testcontainers.version>1.19.3</testcontainers.version>
+        <testcontainers.version>1.21.4</testcontainers.version>
         <zookeeper.version>3.9.2</zookeeper.version>
     </properties>
 
