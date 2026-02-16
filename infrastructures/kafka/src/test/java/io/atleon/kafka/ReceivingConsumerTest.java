@@ -1,5 +1,6 @@
 package io.atleon.kafka;
 
+import io.atleon.util.Throwing;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.MockConsumer;
@@ -7,6 +8,7 @@ import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
 import java.time.Duration;
@@ -47,10 +49,8 @@ class ReceivingConsumerTest {
             }
         };
 
-        Sinks.One<Throwable> error = Sinks.one();
-
         ReceivingConsumer<String, String> receivingConsumer =
-                new ReceivingConsumer<>(options, partitionListener, error::tryEmitValue);
+                new ReceivingConsumer<>(options, partitionListener, this::throwPropagated);
         mockConsumer.assign(Collections.singletonList(topicPartition));
 
         receivingConsumer
@@ -65,32 +65,49 @@ class ReceivingConsumerTest {
     }
 
     @Test
-    public void invoke_givenPermittedPauseToUnassignedPartition_expectsSuccessfulPausing() {
-        TopicPartition topicPartition = new TopicPartition("topic", 0);
+    public void invoke_givenPermittedPauseAndResume_expectsCorrectPausing() {
+        TopicPartition topicPartition1 = new TopicPartition("topic", 0);
+        TopicPartition topicPartition2 = new TopicPartition("topic", 1);
         MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
 
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
                 .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
                 .build();
 
-        Set<TopicPartition> paused = new HashSet<>();
         NoOpPartitionListener partitionListener = new NoOpPartitionListener() {
+
+            private final Set<TopicPartition> paused = new HashSet<>();
+
             @Override
             public void onExternalPartitionsPauseRequested(Collection<TopicPartition> partitions) {
                 paused.addAll(partitions);
             }
+
+            @Override
+            public void onExternalPartitionsResumeRequested(Collection<TopicPartition> partitions) {
+                paused.removeAll(partitions);
+            }
+
+            @Override
+            public Collection<TopicPartition> grantedPartitionPauses() {
+                return paused;
+            }
         };
 
-        Sinks.One<Throwable> error = Sinks.one();
-
         ReceivingConsumer<String, String> receivingConsumer =
-                new ReceivingConsumer<>(options, partitionListener, error::tryEmitValue);
+                new ReceivingConsumer<>(options, partitionListener, this::throwPropagated);
 
-        receivingConsumer
-                .invoke(it -> it.pause(Collections.singletonList(topicPartition)))
-                .block();
+        Mono<Void> pauseResume = receivingConsumer.invoke(it -> {
+            it.pause(Collections.singletonList(topicPartition1));
+            it.pause(Collections.singletonList(topicPartition2));
+            it.resume(Collections.singletonList(topicPartition1));
+        });
+        pauseResume.block();
 
-        assertEquals(Collections.singleton(topicPartition), paused);
+        Set<TopicPartition> paused =
+                receivingConsumer.invokeAndGet(Consumer::paused).block();
+
+        assertEquals(Collections.singleton(topicPartition2), paused);
     }
 
     @Test
@@ -211,6 +228,10 @@ class ReceivingConsumerTest {
         assertThrows(WakeupException.class, () -> mockConsumer.poll(Duration.ZERO));
     }
 
+    private void throwPropagated(Throwable error) {
+        throw Throwing.propagate(error);
+    }
+
     public static class NoOpPartitionListener implements ReceivingConsumer.PartitionListener {
 
         @Override
@@ -227,5 +248,10 @@ class ReceivingConsumerTest {
 
         @Override
         public void onExternalPartitionsResumeRequested(Collection<TopicPartition> partitions) {}
+
+        @Override
+        public Collection<TopicPartition> grantedPartitionPauses() {
+            return Collections.emptyList();
+        }
     }
 }

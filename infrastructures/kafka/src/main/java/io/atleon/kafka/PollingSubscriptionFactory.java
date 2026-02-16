@@ -183,6 +183,11 @@ final class PollingSubscriptionFactory<K, V> {
             pollManager.allowResumption(partitions);
         }
 
+        @Override
+        public final Collection<TopicPartition> grantedPartitionPauses() {
+            return pollManager.forcePaused();
+        }
+
         protected abstract void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition partition);
 
         protected abstract void onActivePartitionsRevoked(
