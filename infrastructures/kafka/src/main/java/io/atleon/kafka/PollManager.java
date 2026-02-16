@@ -128,6 +128,10 @@ final class PollManager<T> {
         forcePaused.removeAll(partitions);
     }
 
+    public Collection<TopicPartition> forcePaused() {
+        return Collections.unmodifiableCollection(forcePaused);
+    }
+
     public T activated(TopicPartition topicPartition) {
         return assignments.get(topicPartition);
     }

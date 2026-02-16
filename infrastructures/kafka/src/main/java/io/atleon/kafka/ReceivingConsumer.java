@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -181,14 +182,19 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
             throw new UnsupportedOperationException("Kafka Consumer method is not supported: " + method);
         }
 
-        if (method.getName().equals("pause")) {
-            partitionListener.onExternalPartitionsPauseRequested((Collection<TopicPartition>) args[0]);
-            return null;
-        } else if (method.getName().equals("resume")) {
-            partitionListener.onExternalPartitionsResumeRequested((Collection<TopicPartition>) args[0]);
-            return null;
-        } else {
-            return method.invoke(consumer, args);
+        switch (method.getName()) {
+            case "pause":
+                partitionListener.onExternalPartitionsPauseRequested((Collection<TopicPartition>) args[0]);
+                return null;
+            case "resume":
+                partitionListener.onExternalPartitionsResumeRequested((Collection<TopicPartition>) args[0]);
+                return null;
+            case "paused":
+                Set<TopicPartition> paused = new TreeSet<>(KafkaComparators.topicThenPartition());
+                paused.addAll(partitionListener.grantedPartitionPauses());
+                return paused;
+            default:
+                return method.invoke(consumer, args);
         }
     }
 
@@ -215,5 +221,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         void onExternalPartitionsPauseRequested(Collection<TopicPartition> partitions);
 
         void onExternalPartitionsResumeRequested(Collection<TopicPartition> partitions);
+
+        Collection<TopicPartition> grantedPartitionPauses();
     }
 }
