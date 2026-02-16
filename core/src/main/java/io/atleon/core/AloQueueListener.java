@@ -19,6 +19,7 @@ public interface AloQueueListener extends Configurable {
         return listeners.size() == 1 ? listeners.get(0) : new Composite(listeners);
     }
 
+    @Override
     default void configure(Map<String, ?> properties) {}
 
     /**

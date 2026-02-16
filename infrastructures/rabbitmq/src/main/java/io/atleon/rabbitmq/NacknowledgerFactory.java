@@ -14,6 +14,7 @@ import java.util.function.Consumer;
  */
 public interface NacknowledgerFactory<T> extends Configurable {
 
+    @Override
     default void configure(Map<String, ?> properties) {}
 
     Consumer<Throwable> create(ReceivedRabbitMQMessage<T> message, Nackable nackable, Consumer<Throwable> errorEmitter);
