@@ -9,8 +9,8 @@ class ParsingTest {
 
     @Test
     public void toInteger_givenValidInput_expectsParsedOutput() {
-        assertEquals(Integer.valueOf(1), Parsing.toInteger("1"));
-        assertEquals(Integer.valueOf(101), Parsing.toInteger("101"));
+        assertEquals(1, Parsing.toInteger("1"));
+        assertEquals(101, Parsing.toInteger("101"));
     }
 
     @Test
@@ -21,8 +21,8 @@ class ParsingTest {
 
     @Test
     public void toLong_givenValidInput_expectsParsedOutput() {
-        assertEquals(Long.valueOf(1), Parsing.toLong("1"));
-        assertEquals(Long.valueOf(101), Parsing.toLong("101"));
+        assertEquals(1L, Parsing.toLong("1"));
+        assertEquals(101L, Parsing.toLong("101"));
     }
 
     @Test
