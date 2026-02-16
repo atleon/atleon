@@ -187,9 +187,9 @@ public final class KafkaSenderOptions<K, V> {
          * created Producer instances.
          */
         public Builder<K, V> producerProperty(String key, Object value) {
-            Map<String, Object> consumerProperties = new HashMap<>(this.producerProperties);
-            consumerProperties.put(key, value);
-            return producerProperties(consumerProperties);
+            Map<String, Object> updatedProducerProperties = new HashMap<>(this.producerProperties);
+            updatedProducerProperties.put(key, value);
+            return producerProperties(updatedProducerProperties);
         }
 
         /**

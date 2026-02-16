@@ -4,6 +4,7 @@ import com.rabbitmq.client.Address;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.ConnectionFactoryConfigurator;
+import io.atleon.util.Parsing;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -109,7 +110,7 @@ public class AloConnectionFactory extends ConnectionFactory {
     private static List<Address> extractAddresses(Map<String, ?> properties) {
         String hosts = extractHosts(properties);
         int fallbackPort = Optional.<Object>ofNullable(properties.get(ConnectionFactoryConfigurator.PORT))
-                .map(port -> Integer.parseInt(port.toString()))
+                .map(port -> Parsing.toInteger(port.toString()))
                 .orElse(USE_DEFAULT_PORT);
         return Arrays.stream(Address.parseAddresses(hosts))
                 .map(address -> address.getPort() == USE_DEFAULT_PORT && fallbackPort != USE_DEFAULT_PORT

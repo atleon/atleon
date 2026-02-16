@@ -437,9 +437,9 @@ public final class KafkaReceiverOptions<K, V> {
          * created Consumer instances.
          */
         public Builder<K, V> consumerProperty(String key, Object value) {
-            Map<String, Object> consumerProperties = new HashMap<>(this.consumerProperties);
-            consumerProperties.put(key, value);
-            return consumerProperties(consumerProperties);
+            Map<String, Object> updatedConsumerProperties = new HashMap<>(this.consumerProperties);
+            updatedConsumerProperties.put(key, value);
+            return consumerProperties(updatedConsumerProperties);
         }
 
         /**

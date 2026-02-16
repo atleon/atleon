@@ -20,7 +20,7 @@ class EmbeddedMessageTest {
     private static final RabbitMQConfigSource RABBIT_MQ_CONFIG_SOURCE =
             TestRabbitMQSourceFactory.createStringSource(EMBEDDED_AMQP_CONFIG);
 
-    private final String queue = EmbeddedMessageTest.class.getSimpleName();
+    private final String queue = EmbeddedMessageTest.class.getSimpleName() + UUID.randomUUID();
 
     @BeforeEach
     public void setup() throws Exception {

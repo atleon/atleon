@@ -110,11 +110,12 @@ public final class ConfigLoading {
     }
 
     public static Optional<Integer> loadInt(Map<String, ?> configs, String property) {
-        return loadParseable(configs, property, Number.class, Integer::parseInt).map(Number::intValue);
+        return loadParseable(configs, property, Number.class, Parsing::toInteger)
+                .map(Number::intValue);
     }
 
     public static Optional<Long> loadLong(Map<String, ?> configs, String property) {
-        return loadParseable(configs, property, Number.class, Long::parseLong).map(Number::longValue);
+        return loadParseable(configs, property, Number.class, Parsing::toLong).map(Number::longValue);
     }
 
     public static Optional<String> loadString(Map<String, ?> configs, String property) {

@@ -2,8 +2,8 @@ package io.atleon.core;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -48,14 +48,22 @@ class PropertiesFileConfigProcessorTest {
         assertEquals(properties.get("foo.fooKey"), result.get("fooKey"));
     }
 
-    private Path writePropertiesFile(Properties properties, String qualifier) {
-        String fileName = PropertiesFileConfigProcessorTest.class.getSimpleName() + "-" + qualifier;
-        try {
-            Path filePath = Files.createTempFile(fileName, ".properties");
-            properties.store(new FileOutputStream(filePath.toFile()), qualifier);
+    private static Path writePropertiesFile(Properties properties, String qualifier) {
+        Path filePath = createTempFile(qualifier);
+        try (OutputStream outputStream = Files.newOutputStream(filePath)) {
+            properties.store(outputStream, qualifier);
             return filePath;
         } catch (IOException e) {
             throw new IllegalStateException("Failed to write properties file", e);
+        }
+    }
+
+    private static Path createTempFile(String qualifier) {
+        String fileName = PropertiesFileConfigProcessorTest.class.getSimpleName() + "-" + qualifier;
+        try {
+            return Files.createTempFile(fileName, ".properties");
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to create temp file", e);
         }
     }
 

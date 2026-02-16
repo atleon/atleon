@@ -63,11 +63,11 @@ public class KafkaTopicPartitionParallelism {
                 .innerMap(String::toUpperCase)
                 .innerDoOnNext(next -> {
                     try {
-                        Double sleepMillis = Math.random() * MAX_SLEEP_MILLIS + 1;
-                        System.out.println(String.format(
-                                "next=%s thread=%s sleepMillis=%d",
-                                next, Thread.currentThread().getName(), sleepMillis.longValue()));
-                        Thread.sleep(sleepMillis.longValue());
+                        long sleepMillis = (long) (Math.random() * MAX_SLEEP_MILLIS + 1);
+                        System.out.printf(
+                                "next=%s thread=%s sleepMillis=%d%n",
+                                next, Thread.currentThread().getName(), sleepMillis);
+                        Thread.sleep(sleepMillis);
                     } catch (Exception e) {
                         System.err.println("Failed to sleep");
                     }

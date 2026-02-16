@@ -6,6 +6,7 @@ import io.atleon.core.AloStream;
 import io.atleon.core.AloStreamConfig;
 import io.atleon.core.CompositeAloStream;
 import io.atleon.core.SelfConfigurableAloStream;
+import io.atleon.util.Parsing;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Condition;
@@ -57,7 +58,7 @@ public class AloStreamAutoConfiguration {
         Optional<AloStream<? super C>> compatibleStream =
                 AloStreamCompatibility.findSingleCompatibleStream(registeredStreams, config);
         int count = Contexts.parseValue(context, annotation.instanceCountValue())
-                .map(Integer::valueOf)
+                .map(Parsing::toInteger)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Could not parse instance count: " + annotation.instanceCountValue()));
 
