@@ -74,7 +74,7 @@ class RabbitMQSenderTest {
 
         executeOnSender(senderOptions, it -> it.send(senderMessage).block());
 
-        GetResponse result = getMessage(queue);
+        GetResponse result = getMessageWithoutAck(queue);
 
         assertEquals(body, new String(result.getBody(), StandardCharsets.UTF_8));
     }
@@ -129,7 +129,7 @@ class RabbitMQSenderTest {
         }
     }
 
-    private static GetResponse getMessage(String queue) throws IOException {
+    private static GetResponse getMessageWithoutAck(String queue) throws IOException {
         return executeOnChannel(channel -> channel.basicGet(queue, false));
     }
 
@@ -150,6 +150,7 @@ class RabbitMQSenderTest {
         Channel boomingChannel = mock(Channel.class, AdditionalAnswers.delegatesTo(connection.createChannel()));
         doThrow(new IOException("Boom"))
                 .when(boomingChannel)
+                // exchange, routingKey, mandatory, immediate, properties, body
                 .basicPublish(anyString(), anyString(), anyBoolean(), anyBoolean(), any(), any());
         return boomingChannel;
     }
