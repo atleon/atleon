@@ -52,16 +52,13 @@
     </repositories>
 
     <modules>
+        <module>base</module>
         <module>bom</module>
-        <module>context-auto</module>
-        <module>core</module>
         <module>infrastructures</module>
-        <module>kotlin</module>
         <module>observability</module>
         <module>parent</module>
         <module>schemas</module>
         <module>spring</module>
-        <module>util</module>
     </modules>
 
     <properties>
