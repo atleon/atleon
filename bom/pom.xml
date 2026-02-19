@@ -20,6 +20,11 @@
             </dependency>
             <dependency>
                 <groupId>io.atleon</groupId>
+                <artifactId>atleon-application</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
                 <artifactId>atleon-avro</artifactId>
                 <version>${project.version}</version>
             </dependency>
