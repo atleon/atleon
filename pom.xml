@@ -52,13 +52,13 @@
     </repositories>
 
     <modules>
+        <module>applications</module>
         <module>base</module>
         <module>bom</module>
         <module>infrastructures</module>
         <module>observability</module>
         <module>parent</module>
         <module>schemas</module>
-        <module>spring</module>
     </modules>
 
     <properties>
