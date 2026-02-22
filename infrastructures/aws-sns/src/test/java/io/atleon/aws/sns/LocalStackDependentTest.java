@@ -1,11 +1,11 @@
 package io.atleon.aws.sns;
 
+import io.atleon.aws.sqs.AtleonSqsAsyncClientSupplier;
+import io.atleon.aws.sqs.ConfigurableSqsAsyncClientSupplier;
 import io.atleon.aws.testcontainers.AtleonLocalStackContainer;
+import io.atleon.aws.util.AwsConfig;
+import io.atleon.aws.util.SdkConfig;
 import org.junit.jupiter.api.BeforeEach;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sns.SnsAsyncClient;
 import software.amazon.awssdk.services.sns.model.CreateTopicRequest;
 import software.amazon.awssdk.services.sns.model.SubscribeRequest;
@@ -15,8 +15,9 @@ import software.amazon.awssdk.services.sqs.model.GetQueueAttributesRequest;
 import software.amazon.awssdk.services.sqs.model.QueueAttributeName;
 import software.amazon.awssdk.services.sqs.model.SetQueueAttributesRequest;
 
-import java.net.URI;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class LocalStackDependentTest {
@@ -92,43 +93,34 @@ public class LocalStackDependentTest {
         sqsClient.close();
     }
 
-    protected static SnsAsyncClient createSnsClient() {
-        return SnsAsyncClient.builder()
-                .endpointOverride(getSnsEndpointOverride())
-                .credentialsProvider(StaticCredentialsProvider.create(createAwsCredentials()))
-                .region(Region.of(CONTAINER.getRegion()))
-                .build();
+    protected static Map<String, Object> createSnsClientProperties() {
+        Map<String, Object> clientProperties = createClientProperties();
+        clientProperties.put(SdkConfig.SNS_ENDPOINT_OVERRIDE_CONFIG, CONTAINER.getSnsEndpointOverride());
+        return clientProperties;
     }
 
-    protected static SqsAsyncClient createSqsClient() {
-        return SqsAsyncClient.builder()
-                .endpointOverride(getSqsEndpointOverride())
-                .credentialsProvider(StaticCredentialsProvider.create(createAwsCredentials()))
-                .region(Region.of(CONTAINER.getRegion()))
-                .build();
+    protected static Map<String, Object> createSqsClientProperties() {
+        Map<String, Object> clientProperties = createClientProperties();
+        clientProperties.put(SdkConfig.SQS_ENDPOINT_OVERRIDE_CONFIG, CONTAINER.getSqsEndpointOverride());
+        return clientProperties;
     }
 
-    protected static URI getSnsEndpointOverride() {
-        return CONTAINER.getSnsEndpointOverride();
+    private static SnsAsyncClient createSnsClient() {
+        return ConfigurableSnsAsyncClientSupplier.load(createSnsClientProperties(), AtleonSnsAsyncClientSupplier::new)
+                .getClient();
     }
 
-    protected static URI getSqsEndpointOverride() {
-        return CONTAINER.getSqsEndpointOverride();
+    private static SqsAsyncClient createSqsClient() {
+        return ConfigurableSqsAsyncClientSupplier.load(createSqsClientProperties(), AtleonSqsAsyncClientSupplier::new)
+                .getClient();
     }
 
-    protected static String getAccessKey() {
-        return CONTAINER.getAccessKey();
-    }
-
-    protected static String getSecretKey() {
-        return CONTAINER.getSecretKey();
-    }
-
-    protected static Region getRegion() {
-        return Region.of(CONTAINER.getRegion());
-    }
-
-    private static AwsCredentials createAwsCredentials() {
-        return AwsBasicCredentials.create(CONTAINER.getAccessKey(), CONTAINER.getSecretKey());
+    private static Map<String, Object> createClientProperties() {
+        Map<String, Object> clientProperties = new HashMap<>();
+        clientProperties.put(AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC);
+        clientProperties.put(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, CONTAINER.getAccessKey());
+        clientProperties.put(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, CONTAINER.getSecretKey());
+        clientProperties.put(AwsConfig.REGION_CONFIG, CONTAINER.getRegion());
+        return clientProperties;
     }
 }

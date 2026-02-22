@@ -3,12 +3,12 @@ package io.atleon.examples.spring.awssnssqs;
 import io.atleon.aws.sns.AloSnsSender;
 import io.atleon.aws.sns.ComposedSnsMessage;
 import io.atleon.aws.sns.SnsAddress;
-import io.atleon.aws.sns.SnsConfig;
 import io.atleon.aws.sns.SnsConfigSource;
 import io.atleon.aws.sns.SnsMessage;
 import io.atleon.aws.sns.StringBodySerializer;
 import io.atleon.aws.testcontainers.AtleonLocalStackContainer;
 import io.atleon.aws.util.AwsConfig;
+import io.atleon.aws.util.SdkConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -57,11 +57,11 @@ public class IntegrationTest {
 
     private void produceNumber(Number number) {
         SnsConfigSource configSource = SnsConfigSource.unnamed()
+                .with(SdkConfig.SNS_ENDPOINT_OVERRIDE_CONFIG, CONTAINER.getSnsEndpointOverride())
                 .with(AwsConfig.REGION_CONFIG, CONTAINER.getRegion())
                 .with(AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC)
                 .with(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, CONTAINER.getAccessKey())
                 .with(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, CONTAINER.getSecretKey())
-                .with(SnsConfig.ENDPOINT_OVERRIDE_CONFIG, CONTAINER.getSnsEndpointOverride())
                 .with(AloSnsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class);
         try (AloSnsSender<Long> sender = AloSnsSender.create(configSource)) {
             SnsMessage<Long> message = ComposedSnsMessage.fromBody(number.longValue());

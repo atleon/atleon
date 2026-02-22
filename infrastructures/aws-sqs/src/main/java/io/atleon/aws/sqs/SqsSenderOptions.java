@@ -3,6 +3,10 @@ package io.atleon.aws.sqs;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -18,7 +22,9 @@ public final class SqsSenderOptions {
 
     public static final int DEFAULT_MAX_REQUESTS_IN_FLIGHT = 1;
 
-    private final Supplier<SqsAsyncClient> clientSupplier;
+    private final Function<Map<String, Object>, ConfigurableSqsAsyncClientSupplier> clientSupplierFactory;
+
+    private final Map<String, Object> clientProperties;
 
     private final int batchSize;
 
@@ -29,16 +35,28 @@ public final class SqsSenderOptions {
     private final int maxRequestsInFlight;
 
     private SqsSenderOptions(
-            Supplier<SqsAsyncClient> clientSupplier,
+            Function<Map<String, Object>, ConfigurableSqsAsyncClientSupplier> clientSupplierFactory,
+            Map<String, Object> clientProperties,
             int batchSize,
             Duration batchDuration,
             int batchPrefetch,
             int maxRequestsInFlight) {
-        this.clientSupplier = clientSupplier;
+        this.clientSupplierFactory = clientSupplierFactory;
+        this.clientProperties = clientProperties;
         this.batchSize = batchSize;
         this.batchDuration = batchDuration;
         this.batchPrefetch = batchPrefetch;
         this.maxRequestsInFlight = maxRequestsInFlight;
+    }
+
+    /**
+     * Creates a new instance with default options. Each Sender will reference at most one
+     * non-closed Client at any given time.
+     *
+     * @return A new {@link SqsSenderOptions} instance
+     */
+    public static SqsSenderOptions defaultOptions() {
+        return newBuilder().build();
     }
 
     /**
@@ -53,6 +71,15 @@ public final class SqsSenderOptions {
     }
 
     /**
+     * Creates a new (mutable) {@link Builder} initialized with default options.
+     *
+     * @return A new (mutable) {@link Builder} instance
+     */
+    public static Builder newBuilder() {
+        return new Builder(it -> ConfigurableSqsAsyncClientSupplier.load(it, AtleonSqsAsyncClientSupplier::new));
+    }
+
+    /**
      * Creates a new (mutable) {@link Builder} with the provided Client Supplier and initialized
      * with default options.
      *
@@ -60,14 +87,14 @@ public final class SqsSenderOptions {
      * @return A new (mutable) {@link Builder} instance
      */
     public static Builder newBuilder(Supplier<SqsAsyncClient> clientSupplier) {
-        return new Builder(clientSupplier);
+        return new Builder(__ -> ConfigurableSqsAsyncClientSupplier.wrap(clientSupplier));
     }
 
     /**
      * Builds a new {@link SqsAsyncClient}.
      */
     public SqsAsyncClient createClient() {
-        return clientSupplier.get();
+        return clientSupplierFactory.apply(clientProperties).getClient();
     }
 
     /**
@@ -111,7 +138,9 @@ public final class SqsSenderOptions {
      */
     public static final class Builder {
 
-        private final Supplier<SqsAsyncClient> clientSupplier;
+        private final Function<Map<String, Object>, ConfigurableSqsAsyncClientSupplier> clientSupplierFactory;
+
+        private Map<String, Object> clientProperties = Collections.emptyMap();
 
         private int batchSize = DEFAULT_BATCH_SIZE;
 
@@ -121,15 +150,45 @@ public final class SqsSenderOptions {
 
         private int maxRequestsInFlight = DEFAULT_MAX_REQUESTS_IN_FLIGHT;
 
-        private Builder(Supplier<SqsAsyncClient> clientSupplier) {
-            this.clientSupplier = clientSupplier;
+        private Builder(Function<Map<String, Object>, ConfigurableSqsAsyncClientSupplier> clientSupplierFactory) {
+            this.clientSupplierFactory = clientSupplierFactory;
         }
 
         /**
          * Build a new instance of {@link SqsSenderOptions} from the currently set properties.
          */
         public SqsSenderOptions build() {
-            return new SqsSenderOptions(clientSupplier, batchSize, batchDuration, batchPrefetch, maxRequestsInFlight);
+            return new SqsSenderOptions(
+                    clientSupplierFactory,
+                    clientProperties,
+                    batchSize,
+                    batchDuration,
+                    batchPrefetch,
+                    maxRequestsInFlight);
+        }
+
+        /**
+         * Sets a single property used to configure underlying {@link SqsAsyncClient} creation.
+         *
+         * @see io.atleon.aws.util.SdkConfig
+         * @see io.atleon.aws.util.AwsConfig
+         */
+        public Builder clientProperty(String key, Object value) {
+            Map<String, Object> updatedClientProperties = new HashMap<>(this.clientProperties);
+            updatedClientProperties.put(key, value);
+            return clientProperties(updatedClientProperties);
+        }
+
+        /**
+         * Sets <i>all</i> the properties used to configure underlying {@link SqsAsyncClient}
+         * creation.
+         *
+         * @see io.atleon.aws.util.SdkConfig
+         * @see io.atleon.aws.util.AwsConfig
+         */
+        public Builder clientProperties(Map<String, Object> clientProperties) {
+            this.clientProperties = clientProperties;
+            return this;
         }
 
         /**
