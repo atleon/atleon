@@ -1,14 +1,13 @@
 package io.atleon.aws.sqs;
 
 import io.atleon.aws.testcontainers.AtleonLocalStackContainer;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.AwsCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
+import io.atleon.aws.util.AwsConfig;
+import io.atleon.aws.util.SdkConfig;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 import software.amazon.awssdk.services.sqs.model.CreateQueueRequest;
 
-import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class LocalStackDependentTest {
@@ -17,36 +16,20 @@ public class LocalStackDependentTest {
 
     protected final String queueUrl = createQueue(UUID.randomUUID().toString());
 
-    protected static SqsAsyncClient createSqsClient() {
-        return SqsAsyncClient.builder()
-                .endpointOverride(getSqsEndpointOverride())
-                .credentialsProvider(StaticCredentialsProvider.create(createAwsCredentials()))
-                .region(Region.of(CONTAINER.getRegion()))
-                .build();
-    }
-
-    protected static URI getSqsEndpointOverride() {
-        return CONTAINER.getSqsEndpointOverride();
-    }
-
-    protected static String getAccessKey() {
-        return CONTAINER.getAccessKey();
-    }
-
-    protected static String getSecretKey() {
-        return CONTAINER.getSecretKey();
-    }
-
-    protected static Region getRegion() {
-        return Region.of(CONTAINER.getRegion());
-    }
-
-    private static AwsCredentials createAwsCredentials() {
-        return AwsBasicCredentials.create(CONTAINER.getAccessKey(), CONTAINER.getSecretKey());
+    protected static Map<String, Object> createSqsClientProperties() {
+        Map<String, Object> clientProperties = new HashMap<>();
+        clientProperties.put(SdkConfig.SQS_ENDPOINT_OVERRIDE_CONFIG, CONTAINER.getSqsEndpointOverride());
+        clientProperties.put(AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC);
+        clientProperties.put(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, CONTAINER.getAccessKey());
+        clientProperties.put(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, CONTAINER.getSecretKey());
+        clientProperties.put(AwsConfig.REGION_CONFIG, CONTAINER.getRegion());
+        return clientProperties;
     }
 
     private static String createQueue(String queueName) {
-        try (SqsAsyncClient client = createSqsClient()) {
+        ConfigurableSqsAsyncClientSupplier clientSupplier =
+                ConfigurableSqsAsyncClientSupplier.load(createSqsClientProperties(), AtleonSqsAsyncClientSupplier::new);
+        try (SqsAsyncClient client = clientSupplier.getClient()) {
             CreateQueueRequest request =
                     CreateQueueRequest.builder().queueName(queueName).build();
             return client.createQueue(request).join().queueUrl();

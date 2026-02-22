@@ -1,6 +1,5 @@
 package io.atleon.aws.sqs;
 
-import io.atleon.aws.util.AwsConfig;
 import io.atleon.core.Alo;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
@@ -84,11 +83,6 @@ public class AloProcessingTest extends LocalStackDependentTest {
     }
 
     private SqsConfigSource newAloSqsConfigSource() {
-        return SqsConfigSource.unnamed()
-                .with(SqsConfig.ENDPOINT_OVERRIDE_CONFIG, getSqsEndpointOverride())
-                .with(AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC)
-                .with(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, getAccessKey())
-                .with(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, getSecretKey())
-                .with(AwsConfig.REGION_CONFIG, getRegion());
+        return SqsConfigSource.unnamed().withAll(createSqsClientProperties());
     }
 }

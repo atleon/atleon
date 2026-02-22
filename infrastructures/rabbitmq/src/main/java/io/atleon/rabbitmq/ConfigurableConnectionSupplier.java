@@ -3,6 +3,7 @@ package io.atleon.rabbitmq;
 import com.rabbitmq.client.Connection;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
+import io.atleon.util.IOSupplier;
 
 import java.io.IOException;
 import java.util.Map;
@@ -11,7 +12,6 @@ import java.util.function.Supplier;
 /**
  * API through which a provider of {@link Connection} instances can be configured and invoked.
  */
-@FunctionalInterface
 public interface ConfigurableConnectionSupplier extends Configurable {
 
     /**
@@ -26,8 +26,17 @@ public interface ConfigurableConnectionSupplier extends Configurable {
         return ConfigLoading.loadConfigured(properties, CONFIG, ConfigurableConnectionSupplier.class, defaultSupplier);
     }
 
-    @Override
-    default void configure(Map<String, ?> properties) {}
+    static ConfigurableConnectionSupplier wrap(IOSupplier<Connection> supplier) {
+        return new ConfigurableConnectionSupplier() {
+            @Override
+            public void configure(Map<String, ?> properties) {}
+
+            @Override
+            public Connection getConnection() throws IOException {
+                return supplier.get();
+            }
+        };
+    }
 
     Connection getConnection() throws IOException;
 }

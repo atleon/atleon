@@ -24,7 +24,9 @@ public final class RabbitMQReceiverOptions {
 
     private static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(30L);
 
-    private final IOSupplier<Connection> connectionSupplier;
+    private final Function<Map<String, Object>, ConfigurableConnectionSupplier> connectionSupplierFactory;
+
+    private final Map<String, Object> connectionProperties;
 
     private final int prefetch;
 
@@ -35,12 +37,14 @@ public final class RabbitMQReceiverOptions {
     private final Duration closeTimeout;
 
     private RabbitMQReceiverOptions(
-            IOSupplier<Connection> connectionSupplier,
+            Function<Map<String, Object>, ConfigurableConnectionSupplier> connectionSupplierFactory,
+            Map<String, Object> connectionProperties,
             int prefetch,
             String consumerTag,
             @Nullable Integer priority,
             Duration closeTimeout) {
-        this.connectionSupplier = connectionSupplier;
+        this.connectionSupplierFactory = connectionSupplierFactory;
+        this.connectionProperties = connectionProperties;
         this.prefetch = prefetch;
         this.consumerTag = consumerTag;
         this.priority = priority;
@@ -52,16 +56,15 @@ public final class RabbitMQReceiverOptions {
     }
 
     public static RabbitMQReceiverOptions.Builder newBuilder() {
-        return new RabbitMQReceiverOptions.Builder(
-                it -> ConfigurableConnectionSupplier.load(it, ConfiguratorConnectionSupplier::new));
+        return new Builder(it -> ConfigurableConnectionSupplier.load(it, ConfiguratorConnectionSupplier::new));
     }
 
     public static RabbitMQReceiverOptions.Builder newBuilder(IOSupplier<Connection> connectionSupplier) {
-        return new RabbitMQReceiverOptions.Builder(__ -> connectionSupplier::get);
+        return new Builder(__ -> ConfigurableConnectionSupplier.wrap(connectionSupplier));
     }
 
     public Connection createConnection() throws IOException {
-        return connectionSupplier.get();
+        return connectionSupplierFactory.apply(connectionProperties).getConnection();
     }
 
     public Scheduler createIOScheduler() {
@@ -98,7 +101,7 @@ public final class RabbitMQReceiverOptions {
 
     public static final class Builder {
 
-        private final Function<Map<String, Object>, ConfigurableConnectionSupplier> connectionProviderFactory;
+        private final Function<Map<String, Object>, ConfigurableConnectionSupplier> connectionSupplierFactory;
 
         private Map<String, Object> connectionProperties = Collections.emptyMap();
 
@@ -110,8 +113,13 @@ public final class RabbitMQReceiverOptions {
 
         private Duration closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
-        private Builder(Function<Map<String, Object>, ConfigurableConnectionSupplier> connectionProviderFactory) {
-            this.connectionProviderFactory = connectionProviderFactory;
+        private Builder(Function<Map<String, Object>, ConfigurableConnectionSupplier> connectionSupplierFactory) {
+            this.connectionSupplierFactory = connectionSupplierFactory;
+        }
+
+        public RabbitMQReceiverOptions build() {
+            return new RabbitMQReceiverOptions(
+                    connectionSupplierFactory, connectionProperties, prefetch, consumerTag, priority, closeTimeout);
         }
 
         /**
@@ -164,12 +172,6 @@ public final class RabbitMQReceiverOptions {
         public Builder closeTimeout(Duration closeTimeout) {
             this.closeTimeout = closeTimeout;
             return this;
-        }
-
-        public RabbitMQReceiverOptions build() {
-            ConfigurableConnectionSupplier connectionSupplier = connectionProviderFactory.apply(connectionProperties);
-            return new RabbitMQReceiverOptions(
-                    connectionSupplier::getConnection, prefetch, consumerTag, priority, closeTimeout);
         }
     }
 }

@@ -1,6 +1,5 @@
 package io.atleon.aws.sns;
 
-import io.atleon.aws.util.AwsConfig;
 import io.atleon.core.Alo;
 import io.atleon.core.ComposedAlo;
 import org.junit.jupiter.api.Test;
@@ -40,11 +39,7 @@ class AloSnsSenderTest extends LocalStackDependentTest {
 
     private SnsConfigSource newAloSnsSenderConfigSource() {
         return SnsConfigSource.unnamed()
-                .with(SnsConfig.ENDPOINT_OVERRIDE_CONFIG, getSqsEndpointOverride())
-                .with(AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC)
-                .with(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, getAccessKey())
-                .with(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, getSecretKey())
-                .with(AwsConfig.REGION_CONFIG, getRegion())
+                .withAll(createSnsClientProperties())
                 .with(AloSnsSender.BODY_SERIALIZER_CONFIG, StringBodySerializer.class.getName());
     }
 }
