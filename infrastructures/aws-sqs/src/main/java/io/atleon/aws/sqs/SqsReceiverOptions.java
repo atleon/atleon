@@ -4,7 +4,10 @@ import software.amazon.awssdk.services.sqs.SqsAsyncClient;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -26,7 +29,9 @@ public final class SqsReceiverOptions {
 
     public static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(10);
 
-    private final Supplier<SqsAsyncClient> clientSupplier;
+    private final Function<Map<String, Object>, ConfigurableSqsAsyncClientSupplier> clientSupplierFactory;
+
+    private final Map<String, Object> clientProperties;
 
     private final int maxMessagesPerReception;
 
@@ -47,7 +52,8 @@ public final class SqsReceiverOptions {
     private final Duration closeTimeout;
 
     private SqsReceiverOptions(
-            Supplier<SqsAsyncClient> clientSupplier,
+            Function<Map<String, Object>, ConfigurableSqsAsyncClientSupplier> clientSupplierFactory,
+            Map<String, Object> clientProperties,
             int maxMessagesPerReception,
             Set<String> messageAttributesToRequest,
             Set<String> messageSystemAttributesToRequest,
@@ -57,7 +63,8 @@ public final class SqsReceiverOptions {
             int deleteBatchSize,
             Duration deleteInterval,
             Duration closeTimeout) {
-        this.clientSupplier = clientSupplier;
+        this.clientSupplierFactory = clientSupplierFactory;
+        this.clientProperties = clientProperties;
         this.maxMessagesPerReception = maxMessagesPerReception;
         this.messageAttributesToRequest = messageAttributesToRequest;
         this.messageSystemAttributesToRequest = messageSystemAttributesToRequest;
@@ -67,6 +74,16 @@ public final class SqsReceiverOptions {
         this.deleteBatchSize = deleteBatchSize;
         this.deleteInterval = deleteInterval;
         this.closeTimeout = closeTimeout;
+    }
+
+    /**
+     * Creates a new instance with default options. Note that a new Client is created per
+     * subscription and closed when that subscription is terminated.
+     *
+     * @return A new {@link SqsReceiverOptions} instance
+     */
+    public static SqsReceiverOptions defaultOptions() {
+        return newBuilder().build();
     }
 
     /**
@@ -81,6 +98,15 @@ public final class SqsReceiverOptions {
     }
 
     /**
+     * Creates a new (mutable) {@link Builder} initialized with default options.
+     *
+     * @return A new (mutable) {@link Builder} instance
+     */
+    public static Builder newBuilder() {
+        return new Builder(it -> ConfigurableSqsAsyncClientSupplier.load(it, AtleonSqsAsyncClientSupplier::new));
+    }
+
+    /**
      * Creates a new (mutable) {@link Builder} with the provided Client Supplier and initialized
      * with default options.
      *
@@ -88,14 +114,14 @@ public final class SqsReceiverOptions {
      * @return A new (mutable) {@link Builder} instance
      */
     public static Builder newBuilder(Supplier<SqsAsyncClient> clientSupplier) {
-        return new Builder(clientSupplier);
+        return new Builder(__ -> ConfigurableSqsAsyncClientSupplier.wrap(clientSupplier));
     }
 
     /**
      * Builds a new {@link SqsAsyncClient}.
      */
     public SqsAsyncClient createClient() {
-        return clientSupplier.get();
+        return clientSupplierFactory.apply(clientProperties).getClient();
     }
 
     /**
@@ -182,7 +208,9 @@ public final class SqsReceiverOptions {
      */
     public static final class Builder {
 
-        private final Supplier<SqsAsyncClient> clientSupplier;
+        private final Function<Map<String, Object>, ConfigurableSqsAsyncClientSupplier> clientSupplierFactory;
+
+        private Map<String, Object> clientProperties = Collections.emptyMap();
 
         private int maxMessagesPerReception = DEFAULT_MAX_MESSAGES_PER_RECEPTION;
 
@@ -202,8 +230,8 @@ public final class SqsReceiverOptions {
 
         private Duration closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
-        private Builder(Supplier<SqsAsyncClient> clientSupplier) {
-            this.clientSupplier = clientSupplier;
+        private Builder(Function<Map<String, Object>, ConfigurableSqsAsyncClientSupplier> clientSupplierFactory) {
+            this.clientSupplierFactory = clientSupplierFactory;
         }
 
         /**
@@ -211,7 +239,8 @@ public final class SqsReceiverOptions {
          */
         public SqsReceiverOptions build() {
             return new SqsReceiverOptions(
-                    clientSupplier,
+                    clientSupplierFactory,
+                    clientProperties,
                     maxMessagesPerReception,
                     messageAttributesToRequest,
                     messageSystemAttributesToRequest,
@@ -221,6 +250,30 @@ public final class SqsReceiverOptions {
                     deleteBatchSize,
                     deleteInterval,
                     closeTimeout);
+        }
+
+        /**
+         * Sets a single property used to configure underlying {@link SqsAsyncClient} creation.
+         *
+         * @see io.atleon.aws.util.SdkConfig
+         * @see io.atleon.aws.util.AwsConfig
+         */
+        public Builder clientProperty(String key, Object value) {
+            Map<String, Object> updatedClientProperties = new HashMap<>(this.clientProperties);
+            updatedClientProperties.put(key, value);
+            return clientProperties(updatedClientProperties);
+        }
+
+        /**
+         * Sets <i>all</i> the properties used to configure underlying {@link SqsAsyncClient}
+         * creation.
+         *
+         * @see io.atleon.aws.util.SdkConfig
+         * @see io.atleon.aws.util.AwsConfig
+         */
+        public Builder clientProperties(Map<String, Object> clientProperties) {
+            this.clientProperties = clientProperties;
+            return this;
         }
 
         /**

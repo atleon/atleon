@@ -61,11 +61,15 @@ class SnsSenderTest extends LocalStackDependentTest {
     }
 
     private SnsSenderOptions newSenderOptions() {
-        return SnsSenderOptions.defaultOptions(SnsSenderTest::createSnsClient);
+        return SnsSenderOptions.newBuilder()
+                .clientProperties(createSnsClientProperties())
+                .build();
     }
 
     private SqsReceiverOptions newReceiverOptions() {
-        return SqsReceiverOptions.defaultOptions(SnsSenderTest::createSqsClient);
+        return SqsReceiverOptions.newBuilder()
+                .clientProperties(createSqsClientProperties())
+                .build();
     }
 
     private static SnsSenderMessage<Void> toSenderMessage(String body) {

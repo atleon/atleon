@@ -1,6 +1,6 @@
 package io.atleon.aws.sns;
 
-import io.atleon.aws.util.AwsConfig;
+import io.atleon.aws.util.SdkConfig;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
 import software.amazon.awssdk.services.sns.SnsAsyncClient;
@@ -16,7 +16,11 @@ import java.util.Optional;
  */
 public class SnsConfig {
 
-    public static final String ENDPOINT_OVERRIDE_CONFIG = "sns.endpoint.override";
+    /**
+     * @deprecated Use {@link SdkConfig#SNS_ENDPOINT_OVERRIDE_CONFIG} instead.
+     */
+    @Deprecated
+    public static final String ENDPOINT_OVERRIDE_CONFIG = SdkConfig.SNS_ENDPOINT_OVERRIDE_CONFIG;
 
     private final Map<String, ?> properties;
 
@@ -29,12 +33,8 @@ public class SnsConfig {
     }
 
     public SnsAsyncClient buildClient() {
-        return SnsAsyncClient.builder()
-                .endpointOverride(ConfigLoading.loadUri(properties, ENDPOINT_OVERRIDE_CONFIG)
-                        .orElse(null))
-                .credentialsProvider(AwsConfig.loadCredentialsProvider(properties))
-                .region(AwsConfig.loadRegion(properties).orElse(null))
-                .build();
+        return ConfigurableSnsAsyncClientSupplier.load(properties, AtleonSnsAsyncClientSupplier::new)
+                .getClient();
     }
 
     public <T extends Configurable> T loadConfiguredOrThrow(String property, Class<? extends T> type) {

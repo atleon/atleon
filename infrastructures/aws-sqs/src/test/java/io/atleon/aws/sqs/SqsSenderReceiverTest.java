@@ -141,11 +141,15 @@ class SqsSenderReceiverTest extends LocalStackDependentTest {
     }
 
     private SqsSenderOptions newSenderOptions() {
-        return SqsSenderOptions.defaultOptions(SqsSenderReceiverTest::createSqsClient);
+        return SqsSenderOptions.newBuilder()
+                .clientProperties(createSqsClientProperties())
+                .build();
     }
 
     private SqsReceiverOptions newReceiverOptions() {
-        return SqsReceiverOptions.defaultOptions(SqsSenderReceiverTest::createSqsClient);
+        return SqsReceiverOptions.newBuilder()
+                .clientProperties(createSqsClientProperties())
+                .build();
     }
 
     private static SqsSenderMessage<Void> toSenderMessage(String body) {
