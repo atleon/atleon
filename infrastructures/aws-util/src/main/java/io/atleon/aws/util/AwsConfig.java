@@ -14,7 +14,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Utility class used to build AWS resources from property-based configs
+ * Properties and utility methods used to configure AWS resources built by extensions of
+ * {@code AwsClientBuilder}.
  */
 public final class AwsConfig {
 

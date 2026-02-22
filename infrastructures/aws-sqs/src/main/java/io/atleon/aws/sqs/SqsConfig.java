@@ -1,6 +1,6 @@
 package io.atleon.aws.sqs;
 
-import io.atleon.aws.util.AwsConfig;
+import io.atleon.aws.util.SdkConfig;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
@@ -19,7 +19,11 @@ import java.util.function.Function;
  */
 public class SqsConfig {
 
-    public static final String ENDPOINT_OVERRIDE_CONFIG = "sqs.endpoint.override";
+    /**
+     * @deprecated Use {@link SdkConfig#SQS_ENDPOINT_OVERRIDE_CONFIG} instead.
+     */
+    @Deprecated
+    public static final String ENDPOINT_OVERRIDE_CONFIG = SdkConfig.SQS_ENDPOINT_OVERRIDE_CONFIG;
 
     private final Map<String, ?> properties;
 
@@ -32,12 +36,8 @@ public class SqsConfig {
     }
 
     public SqsAsyncClient buildClient() {
-        return SqsAsyncClient.builder()
-                .endpointOverride(ConfigLoading.loadUri(properties, ENDPOINT_OVERRIDE_CONFIG)
-                        .orElse(null))
-                .credentialsProvider(AwsConfig.loadCredentialsProvider(properties))
-                .region(AwsConfig.loadRegion(properties).orElse(null))
-                .build();
+        return ConfigurableSqsAsyncClientSupplier.load(properties, AtleonSqsAsyncClientSupplier::new)
+                .getClient();
     }
 
     public Map<String, Object> modifyAndGetProperties(Consumer<Map<String, Object>> modifier) {

@@ -26,7 +26,9 @@ public final class RabbitMQSenderOptions {
 
     private static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(30L);
 
-    private final IOSupplier<Connection> connectionSupplier;
+    private final Function<Map<String, Object>, ConfigurableConnectionSupplier> connectionSupplierFactory;
+
+    private final Map<String, Object> connectionProperties;
 
     private final int maxPooledChannels;
 
@@ -37,12 +39,14 @@ public final class RabbitMQSenderOptions {
     private final Function<@Nullable Object, Consumer<Runnable>> correlationRunnerFactory;
 
     private RabbitMQSenderOptions(
-            IOSupplier<Connection> connectionSupplier,
+            Function<Map<String, Object>, ConfigurableConnectionSupplier> connectionSupplierFactory,
+            Map<String, Object> connectionProperties,
             int maxPooledChannels,
             int maxInFlight,
             Duration closeTimeout,
             Function<@Nullable Object, Consumer<Runnable>> correlationRunnerFactory) {
-        this.connectionSupplier = connectionSupplier;
+        this.connectionSupplierFactory = connectionSupplierFactory;
+        this.connectionProperties = connectionProperties;
         this.maxPooledChannels = maxPooledChannels;
         this.maxInFlight = maxInFlight;
         this.closeTimeout = closeTimeout;
@@ -58,11 +62,11 @@ public final class RabbitMQSenderOptions {
     }
 
     public static RabbitMQSenderOptions.Builder newBuilder(IOSupplier<Connection> connectionSupplier) {
-        return new Builder(__ -> connectionSupplier::get);
+        return new Builder(__ -> ConfigurableConnectionSupplier.wrap(connectionSupplier));
     }
 
     public Connection createConnection() throws IOException {
-        return connectionSupplier.get();
+        return connectionSupplierFactory.apply(connectionProperties).getConnection();
     }
 
     public Scheduler createIOScheduler() {
@@ -99,7 +103,7 @@ public final class RabbitMQSenderOptions {
 
     public static final class Builder {
 
-        private final Function<Map<String, Object>, ConfigurableConnectionSupplier> connectionProviderFactory;
+        private final Function<Map<String, Object>, ConfigurableConnectionSupplier> connectionSupplierFactory;
 
         private Map<String, Object> connectionProperties = Collections.emptyMap();
 
@@ -111,8 +115,18 @@ public final class RabbitMQSenderOptions {
 
         private Function<@Nullable Object, Consumer<Runnable>> correlationRunnerFactory = __ -> Runnable::run;
 
-        private Builder(Function<Map<String, Object>, ConfigurableConnectionSupplier> connectionProviderFactory) {
-            this.connectionProviderFactory = connectionProviderFactory;
+        private Builder(Function<Map<String, Object>, ConfigurableConnectionSupplier> connectionSupplierFactory) {
+            this.connectionSupplierFactory = connectionSupplierFactory;
+        }
+
+        public RabbitMQSenderOptions build() {
+            return new RabbitMQSenderOptions(
+                    connectionSupplierFactory,
+                    connectionProperties,
+                    maxPooledChannels,
+                    maxInFlight,
+                    closeTimeout,
+                    correlationRunnerFactory);
         }
 
         /**
@@ -175,16 +189,6 @@ public final class RabbitMQSenderOptions {
             this.correlationRunnerFactory = metadata ->
                     metadataType.isInstance(metadata) ? factory.apply(metadataType.cast(metadata)) : Runnable::run;
             return this;
-        }
-
-        public RabbitMQSenderOptions build() {
-            ConfigurableConnectionSupplier connectionSupplier = connectionProviderFactory.apply(connectionProperties);
-            return new RabbitMQSenderOptions(
-                    connectionSupplier::getConnection,
-                    maxPooledChannels,
-                    maxInFlight,
-                    closeTimeout,
-                    correlationRunnerFactory);
         }
     }
 }

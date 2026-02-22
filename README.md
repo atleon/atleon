@@ -9,14 +9,14 @@ Atleon is a lightweight reactive stream processing framework that scalably trans
 
 Atleon is based on [Reactive Streams](https://www.reactive-streams.org/) and backed by [Project Reactor](https://projectreactor.io/). There are two levels of client APIs offered:
 
-- **Low-Level**: Low-level client APIs are thin reactive wrappers around third-party native infrastructure clients. These APIs are defined in terms of Reactor-native types (e.g. `Flux` and `Mono`), and emit elements that contain (or otherwise reference) native infrastructure types. Consumption of messages is implemented via `Receiver` implementations, with emitted elements containing callbacks for acknowledgement (both positive/successful and negative/failed). Production of messages is implemented via `Sender` implementations, with emitted elements containing metadata about successes and/or errors indicating production failure.
-- **High-Level**: High-Level client APIs decorate low-level clients with an Atleon-native abstraction called `Alo` (short for At Least Once). `Alo` provides per-element context, which always includes acknowledgement functionality, and allows for decorating that context with functionality like metrics, tracing, and application-specific metadata. In order to make working with `Alo` about as simple as working with `Flux`, high-level clients produce a special `AloFlux<T>` type that wraps an underlying `Flux<Alo<T>>`, and allows for defining reactive pipelines purely in terms of data typing (`T`), while providing automatic context propagation.
+- **Low-Level**: Low-level client APIs are thin reactive wrappers around third-party native infrastructure clients. These APIs are defined in terms of Reactor-native types (e.g. `Flux` and `Mono`), and emit elements that contain (or otherwise reference) native infrastructure types. Consumption of messages is implemented via `Receiver` implementations, with emitted elements containing callbacks for acknowledgement (both positive/successful and negative/failed). Production of messages is implemented via `Sender` implementations, with emitted elements (implementations of `SenderResult`) containing metadata about successes and/or errors indicating production failure.
+- **High-Level**: High-level client APIs decorate low-level clients with an Atleon-native abstraction called `Alo` (short for At Least Once). `Alo` provides per-element context which (at minimum) facilitates acknowledgement, and allows for decorating that context with functionality like metrics, distributed tracing, and application-specific metadata. In order to make working with `Alo` about as simple as working with `Flux`, high-level clients produce a special `AloFlux<T>` type that wraps an underlying `Flux<Alo<T>>`, and allows for defining reactive pipelines purely in terms of data typing (`T`), while providing automatic context propagation.
 
 ## Documentation and Getting Started
 
 Atleon documentation and instructions on how to get started are available in the [Wiki](../../wiki).
 
-### Low-level Client Example
+### Low-Level Client Example
 
 The following is an example of using a low-level client in Atleon:
 
@@ -26,9 +26,10 @@ import io.atleon.kafka.KafkaReceiverOptions;
 import io.atleon.kafka.KafkaReceiverRecord;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.common.serialization.StringSerializer;
-
+import org.apache.kafka.common.serialization.StringDeserializer;
 import reactor.core.Disposable;
+
+import java.util.Collections;
 
 public class Example {
 
@@ -43,7 +44,7 @@ public class Example {
 
         KafkaReceiver<String, String> receiver = KafkaReceiver.create(receiverOptions);
 
-        Disposable disposable = receiver.receiveRecords("source-topic")
+        Disposable disposable = receiver.receiveManual(Collections.singletonList("source-topic"))
             .doOnNext(it -> System.out.printf("Consumed record with key=%s and value=%s", it.key(), it.value()))
             .subscribe(KafkaReceiverRecord::acknowledge);
 
@@ -116,7 +117,7 @@ public class MyStream extends SelfConfigurableAloStream {
 
 ### Spring AloStream Example
 
-Atleon has built-in integration with Spring, where a fully configured AloStream looks like the following:
+Atleon has built-in integration with Spring, where a fully configured `AloStream` looks like the following:
 
 `pom.xml`:
 
@@ -170,12 +171,9 @@ public class MyStream extends SpringAloStream {
 
     private final KafkaConfigSource configSource;
 
-    private final MyService service;
-
     public MyStream(ApplicationContext context) {
         super(context);
         this.configSource = context.getBean("kafkaConfigSource", KafkaConfigSource.class);
-        this.service = context.getBean(MyService.class);
     }
 
     @Override

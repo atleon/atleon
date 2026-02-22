@@ -3,12 +3,12 @@ package io.atleon.examples.endtoendtoend;
 import io.atleon.aws.sqs.AloSqsReceiver;
 import io.atleon.aws.sqs.AloSqsSender;
 import io.atleon.aws.sqs.ComposedSqsMessage;
-import io.atleon.aws.sqs.SqsConfig;
 import io.atleon.aws.sqs.SqsConfigSource;
 import io.atleon.aws.sqs.StringBodyDeserializer;
 import io.atleon.aws.sqs.StringBodySerializer;
 import io.atleon.aws.testcontainers.AtleonLocalStackContainer;
 import io.atleon.aws.util.AwsConfig;
+import io.atleon.aws.util.SdkConfig;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
@@ -71,11 +71,11 @@ public class SqsPart1 {
 
     private static SqsConfigSource createConfigSource() {
         return SqsConfigSource.unnamed()
+                .with(SdkConfig.SQS_ENDPOINT_OVERRIDE_CONFIG, CONTAINER.getSqsEndpointOverride())
                 .with(AwsConfig.REGION_CONFIG, CONTAINER.getRegion())
                 .with(AwsConfig.CREDENTIALS_PROVIDER_TYPE_CONFIG, AwsConfig.CREDENTIALS_PROVIDER_TYPE_STATIC)
                 .with(AwsConfig.CREDENTIALS_ACCESS_KEY_ID_CONFIG, CONTAINER.getAccessKey())
-                .with(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, CONTAINER.getSecretKey())
-                .with(SqsConfig.ENDPOINT_OVERRIDE_CONFIG, CONTAINER.getSqsEndpointOverride());
+                .with(AwsConfig.CREDENTIALS_SECRET_ACCESS_KEY_CONFIG, CONTAINER.getSecretKey());
     }
 
     private static void awaitTerminationByUser() {
