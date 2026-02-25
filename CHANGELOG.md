@@ -3,6 +3,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.38.0]
+atleon `0.38.0` is a beta release containing updates outlined below
+
+### Additions
+* [#463] RabbitMQ: Re-implemented Receiver and Sender clients (limited functionality migrated from discontinued reactor-rabbitmq)
+* [#466] Added `innerAddAloErrorDelegation` to `GroupFlux` (thanks to @brandy-m)
+* [#485] RabbitMQ: Enabled usage of re-implemented "optimized" low-level clients in `Alo` clients
+* [#503] SNS/SQS: Adopt "configurable" client supplier convention (copied from RabbitMQ)
+
+### Fixes
+* [#354] Optimized GitHub workflows (remove unnecessary PR build checks, activate AI code review, enable CodeQL)
+* [#477] Kafka: Simplified contextualization of send invocations
+* [#489] Kafka: Address flaky/breaking tests in JDK 21+
+* [#491] Bumped Testcontainers version to fix GitHub build
+* [#493] Kafka: Proxied consumer instance now indicates partitions that have been explicitly paused
+* [#495] Addressed outstanding CodeQL code-quality recommendations
+* [#499] Consolidated top-level "base" modules under `base` submodule
+* [#501] Split `application` module from `spring` module and consolidated both under `applications` submodule
+
+### Removals
+* [#494] Polling: Removed unused `polling` module
+
 # [0.37.0]
 atleon `0.37.0` is a beta release containing updates outlined below
 

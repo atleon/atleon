@@ -14,11 +14,11 @@ This document should provide guidelines and pointers for contributing to this pr
 
 ## :question: Do you have a question?
 
-Our primary conduit for addressing questions is via Google Groups. Please reach out to our [Forum](TODO).
+Our primary conduit for addressing questions is via [GitHub Discussions](https://github.com/orgs/atleon/discussions).
 
 ## :beetle: Have you found a bug?
 
-Please open Issues here on GitHub for bug reporting. Make sure to include the "bug" tag.
+Please use [GitHub Issues](https://github.com/atleon/atleon/issues) for bug reporting.
 
 ## :wrench: Have you written a patch that fixes a bug?
 
@@ -27,46 +27,54 @@ Please open Issues here on GitHub for bug reporting. Make sure to include the "b
  - Create a feature branch off of master with a meaningful name (ideally referencing issue you created)
  - Work on your change. Be sure to include **JUnit test cases**. This will greatly help maintainers while reviewing your change
  - **Run all tests locally** prior to submission: `./mvnw clean verify -U`
- - Finally, you're **ready to submit** your Pull-Request :+1:
+ - Finally, you are **ready to submit** your Pull-Request :+1:
 
-## :mag: Do you need a new Feature or want to modify an existing Feature?
+## :mag: Do you need a new feature or want to modify an existing feature?
 
- - Start a discussion with the maintainers about the Feature
+ - Start a [discussion](https://github.com/orgs/atleon/discussions) with the maintainers about the feature
  - Proceed after receiving positive feedback
  - Follow the same process as [fixing a bug](#wrench-have-you-written-a-patch-that-fixes-a-bug)
 
 ## :art: Code style
 
-Our code style is mostly based on Robert C. Martin's ["Clean Code: a Handbook of Agile Software Craftsmanship"](https://www.amazon.com/s?k=robert+martin+clean+code)
+Low-level coding style is based on [Palantir Java Format](https://github.com/palantir/palantir-java-format) and enforced via [Spotless](https://github.com/diffplug/spotless). Modified code can have formatting applied by invoking `./mvnw spotless:apply`. Higher level coding standards are mostly informed by Robert C. Martin's ["Clean Code: a Handbook of Agile Software Craftsmanship"](https://www.amazon.com/s?k=robert+martin+clean+code). Some of the important high-level coding standard TL;DRs:
 
-Some of the important TL;DRs:
-1. Spaces, not tabs
-1. Unix (LF), not DOS (CRLF) line endings
-1. Eliminate all trailing whitespace
-1. If you're writing a comment, consider if the code could be made more expressive
-1. Preserve existing formatting; i.e. do not reformat code for its own sake
-1. When in doubt, try to find existing examples of what you're trying to format
+1. Know, respect, and apply the [SOLID principles](https://en.wikipedia.org/wiki/SOLID)
+2. If you're writing a comment, consider if the code could be made more expressive
 
 ## :sparkles: PR and commit style
 
- - **Commit early and commit often**. Still strive for **descriptive commit messages** though, as this helps during the review
- - Once submitted, the review and discussion starts. If necessary, make adjustments in **further commits**
- - Use your **real name** in commits
- - _Once the PR is **approved**_ :white_check_mark:, clean up and **prepare for merge**
- - Please attempt to squash and merge your commits before merging
+- Strive for **descriptive commit messages**, as this helps during code review
+- Once submitted, the review and discussion starts. If necessary, make adjustments in **further commits**
+- _Once the PR is **approved**_ :white_check_mark:, clean up and **prepare for merge**
+- Please attempt to squash and rebase your commits before merging
 
 ### :black_nib: Commit Message Convention
 
 We use the following convention for commit message title and body:
 
 ```
-[ISSUE_REF] Short headline description of content
-
-Longer description of the content of the commit and/or context of the change
+[ISSUE_REF] (<primarily affected module>: )Short headline description of content
+- Longer bulleted description entry #1 describing sub-content of the commit
+- Longer bulleted description entry #2 describing sub-content of the commit
 ```
 
- - `ISSUE_REF` should be a GitHub issue number (`#69`)
+- `ISSUE_REF` should be a GitHub issue number (`#69`)
+- `primarily affected module` should be the module that is most affected/targeted by the change. If there is no reasonably "primary" module, this can be omitted.
+- Bulleted description entries may describe smaller sub-contents of the commit
+
+An example commit messages may look like the following:
+
+```
+[#493] Kafka: Indicate explicitly paused partitions on Consumer proxy
+- Expose explicitly granted partition pauses
+- Clean up code around affected components
+```
+
+```
+[#353] Configure Spotless with Palantir format and apply it
+```
 
 ## :speech_balloon: More Details
 
-If there is information missing here, feel free to reach out! Also check out the [GitHub Wiki](../../wiki)
+If there is information missing here, feel free to [start a discussion](https://github.com/orgs/atleon/discussions)! Also check out the [GitHub Wiki](../../wiki).
