@@ -63,7 +63,7 @@ We use the following convention for commit message title and body:
 - `primarily affected module` should be the module that is most affected/targeted by the change. If there is no reasonably "primary" module, this can be omitted.
 - Bulleted description entries may describe smaller sub-contents of the commit
 
-An example commit messages may look like the following:
+Here are some example commit messages (note that the first line is the title, and the rest is the optional body):
 
 ```
 [#493] Kafka: Indicate explicitly paused partitions on Consumer proxy
