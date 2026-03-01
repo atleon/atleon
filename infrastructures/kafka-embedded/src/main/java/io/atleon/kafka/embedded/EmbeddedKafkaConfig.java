@@ -1,7 +1,10 @@
 package io.atleon.kafka.embedded;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 import kafka.server.KafkaConfig;
 
@@ -28,6 +31,10 @@ public class EmbeddedKafkaConfig {
 
     public String getConnect() {
         // Config key from org.apache.kafka.network.SocketServerConfigs
-        return Objects.toString(kafkaConfigValues.get("advertised.listeners"));
+        Object advertisedListeners = kafkaConfigValues.get("advertised.listeners");
+        Collection<?> advertisedListenerCollection = advertisedListeners instanceof Collection
+                ? Collection.class.cast(advertisedListeners)
+                : Collections.singletonList(advertisedListeners);
+        return advertisedListenerCollection.stream().map(Objects::toString).collect(Collectors.joining(","));
     }
 }

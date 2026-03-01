@@ -15,11 +15,11 @@
         <amazon-sdk.version>2.21.3</amazon-sdk.version>
         <apache-kafka.version>3.7.1</apache-kafka.version>
         <apache-kafka-doc.version>36</apache-kafka-doc.version>
-        <avro.version>1.11.4</avro.version>
+        <avro.version>1.12.1</avro.version>
         <bytebuddy.version>1.12.19</bytebuddy.version>
         <confluent.version>7.7.4</confluent.version> <!-- https://docs.confluent.io/platform/current/installation/versions-interoperability.html -->
         <guava.version>32.0.1-jre</guava.version>
-        <jackson.version>2.16.2</jackson.version>
+        <jackson.version>2.20.0</jackson.version>
         <jspecify.version>1.0.0</jspecify.version>
         <junit-jupiter.version>5.10.1</junit-jupiter.version>
         <kotlin.version>1.9.21</kotlin.version> <!-- Dictated by kotlinx-coroutines version -->
@@ -29,16 +29,16 @@
         <netty.version>4.1.113.Final</netty.version>
         <opentracing.verion>0.32.0</opentracing.verion>
         <protobuf.version>3.25.5</protobuf.version>
-        <rabbitmq-amqp-client.version>5.18.0</rabbitmq-amqp-client.version>
+        <rabbitmq.version>5.18.0</rabbitmq.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor.version>3.5.14</reactor.version>
         <reactor-pool.version>1.0.5</reactor-pool.version>
         <reactor-rabbitmq.version>1.5.6</reactor-rabbitmq.version>
-        <scala.version>2.13.15</scala.version>
-        <slf4j.version>2.0.11</slf4j.version>
+        <scala.version>2.13.17</scala.version>
+        <slf4j.version>2.0.17</slf4j.version>
         <spring.version>5.3.31</spring.version>
         <spring-boot.version>2.7.18</spring-boot.version>
-        <swagger3.version>2.1.13</swagger3.version>
+        <swagger3.version>2.2.29</swagger3.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <zookeeper.version>3.9.2</zookeeper.version>
     </properties>
@@ -173,7 +173,7 @@
             <dependency>
                 <groupId>com.rabbitmq</groupId>
                 <artifactId>amqp-client</artifactId>
-                <version>${rabbitmq-amqp-client.version}</version>
+                <version>${rabbitmq.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.confluent</groupId>
