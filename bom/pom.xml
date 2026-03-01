@@ -90,6 +90,16 @@
             </dependency>
             <dependency>
                 <groupId>io.atleon</groupId>
+                <artifactId>atleon-opentelemetry</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
+                <artifactId>atleon-opentelemetry-tracing-auto</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
                 <artifactId>atleon-opentracing</artifactId>
                 <version>${project.version}</version>
             </dependency>

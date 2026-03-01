@@ -27,6 +27,7 @@
         <micrometer.version>1.13.1</micrometer.version>
         <mockito.version>4.11.0</mockito.version>
         <netty.version>4.1.113.Final</netty.version>
+        <opentelemetry.version>1.40.0</opentelemetry.version>
         <opentracing.verion>0.32.0</opentracing.verion>
         <protobuf.version>3.25.5</protobuf.version>
         <rabbitmq.version>5.18.0</rabbitmq.version>
@@ -104,6 +105,16 @@
             <dependency>
                 <groupId>io.atleon</groupId>
                 <artifactId>atleon-micrometer-auto</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
+                <artifactId>atleon-opentelemetry</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
+                <artifactId>atleon-opentelemetry-tracing-auto</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -209,6 +220,31 @@
                 <groupId>io.micrometer</groupId>
                 <artifactId>micrometer-core</artifactId>
                 <version>${micrometer.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-api</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-context</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-sdk</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-sdk-testing</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-sdk-trace</artifactId>
+                <version>${opentelemetry.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.opentracing</groupId>
