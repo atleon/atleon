@@ -268,8 +268,9 @@ public class AloRabbitMQSender<T> implements Closeable {
         public <R> Flux<Alo<RabbitMQSenderResult<R>>> sendAlos(
                 Publisher<Alo<R>> alos, Function<R, RabbitMQMessage<T>> messageCreator) {
             if (optimized) {
+                Function<Alo<R>, RabbitMQMessage<T>> aloToRabbitMQMessage = messageCreator.compose(Alo::get);
                 return AloFlux.toFlux(alos)
-                        .handle(newAloEmitter(messageCreator.compose(Alo::get)))
+                        .map(it -> toSenderMessage(it, aloToRabbitMQMessage))
                         .transform(sender::send)
                         .map(RabbitMQSenderResult::invertAlo);
             } else {
@@ -299,11 +300,6 @@ public class AloRabbitMQSender<T> implements Closeable {
                     message.properties(),
                     bodySerializer.serialize(message.body()).bytes(),
                     data);
-        }
-
-        private <R> BiConsumer<Alo<R>, SynchronousSink<RabbitMQSenderMessage<Alo<R>>>> newAloEmitter(
-                Function<Alo<R>, RabbitMQMessage<T>> aloToRabbitMQMessage) {
-            return (alo, sink) -> alo.runInContext(() -> sink.next(toSenderMessage(alo, aloToRabbitMQMessage)));
         }
 
         private <R> RabbitMQSenderMessage<R> toSenderMessage(
