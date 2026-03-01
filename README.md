@@ -18,45 +18,68 @@ Atleon documentation and instructions on how to get started are available in the
 
 ### Low-Level Client Example
 
-The following is an example of using a low-level client in Atleon:
+The following is an example of using low-level clients in Atleon:
 
 ```java
 import io.atleon.kafka.KafkaReceiver;
 import io.atleon.kafka.KafkaReceiverOptions;
 import io.atleon.kafka.KafkaReceiverRecord;
+import io.atleon.kafka.KafkaSender;
+import io.atleon.kafka.KafkaSenderOptions;
+import io.atleon.kafka.KafkaSenderRecord;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 
+import java.time.Duration;
 import java.util.Collections;
 
 public class Example {
 
     public static void main(String[] args) throws Exception {
+        KafkaSenderOptions<String, String> senderOptions = KafkaSenderOptions.<String, String>newBuilder()
+            .producerProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
+            .producerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "example")
+            .producerProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
+            .producerProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
+            .build();
+        
         KafkaReceiverOptions<String, String> receiverOptions = KafkaReceiverOptions.<String, String>newBuilder()
-            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "example")
             .consumerProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092")
+            .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "example")
             .consumerProperty(ConsumerConfig.GROUP_ID_CONFIG, "consumer-group-id")
             .consumerProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
             .consumerProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
             .build();
 
-        KafkaReceiver<String, String> receiver = KafkaReceiver.create(receiverOptions);
+        // Periodically produce records
+        KafkaSender<String, String> sender = KafkaSender.create(senderOptions);
+        Disposable production = Flux.interval(Duration.ofMillis(100))
+            .map(it -> KafkaSenderRecord.create("source-topic", it.toString(), it.toString(), it))
+            .transform(sender::send)
+            .doFinally(__ -> sender.close())
+            .subscribe();
 
-        Disposable disposable = receiver.receiveManual(Collections.singletonList("source-topic"))
+        // Consume produced records
+        Disposable consumption = KafkaReceiver.create(receiverOptions)
+            .receiveManual(Collections.singletonList("source-topic"))
             .doOnNext(it -> System.out.printf("Consumed record with key=%s and value=%s", it.key(), it.value()))
             .subscribe(KafkaReceiverRecord::acknowledge);
 
         System.in.read(); // Added for posterity - Everything above will execute asynchronously
-        disposable.dispose(); // Cleanup
+        production.dispose(); // Stop producing
+        consumption.dispose(); // Stop consuming
     }
 }
 ```
 
 ### High-Level AloStream Example
 
-The next example builds on the availability of low-level clients by switching to high-level `Alo` clients, adding the sending/production of transformed messages, and wrapping the stream definition in an implementation of `AloStream`:
+The next example builds on the availability of low-level clients by switching to high-level `Alo` clients, removing manual production of data in favor of demonstrating sending/producing transformed messages, and wrapping the resulting stream definition in an implementation of `AloStream`:
 
 ```java
 import io.atleon.core.SelfConfigurableAloStream;
@@ -126,12 +149,12 @@ Atleon has built-in integration with Spring, where a fully configured `AloStream
 <dependencies>
     <dependency>
         <groupId>io.atleon</groupId>
-        <artifactId>atleon-kafka</artifactId> <!-- Include infrastructure client -->
+        <artifactId>atleon-kafka</artifactId> <!-- Include infrastructure client(s) -->
         <version>${atleon.version}</version>
     </dependency>
     <dependency>
         <groupId>io.atleon</groupId>
-        <artifactId>atleon-spring</artifactId>
+        <artifactId>atleon-spring</artifactId> <!-- Application binding(s) -->
         <version>${atleon.version}</version>
     </dependency>
 </dependencies>

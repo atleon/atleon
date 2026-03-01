@@ -3,21 +3,20 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.atleon</groupId>
-        <artifactId>atleon-parent</artifactId>
+        <artifactId>atleon-observability</artifactId>
         <version>0.38.1-SNAPSHOT</version>
-        <relativePath>../parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>atleon-observability</artifactId>
-    <packaging>pom</packaging>
+    <artifactId>atleon-opentelemetry-tracing-auto</artifactId>
+    <packaging>jar</packaging>
     <name>${project.groupId}:${project.artifactId}</name>
 
-    <modules>
-        <module>micrometer</module>
-        <module>micrometer-auto</module>
-        <module>opentelemetry</module>
-        <module>opentelemetry-tracing-auto</module>
-        <module>opentracing</module>
-        <module>opentracing-auto</module>
-    </modules>
+    <dependencies>
+        <!-- Project Runtime Dependencies -->
+        <dependency>
+            <groupId>io.atleon</groupId>
+            <artifactId>atleon-opentelemetry</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+    </dependencies>
 </project>
