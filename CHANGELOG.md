@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.39.0]
+atleon `0.39.0` is a beta release containing updates outlined below
+
+### Additions
+* [#506] Opentelemetry: Add support for distributed tracing via Opentelemetry
+
+### Fixes
+* [#485] RabbitMQ: Simplify/remove unnecessary wrapping of Alo emissions
+* [#507] Kafka: Fix usage of embedded Kafka with Kafka version(s) >= 4.x
+
 # [0.38.0]
 atleon `0.38.0` is a beta release containing updates outlined below
 
