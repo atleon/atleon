@@ -5,7 +5,6 @@ import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
@@ -41,7 +40,7 @@ public final class KafkaReceiverOptions<K, V> {
 
     private static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(30L); // Kafka default
 
-    private final Function<Map<String, Object>, Consumer<K, V>> consumerFactory;
+    private final Function<Map<String, Object>, ConfigurableConsumerSupplier<K, V>> consumerSupplierFactory;
 
     private final ConsumerListenerFactory consumerListenerFactory;
 
@@ -78,7 +77,7 @@ public final class KafkaReceiverOptions<K, V> {
     private final Duration closeTimeout;
 
     private KafkaReceiverOptions(
-            Function<Map<String, Object>, Consumer<K, V>> consumerFactory,
+            Function<Map<String, Object>, ConfigurableConsumerSupplier<K, V>> consumerSupplierFactory,
             ConsumerListenerFactory consumerListenerFactory,
             ReceptionListenerFactory receptionListenerFactory,
             PollStrategyFactory pollStrategyFactory,
@@ -96,7 +95,7 @@ public final class KafkaReceiverOptions<K, V> {
             Duration revocationGracePeriod,
             Duration terminationGracePeriod,
             Duration closeTimeout) {
-        this.consumerFactory = consumerFactory;
+        this.consumerSupplierFactory = consumerSupplierFactory;
         this.consumerListenerFactory = consumerListenerFactory;
         this.receptionListenerFactory = receptionListenerFactory;
         this.pollStrategyFactory = pollStrategyFactory;
@@ -122,7 +121,7 @@ public final class KafkaReceiverOptions<K, V> {
     }
 
     public static <K, V> KafkaReceiverOptions.Builder<K, V> newBuilder() {
-        return KafkaReceiverOptions.newBuilder(KafkaConsumer::new);
+        return new Builder<>(it -> ConfigurableConsumerSupplier.load(it, NativeConsumerSupplier::new));
     }
 
     /**
@@ -131,11 +130,11 @@ public final class KafkaReceiverOptions<K, V> {
      */
     public static <K, V> KafkaReceiverOptions.Builder<K, V> newBuilder(
             Function<Map<String, Object>, Consumer<K, V>> consumerFactory) {
-        return new Builder<>(consumerFactory);
+        return new Builder<>(it -> ConfigurableConsumerSupplier.wrap(() -> consumerFactory.apply(it)));
     }
 
     public KafkaReceiverOptions.Builder<K, V> toBuilder() {
-        return new Builder<>(consumerFactory)
+        return new Builder<>(consumerSupplierFactory)
                 .consumerListenerFactory(consumerListenerFactory)
                 .receptionListenerFactory(receptionListenerFactory)
                 .pollStrategyFactory(pollStrategyFactory)
@@ -163,7 +162,7 @@ public final class KafkaReceiverOptions<K, V> {
         // We take control of offset committing, so force (or at least attempt to force) the native
         // periodic commit to be disabled.
         sanitized.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-        return consumerFactory.apply(sanitized);
+        return consumerSupplierFactory.apply(sanitized).getConsumer();
     }
 
     /**
@@ -337,7 +336,7 @@ public final class KafkaReceiverOptions<K, V> {
 
     public static final class Builder<K, V> {
 
-        private final Function<Map<String, Object>, Consumer<K, V>> consumerFactory;
+        private final Function<Map<String, Object>, ConfigurableConsumerSupplier<K, V>> consumerSupplierFactory;
 
         private ConsumerListenerFactory consumerListenerFactory = ConsumerListenerFactory.noOp();
 
@@ -373,8 +372,8 @@ public final class KafkaReceiverOptions<K, V> {
 
         private Duration closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
-        private Builder(Function<Map<String, Object>, Consumer<K, V>> consumerFactory) {
-            this.consumerFactory = consumerFactory;
+        private Builder(Function<Map<String, Object>, ConfigurableConsumerSupplier<K, V>> consumerSupplierFactory) {
+            this.consumerSupplierFactory = consumerSupplierFactory;
         }
 
         /**
@@ -584,7 +583,7 @@ public final class KafkaReceiverOptions<K, V> {
 
         public KafkaReceiverOptions<K, V> build() {
             return new KafkaReceiverOptions<>(
-                    consumerFactory,
+                    consumerSupplierFactory,
                     consumerListenerFactory,
                     receptionListenerFactory,
                     pollStrategyFactory,
