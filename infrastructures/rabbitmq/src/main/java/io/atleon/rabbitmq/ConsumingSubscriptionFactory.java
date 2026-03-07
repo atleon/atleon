@@ -87,7 +87,7 @@ final class ConsumingSubscriptionFactory {
                 }
             });
 
-            if (previousRequested == -1L && publishingState.get() == State.ACTIVE) {
+            if (previousRequested == -1L && active()) {
                 // Initial request, so initialize consumption. Note that we do not need to also
                 // subscribe to connection closure, as the following invocation will notify us of
                 // such an error, or will upon/after invoking "consume" via Consumer callback(s).

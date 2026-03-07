@@ -47,7 +47,7 @@ public final class Batcher {
         } else if (maxDuration.isZero() || maxDuration.isNegative()) {
             throw new IllegalArgumentException("Batching is enabled, but batch duration is not positive");
         } else {
-            return Flux.from(publisher).bufferTimeout(maxSize, maxDuration);
+            return Flux.from(publisher).bufferTimeout(maxSize, maxDuration, true);
         }
     }
 }
