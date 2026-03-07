@@ -3,7 +3,6 @@ package io.atleon.kafka;
 import io.atleon.util.ConfigLoading;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -28,7 +27,7 @@ public final class KafkaSenderOptions<K, V> {
 
     private static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(30L); // Kafka default
 
-    private final Function<Map<String, Object>, Producer<K, V>> producerFactory;
+    private final Function<Map<String, Object>, ConfigurableProducerSupplier<K, V>> producerSupplierFactory;
 
     private final ProducerListenerFactory producerListenerFactory;
 
@@ -43,14 +42,14 @@ public final class KafkaSenderOptions<K, V> {
     private final Function<@Nullable Object, Consumer<Runnable>> correlationRunnerFactory;
 
     private KafkaSenderOptions(
-            Function<Map<String, Object>, Producer<K, V>> producerFactory,
+            Function<Map<String, Object>, ConfigurableProducerSupplier<K, V>> producerSupplierFactory,
             ProducerListenerFactory producerListenerFactory,
             Map<String, Object> producerProperties,
             int maxInFlight,
             boolean sendImmediate,
             Duration closeTimeout,
             Function<@Nullable Object, Consumer<Runnable>> correlationRunnerFactory) {
-        this.producerFactory = producerFactory;
+        this.producerSupplierFactory = producerSupplierFactory;
         this.producerListenerFactory = producerListenerFactory;
         this.producerProperties = producerProperties;
         this.maxInFlight = maxInFlight;
@@ -65,15 +64,15 @@ public final class KafkaSenderOptions<K, V> {
     }
 
     public static <K, V> Builder<K, V> newBuilder() {
-        return new Builder<>(KafkaProducer::new);
+        return new Builder<>(it -> ConfigurableProducerSupplier.load(it, NativeProducerSupplier::new));
     }
 
     /**
-     * Creates a new builder that will use the provided factory to create Consumer instances on a
+     * Creates a new builder that will use the provided factory to create Producer instances on a
      * per-sender basis.
      */
     public static <K, V> Builder<K, V> newBuilder(Function<Map<String, Object>, Producer<K, V>> producerFactory) {
-        return new Builder<>(producerFactory);
+        return new Builder<>(it -> ConfigurableProducerSupplier.wrap(() -> producerFactory.apply(it)));
     }
 
     /**
@@ -92,7 +91,7 @@ public final class KafkaSenderOptions<K, V> {
         // we ensure that this condition is caught by ensuring idempotence is explicitly set by
         // default.
         sanitized.putIfAbsent(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
-        return producerFactory.apply(sanitized);
+        return producerSupplierFactory.apply(sanitized).getProducer();
     }
 
     /**
@@ -147,7 +146,7 @@ public final class KafkaSenderOptions<K, V> {
 
     public static final class Builder<K, V> {
 
-        private final Function<Map<String, Object>, Producer<K, V>> producerFactory;
+        private final Function<Map<String, Object>, ConfigurableProducerSupplier<K, V>> producerSupplierFactory;
 
         private ProducerListenerFactory producerListenerFactory = ProducerListenerFactory.noOp();
 
@@ -161,8 +160,8 @@ public final class KafkaSenderOptions<K, V> {
 
         private Function<@Nullable Object, Consumer<Runnable>> correlationRunnerFactory = __ -> Runnable::run;
 
-        private Builder(Function<Map<String, Object>, Producer<K, V>> producerFactory) {
-            this.producerFactory = producerFactory;
+        private Builder(Function<Map<String, Object>, ConfigurableProducerSupplier<K, V>> producerSupplierFactory) {
+            this.producerSupplierFactory = producerSupplierFactory;
         }
 
         /**
@@ -256,7 +255,7 @@ public final class KafkaSenderOptions<K, V> {
 
         public KafkaSenderOptions<K, V> build() {
             return new KafkaSenderOptions<>(
-                    producerFactory,
+                    producerSupplierFactory,
                     producerListenerFactory,
                     producerProperties,
                     maxInFlight,
