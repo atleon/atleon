@@ -542,6 +542,7 @@
                             <source>8</source>
                             <links>
                                 <link>https://docs.spring.io/spring-framework/docs/${spring.version}/javadoc-api</link>
+                                <link>https://javadoc.io/doc/org.reactivestreams/reactive-streams/${reactive-streams.version}</link>
                                 <link>https://kafka.apache.org/${apache-kafka-doc.version}/javadoc</link>
                                 <link>https://projectreactor.io/docs/core/${reactor.version}/api</link>
                             </links>
