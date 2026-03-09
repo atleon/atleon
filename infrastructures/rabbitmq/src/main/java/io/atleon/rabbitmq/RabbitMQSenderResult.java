@@ -3,8 +3,6 @@ package io.atleon.rabbitmq;
 import com.rabbitmq.client.AMQP;
 import io.atleon.core.Alo;
 import io.atleon.core.SenderResult;
-import reactor.rabbitmq.CorrelableOutboundMessage;
-import reactor.rabbitmq.OutboundMessageResult;
 
 import java.util.Optional;
 
@@ -60,29 +58,6 @@ public final class RabbitMQSenderResult<T> implements SenderResult {
                         senderResult.properties,
                         correlationMetadata,
                         senderResult.error));
-    }
-
-    static <T> RabbitMQSenderResult<T> fromMessageResult(
-            OutboundMessageResult<CorrelableOutboundMessage<T>> messageResult) {
-        return new RabbitMQSenderResult<>(
-                messageResult.getOutboundMessage().getExchange(),
-                messageResult.getOutboundMessage().getRoutingKey(),
-                messageResult.getOutboundMessage().getProperties(),
-                messageResult.getOutboundMessage().getCorrelationMetadata(),
-                messageResult.isAck() ? null : new UnackedRabbitMQMessageException());
-    }
-
-    static <T> Alo<RabbitMQSenderResult<T>> fromMessageResultOfAlo(
-            OutboundMessageResult<CorrelableOutboundMessage<Alo<T>>> messageResult) {
-        return messageResult
-                .getOutboundMessage()
-                .getCorrelationMetadata()
-                .map(correlationMetadata -> new RabbitMQSenderResult<>(
-                        messageResult.getOutboundMessage().getExchange(),
-                        messageResult.getOutboundMessage().getRoutingKey(),
-                        messageResult.getOutboundMessage().getProperties(),
-                        correlationMetadata,
-                        messageResult.isAck() ? null : new UnackedRabbitMQMessageException()));
     }
 
     @Override

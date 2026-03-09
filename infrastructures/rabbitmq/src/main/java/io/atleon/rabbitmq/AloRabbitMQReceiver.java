@@ -1,6 +1,5 @@
 package io.atleon.rabbitmq;
 
-import io.atleon.core.Acknowledgement;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFactory;
 import io.atleon.core.AloFactoryConfig;
@@ -8,14 +7,9 @@ import io.atleon.core.AloFlux;
 import io.atleon.core.AloSignalListenerFactory;
 import io.atleon.core.AloSignalListenerFactoryConfig;
 import io.atleon.core.ErrorEmitter;
-import io.atleon.util.Defaults;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
-import reactor.rabbitmq.AcknowledgableDelivery;
-import reactor.rabbitmq.ConsumeOptions;
-import reactor.rabbitmq.Receiver;
-import reactor.rabbitmq.ReceiverOptions;
 
 import java.time.Duration;
 import java.util.List;
@@ -91,13 +85,6 @@ public class AloRabbitMQReceiver<T> {
      */
     public static final String ERROR_EMISSION_TIMEOUT_CONFIG = CONFIG_PREFIX + "error.emission.timeout";
 
-    /**
-     * This is a temporary configuration to enable and test usage of re-optimized RabbitMQ
-     * receiver. Set to "OPTIMIZED" to enable.
-     */
-    @Deprecated
-    public static final String RECEPTION_TYPE_CONFIG = CONFIG_PREFIX + "reception.type";
-
     private static final Logger LOGGER = LoggerFactory.getLogger(AloRabbitMQReceiver.class);
 
     private final RabbitMQConfigSource configSource;
@@ -168,21 +155,11 @@ public class AloRabbitMQReceiver<T> {
             AloFactory<ReceivedRabbitMQMessage<T>> aloFactory = loadAloFactory(queue);
             ErrorEmitter<Alo<ReceivedRabbitMQMessage<T>>> errorEmitter = newErrorEmitter();
 
-            if (config.loadString(RECEPTION_TYPE_CONFIG).orElse("LEGACY").equalsIgnoreCase("OPTIMIZED")) {
-                return RabbitMQReceiver.create(newReceiverOptions())
-                        .receiveManual(queue)
-                        .map(message -> deserialize(message, aloFactory, errorEmitter::safelyEmit))
-                        .transform(errorEmitter::applyTo)
-                        .transform(aloMessages -> applySignalListenerFactories(aloMessages, queue));
-            } else {
-                return Flux.using(
-                                this::newLegacyReceiver,
-                                it -> it.consumeManualAck(queue, newConsumeOptions()),
-                                Receiver::close)
-                        .map(delivery -> deserializeDelivery(delivery, aloFactory, errorEmitter::safelyEmit))
-                        .transform(errorEmitter::applyTo)
-                        .transform(aloMessages -> applySignalListenerFactories(aloMessages, queue));
-            }
+            return RabbitMQReceiver.create(newReceiverOptions())
+                    .receiveManual(queue)
+                    .map(message -> deserialize(message, aloFactory, errorEmitter::safelyEmit))
+                    .transform(errorEmitter::applyTo)
+                    .transform(aloMessages -> applySignalListenerFactories(aloMessages, queue));
         }
 
         private AloFactory<ReceivedRabbitMQMessage<T>> loadAloFactory(String queue) {
@@ -202,15 +179,6 @@ public class AloRabbitMQReceiver<T> {
             return RabbitMQReceiverOptions.newBuilder(config::buildConnection)
                     .prefetch(config.loadInt(QOS_CONFIG).orElse(defaultOptions.prefetch()))
                     .build();
-        }
-
-        private Receiver newLegacyReceiver() {
-            ReceiverOptions receiverOptions = new ReceiverOptions().connectionFactory(config.buildConnectionFactory());
-            return new Receiver(receiverOptions);
-        }
-
-        private ConsumeOptions newConsumeOptions() {
-            return new ConsumeOptions().qos(config.loadInt(QOS_CONFIG).orElse(Defaults.PREFETCH));
         }
 
         private Flux<Alo<ReceivedRabbitMQMessage<T>>> applySignalListenerFactories(
@@ -243,26 +211,6 @@ public class AloRabbitMQReceiver<T> {
             Consumer<Throwable> nacknowledger = nacknowledgerFactory.create(message, nackable, errorEmitter);
 
             return aloFactory.create(message, deliverySettler::ack, nacknowledger);
-        }
-
-        private Alo<ReceivedRabbitMQMessage<T>> deserializeDelivery(
-                AcknowledgableDelivery delivery,
-                AloFactory<ReceivedRabbitMQMessage<T>> aloFactory,
-                Consumer<Throwable> errorEmitter) {
-            SerializedBody body = SerializedBody.ofBytes(delivery.getBody());
-            ReceivedRabbitMQMessage<T> message = ReceivedRabbitMQMessage.create(
-                    delivery.getEnvelope().getExchange(),
-                    delivery.getEnvelope().getRoutingKey(),
-                    delivery.getProperties(),
-                    bodyDeserializer.deserialize(body),
-                    delivery.getEnvelope().isRedeliver());
-
-            Acknowledgement acknowledgement = Acknowledgement.create(
-                    () -> ack(delivery, errorEmitter),
-                    nacknowledgerFactory.create(
-                            message, requeue -> nack(delivery, requeue, errorEmitter), errorEmitter));
-
-            return aloFactory.create(message, acknowledgement::positive, acknowledgement::negative);
         }
 
         private static <T> NacknowledgerFactory<T> createNacknowledgerFactory(RabbitMQConfig config) {
@@ -310,25 +258,6 @@ public class AloRabbitMQReceiver<T> {
                 deliverySettler.requeue();
             } else {
                 deliverySettler.reject();
-            }
-        }
-
-        private static void ack(AcknowledgableDelivery delivery, Consumer<? super Throwable> errorEmitter) {
-            try {
-                delivery.ack(false);
-            } catch (Throwable error) {
-                LOGGER.error("Failed to ack", error);
-                errorEmitter.accept(error);
-            }
-        }
-
-        private static void nack(
-                AcknowledgableDelivery delivery, boolean requeue, Consumer<? super Throwable> errorEmitter) {
-            try {
-                delivery.nack(false, requeue);
-            } catch (Throwable fatalError) {
-                LOGGER.error("Failed to nack", fatalError);
-                errorEmitter.accept(fatalError);
             }
         }
     }
