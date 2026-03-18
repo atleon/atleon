@@ -16,6 +16,7 @@
         <apache-kafka.version>3.7.1</apache-kafka.version>
         <apache-kafka-doc.version>36</apache-kafka-doc.version>
         <avro.version>1.12.1</avro.version>
+        <bucket4j.version>8.17.0</bucket4j.version>
         <bytebuddy.version>1.12.19</bytebuddy.version>
         <confluent.version>7.7.4</confluent.version> <!-- https://docs.confluent.io/platform/current/installation/versions-interoperability.html -->
         <guava.version>32.0.1-jre</guava.version>
@@ -147,6 +148,11 @@
             </dependency>
 
             <!-- Third Party Dependencies -->
+            <dependency>
+                <groupId>com.bucket4j</groupId>
+                <artifactId>bucket4j_jdk17-core</artifactId>
+                <version>${bucket4j.version}</version>
+            </dependency>
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-core</artifactId>
