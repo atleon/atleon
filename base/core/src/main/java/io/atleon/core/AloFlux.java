@@ -22,6 +22,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 /**
@@ -607,6 +608,18 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
         return new AloFlux<>(wrapped.transform(new RateLimitingTransformer<>(config, scheduler)));
     }
 
+    public AloFlux<T> limitThroughput(Publisher<Rate> limits) {
+        return limitThroughput(it -> it.limits(limits), 0);
+    }
+
+    public AloFlux<T> limitThroughput(Publisher<Rate> limits, Scheduler scheduler) {
+        return limitThroughput(it -> it.limits(limits).scheduler(scheduler), 0);
+    }
+
+    public AloFlux<T> limitThroughput(Publisher<Rate> limits, Scheduler scheduler, int prefetch) {
+        return limitThroughput(it -> it.limits(limits).scheduler(scheduler), prefetch);
+    }
+
     /**
      * Apply {@link AloFailureStrategy} processing to emitted elements that may be error containers
      * or otherwise indicate an error.
@@ -807,5 +820,13 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <E extends Subscriber<? super Alo<T>>> E subscribeWith(E subscriber) {
         return wrapped.subscribeWith(subscriber);
+    }
+
+    private AloFlux<T> limitThroughput(
+            UnaryOperator<ThroughputLimitingTransformer.Builder<Alo<T>, Alo<T>>> configurator, int prefetch) {
+        ThroughputLimitingTransformer<Alo<T>, Alo<T>> transformer = configurator
+                .apply(ThroughputLimitingTransformer.concatMap(prefetch))
+                .build();
+        return wrap(wrapped.transform(transformer));
     }
 }
