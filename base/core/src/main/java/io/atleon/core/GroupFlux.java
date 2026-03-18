@@ -13,6 +13,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 /**
  * A wrapped {@link Flux} of grouped {@link AloFlux} sequences. Exposes convenience methods
@@ -253,6 +254,42 @@ public class GroupFlux<K, T> {
     }
 
     /**
+     * @see GroupFlux#limitCumulativeThroughput(Publisher, Scheduler, int)
+     */
+    public GroupFlux<K, T> limitCumulativeThroughput(Publisher<Rate> limits) {
+        return limitCumulativeThroughput(it -> it.limits(limits), 0);
+    }
+
+    /**
+     * @see GroupFlux#limitCumulativeThroughput(Publisher, Scheduler, int)
+     */
+    public GroupFlux<K, T> limitCumulativeThroughput(Publisher<Rate> limits, Scheduler scheduler) {
+        return limitCumulativeThroughput(it -> it.limits(limits).scheduler(scheduler), 0);
+    }
+
+    /**
+     * Apply a dynamic <i>cumulative</i> limit on the throughput of all inner grouped sequences.
+     * Each emission from the provided limit publisher will be used to adjust the total allowed
+     * throughput. Note that providing an empty limit publisher will result in a stream with
+     * permanently unlimited throughput. If/when the limit publisher emits a rate of zero, the
+     * stream will cancel itself unless/until the limit publisher subsequently emits a non-zero
+     * rate, at which point the stream will resubscribe. The limit publisher may also emit an
+     * "unlimited" rate, which will effectively disable throughput limiting unless/until the limit
+     * publisher emits a non-infinite rate. Note that a non-empty limits publisher effectively
+     * forces the resulting GroupFlux to behave as an infinite publisher, i.e. it will never signal
+     * completion, even if the upstream/source publisher does. Note that the upstream will not be
+     * subscribed to until the limits publisher emits (or completes).
+     *
+     * @param limits    Publisher of dynamic throughput limits to apply
+     * @param scheduler Scheduler used to realize non-blocking delay on throughput-limited emission
+     * @param prefetch  Number of elements to prefetch from each inner grouped sequence
+     * @return a transformed {@link GroupFlux}
+     */
+    public GroupFlux<K, T> limitCumulativeThroughput(Publisher<Rate> limits, Scheduler scheduler, int prefetch) {
+        return limitCumulativeThroughput(it -> it.limits(limits).scheduler(scheduler), prefetch);
+    }
+
+    /**
      * @deprecated Use {{@link #map(Function)}} instead
      */
     @Deprecated
@@ -295,5 +332,14 @@ public class GroupFlux<K, T> {
      */
     public <V> AloFlux<V> flatMapAlo(Function<? super AloGroupedFlux<K, T>, ? extends Publisher<Alo<V>>> mapper) {
         return wrapped.flatMap(mapper, cardinality).as(AloFlux::wrap);
+    }
+
+    private GroupFlux<K, T> limitCumulativeThroughput(
+            UnaryOperator<ThroughputLimitingTransformer.Builder<Alo<T>, AloGroupedFlux<K, T>>> configurator,
+            int prefetch) {
+        ThroughputLimitingTransformer<Alo<T>, AloGroupedFlux<K, T>> transformer = configurator
+                .apply(ThroughputLimitingTransformer.innerConcatMap(AloFlux::toFlux, prefetch, AloGroupedFlux::rewrap))
+                .build();
+        return new GroupFlux<>(wrapped.transform(transformer), cardinality);
     }
 }

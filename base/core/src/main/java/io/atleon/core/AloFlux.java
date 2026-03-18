@@ -22,6 +22,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
 /**
@@ -608,6 +609,39 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * @see AloFlux#limitThroughput(Publisher, Scheduler, int)
+     */
+    public AloFlux<T> limitThroughput(Publisher<Rate> limits) {
+        return limitThroughput(it -> it.limits(limits), 0);
+    }
+
+    /**
+     * @see AloFlux#limitThroughput(Publisher, Scheduler, int)
+     */
+    public AloFlux<T> limitThroughput(Publisher<Rate> limits, Scheduler scheduler) {
+        return limitThroughput(it -> it.limits(limits).scheduler(scheduler), 0);
+    }
+
+    /**
+     * Apply a dynamic limit on the throughput of emitted elements. Each emission from the provided
+     * limit publisher will be used to adjust the allowed throughput. Note that providing an empty
+     * limit publisher will result in a stream with permanently unlimited throughput. If/when the
+     * limit publisher emits a rate of zero, the stream will cancel itself unless/until the limit
+     * publisher subsequently emits a non-zero rate, at which point the stream will resubscribe.
+     * The limit publisher may also emit an "unlimited" rate, which will effectively disable
+     * throughput limiting unless/until the limit publisher emits a non-infinite rate. Note that
+     * the upstream will not be subscribed to until the limits publisher emits (or completes).
+     *
+     * @param limits    Publisher of dynamic throughput limits to apply
+     * @param scheduler Scheduler used to realize non-blocking delay on throughput-limited emission
+     * @param prefetch  Number of elements to prefetch for throughput-delayed emission
+     * @return A new {@link AloFlux} with dynamic throughput limiting applied
+     */
+    public AloFlux<T> limitThroughput(Publisher<Rate> limits, Scheduler scheduler, int prefetch) {
+        return limitThroughput(it -> it.limits(limits).scheduler(scheduler), prefetch);
+    }
+
+    /**
      * Apply {@link AloFailureStrategy} processing to emitted elements that may be error containers
      * or otherwise indicate an error.
      *
@@ -807,5 +841,13 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <E extends Subscriber<? super Alo<T>>> E subscribeWith(E subscriber) {
         return wrapped.subscribeWith(subscriber);
+    }
+
+    private AloFlux<T> limitThroughput(
+            UnaryOperator<ThroughputLimitingTransformer.Builder<Alo<T>, Alo<T>>> configurator, int prefetch) {
+        ThroughputLimitingTransformer<Alo<T>, Alo<T>> transformer = configurator
+                .apply(ThroughputLimitingTransformer.concatMap(prefetch))
+                .build();
+        return wrap(wrapped.transform(transformer));
     }
 }
