@@ -3,6 +3,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.40.0]
+atleon `0.40.0` is a beta release containing updates outlined below
+
+### Additions
+* [#515] Core: Implemented dynamic non-blocking throughput limitation operator using bucket4j token-based algorithm
+* [#523] Core: Emit ON_SUBSCRIBE metrics from `MeteringAloSignalListenerFactory`
+
+### Fixes
+* [#511] SQS: Refactor SqsReceiver to use subscription factory convention
+* [#512] SNS+SQS: Use fair backpressure in SNS+SQS sender implementations
+* [#513] Kafka: Replicate "configurable" client supplier convention for KafkaReceiver and KafkaSender
+* [#522] Fix Alo error delegator error suppression
+
+### Removals
+* [#514] RabbitMQ: Removed dependence on reactor-rabbitmq in favor of optimized clients
+* [#520] Zookeeper: Removed now-unused zookeeper-embedded module
+
 # [0.39.0]
 atleon `0.39.0` is a beta release containing updates outlined below
 
