@@ -21,6 +21,5 @@
         <module>kafka</module>
         <module>kafka-embedded</module>
         <module>rabbitmq</module>
-        <module>zookeeper-embedded</module>
     </modules>
 </project>

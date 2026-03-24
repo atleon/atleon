@@ -133,11 +133,6 @@
                 <artifactId>atleon-spring</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <dependency>
-                <groupId>io.atleon</groupId>
-                <artifactId>atleon-zookeeper-embedded</artifactId>
-                <version>${project.version}</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 </project>
