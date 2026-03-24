@@ -5,6 +5,7 @@ import org.reactivestreams.Subscriber;
 import reactor.core.Disposable;
 import reactor.core.observability.SignalListenerFactory;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.SignalType;
 import reactor.core.publisher.SynchronousSink;
 import reactor.core.scheduler.Scheduler;
@@ -581,21 +582,27 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
 
     /**
      * @see AloFlux#limitPerSecond(RateLimitingConfig, Scheduler)
+     * @deprecated Use {@link #limitThroughput(Publisher)}
      */
+    @Deprecated
     public AloFlux<T> limitPerSecond(double limitPerSecond) {
         return limitPerSecond(new RateLimitingConfig(limitPerSecond));
     }
 
     /**
      * @see AloFlux#limitPerSecond(RateLimitingConfig, Scheduler)
+     * @deprecated Use {@link #limitThroughput(Publisher, Scheduler)}
      */
+    @Deprecated
     public AloFlux<T> limitPerSecond(double limitPerSecond, Scheduler scheduler) {
         return limitPerSecond(new RateLimitingConfig(limitPerSecond), scheduler);
     }
 
     /**
      * @see AloFlux#limitPerSecond(RateLimitingConfig, Scheduler)
+     * @deprecated Use {@link #limitThroughput(Publisher, Scheduler, int)}
      */
+    @Deprecated
     public AloFlux<T> limitPerSecond(RateLimitingConfig config) {
         return limitPerSecond(config, Schedulers.boundedElastic());
     }
@@ -603,9 +610,13 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     /**
      * Limits the rate at which items are emitted by this Publisher. Especially useful in cases
      * where processing requires interaction with resource-constrained I/O dependencies
+     * @deprecated Use {@link #limitThroughput(Publisher, Scheduler, int)}
      */
+    @Deprecated
     public AloFlux<T> limitPerSecond(RateLimitingConfig config, Scheduler scheduler) {
-        return new AloFlux<>(wrapped.transform(new RateLimitingTransformer<>(config, scheduler)));
+        double countPerSecond = config.getPermitsPerSecond();
+        Mono<Rate> limits = countPerSecond > 0 ? Mono.just(Rate.perSecond((long) countPerSecond)) : Mono.empty();
+        return limitThroughput(limits, scheduler, config.getPrefetch());
     }
 
     /**
