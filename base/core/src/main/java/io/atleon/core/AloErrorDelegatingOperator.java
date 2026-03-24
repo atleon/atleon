@@ -118,20 +118,20 @@ final class AloErrorDelegatingOperator<T> extends FluxOperator<Alo<T>, Alo<T>> {
             }
         }
 
-        private Flux<?> delegateError(T t, Throwable error) {
+        private Flux<?> delegateError(T t, Throwable originalError) {
             try {
-                return Flux.from(delegator.apply(t, error))
-                        .onErrorMap(delegateError -> consolidateErrors(error, delegateError));
-            } catch (Throwable delegateError) {
-                return Flux.error(consolidateErrors(error, delegateError));
+                return Flux.from(delegator.apply(t, originalError))
+                        .onErrorMap(delegationError -> consolidateErrors(delegationError, originalError));
+            } catch (Throwable delegationError) {
+                return Flux.error(consolidateErrors(delegationError, originalError));
             }
         }
 
-        private Throwable consolidateErrors(Throwable originalError, Throwable delegateError) {
-            if (originalError != delegateError) {
-                originalError.addSuppressed(delegateError);
+        private Throwable consolidateErrors(Throwable delegationError, Throwable originalError) {
+            if (delegationError != originalError) {
+                delegationError.addSuppressed(originalError);
             }
-            return originalError;
+            return delegationError;
         }
     }
 }

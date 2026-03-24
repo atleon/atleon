@@ -715,8 +715,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * {@link Publisher}. After subscribing to that error, successful completion of that publisher
      * implies that handling the error was delegated successfully, and the originating Alo can be
      * acknowledged. On the other hand, if the delegator publisher emits an error, that error will
-     * be added as a suppressed exception to the original exception (when possible) and used to
-     * execute the originating Alo's nacknowledger.
+     * be used to negatively acknowledge the associated Alo, with the original error added as a
+     * suppressed exception (when possible).
      * <p>
      * Multiple delegators may be added to a pipeline. In this case, delegators are invoked in the
      * <i>reverse</i> order that they are applied in the pipeline.
