@@ -72,6 +72,11 @@ public abstract class MeteringAloSignalListenerFactory<T, K> implements AloSigna
         }
 
         @Override
+        public void doOnSubscription() {
+            meterFacade.counter(new TypeKey<>(SignalType.ON_SUBSCRIBE)).increment();
+        }
+
+        @Override
         public void doOnRequest(long requested) {
             meterFacade.counter(new TypeKey<>(SignalType.REQUEST)).increment();
         }
