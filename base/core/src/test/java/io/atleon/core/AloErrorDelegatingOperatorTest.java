@@ -9,7 +9,9 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AloErrorDelegatingOperatorTest {
@@ -48,6 +50,44 @@ class AloErrorDelegatingOperatorTest {
         assertTrue(alo.getError().map(CancellationException.class::isInstance).orElse(false));
         assertTrue(canceled.get());
         assertFalse(delegated.get());
+    }
+
+    @Test
+    public void delegationErrorIsPrimaryWhenDelegatorFails() {
+        TestAlo alo = new TestAlo("DATA");
+
+        RuntimeException originalError = new RuntimeException("Original");
+        RuntimeException delegationError = new RuntimeException("Delegation failed");
+
+        new AloErrorDelegatingOperator<>(Flux.just(alo), (data, error) -> Flux.error(delegationError))
+                .doOnNext(it -> Alo.nacknowledge(it, originalError))
+                .blockLast();
+
+        assertTrue(alo.isNacknowledged());
+        Throwable emittedError = alo.getError().get();
+        assertSame(delegationError, emittedError);
+        assertEquals(1, emittedError.getSuppressed().length);
+        assertSame(originalError, emittedError.getSuppressed()[0]);
+    }
+
+    @Test
+    public void delegationErrorIsPrimaryWhenDelegatorThrows() {
+        TestAlo alo = new TestAlo("DATA");
+
+        RuntimeException originalError = new RuntimeException("Original");
+        RuntimeException delegationError = new RuntimeException("Delegator threw");
+
+        new AloErrorDelegatingOperator<>(Flux.just(alo), (data, error) -> {
+                    throw delegationError;
+                })
+                .doOnNext(it -> Alo.nacknowledge(it, originalError))
+                .blockLast();
+
+        assertTrue(alo.isNacknowledged());
+        Throwable emittedError = alo.getError().get();
+        assertSame(delegationError, emittedError);
+        assertEquals(1, emittedError.getSuppressed().length);
+        assertSame(originalError, emittedError.getSuppressed()[0]);
     }
 
     @Test

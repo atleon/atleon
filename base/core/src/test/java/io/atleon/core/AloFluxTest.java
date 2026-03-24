@@ -634,9 +634,9 @@ class AloFluxTest {
 
         assertFalse(alo.isAcknowledged());
         assertTrue(alo.isNacknowledged());
-        assertTrue(alo.getError().orElse(null) instanceof UnsupportedOperationException);
+        assertTrue(alo.getError().orElse(null) instanceof IllegalArgumentException);
         assertTrue(alo.getError().get().getSuppressed().length == 1);
-        assertTrue(alo.getError().get().getSuppressed()[0] instanceof IllegalArgumentException);
+        assertTrue(alo.getError().get().getSuppressed()[0] instanceof UnsupportedOperationException);
     }
 
     @Test
