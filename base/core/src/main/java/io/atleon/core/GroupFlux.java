@@ -3,6 +3,7 @@ package io.atleon.core;
 import org.reactivestreams.Publisher;
 import reactor.core.observability.SignalListenerFactory;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
@@ -236,7 +237,9 @@ public class GroupFlux<K, T> {
      * dependencies.
      *
      * @return a transformed {@link GroupFlux}
+     * @deprecated Use {@link #limitCumulativeThroughput(Publisher)}
      */
+    @Deprecated
     public GroupFlux<K, T> limitPerSecond(double limitPerSecond) {
         return limitPerSecond(limitPerSecond, Schedulers.boundedElastic());
     }
@@ -246,11 +249,12 @@ public class GroupFlux<K, T> {
      * grouped sequences. Especially useful when interacting with resource-constrained I/O
      * dependencies.
      *
-     * @return a transformed {@link GroupFlux}
+     * @deprecated Use {@link #limitCumulativeThroughput(Publisher, Scheduler)}
      */
+    @Deprecated
     public GroupFlux<K, T> limitPerSecond(double limitPerSecond, Scheduler scheduler) {
-        RateLimitingConfig config = new RateLimitingConfig(limitPerSecond);
-        return map(new RateLimitingTransformer<>(config, scheduler));
+        Mono<Rate> limits = limitPerSecond > 0 ? Mono.just(Rate.perSecond((long) limitPerSecond)) : Mono.empty();
+        return limitCumulativeThroughput(limits, scheduler);
     }
 
     /**

@@ -4,7 +4,9 @@ import io.atleon.util.Defaults;
 
 /**
  * Configures quantitative behavior of emission rate limiting in reactive pipelines
+ * @deprecated Use {@link ThroughputLimitingTransformer} with explicit arguments
  */
+@Deprecated
 public final class RateLimitingConfig {
 
     private final double permitsPerSecond;
