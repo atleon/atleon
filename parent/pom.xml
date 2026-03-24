@@ -40,7 +40,6 @@
         <spring-boot.version>2.7.18</spring-boot.version>
         <swagger3.version>2.2.29</swagger3.version>
         <testcontainers.version>1.21.4</testcontainers.version>
-        <zookeeper.version>3.9.2</zookeeper.version>
     </properties>
 
     <dependencyManagement>
@@ -144,11 +143,6 @@
             <dependency>
                 <groupId>io.atleon</groupId>
                 <artifactId>atleon-util</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.atleon</groupId>
-                <artifactId>atleon-zookeeper-embedded</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -473,7 +467,7 @@
                 <version>${amazon-sdk.version}</version>
             </dependency>
 
-            <!-- Third Party Transitive Dependencies (Satisfy Upper Bounds) -->
+            <!-- Third Party Transitive Dependencies (satisfy upper bounds) -->
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-buffer</artifactId>
@@ -513,11 +507,6 @@
                 <groupId>io.netty</groupId>
                 <artifactId>netty-transport-native-unix-common</artifactId>
                 <version>${netty.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.zookeeper</groupId>
-                <artifactId>zookeeper</artifactId>
-                <version>${zookeeper.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
