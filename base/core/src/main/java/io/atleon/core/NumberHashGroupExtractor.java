@@ -1,14 +1,8 @@
 package io.atleon.core;
 
-import com.google.common.hash.HashCode;
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
-
 import java.util.function.Function;
 
 public abstract class NumberHashGroupExtractor<T> implements Function<T, Integer> {
-
-    private final HashFunction hashFunction = Hashing.murmur3_32();
 
     private final int modulus;
 
@@ -23,9 +17,7 @@ public abstract class NumberHashGroupExtractor<T> implements Function<T, Integer
 
     @Override
     public Integer apply(T t) {
-        Number number = extractNumber(t);
-        HashCode hash = hashFunction.hashLong(number == null ? 0L : number.longValue());
-        return Math.abs(hash.asInt() % modulus);
+        return Murmur3.hashIntoBucket(extractNumber(t), modulus);
     }
 
     protected abstract Number extractNumber(T t);

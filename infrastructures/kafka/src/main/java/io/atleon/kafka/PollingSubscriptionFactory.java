@@ -388,7 +388,7 @@ final class PollingSubscriptionFactory<K, V> {
 
             try {
                 if (!offsetsToCommit.isEmpty() && !options.commitlessOffsets()) {
-                    LOGGER.info("Commiting offsets on revocation: {}", offsetsToCommit);
+                    LOGGER.info("Committing offsets on revocation: {}", offsetsToCommit);
                     consumer.commitSync(offsetsToCommit, options.commitTimeout());
                 }
             } catch (WakeupException wakeup) {
