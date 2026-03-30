@@ -19,7 +19,6 @@
         <bucket4j.version>8.17.0</bucket4j.version>
         <bytebuddy.version>1.12.19</bytebuddy.version>
         <confluent.version>7.7.4</confluent.version> <!-- https://docs.confluent.io/platform/current/installation/versions-interoperability.html -->
-        <guava.version>32.0.1-jre</guava.version>
         <jackson.version>2.20.0</jackson.version>
         <jspecify.version>1.0.0</jspecify.version>
         <junit-jupiter.version>5.10.1</junit-jupiter.version>
@@ -164,18 +163,6 @@
                 <version>${jackson.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.google.guava</groupId>
-                <artifactId>guava</artifactId>
-                <version>${guava.version}</version>
-                <!-- We don't use much from Guava, so prefer to exclude rather than manage -->
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.google.code.findbugs</groupId>
-                        <artifactId>jsr305</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
                 <groupId>com.google.protobuf</groupId>
                 <artifactId>protobuf-java</artifactId>
                 <version>${protobuf.version}</version>
@@ -191,10 +178,6 @@
                 <version>${confluent.version}</version>
                 <exclusions>
                     <exclusion>
-                        <groupId>com.google.guava</groupId>
-                        <artifactId>guava</artifactId>
-                    </exclusion>
-                    <exclusion>
                         <groupId>org.apache.commons</groupId>
                         <artifactId>commons-compress</artifactId>
                     </exclusion>
@@ -208,12 +191,6 @@
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-schema-serializer</artifactId>
                 <version>${confluent.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>com.google.guava</groupId>
-                        <artifactId>guava</artifactId>
-                    </exclusion>
-                </exclusions>
             </dependency>
             <dependency>
                 <groupId>io.micrometer</groupId>
