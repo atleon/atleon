@@ -3,13 +3,13 @@ package io.atleon.kafka;
 import io.atleon.core.Alo;
 import io.atleon.core.AloFlux;
 import io.atleon.core.ComposedAlo;
-import io.atleon.core.ErrorEmitter;
 import io.atleon.util.Consuming;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Sinks;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -103,12 +103,12 @@ public class AloKafkaBoundedReceiver<K, V> {
             ReactiveAdmin admin, String groupId, RecordRange recordRange) {
         Map<TopicPartition, Long> offsetsToCommit =
                 Collections.singletonMap(recordRange.topicPartition(), recordRange.maxInclusive() + 1);
-        ErrorEmitter<Alo<ConsumerRecord<K, V>>> errorEmitter = ErrorEmitter.create();
+        Sinks.Empty<Alo<ConsumerRecord<K, V>>> termination = Sinks.empty();
         Runnable acknowledger = () -> admin.alterRawConsumerGroupOffsets(groupId, offsetsToCommit)
-                .subscribe(Consuming.noOp(), errorEmitter::safelyEmit, errorEmitter::safelyComplete);
-        return AloFlux.just(new ComposedAlo<>(recordRange, acknowledger, errorEmitter::safelyEmit))
+                .subscribe(Consuming.noOp(), termination::tryEmitError, termination::tryEmitEmpty);
+        return AloFlux.just(new ComposedAlo<>(recordRange, acknowledger, termination::tryEmitError))
                 .concatMap(KafkaBoundedReceiver.<K, V>create(configSource)::receiveRecordsInRange)
-                .transform(errorEmitter::applyTo);
+                .transform(it -> it.unwrap().mergeWith(termination.asMono()));
     }
 
     private static OffsetRange toOffsetRange(long rawMinInclusive, OffsetCriteria maxInclusive) {
