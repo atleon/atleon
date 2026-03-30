@@ -1,13 +1,10 @@
 package io.atleon.core;
 
-import com.google.common.hash.HashFunction;
-import com.google.common.hash.Hashing;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.nio.ByteBuffer;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -26,9 +23,6 @@ class Murmur3Test {
     @MethodSource("numberTestCases")
     void hashIntoBucket_givenNumber_expectsCorrectBucket(long number, int expectedBucket) {
         assertEquals(expectedBucket, Murmur3.hashIntoBucket(number, BUCKET_COUNT));
-
-        HashFunction hashFunction = Hashing.murmur3_32();
-        assertEquals(expectedBucket, Math.floorMod(hashFunction.hashLong(number).asInt(), BUCKET_COUNT));
     }
 
     @Test
@@ -40,11 +34,6 @@ class Murmur3Test {
     @MethodSource("stringTestCases")
     void hashIntoBucket_givenString_expectsCorrectBucket(String string, int expectedBucket) {
         assertEquals(expectedBucket, Murmur3.hashIntoBucket(string, BUCKET_COUNT));
-
-        HashFunction hashFunction = Hashing.murmur3_32();
-        assertEquals(
-                expectedBucket,
-                Math.floorMod(hashFunction.hashUnencodedChars(string).asInt(), BUCKET_COUNT));
     }
 
     @Test
@@ -56,14 +45,6 @@ class Murmur3Test {
     @MethodSource("uuidTestCases")
     void hashIntoBucket_givenUuid_expectsCorrectBucket(UUID uuid, int expectedBucket) {
         assertEquals(expectedBucket, Murmur3.hashIntoBucket(uuid, BUCKET_COUNT));
-
-        HashFunction hashFunction = Hashing.murmur3_32();
-        ByteBuffer byteBuffer = ByteBuffer.wrap(new byte[Long.BYTES * 2]);
-        byteBuffer.putLong(uuid.getMostSignificantBits());
-        byteBuffer.putLong(uuid.getLeastSignificantBits());
-        assertEquals(
-                expectedBucket,
-                Math.floorMod(hashFunction.hashBytes(byteBuffer.array()).asInt(), BUCKET_COUNT));
     }
 
     // Generated examples from Guava
