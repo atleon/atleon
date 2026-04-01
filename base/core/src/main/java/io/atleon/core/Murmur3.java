@@ -11,9 +11,9 @@ import java.util.UUID;
  */
 final class Murmur3 {
 
-    private static final int KMIX_C1 = 0xcc9e2d51;
+    private static final int BMIX_C1 = 0xcc9e2d51;
 
-    private static final int KMIX_C2 = 0x1b873593;
+    private static final int BMIX_C2 = 0x1b873593;
 
     private static final int HMIX_ADDEND = 0xe6546b64;
 
@@ -29,8 +29,8 @@ final class Murmur3 {
         }
         int hash = 0;
         long longValue = number.longValue();
-        hash = mixHash(hash, mixKey((int) longValue));
-        hash = mixHash(hash, mixKey((int) (longValue >>> 32)));
+        hash = mixHash(hash, mixBlock((int) longValue));
+        hash = mixHash(hash, mixBlock((int) (longValue >>> 32)));
         hash = finalizeHash(hash, Long.BYTES);
         return Math.floorMod(hash, bucketCount);
     }
@@ -43,11 +43,12 @@ final class Murmur3 {
         int index = 0;
         int length = string.length();
         for (; index + 1 < length; index += 2) {
-            int key = string.charAt(index) | (string.charAt(index + 1) << 16);
-            hash = mixHash(hash, mixKey(key));
+            int block = string.charAt(index) | (string.charAt(index + 1) << 16);
+            hash = mixHash(hash, mixBlock(block));
         }
         if (index < length) {
-            hash ^= mixKey(string.charAt(index));
+            // Tailing bytes are mixed and incorporated into the hash via simple xor
+            hash ^= mixBlock(string.charAt(index));
         }
         hash = finalizeHash(hash, length * Character.BYTES);
         return Math.floorMod(hash, bucketCount);
@@ -61,23 +62,23 @@ final class Murmur3 {
         long msb = uuid.getMostSignificantBits();
         long lsb = uuid.getLeastSignificantBits();
         hash = 0;
-        hash = mixHash(hash, mixKey(Integer.reverseBytes((int) (msb >>> 32))));
-        hash = mixHash(hash, mixKey(Integer.reverseBytes((int) msb)));
-        hash = mixHash(hash, mixKey(Integer.reverseBytes((int) (lsb >>> 32))));
-        hash = mixHash(hash, mixKey(Integer.reverseBytes((int) lsb)));
+        hash = mixHash(hash, mixBlock(Integer.reverseBytes((int) (msb >>> 32))));
+        hash = mixHash(hash, mixBlock(Integer.reverseBytes((int) msb)));
+        hash = mixHash(hash, mixBlock(Integer.reverseBytes((int) (lsb >>> 32))));
+        hash = mixHash(hash, mixBlock(Integer.reverseBytes((int) lsb)));
         hash = finalizeHash(hash, Long.BYTES * 2);
         return Math.floorMod(hash, bucketCount);
     }
 
-    private static int mixKey(int key) {
-        key *= KMIX_C1;
-        key = Integer.rotateLeft(key, 15);
-        key *= KMIX_C2;
-        return key;
+    private static int mixBlock(int block) {
+        block *= BMIX_C1;
+        block = Integer.rotateLeft(block, 15);
+        block *= BMIX_C2;
+        return block;
     }
 
-    private static int mixHash(int hash, int mixedKey) {
-        hash ^= mixedKey;
+    private static int mixHash(int hash, int mixedBlock) {
+        hash ^= mixedBlock;
         hash = Integer.rotateLeft(hash, 13);
         hash = hash * 5 + HMIX_ADDEND;
         return hash;
