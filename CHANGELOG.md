@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.41.0]
+atleon `0.41.0` is a beta release containing updates outlined below
+
+### Fixes
+* [#528] Guava RateLimiter-based `limitPerSecond` operator(s) deprecated in favor of Bucket4j-based `limitThroughput` operators
+* [#529] Relocated/Implemented optimized Murmur3 hash function into Atleon; Removed dependence on Guava
+* [#534] Refactored `AloKafkaBoundedReceiverTest` to use clean group IDs for each verification
+
 # [0.40.0]
 atleon `0.40.0` is a beta release containing updates outlined below
 
