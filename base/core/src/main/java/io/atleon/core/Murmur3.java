@@ -40,15 +40,14 @@ final class Murmur3 {
             return 0;
         }
         int hash = 0;
-        int index = 0;
         int length = string.length();
-        for (; index + 1 < length; index += 2) {
-            int block = string.charAt(index) | (string.charAt(index + 1) << 16);
+        for (int i = 1; i < length; i += 2) {
+            int block = string.charAt(i - 1) | (string.charAt(i) << 16);
             hash = mixHash(hash, mixBlock(block));
         }
-        if (index < length) {
+        if ((length & 1) == 1) {
             // Tailing bytes are mixed and incorporated into the hash via simple xor
-            hash ^= mixBlock(string.charAt(index));
+            hash ^= mixBlock(string.charAt(length - 1));
         }
         hash = finalizeHash(hash, length * Character.BYTES);
         return Math.floorMod(hash, bucketCount);
