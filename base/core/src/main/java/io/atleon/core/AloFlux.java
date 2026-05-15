@@ -479,6 +479,44 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * Group {@link Alo} elements by a key derived from their data into serialized
+     * {@link AloGroupedFlux} sub-streams, where each emitted group automatically completes once
+     * every element ever routed to it has signaled processing completion via positive or negative
+     * acknowledgement. If the same key is observed again after its prior group has auto-completed,
+     * a fresh {@link AloGroupedFlux} is emitted downstream for that key.
+     *
+     * <p>In contrast to {@link #groupBy(Function, int)} (which relies on
+     * {@link Flux#groupBy(Function)} and therefore retains every group for the lifetime of the
+     * source), this operator leverages the acknowledgement signal carried by every {@link Alo} to
+     * release per-group resources as soon as a group becomes quiescent. This makes it suitable for
+     * streams with high or unbounded key cardinality.
+     *
+     * <p>The {@code concurrency} parameter controls how many groups can be concurrently consumed
+     * by subsequent {@link GroupFlux#flatMapAlo} operations. It does <i>not</i> bound the number
+     * of distinct keys observed at the source; The amount of elements requested from the source is
+     * rather unbounded, and it is therefore necessary that downstream group operators do <i>not</i>
+     * restrict request count in an absolute manner. In other words, downstream group operators
+     * should either request infinite elements, or continue requesting elements as long as they are
+     * emitted into a given group. Otherwise, this can result in dropped elements that will never
+     * be processed/acknowledged, which can lead to stream hanging.
+     *
+     * <p>Upon upstream error or downstream cancellation, active groups are completed (rather than
+     * errored) and no attempt is made to positively or negatively acknowledge in-flight elements;
+     * the upstream source is responsible for any necessary re-emission. See
+     * {@link AloGroupByWithAutoCompleteOperator} for the full set of usage assumptions this
+     * operator makes.
+     *
+     * @param keyExtractor function used to derive a grouping key from each element's data
+     * @param concurrency  the number of groups that may be concurrently consumed downstream
+     * @param <K>          the type of key produced by {@code keyExtractor}
+     * @return a {@link GroupFlux} of self-completing {@link AloGroupedFlux} sub-streams keyed by {@code K}
+     */
+    public <K> GroupFlux<K, T> groupByWithAutoComplete(Function<? super T, ? extends K> keyExtractor, int concurrency) {
+        return new GroupFlux<>(
+                new AloGroupByWithAutoCompleteOperator<>(wrapped, Integer.MAX_VALUE, keyExtractor), concurrency);
+    }
+
+    /**
      * @see Flux#publishOn(Scheduler)
      */
     public AloFlux<T> publishOn(Scheduler scheduler) {

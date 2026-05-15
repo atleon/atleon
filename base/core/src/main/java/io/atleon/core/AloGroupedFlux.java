@@ -20,7 +20,7 @@ public class AloGroupedFlux<K, T> extends AloFlux<T> {
 
     private final K key;
 
-    private AloGroupedFlux(Flux<Alo<T>> flux, K key) {
+    AloGroupedFlux(Flux<Alo<T>> flux, K key) {
         super(flux);
         this.key = key;
     }
