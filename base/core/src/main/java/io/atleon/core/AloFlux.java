@@ -512,8 +512,8 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @return a {@link GroupFlux} of self-completing {@link AloGroupedFlux} sub-streams keyed by {@code K}
      */
     public <K> GroupFlux<K, T> groupByWithAutoComplete(Function<? super T, ? extends K> keyExtractor, int concurrency) {
-        return new GroupFlux<>(
-                new AloGroupByWithAutoCompleteOperator<>(wrapped, Integer.MAX_VALUE, keyExtractor), concurrency);
+        Grouping<T, K> grouping = Grouping.simple(keyExtractor);
+        return new GroupFlux<>(new AloGroupByWithAutoCompleteOperator<>(wrapped, grouping), concurrency);
     }
 
     /**
