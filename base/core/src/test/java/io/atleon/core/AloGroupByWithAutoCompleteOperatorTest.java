@@ -1,5 +1,6 @@
 package io.atleon.core;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
@@ -10,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -20,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -41,8 +43,9 @@ class AloGroupByWithAutoCompleteOperatorTest {
         AtomicReference<Throwable> zeroError = new AtomicReference<>();
         AtomicReference<Throwable> negativeError = new AtomicReference<>();
 
-        new AloGroupByWithAutoCompleteOperator<>(source, 0, Function.identity()).subscribe(group -> {}, zeroError::set);
-        new AloGroupByWithAutoCompleteOperator<>(source, -1, Function.identity())
+        new AloGroupByWithAutoCompleteOperator<>(source, new IdentityGrouping<>(0))
+                .subscribe(group -> {}, zeroError::set);
+        new AloGroupByWithAutoCompleteOperator<>(source, new IdentityGrouping<>(-1))
                 .subscribe(group -> {}, negativeError::set);
 
         assertNotNull(zeroError.get());
@@ -56,8 +59,7 @@ class AloGroupByWithAutoCompleteOperatorTest {
         Sinks.Many<Alo<String>> source = Sinks.many().unicast().onBackpressureBuffer();
         List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
 
-        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), Integer.MAX_VALUE, Function.identity())
-                .subscribe(groups::add);
+        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), new IdentityGrouping<>()).subscribe(groups::add);
 
         source.tryEmitNext(new TestAlo("A"));
         source.tryEmitNext(new TestAlo("A"));
@@ -79,8 +81,7 @@ class AloGroupByWithAutoCompleteOperatorTest {
         Sinks.Many<Alo<String>> source = Sinks.many().unicast().onBackpressureBuffer();
         List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
 
-        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), Integer.MAX_VALUE, Function.identity())
-                .subscribe(groups::add);
+        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), new IdentityGrouping<>()).subscribe(groups::add);
 
         source.tryEmitNext(new TestAlo("A"));
         source.tryEmitNext(new TestAlo("B"));
@@ -97,8 +98,7 @@ class AloGroupByWithAutoCompleteOperatorTest {
         Sinks.Many<Alo<String>> source = Sinks.many().unicast().onBackpressureBuffer();
         List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
 
-        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), Integer.MAX_VALUE, Function.identity())
-                .subscribe(groups::add);
+        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), new IdentityGrouping<>()).subscribe(groups::add);
 
         TestAlo a = new TestAlo("A");
         source.tryEmitNext(a);
@@ -121,8 +121,7 @@ class AloGroupByWithAutoCompleteOperatorTest {
         Sinks.Many<Alo<String>> source = Sinks.many().unicast().onBackpressureBuffer();
         List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
 
-        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), Integer.MAX_VALUE, Function.identity())
-                .subscribe(groups::add);
+        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), new IdentityGrouping<>()).subscribe(groups::add);
 
         TestAlo a = new TestAlo("A");
         source.tryEmitNext(a);
@@ -144,8 +143,7 @@ class AloGroupByWithAutoCompleteOperatorTest {
         Sinks.Many<Alo<String>> source = Sinks.many().unicast().onBackpressureBuffer();
         List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
 
-        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), Integer.MAX_VALUE, Function.identity())
-                .subscribe(groups::add);
+        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), new IdentityGrouping<>()).subscribe(groups::add);
 
         source.tryEmitNext(new TestAlo("A"));
         source.tryEmitNext(new TestAlo("A"));
@@ -169,16 +167,15 @@ class AloGroupByWithAutoCompleteOperatorTest {
         List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
         List<List<String>> receivedPerGroup = new ArrayList<>();
 
-        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), Integer.MAX_VALUE, Function.identity())
-                .subscribe(group -> {
-                    groups.add(group);
-                    List<String> sink = new ArrayList<>();
-                    receivedPerGroup.add(sink);
-                    group.unwrap().subscribe(alo -> {
-                        sink.add(alo.get());
-                        Alo.acknowledge(alo);
-                    });
-                });
+        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), new IdentityGrouping<>()).subscribe(group -> {
+            groups.add(group);
+            List<String> sink = new ArrayList<>();
+            receivedPerGroup.add(sink);
+            group.unwrap().subscribe(alo -> {
+                sink.add(alo.get());
+                Alo.acknowledge(alo);
+            });
+        });
 
         source.tryEmitNext(new TestAlo("A"));
         source.tryEmitNext(new TestAlo("A"));
@@ -192,12 +189,118 @@ class AloGroupByWithAutoCompleteOperatorTest {
     }
 
     @Test
+    public void subscribe_givenCompletesGroupElement_expectsEagerGroupCompletion() {
+        Sinks.Many<Alo<String>> source = Sinks.many().unicast().onBackpressureBuffer();
+        List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
+
+        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), new IdentityGrouping<>("DONE"::equals))
+                .subscribe(groups::add);
+
+        TestAlo done = new TestAlo("DONE");
+        source.tryEmitNext(done);
+
+        AtomicBoolean groupCompleted = new AtomicBoolean(false);
+        List<Alo<String>> received = new ArrayList<>();
+        groups.get(0).unwrap().doOnComplete(() -> groupCompleted.set(true)).subscribe(received::add);
+
+        assertEquals(1, received.size());
+        assertEquals("DONE", received.get(0).get());
+        assertTrue(groupCompleted.get(), "Group should complete eagerly when an element matches completesGroup");
+        assertFalse(done.isAcknowledged(), "Eager completion should not require acknowledgement");
+    }
+
+    @Test
+    public void subscribe_givenCompletesGroupElement_expectsAcknowledgementStillPropagates() {
+        Sinks.Many<Alo<String>> source = Sinks.many().unicast().onBackpressureBuffer();
+        List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
+
+        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), new IdentityGrouping<>(__ -> true))
+                .subscribe(groups::add);
+
+        TestAlo a = new TestAlo("A");
+        source.tryEmitNext(a);
+
+        List<Alo<String>> received = new ArrayList<>();
+        groups.get(0).unwrap().subscribe(received::add);
+
+        Alo.acknowledge(received.get(0));
+
+        assertTrue(a.isAcknowledged(), "Acknowledgement should still flow upstream after eager group completion");
+    }
+
+    @Test
+    public void subscribe_givenCompletesGroupAmongstUnmarkedElements_expectsAllEmittedThenCompletion() {
+        Sinks.Many<Alo<String>> source = Sinks.many().unicast().onBackpressureBuffer();
+        List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
+
+        Grouping<String, String> grouping = new Grouping<String, String>() {
+            @Override
+            public String extractKey(String element) {
+                return element.substring(0, 1);
+            }
+
+            @Override
+            public boolean completesGroup(String element) {
+                return element.endsWith("!");
+            }
+
+            @Override
+            public Optional<Integer> sourcePrefetch() {
+                return Optional.empty();
+            }
+        };
+
+        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), grouping).subscribe(groups::add);
+
+        source.tryEmitNext(new TestAlo("A1"));
+        source.tryEmitNext(new TestAlo("A2"));
+        source.tryEmitNext(new TestAlo("A!"));
+
+        assertEquals(1, groups.size(), "All emissions share key 'A' and should land in a single group");
+
+        AtomicBoolean groupCompleted = new AtomicBoolean(false);
+        List<String> received = new ArrayList<>();
+        groups.get(0).unwrap().doOnComplete(() -> groupCompleted.set(true)).subscribe(alo -> received.add(alo.get()));
+
+        assertEquals(Arrays.asList("A1", "A2", "A!"), received);
+        assertTrue(groupCompleted.get(), "Group should complete after a completesGroup element is emitted into it");
+    }
+
+    @Test
+    public void subscribe_givenSameKeyAfterCompletesGroup_expectsFreshGroupEmission() {
+        Sinks.Many<Alo<String>> source = Sinks.many().unicast().onBackpressureBuffer();
+        List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
+        List<List<String>> receivedPerGroup = new ArrayList<>();
+        List<AtomicBoolean> groupCompletions = new ArrayList<>();
+
+        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), new IdentityGrouping<>(__ -> true))
+                .subscribe(group -> {
+                    groups.add(group);
+                    List<String> values = new ArrayList<>();
+                    AtomicBoolean completed = new AtomicBoolean(false);
+                    receivedPerGroup.add(values);
+                    groupCompletions.add(completed);
+                    group.unwrap().doOnComplete(() -> completed.set(true)).subscribe(alo -> values.add(alo.get()));
+                });
+
+        source.tryEmitNext(new TestAlo("A"));
+        source.tryEmitNext(new TestAlo("A"));
+
+        assertEquals(2, groups.size(), "Each emission should produce a fresh group after eager completion");
+        assertNotSame(groups.get(0), groups.get(1));
+        assertEquals(Arrays.asList("A"), receivedPerGroup.get(0));
+        assertEquals(Arrays.asList("A"), receivedPerGroup.get(1));
+        assertTrue(groupCompletions.get(0).get());
+        assertTrue(groupCompletions.get(1).get());
+    }
+
+    @Test
     public void subscribe_givenUpstreamCompletionAndAllElementsAcknowledged_expectsStreamCompletion() {
         TestAlo a = new TestAlo("A");
         List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
         AtomicBoolean completed = new AtomicBoolean(false);
 
-        new AloGroupByWithAutoCompleteOperator<String, String>(Flux.just(a), Integer.MAX_VALUE, Function.identity())
+        new AloGroupByWithAutoCompleteOperator<>(Flux.just(a), new IdentityGrouping<>())
                 .doOnComplete(() -> completed.set(true))
                 .subscribe(groups::add);
 
@@ -217,7 +320,7 @@ class AloGroupByWithAutoCompleteOperatorTest {
         List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
         AtomicReference<Throwable> downstreamError = new AtomicReference<>();
 
-        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), Integer.MAX_VALUE, Function.identity())
+        new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), new IdentityGrouping<>())
                 .subscribe(groups::add, downstreamError::set);
 
         source.tryEmitNext(new TestAlo("A"));
@@ -244,9 +347,9 @@ class AloGroupByWithAutoCompleteOperatorTest {
         AtomicReference<Throwable> downstreamError = new AtomicReference<>();
         RuntimeException boom = new RuntimeException("Key extractor boom");
 
-        new AloGroupByWithAutoCompleteOperator<String, String>(source.asFlux(), Integer.MAX_VALUE, value -> {
+        new AloGroupByWithAutoCompleteOperator<String, String>(source.asFlux(), Grouping.simple(__ -> {
                     throw boom;
-                })
+                }))
                 .subscribe(group -> {}, downstreamError::set);
 
         source.tryEmitNext(new TestAlo("A"));
@@ -261,9 +364,8 @@ class AloGroupByWithAutoCompleteOperatorTest {
         Flux<Alo<String>> sourceFlux = source.asFlux().doOnCancel(() -> upstreamCanceled.set(true));
 
         List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
-        Disposable disposable = new AloGroupByWithAutoCompleteOperator<>(
-                        sourceFlux, Integer.MAX_VALUE, Function.identity())
-                .subscribe(groups::add);
+        Disposable disposable =
+                new AloGroupByWithAutoCompleteOperator<>(sourceFlux, new IdentityGrouping<>()).subscribe(groups::add);
 
         source.tryEmitNext(new TestAlo("A"));
 
@@ -283,7 +385,7 @@ class AloGroupByWithAutoCompleteOperatorTest {
         Flux<Alo<String>> sourceFlux = source.asFlux().doOnRequest(totalRequested::addAndGet);
 
         List<AloGroupedFlux<String, String>> groups = new ArrayList<>();
-        new AloGroupByWithAutoCompleteOperator<>(sourceFlux, 2, Function.identity()).subscribe(groups::add);
+        new AloGroupByWithAutoCompleteOperator<>(sourceFlux, new IdentityGrouping<>(2)).subscribe(groups::add);
 
         assertEquals(2L, totalRequested.get(), "Initial request should be capped at maxInFlight");
 
@@ -310,8 +412,7 @@ class AloGroupByWithAutoCompleteOperatorTest {
         Map<String, List<String>> received = new ConcurrentHashMap<>();
         AtomicInteger consumed = new AtomicInteger(0);
 
-        new AloGroupByWithAutoCompleteOperator<String, String>(
-                        Flux.fromIterable(alos), Integer.MAX_VALUE, Function.identity())
+        new AloGroupByWithAutoCompleteOperator<String, String>(Flux.fromIterable(alos), new IdentityGrouping<>())
                 .flatMap(
                         group -> group.unwrap().publishOn(Schedulers.parallel()).doOnNext(alo -> {
                             received.computeIfAbsent(group.key(), k -> new CopyOnWriteArrayList<>())
@@ -338,13 +439,10 @@ class AloGroupByWithAutoCompleteOperatorTest {
             List<Alo<String>> received = new CopyOnWriteArrayList<>();
             AtomicInteger groupCompletions = new AtomicInteger(0);
 
-            new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), Integer.MAX_VALUE, Function.identity())
-                    .subscribe(group -> {
-                        groups.add(group);
-                        group.unwrap()
-                                .doOnComplete(groupCompletions::incrementAndGet)
-                                .subscribe(received::add);
-                    });
+            new AloGroupByWithAutoCompleteOperator<>(source.asFlux(), new IdentityGrouping<>()).subscribe(group -> {
+                groups.add(group);
+                group.unwrap().doOnComplete(groupCompletions::incrementAndGet).subscribe(received::add);
+            });
 
             TestAlo first = new TestAlo("K");
             TestAlo second = new TestAlo("K");
@@ -400,6 +498,45 @@ class AloGroupByWithAutoCompleteOperatorTest {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
+        }
+    }
+
+    private static final class IdentityGrouping<T> implements Grouping<T, T> {
+
+        private final Predicate<T> completesGroup;
+
+        private final @Nullable Integer sourcePrefetch;
+
+        public IdentityGrouping() {
+            this(__ -> false, null);
+        }
+
+        public IdentityGrouping(int sourcePrefetch) {
+            this(__ -> false, sourcePrefetch);
+        }
+
+        public IdentityGrouping(Predicate<T> completesGroup) {
+            this(completesGroup, null);
+        }
+
+        public IdentityGrouping(Predicate<T> completesGroup, @Nullable Integer sourcePrefetch) {
+            this.completesGroup = completesGroup;
+            this.sourcePrefetch = sourcePrefetch;
+        }
+
+        @Override
+        public T extractKey(T element) {
+            return element;
+        }
+
+        @Override
+        public boolean completesGroup(T element) {
+            return completesGroup.test(element);
+        }
+
+        @Override
+        public Optional<Integer> sourcePrefetch() {
+            return Optional.ofNullable(sourcePrefetch);
         }
     }
 }

@@ -1,9 +1,9 @@
 package io.atleon.core;
 
-import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxOperator;
@@ -54,20 +54,16 @@ final class AloGroupByWithAutoCompleteOperator<K, T> extends FluxOperator<Alo<T>
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AloGroupByWithAutoCompleteOperator.class);
 
-    private final int maxInFlight;
+    private final Grouping<? super T, ? extends K> grouping;
 
-    private final Function<? super T, ? extends K> keyExtractor;
-
-    AloGroupByWithAutoCompleteOperator(
-            Flux<Alo<T>> source, int maxInFlight, Function<? super T, ? extends K> keyExtractor) {
+    AloGroupByWithAutoCompleteOperator(Flux<Alo<T>> source, Grouping<? super T, ? extends K> grouping) {
         super(source);
-        this.maxInFlight = maxInFlight;
-        this.keyExtractor = keyExtractor;
+        this.grouping = grouping;
     }
 
     @Override
     public void subscribe(CoreSubscriber<? super AloGroupedFlux<K, T>> actual) {
-        source.subscribe(new AloGroupByWithAutoCompleteSubscriber<>(maxInFlight, keyExtractor, actual));
+        source.subscribe(new AloGroupByWithAutoCompleteSubscriber<>(grouping, actual));
     }
 
     private static void runSafely(Runnable task, String name) {
@@ -100,9 +96,9 @@ final class AloGroupByWithAutoCompleteOperator<K, T> extends FluxOperator<Alo<T>
                 AtomicReferenceFieldUpdater.newUpdater(
                         AloGroupByWithAutoCompleteSubscriber.class, Throwable.class, "error");
 
-        private final int maxInFlight;
+        private final Grouping<? super T, ? extends K> grouping;
 
-        private final Function<? super T, ? extends K> keyExtractor;
+        private final int inFlightPrefetch;
 
         private final CoreSubscriber<? super AloGroupedFlux<K, T>> actual;
 
@@ -132,15 +128,13 @@ final class AloGroupByWithAutoCompleteOperator<K, T> extends FluxOperator<Alo<T>
         private volatile Throwable error;
 
         private AloGroupByWithAutoCompleteSubscriber(
-                int maxInFlight,
-                Function<? super T, ? extends K> keyExtractor,
-                CoreSubscriber<? super AloGroupedFlux<K, T>> actual) {
-            if (maxInFlight <= 0) {
-                throw new IllegalArgumentException("maxInFlight must be > 0");
-            }
-            this.maxInFlight = maxInFlight;
-            this.keyExtractor = keyExtractor;
+                Grouping<? super T, ? extends K> grouping, CoreSubscriber<? super AloGroupedFlux<K, T>> actual) {
+            this.grouping = grouping;
+            this.inFlightPrefetch = grouping.sourcePrefetch().orElse(Integer.MAX_VALUE);
             this.actual = actual;
+            if (inFlightPrefetch <= 0) {
+                throw new IllegalArgumentException("inFlightPrefetch must be > 0");
+            }
         }
 
         @Override
@@ -155,7 +149,7 @@ final class AloGroupByWithAutoCompleteOperator<K, T> extends FluxOperator<Alo<T>
             }
 
             parent = s;
-            FREE_IN_FLIGHT_CAPACITY.set(this, maxInFlight == Integer.MAX_VALUE ? Long.MAX_VALUE : maxInFlight);
+            freeInFlightCapacity = inFlightPrefetch == Integer.MAX_VALUE ? Long.MAX_VALUE : inFlightPrefetch;
             actual.onSubscribe(this);
         }
 
@@ -192,7 +186,7 @@ final class AloGroupByWithAutoCompleteOperator<K, T> extends FluxOperator<Alo<T>
 
         @Override
         public void onElementCompletedProcessing(ProcessingGroup<K, Alo<T>> group, boolean groupEmptied) {
-            long previousFreeInFlightCapacity = maxInFlight != Integer.MAX_VALUE
+            long previousFreeInFlightCapacity = inFlightPrefetch != Integer.MAX_VALUE
                     ? FREE_IN_FLIGHT_CAPACITY.getAndUpdate(this, it -> it >= 0 ? it + 1 : it)
                     : Long.MAX_VALUE;
             if (groupEmptied) {
@@ -245,19 +239,29 @@ final class AloGroupByWithAutoCompleteOperator<K, T> extends FluxOperator<Alo<T>
                     }
                     ProcessingGroup<K, Alo<T>> removed = processingGroups.remove(emptied.key());
                     if (removed != null) {
-                        runSafely(removed::complete, "group::complete");
+                        removed.completeSafely();
                     }
                 }
 
-                // Emit next Alos into corresponding groups, enqueuing new groups for emission
+                // Emit next Alos into corresponding groups, enqueuing new groups for emission, and
+                // completing any groups for which the latest element is configured to do so.
                 Alo<T> next;
                 while (mayContinueEmission() && (next = nextQueue.poll()) != null) {
                     try {
                         T t = next.get();
+                        K key = grouping.extractKey(t);
+                        ProcessingGroup<K, Alo<T>> group = processingGroups.computeIfAbsent(key, it -> {
+                            ProcessingGroup<K, Alo<T>> emittable = new ProcessingGroup<>(it, this);
+                            emittableGroups.add(emittable);
+                            return emittable;
+                        });
+
                         AloFactory<T> propagator = next.propagator();
-                        processingGroups
-                                .computeIfAbsent(keyExtractor.apply(t), this::enqueueEmittableGroup)
-                                .next(next.getAcknowledger(), next.getNacknowledger(), it -> newAlo(propagator, t, it));
+                        group.next(next.getAcknowledger(), next.getNacknowledger(), it -> newAlo(propagator, t, it));
+                        if (grouping.completesGroup(t)) {
+                            processingGroups.remove(key);
+                            group.completeSafely();
+                        }
                     } catch (Throwable publishingError) {
                         handleFatalPublishingFailure(publishingError);
                     }
@@ -275,7 +279,9 @@ final class AloGroupByWithAutoCompleteOperator<K, T> extends FluxOperator<Alo<T>
                         handleFatalPublishingFailure(publishingError);
                     }
                 }
-                Operators.produced(REQUEST_OUTSTANDING, this, emitted);
+                if (maxToEmit != Long.MAX_VALUE) {
+                    REQUEST_OUTSTANDING.addAndGet(this, -emitted);
+                }
 
                 // Propagate subscription signals to parent and/or emit termination signals if now
                 // is the time to do so.
@@ -287,7 +293,7 @@ final class AloGroupByWithAutoCompleteOperator<K, T> extends FluxOperator<Alo<T>
                     if (nvFreeInFlightCapacity == IN_FLIGHT_CAPACITY_DOWNSTREAM_CANCELED) {
                         FREE_IN_FLIGHT_CAPACITY.set(this, Long.MIN_VALUE);
                         runSafely(parent::cancel, "parent::cancel");
-                        terminateProcessingGroups(ProcessingGroup::complete, "complete");
+                        completeGroupsSafely();
                         return;
                     } else if (nvFreeInFlightCapacity == IN_FLIGHT_CAPACITY_PUBLISHING_ERROR) {
                         runSafely(parent::cancel, "parent::cancel");
@@ -296,12 +302,12 @@ final class AloGroupByWithAutoCompleteOperator<K, T> extends FluxOperator<Alo<T>
                     Throwable nvError = error;
                     if (nvError != null) {
                         FREE_IN_FLIGHT_CAPACITY.set(this, Long.MIN_VALUE);
-                        terminateProcessingGroups(ProcessingGroup::complete, "error");
-                        terminateActual(it -> it.onError(nvError), "error");
+                        completeGroupsSafely();
+                        runSafely(() -> actual.onError(error), "actual::onError");
                         return;
                     } else if (processingGroups.isEmpty()) {
                         FREE_IN_FLIGHT_CAPACITY.set(this, Long.MIN_VALUE);
-                        terminateActual(Subscriber::onComplete, "complete");
+                        runSafely(actual::onComplete, "actual::onComplete");
                         return;
                     }
                 }
@@ -310,18 +316,8 @@ final class AloGroupByWithAutoCompleteOperator<K, T> extends FluxOperator<Alo<T>
             } while (missed != 0);
         }
 
-        private ProcessingGroup<K, Alo<T>> enqueueEmittableGroup(K key) {
-            ProcessingGroup<K, Alo<T>> emittable = new ProcessingGroup<>(key, this);
-            emittableGroups.add(emittable);
-            return emittable;
-        }
-
-        private void terminateProcessingGroups(Consumer<ProcessingGroup<?, ?>> groupConsumer, String method) {
-            processingGroups.values().forEach(it -> runSafely(() -> groupConsumer.accept(it), "group::" + method));
-        }
-
-        private void terminateActual(Consumer<Subscriber<?>> actualConsumer, String method) {
-            runSafely(() -> actualConsumer.accept(actual), "actual::" + method);
+        private void completeGroupsSafely() {
+            processingGroups.values().forEach(ProcessingGroup::completeSafely);
         }
 
         private boolean mayContinueEmission() {
@@ -378,8 +374,8 @@ final class AloGroupByWithAutoCompleteOperator<K, T> extends FluxOperator<Alo<T>
             sink.emitNext(elementFactory.apply(acknowledgement), this::handleEmissionFailure);
         }
 
-        public void complete() {
-            sink.emitComplete(this::handleEmissionFailure);
+        public void completeSafely() {
+            runSafely(() -> sink.emitComplete(this::handleEmissionFailure), "group::complete");
         }
 
         public K key() {
@@ -396,8 +392,9 @@ final class AloGroupByWithAutoCompleteOperator<K, T> extends FluxOperator<Alo<T>
 
         private boolean handleEmissionFailure(SignalType signal, Sinks.EmitResult result) {
             String message = String.format("Emission failure: key=%s signal=%s result=%s", key, signal, result);
-            if (signal != SignalType.ON_NEXT && result == Sinks.EmitResult.FAIL_CANCELLED) {
-                LOGGER.debug(message);
+            if (result == Sinks.EmitResult.FAIL_CANCELLED) {
+                Level logLevel = signal == SignalType.ON_NEXT ? Level.INFO : Level.DEBUG;
+                LOGGER.atLevel(logLevel).log(message);
             } else {
                 listener.onFatalEmissionFailure(new IllegalStateException(message));
             }
