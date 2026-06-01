@@ -21,13 +21,13 @@ import java.util.concurrent.CountDownLatch;
 import java.util.function.Function;
 
 /**
- * This example shows how to process Kafka records with arbitrarily high parallelism. You can try
- * changing the number of samples and/or number of processing groups to see significant changes
- * in processing speed. Note that in-order offset acknowledgement is handled (under the hood) by
+ * This example shows how to process Kafka records with per-key parallelism. You can try changing the
+ * number of samples and/or processing concurrency to see significant changes in processing speed.
+ * Note that in-order offset acknowledgement is handled (under the hood) by
  * {@link io.atleon.core.AcknowledgementQueue} such that offset commits are not executed past any
  * record whose offset we have not yet fully processed (acknowledged).
  */
-public class KafkaArbitraryParallelism {
+public class KafkaPerKeyParallelism {
 
     private static final String BOOTSTRAP_SERVERS = EmbeddedKafka.startAndGetBootstrapServersConnect();
 
@@ -43,7 +43,7 @@ public class KafkaArbitraryParallelism {
         // Step 1) Create Kafka Config for Producer that backs Sender
         KafkaConfigSource kafkaSenderConfig = KafkaConfigSource.useClientIdAsName()
                 .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
-                .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaArbitraryParallelism.class.getSimpleName())
+                .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaPerKeyParallelism.class.getSimpleName())
                 .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
                 .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
@@ -51,8 +51,8 @@ public class KafkaArbitraryParallelism {
         // offset reset to earliest such that subsequently produced Records are processed
         KafkaConfigSource kafkaReceiverConfig = KafkaConfigSource.useClientIdAsName()
                 .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
-                .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaArbitraryParallelism.class.getSimpleName())
-                .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaArbitraryParallelism.class.getSimpleName())
+                .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaPerKeyParallelism.class.getSimpleName())
+                .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaPerKeyParallelism.class.getSimpleName())
                 .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
                 .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
                 .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
@@ -63,9 +63,9 @@ public class KafkaArbitraryParallelism {
         CountDownLatch latch = new CountDownLatch(NUM_SAMPLES);
         AloKafkaReceiver.<String, String>create(kafkaReceiverConfig)
                 .receiveAloRecords(TOPIC)
-                .groupByStringHash(ConsumerRecord::key, NUM_GROUPS, ConsumerRecord::value)
+                .groupByWithAutoComplete(ConsumerRecord::key, NUM_GROUPS)
                 .innerPublishOn(Schedulers.boundedElastic())
-                .innerMap(String::toUpperCase)
+                .innerMap(it -> it.value().toUpperCase())
                 .innerDoOnNext(next -> {
                     try {
                         long sleepMillis = (long) (Math.random() * MAX_SLEEP_MILLIS + 1);
