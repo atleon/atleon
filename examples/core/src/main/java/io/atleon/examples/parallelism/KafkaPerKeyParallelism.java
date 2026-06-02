@@ -1,6 +1,5 @@
 package io.atleon.examples.parallelism;
 
-import io.atleon.core.AcknowledgementQueueMode;
 import io.atleon.core.Alo;
 import io.atleon.kafka.AloKafkaReceiver;
 import io.atleon.kafka.AloKafkaSender;
