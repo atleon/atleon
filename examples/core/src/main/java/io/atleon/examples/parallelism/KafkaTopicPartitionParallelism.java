@@ -60,8 +60,7 @@ public class KafkaTopicPartitionParallelism {
                 .receiveAloRecords(TOPIC)
                 .groupBy(ConsumerRecordExtraction::topicPartition, Integer.MAX_VALUE, ConsumerRecord::value)
                 .innerPublishOn(Schedulers.boundedElastic())
-                .innerMap(String::toUpperCase)
-                .innerDoOnNext(next -> {
+                .innerMap(next -> {
                     try {
                         long sleepMillis = (long) (Math.random() * MAX_SLEEP_MILLIS + 1);
                         System.out.printf(
@@ -71,18 +70,20 @@ public class KafkaTopicPartitionParallelism {
                     } catch (Exception e) {
                         System.err.println("Failed to sleep");
                     }
+                    return next.toUpperCase();
                 })
                 .flatMapAlo()
                 .consumeAloAndGet(Alo::acknowledge)
                 .subscribe(string -> latch.countDown());
 
         // Step 4) Produce random UUIDs to the topic we're processing above
+        AloKafkaSender<String, String> sender = AloKafkaSender.create(kafkaSenderConfig);
         Flux.range(0, NUM_SAMPLES)
                 .subscribeOn(Schedulers.boundedElastic())
                 .map(i -> UUID.randomUUID())
                 .map(UUID::toString)
-                .transform(
-                        AloKafkaSender.<String, String>create(kafkaSenderConfig).sendValues(TOPIC, Function.identity()))
+                .transform(sender.sendValues(TOPIC, Function.identity()))
+                .doFinally(__ -> sender.close())
                 .subscribe();
 
         // Step 5) Await processing completion of the UUIDs we produced
