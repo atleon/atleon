@@ -383,7 +383,7 @@ final class PollingSubscriptionFactory<K, V> {
                     .map(it -> it.deactivateLatest(gracePeriod, auxiliaryScheduler, termination.asMono()))
                     .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
                     .filter(it -> !asyncOffsetCommitter.isCommitTrialExhausted(it.topicPartition()))
-                    .collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffsetAndMetadata)
+                    .collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::commitOffset)
                     .block();
 
             try {
@@ -472,8 +472,7 @@ final class PollingSubscriptionFactory<K, V> {
             this.transactionalOffsetsSend = acknowledgedOffsets
                     .asFlux()
                     .windowWhen(offsetsState(TxOffsetsState.PROCESSING), __ -> offsetsState(TxOffsetsState.COMMITTING))
-                    .concatMap(it -> it.collectMap(
-                            AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffsetAndMetadata))
+                    .concatMap(it -> it.collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffset))
                     .subscribe(this::maybeSendOffsetsInCurrentTransaction, this::failSafely);
         }
 

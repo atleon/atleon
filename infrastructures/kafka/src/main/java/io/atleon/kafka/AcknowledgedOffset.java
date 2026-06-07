@@ -3,52 +3,44 @@ package io.atleon.kafka;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 
-import java.util.Objects;
+import java.util.function.LongFunction;
 
 /**
- * An offset for a {@link org.apache.kafka.clients.consumer.ConsumerRecord} from a particular
- * {@link TopicPartition} that has been acknowledged, and contains an {@link OffsetAndMetadata}
- * which may be committed, and is the offset <i>just after</i> the record for which this
- * acknowledgement is associated.
+ * A {@link ConsumerOffset} that has been acknowledged and is eligible to be used as a basis for
+ * commitment. Note that the contained offset itself is <i>not</i> what is committed, but rather
+ * the actual offset to commit is the numerical increment of that offset, along with (lazily
+ * evaluated) metadata.
  */
 final class AcknowledgedOffset {
 
-    private final TopicPartition topicPartition;
+    private final ConsumerOffset consumerOffset;
 
-    private final OffsetAndMetadata nextOffsetAndMetadata;
+    private final LongFunction<String> offsetCommitmentMetadataFactory;
 
-    public AcknowledgedOffset(TopicPartition topicPartition, OffsetAndMetadata nextOffsetAndMetadata) {
-        this.topicPartition = topicPartition;
-        this.nextOffsetAndMetadata = nextOffsetAndMetadata;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        AcknowledgedOffset that = (AcknowledgedOffset) o;
-        return Objects.equals(topicPartition, that.topicPartition)
-                && Objects.equals(nextOffsetAndMetadata, that.nextOffsetAndMetadata);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(topicPartition, nextOffsetAndMetadata);
-    }
-
-    @Override
-    public String toString() {
-        return "AcknowledgedOffset{" + "topicPartition="
-                + topicPartition + ", nextOffsetAndMetadata="
-                + nextOffsetAndMetadata + '}';
+    public AcknowledgedOffset(ConsumerOffset consumerOffset, LongFunction<String> offsetCommitmentMetadataFactory) {
+        this.consumerOffset = consumerOffset;
+        this.offsetCommitmentMetadataFactory = offsetCommitmentMetadataFactory;
     }
 
     public TopicPartition topicPartition() {
-        return topicPartition;
+        return consumerOffset.topicPartition();
     }
 
-    public OffsetAndMetadata nextOffsetAndMetadata() {
-        return nextOffsetAndMetadata;
+    public ConsumerOffset consumerOffset() {
+        return consumerOffset;
+    }
+
+    public OffsetAndMetadata nextOffset() {
+        return nextOffsetAndMetadata(__ -> "");
+    }
+
+    public OffsetAndMetadata commitOffset() {
+        return nextOffsetAndMetadata(offsetCommitmentMetadataFactory);
+    }
+
+    private OffsetAndMetadata nextOffsetAndMetadata(LongFunction<String> nextOffsetMetadataFactory) {
+        long nextOffset = consumerOffset.offset() + 1;
+        String metadata = nextOffsetMetadataFactory.apply(nextOffset);
+        return new OffsetAndMetadata(nextOffset, consumerOffset.leaderEpoch(), metadata);
     }
 }

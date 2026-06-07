@@ -69,7 +69,7 @@ final class AsyncOffsetCommitter {
         return committableOffsets
                 .asFlux()
                 .windowTimeout(batchSize, period, scheduler)
-                .concatMap(it -> it.collectMap(CommittableOffset::topicPartition, CommittableOffset::sequencedOffset))
+                .concatMap(it -> it.collectMap(CommittableOffset::topicPartition))
                 .subscribe(this::scheduleCommit, errorEmitter);
     }
 
@@ -107,21 +107,21 @@ final class AsyncOffsetCommitter {
         return calculateRemainingCommitAttempts(partition) <= 0;
     }
 
-    private void scheduleCommit(Map<TopicPartition, SequencedOffset> assignedOffsets) {
+    private void scheduleCommit(Map<TopicPartition, CommittableOffset> committableOffsets) {
         // Calculate commit sequence numbers eagerly such that invalidation may happen quickly in
         // the case that commits are being rapidly scheduled.
-        Map<TopicPartition, Long> commitSequences = assignedOffsets.keySet().stream()
+        Map<TopicPartition, Long> commitSequences = committableOffsets.keySet().stream()
                 .collect(Collectors.toMap(Function.identity(), this::incrementAndGetCommit));
         consumerTaskScheduler.schedule(consumer -> {
             // Only need to check assignment sequence number on initial commit attempt, because we
             // are now executing on the polling thread, and therefore any assignment changes are
             // guaranteed to visibly increase associated commit sequence counter(s), so we can rely
             // on that for invalidation (i.e. on retries).
-            Map<TopicPartition, OffsetAndMetadata> validatedOffsets = assignedOffsets.entrySet().stream()
+            Map<TopicPartition, OffsetAndMetadata> validatedOffsets = committableOffsets.entrySet().stream()
                     .filter(it -> it.getValue().sequence() == getAssignment(it.getKey()))
                     .filter(it -> commitSequences.get(it.getKey()) == getCommit(it.getKey()))
                     .collect(Collectors.toMap(
-                            Map.Entry::getKey, it -> it.getValue().offsetAndMetadata()));
+                            Map.Entry::getKey, it -> it.getValue().commitOffset()));
             commit(consumer, validatedOffsets, commitSequences);
         });
     }
@@ -201,40 +201,21 @@ final class AsyncOffsetCommitter {
 
     private static final class CommittableOffset {
 
-        private final TopicPartition topicPartition;
-
-        private final OffsetAndMetadata offsetAndMetadata;
+        private final AcknowledgedOffset acknowledgedOffset;
 
         private final long sequence;
 
         public CommittableOffset(AcknowledgedOffset acknowledgedOffset, long sequence) {
-            this.topicPartition = acknowledgedOffset.topicPartition();
-            this.offsetAndMetadata = acknowledgedOffset.nextOffsetAndMetadata();
+            this.acknowledgedOffset = acknowledgedOffset;
             this.sequence = sequence;
         }
 
         public TopicPartition topicPartition() {
-            return topicPartition;
+            return acknowledgedOffset.topicPartition();
         }
 
-        public SequencedOffset sequencedOffset() {
-            return new SequencedOffset(offsetAndMetadata, sequence);
-        }
-    }
-
-    private static final class SequencedOffset {
-
-        private final OffsetAndMetadata offsetAndMetadata;
-
-        private final long sequence;
-
-        public SequencedOffset(OffsetAndMetadata offsetAndMetadata, long sequence) {
-            this.offsetAndMetadata = offsetAndMetadata;
-            this.sequence = sequence;
-        }
-
-        public OffsetAndMetadata offsetAndMetadata() {
-            return offsetAndMetadata;
+        public OffsetAndMetadata commitOffset() {
+            return acknowledgedOffset.commitOffset();
         }
 
         public long sequence() {
