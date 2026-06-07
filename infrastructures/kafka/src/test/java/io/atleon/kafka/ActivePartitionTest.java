@@ -84,7 +84,7 @@ class ActivePartitionTest {
         assertEquals(TOPIC_PARTITION, acknowledgedOffsets.get(0).topicPartition());
         assertEquals(
                 consumerRecord.offset() + 1,
-                acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
+                acknowledgedOffsets.get(0).nextOffset().offset());
         assertEquals(Collections.singletonList(1L), deactivatedRecordCounts);
     }
 
@@ -114,13 +114,13 @@ class ActivePartitionTest {
         assertEquals(TOPIC_PARTITION, acknowledgedOffsets.get(2).topicPartition());
         assertEquals(
                 receiverRecord1.consumerRecord().offset() + 1,
-                acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
+                acknowledgedOffsets.get(0).nextOffset().offset());
         assertEquals(
                 receiverRecord2.consumerRecord().offset() + 1,
-                acknowledgedOffsets.get(1).nextOffsetAndMetadata().offset());
+                acknowledgedOffsets.get(1).nextOffset().offset());
         assertEquals(
                 receiverRecord3.consumerRecord().offset() + 1,
-                acknowledgedOffsets.get(2).nextOffsetAndMetadata().offset());
+                acknowledgedOffsets.get(2).nextOffset().offset());
         assertEquals(Arrays.asList(1L, 2L), deactivatedRecordCounts);
     }
 
@@ -187,7 +187,7 @@ class ActivePartitionTest {
         assertEquals(1, acknowledgedOffsets.size());
         assertEquals(
                 receiverRecord1.consumerRecord().offset() + 1,
-                acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
+                acknowledgedOffsets.get(0).nextOffset().offset());
         assertInstanceOf(IllegalStateException.class, acknowledgedOffsetsError.get());
         assertEquals(Arrays.asList(1L, 3L), deactivatedRecordCounts);
         assertNull(deactivatedRecordCountsError.get());
@@ -196,7 +196,7 @@ class ActivePartitionTest {
 
     @Test
     public void deactivateLatest_givenNoInFlightRecords_expectsTerminationWithLastAcknowledgedOffset() {
-        List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
+        List<ConsumerOffset> acknowledgedConsumerOffsets = new ArrayList<>();
         AtomicReference<Throwable> acknowledgedOffsetsError = new AtomicReference<>();
         AtomicBoolean acknowledgedOffsetsCompleted = new AtomicBoolean(false);
         List<Long> deactivatedRecordCounts = new ArrayList<>();
@@ -207,7 +207,7 @@ class ActivePartitionTest {
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
-                        acknowledgedOffsets::add,
+                        it -> acknowledgedConsumerOffsets.add(it.consumerOffset()),
                         acknowledgedOffsetsError::set,
                         () -> acknowledgedOffsetsCompleted.set(true));
         activePartition
@@ -227,7 +227,7 @@ class ActivePartitionTest {
                 .block();
 
         assertNotNull(lastAcknowledgedOffset);
-        assertEquals(Collections.singletonList(lastAcknowledgedOffset), acknowledgedOffsets);
+        assertEquals(Collections.singletonList(lastAcknowledgedOffset.consumerOffset()), acknowledgedConsumerOffsets);
         assertNull(acknowledgedOffsetsError.get());
         assertTrue(acknowledgedOffsetsCompleted.get());
         assertEquals(Collections.singletonList(1L), deactivatedRecordCounts);
@@ -237,7 +237,7 @@ class ActivePartitionTest {
 
     @Test
     public void deactivateLatest_givenGracePeriod_expectsTerminationAfterLastAcknowledgement() {
-        List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
+        List<ConsumerOffset> acknowledgedConsumerOffsets = new ArrayList<>();
         AtomicReference<Throwable> acknowledgedOffsetsError = new AtomicReference<>();
         AtomicBoolean acknowledgedOffsetsCompleted = new AtomicBoolean(false);
         List<Long> deactivatedRecordCounts = new ArrayList<>();
@@ -248,7 +248,7 @@ class ActivePartitionTest {
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
-                        acknowledgedOffsets::add,
+                        it -> acknowledgedConsumerOffsets.add(it.consumerOffset()),
                         acknowledgedOffsetsError::set,
                         () -> acknowledgedOffsetsCompleted.set(true));
         activePartition
@@ -268,21 +268,21 @@ class ActivePartitionTest {
                 .deactivateLatest(Duration.ofDays(1), Schedulers.parallel(), Mono.never())
                 .subscribe(lastAcknowledgedOffset::set);
 
-        assertTrue(acknowledgedOffsets.isEmpty());
+        assertTrue(acknowledgedConsumerOffsets.isEmpty());
         assertTrue(deactivatedRecordCounts.isEmpty());
 
         receiverRecord1.acknowledge();
         receiverRecord2.acknowledge();
 
         assertNotNull(lastAcknowledgedOffset.get());
-        assertEquals(2, acknowledgedOffsets.size());
+        assertEquals(2, acknowledgedConsumerOffsets.size());
         assertEquals(
-                receiverRecord1.consumerRecord().offset() + 1,
-                acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
+                receiverRecord1.consumerRecord().offset(),
+                acknowledgedConsumerOffsets.get(0).offset());
         assertEquals(
-                receiverRecord2.consumerRecord().offset() + 1,
-                acknowledgedOffsets.get(1).nextOffsetAndMetadata().offset());
-        assertEquals(lastAcknowledgedOffset.get(), acknowledgedOffsets.get(1));
+                receiverRecord2.consumerRecord().offset(),
+                acknowledgedConsumerOffsets.get(1).offset());
+        assertEquals(lastAcknowledgedOffset.get().consumerOffset(), acknowledgedConsumerOffsets.get(1));
         assertNull(acknowledgedOffsetsError.get());
         assertTrue(acknowledgedOffsetsCompleted.get());
         assertEquals(Arrays.asList(1L, 1L), deactivatedRecordCounts);
@@ -292,7 +292,7 @@ class ActivePartitionTest {
 
     @Test
     public void deactivateLatest_givenManualTimeout_expectsImmediateTerminationWithLastAcknowledgedOffset() {
-        List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
+        List<ConsumerOffset> acknowledgedConsumerOffsets = new ArrayList<>();
         AtomicReference<Throwable> acknowledgedOffsetsError = new AtomicReference<>();
         AtomicBoolean acknowledgedOffsetsCompleted = new AtomicBoolean(false);
         List<Long> deactivatedRecordCounts = new ArrayList<>();
@@ -303,7 +303,7 @@ class ActivePartitionTest {
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
-                        acknowledgedOffsets::add,
+                        it -> acknowledgedConsumerOffsets.add(it.consumerOffset()),
                         acknowledgedOffsetsError::set,
                         () -> acknowledgedOffsetsCompleted.set(true));
         activePartition
@@ -328,7 +328,8 @@ class ActivePartitionTest {
         receiverRecord2.acknowledge();
 
         assertNotNull(lastAcknowledgedOffset.get());
-        assertEquals(Collections.singletonList(lastAcknowledgedOffset.get()), acknowledgedOffsets);
+        assertEquals(
+                Collections.singletonList(lastAcknowledgedOffset.get().consumerOffset()), acknowledgedConsumerOffsets);
         assertNull(acknowledgedOffsetsError.get());
         assertTrue(acknowledgedOffsetsCompleted.get());
         assertEquals(Arrays.asList(1L, 1L), deactivatedRecordCounts);
@@ -338,7 +339,7 @@ class ActivePartitionTest {
 
     @Test
     public void deactivateLatest_givenNoGracePeriod_expectsImmediateTerminationWithLastAcknowledgedOffset() {
-        List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
+        List<ConsumerOffset> acknowledgedConsumerOffsets = new ArrayList<>();
         AtomicReference<Throwable> acknowledgedOffsetsError = new AtomicReference<>();
         AtomicBoolean acknowledgedOffsetsCompleted = new AtomicBoolean(false);
         List<Long> deactivatedRecordCounts = new ArrayList<>();
@@ -349,7 +350,7 @@ class ActivePartitionTest {
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
-                        acknowledgedOffsets::add,
+                        it -> acknowledgedConsumerOffsets.add(it.consumerOffset()),
                         acknowledgedOffsetsError::set,
                         () -> acknowledgedOffsetsCompleted.set(true));
         activePartition
@@ -376,7 +377,8 @@ class ActivePartitionTest {
         receiverRecord2.acknowledge();
 
         assertNotNull(lastAcknowledgedOffset.get());
-        assertEquals(Collections.singletonList(lastAcknowledgedOffset.get()), acknowledgedOffsets);
+        assertEquals(
+                Collections.singletonList(lastAcknowledgedOffset.get().consumerOffset()), acknowledgedConsumerOffsets);
         assertNull(acknowledgedOffsetsError.get());
         assertTrue(acknowledgedOffsetsCompleted.get());
         assertEquals(Arrays.asList(1L, 2L), deactivatedRecordCounts);
@@ -469,7 +471,7 @@ class ActivePartitionTest {
         assertEquals(1, acknowledgedOffsets.size());
         assertEquals(
                 receiverRecord1.consumerRecord().offset() + 1,
-                acknowledgedOffsets.get(0).nextOffsetAndMetadata().offset());
+                acknowledgedOffsets.get(0).nextOffset().offset());
         assertNull(acknowledgedOffsetsError.get());
         assertEquals(Arrays.asList(1L, 2L), deactivatedRecordCounts);
         assertNull(deactivatedRecordCountsError.get());

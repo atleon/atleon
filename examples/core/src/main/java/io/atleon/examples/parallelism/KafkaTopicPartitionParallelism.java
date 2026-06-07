@@ -80,8 +80,7 @@ public class KafkaTopicPartitionParallelism {
         AloKafkaSender<String, String> sender = AloKafkaSender.create(kafkaSenderConfig);
         Flux.range(0, NUM_SAMPLES)
                 .subscribeOn(Schedulers.boundedElastic())
-                .map(i -> UUID.randomUUID())
-                .map(UUID::toString)
+                .map(__ -> UUID.randomUUID().toString())
                 .transform(sender.sendValues(TOPIC, Function.identity()))
                 .doFinally(__ -> sender.close())
                 .subscribe();

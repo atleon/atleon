@@ -3,7 +3,6 @@ package io.atleon.kafka;
 import io.atleon.core.AcknowledgementQueue;
 import io.atleon.core.AcknowledgementQueueMode;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -42,7 +41,7 @@ final class ActivePartition {
 
     private final AtomicInteger deactivationDrainsInProgress = new AtomicInteger();
 
-    private final Sinks.Many<OffsetAndMetadata> nextOffsetsOfAcknowledged =
+    private final Sinks.Many<ConsumerOffset> consumerOffsetsOfAcknowledged =
             Sinks.unsafe().many().replay().latest();
 
     private final Sinks.Many<Long> deactivatedRecordCounts =
@@ -58,7 +57,7 @@ final class ActivePartition {
      * This will only return a non-empty result if this partition has not yet been deactivated.
      */
     public <K, V> Optional<KafkaReceiverRecord<K, V>> activateForProcessing(ConsumerRecord<K, V> consumerRecord) {
-        return activate(new OffsetAndMetadata(consumerRecord.offset() + 1, consumerRecord.leaderEpoch(), ""))
+        return activate(new ConsumerOffset(topicPartition, consumerRecord.offset(), consumerRecord.leaderEpoch()))
                 .map(it -> KafkaReceiverRecord.create(consumerRecord, () -> ack(it), error -> nack(it, error)));
     }
 
@@ -88,7 +87,7 @@ final class ActivePartition {
             return deactivateForcefully()
                     .flatMap(it -> it > 0 ? Mono.error(new GracelessTimeoutException()) : Mono.empty());
         } else {
-            Mono<T> acknowledgementCompletion = nextOffsetsOfAcknowledged
+            Mono<T> acknowledgementCompletion = consumerOffsetsOfAcknowledged
                     .asFlux()
                     .onErrorComplete()
                     .then(Mono.<T>empty())
@@ -107,7 +106,7 @@ final class ActivePartition {
             // ensure termination of next offset emission, which may be a no-op if any in-flight
             // records have been negatively acknowledged.
             long previousActivated = activated.getAndSet(0);
-            nextOffsetsOfAcknowledged.tryEmitComplete();
+            consumerOffsetsOfAcknowledged.tryEmitComplete();
 
             // Finally, calculate the number of deactivated records based on the previous count
             // which, if positive, means this partition had not yet been deactivated, so we need
@@ -123,7 +122,7 @@ final class ActivePartition {
      * Returns a publisher of offsets that have been acknowledged and may be directly committed.
      */
     public Flux<AcknowledgedOffset> acknowledgedOffsets() {
-        return nextOffsetsOfAcknowledged.asFlux().map(it -> new AcknowledgedOffset(topicPartition, it));
+        return consumerOffsetsOfAcknowledged.asFlux().map(it -> new AcknowledgedOffset(it, __ -> ""));
     }
 
     public Flux<Long> deactivatedRecordCounts() {
@@ -134,14 +133,14 @@ final class ActivePartition {
         return topicPartition;
     }
 
-    private Optional<AcknowledgementQueue.InFlight> activate(OffsetAndMetadata nextOffset) {
+    private Optional<AcknowledgementQueue.InFlight> activate(ConsumerOffset consumerOffset) {
         // If registration is successful (neither has a possible deactivation not finished, nor has
         // processing been forcibly deactivated), allow processing attempt. Else do not return
         // anything for acknowledgement, which prevents emission for processing.
         if (activated.getAndUpdate(it -> it > 0 ? it + 1 : it) > 0) {
-            Runnable acknowledger = () -> nextOffsetsOfAcknowledged.tryEmitNext(nextOffset);
+            Runnable acknowledger = () -> consumerOffsetsOfAcknowledged.tryEmitNext(consumerOffset);
             Consumer<Throwable> nacknowledger = error -> {
-                nextOffsetsOfAcknowledged.tryEmitError(error);
+                consumerOffsetsOfAcknowledged.tryEmitError(error);
                 deactivateForcefully().subscribe();
             };
             return Optional.of(acknowledgementQueue.add(acknowledger, nacknowledger));
@@ -180,7 +179,7 @@ final class ActivePartition {
             // we should emit termination by checking the polarity of the previous count and
             // whether the sum of completed records and the previous count cancel out.
             if (previousActivated < 0 && completedRecords + previousActivated == 0) {
-                nextOffsetsOfAcknowledged.tryEmitComplete();
+                consumerOffsetsOfAcknowledged.tryEmitComplete();
             }
             return completedRecords;
         });
@@ -192,7 +191,7 @@ final class ActivePartition {
                 // This deactivation is eligible to trigger termination, so attempt to do so,
                 // knowing that this could be a no-op if any in-flight records have been negatively
                 // acknowledged.
-                nextOffsetsOfAcknowledged.tryEmitComplete();
+                consumerOffsetsOfAcknowledged.tryEmitComplete();
             }
             sink.success();
             return 0L;
