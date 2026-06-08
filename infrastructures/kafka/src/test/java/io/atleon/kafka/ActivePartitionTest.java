@@ -31,12 +31,14 @@ class ActivePartitionTest {
 
     private static final TopicPartition TOPIC_PARTITION = new TopicPartition("topic", 0);
 
+    private static final AssignedPartition ASSIGNED_PARTITION = new AssignedPartition(TOPIC_PARTITION, Optional::empty);
+
     @Test
     public void activateForProcessing_givenActive_expectsRegisteredReceiverRecord() {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
         List<Long> deactivatedRecordCounts = new ArrayList<>();
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(ASSIGNED_PARTITION, AcknowledgementQueueMode.STRICT);
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add);
         activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
 
@@ -53,7 +55,7 @@ class ActivePartitionTest {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
         List<Long> deactivatedRecordCounts = new ArrayList<>();
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(ASSIGNED_PARTITION, AcknowledgementQueueMode.STRICT);
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add);
         activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
 
@@ -73,7 +75,7 @@ class ActivePartitionTest {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
         List<Long> deactivatedRecordCounts = new ArrayList<>();
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(ASSIGNED_PARTITION, AcknowledgementQueueMode.STRICT);
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add);
         activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
 
@@ -93,7 +95,7 @@ class ActivePartitionTest {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
         List<Long> deactivatedRecordCounts = new ArrayList<>();
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(ASSIGNED_PARTITION, AcknowledgementQueueMode.STRICT);
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add);
         activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
 
@@ -132,7 +134,7 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(ASSIGNED_PARTITION, AcknowledgementQueueMode.STRICT);
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add, acknowledgedOffsetsError::set);
         activePartition
                 .deactivatedRecordCounts()
@@ -161,7 +163,7 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(ASSIGNED_PARTITION, AcknowledgementQueueMode.STRICT);
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add, acknowledgedOffsetsError::set);
         activePartition
                 .deactivatedRecordCounts()
@@ -203,7 +205,7 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(ASSIGNED_PARTITION, AcknowledgementQueueMode.STRICT);
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
@@ -244,7 +246,7 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(ASSIGNED_PARTITION, AcknowledgementQueueMode.STRICT);
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
@@ -299,7 +301,7 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(ASSIGNED_PARTITION, AcknowledgementQueueMode.STRICT);
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
@@ -346,7 +348,7 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(ASSIGNED_PARTITION, AcknowledgementQueueMode.STRICT);
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
@@ -395,7 +397,7 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(ASSIGNED_PARTITION, AcknowledgementQueueMode.STRICT);
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
@@ -431,7 +433,7 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         CompletableFuture<Void> deactivatedRecordCountsCompletion = new CompletableFuture<>();
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(ASSIGNED_PARTITION, AcknowledgementQueueMode.STRICT);
         activePartition
                 .acknowledgedOffsets()
                 .publishOn(Schedulers.boundedElastic())

@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Resource through which management of polling state and polling invocation are delegated. Takes
@@ -53,12 +54,12 @@ final class PollManager<T> {
     }
 
     public void activateAssigned(
-            Consumer<?, ?> consumer, Collection<TopicPartition> partitions, Function<TopicPartition, T> activator) {
-        partitions.forEach(partition -> {
-            if (assignments.containsKey(partition)) {
-                throw new IllegalStateException("TopicPartition already assigned: " + partition);
+            Consumer<?, ?> consumer, Collection<AssignedPartition> assigned, Function<AssignedPartition, T> activator) {
+        assigned.forEach(assignedPartition -> {
+            if (assignments.containsKey(assignedPartition.topicPartition())) {
+                throw new IllegalStateException("TopicPartition already assigned: " + assignedPartition.topicPartition());
             }
-            assignments.put(partition, activator.apply(partition));
+            assignments.put(assignedPartition.topicPartition(), activator.apply(assignedPartition));
         });
 
         // Newly assigned partitions may either be paused due to external control, or need pausing
@@ -67,7 +68,7 @@ final class PollManager<T> {
         // prohibited anyway, and even if they were permitted in the past, they MUST have been
         // previously prohibited due to unassignment (or else exception would be thrown above). Do,
         // however, let the strategy know about newly-assigned poll-permitted partitions.
-        Map<Boolean, ? extends Collection<TopicPartition>> permissibility = partitionByPollPermissibility(partitions);
+        Map<Boolean, ? extends Collection<TopicPartition>> permissibility = partitionByPollPermissibility(assigned);
         Collection<TopicPartition> prohibitedPartitions = permissibility.get(false);
         if (!prohibitedPartitions.isEmpty()) {
             consumer.pause(prohibitedPartitions);
@@ -137,19 +138,20 @@ final class PollManager<T> {
     }
 
     private Map<Boolean, ? extends Collection<TopicPartition>> partitionByPollPermissibility(
-            Collection<TopicPartition> partitions) {
+            Collection<AssignedPartition> assignedPartitions) {
+        Stream<TopicPartition> topicPartitions = assignedPartitions.stream().map(AssignedPartition::topicPartition);
         if (isPausedDueToBackpressure()) {
             Map<Boolean, Collection<TopicPartition>> result = new HashMap<>();
-            result.put(false, partitions);
+            result.put(false, topicPartitions.collect(Collectors.toList()));
             result.put(true, Collections.emptyList());
             return result;
         } else if (forcePaused.isEmpty()) {
             Map<Boolean, Collection<TopicPartition>> result = new HashMap<>();
             result.put(false, Collections.emptyList());
-            result.put(true, partitions);
+            result.put(true, topicPartitions.collect(Collectors.toList()));
             return result;
         } else {
-            return partitions.stream().collect(Collectors.partitioningBy(it -> !forcePaused.contains(it)));
+            return topicPartitions.collect(Collectors.partitioningBy(it -> !forcePaused.contains(it)));
         }
     }
 

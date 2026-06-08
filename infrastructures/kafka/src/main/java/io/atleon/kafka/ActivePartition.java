@@ -47,8 +47,8 @@ final class ActivePartition {
     private final Sinks.Many<Long> deactivatedRecordCounts =
             Sinks.unsafe().many().unicast().onBackpressureError();
 
-    public ActivePartition(TopicPartition topicPartition, AcknowledgementQueueMode acknowledgementQueueMode) {
-        this.topicPartition = topicPartition;
+    public ActivePartition(AssignedPartition assignedPartition, AcknowledgementQueueMode acknowledgementQueueMode) {
+        this.topicPartition = assignedPartition.topicPartition();
         this.acknowledgementQueue = AcknowledgementQueue.create(acknowledgementQueueMode);
     }
 

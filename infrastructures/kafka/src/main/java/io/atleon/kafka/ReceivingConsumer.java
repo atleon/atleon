@@ -4,6 +4,7 @@ import io.atleon.core.TaskLoop;
 import io.atleon.util.Proxying;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +14,10 @@ import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.BiConsumer;
@@ -121,7 +125,10 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         }
 
         LOGGER.info("Notifying listeners of assigned partitions={}", partitions);
-        onRebalance(partitionListener::onPartitionsAssigned, consumerListener::onPartitionsAssigned, partitions);
+        // Not wrapping with try-catch. If user does something naughty, let the error be emitted.
+        consumerListener.onPartitionsAssigned(externalConsumerProxy, partitions);
+        // Done after external listening to account for possible seeking or metadata updates.
+        partitionListener.onPartitionsAssigned(consumer, toAssignedPartitions(partitions));
     }
 
     @Override
@@ -174,6 +181,27 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         externalHandler.accept(externalConsumerProxy, partitions);
     }
 
+    private Collection<AssignedPartition> toAssignedPartitions(Collection<TopicPartition> partitions) {
+        // Committed offset metadata lookup is lazy and memoized because:
+        // 1. It could be the case that committed offset metadata is not needed/used
+        // 2. Invocation may require a remote call that we'd prefer to do only once per assignment
+        // 3. Downstream invocation is per-partition
+        // It's safe to use emptiness as a signal that metadata lookup has not yet occurred because
+        // the "committed" invocation is documented to return "null" (or zero) values if/when there
+        // is no committed offset for a given partition. We also know that invocation can't/won't
+        // occur if assignment is empty.
+        Map<TopicPartition, OffsetAndMetadata> committedOffsetsAndMetadata = new HashMap<>();
+        Function<TopicPartition, Optional<OffsetAndMetadata>> committedOffsetAndMetadata = topicPartition -> {
+            if (committedOffsetsAndMetadata.isEmpty()) {
+                committedOffsetsAndMetadata.putAll(consumer.committed(new HashSet<>(partitions)));
+            }
+            return Optional.ofNullable(committedOffsetsAndMetadata.get(topicPartition));
+        };
+        return partitions.stream()
+                .map(it -> new AssignedPartition(it, () -> committedOffsetAndMetadata.apply(it)))
+                .collect(Collectors.toList());
+    }
+
     private Object invokeConsumerFromExternal(Method method, Object[] args) throws ReflectiveOperationException {
         if (!taskLoop.isSourceOfCurrentThread()) {
             throw new UnsupportedOperationException("Kafka Consumer must be invoked from polling thread");
@@ -212,7 +240,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     public interface PartitionListener {
 
-        void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions);
+        void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<AssignedPartition> partitions);
 
         void onPartitionsRevoked(Consumer<?, ?> consumer, Collection<TopicPartition> partitions);
 

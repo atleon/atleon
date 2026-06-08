@@ -132,15 +132,16 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         @Override
-        public final void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+        public final void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<AssignedPartition> partitions) {
             pollManager.activateAssigned(consumer, partitions, partition -> {
                 ActivePartition activePartition = new ActivePartition(partition, options.acknowledgementQueueMode());
                 onPartitionActivated(consumer, activePartition);
-                listener.onPartitionActivated(partition);
 
+                TopicPartition topicPartition = activePartition.topicPartition();
+                listener.onPartitionActivated(topicPartition);
                 activePartition
                         .deactivatedRecordCounts()
-                        .subscribe(it -> handleRecordsDeactivated(partition, it), this::failSafely);
+                        .subscribe(it -> handleRecordsDeactivated(topicPartition, it), this::failSafely);
 
                 return activePartition;
             });

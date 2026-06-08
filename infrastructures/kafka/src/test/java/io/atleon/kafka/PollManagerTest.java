@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.function.Function;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,29 +29,30 @@ class PollManagerTest {
 
     @Test
     public void activateAssigned_givenAssignedPartitions_expectsCoordinationOfInvocations() {
-        TopicPartition partition1 = new TopicPartition("topic", 0);
-        TopicPartition partition2 = new TopicPartition("topic", 1);
+        AssignedPartition partition1 = new AssignedPartition(new TopicPartition("topic", 0), Optional::empty);
+        AssignedPartition partition2 = new AssignedPartition(new TopicPartition("topic", 1), Optional::empty);
 
         Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
         PollStrategy pollStrategy =
                 Mockito.mock(PollStrategy.class, AdditionalAnswers.delegatesTo(PollStrategy.natural()));
-        PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
-        pollManager.forcePause(Collections.singletonList(partition1));
+        PollManager<AssignedPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
+        pollManager.forcePause(Collections.singletonList(partition1.topicPartition()));
 
         pollManager.activateAssigned(consumer, Arrays.asList(partition1, partition2), Function.identity());
 
-        verify(consumer).pause(argThat(it -> it.size() == 1 && it.contains(partition1)));
-        verify(pollStrategy).onPollingPermitted(argThat(it -> it.size() == 1 && it.contains(partition2)));
-        assertEquals(partition1, pollManager.activated(partition1));
-        assertEquals(partition2, pollManager.activated(partition2));
+        verify(consumer).pause(argThat(it -> it.size() == 1 && it.contains(partition1.topicPartition())));
+        verify(pollStrategy)
+                .onPollingPermitted(argThat(it -> it.size() == 1 && it.contains(partition2.topicPartition())));
+        assertEquals(partition1, pollManager.activated(partition1.topicPartition()));
+        assertEquals(partition2, pollManager.activated(partition2.topicPartition()));
     }
 
     @Test
     public void activateAssigned_givenAlreadyAssignedPartition_expectsException() {
-        TopicPartition partition = new TopicPartition("topic", 0);
+        AssignedPartition partition = new AssignedPartition(new TopicPartition("topic", 0), Optional::empty);
         Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
         PollStrategy pollStrategy = Mockito.mock(PollStrategy.class);
-        PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
+        PollManager<AssignedPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
 
         pollManager.activateAssigned(consumer, Collections.singletonList(partition), Function.identity());
 
@@ -74,21 +76,23 @@ class PollManagerTest {
 
     @Test
     public void unassigned_givenRevokedPartition_expectsCoordinationOfInvocations() {
-        TopicPartition partition1 = new TopicPartition("topic", 0);
-        TopicPartition partition2 = new TopicPartition("topic", 1);
+        AssignedPartition partition1 = new AssignedPartition(new TopicPartition("topic", 0), Optional::empty);
+        AssignedPartition partition2 = new AssignedPartition(new TopicPartition("topic", 1), Optional::empty);
 
         Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
         PollStrategy pollStrategy =
                 Mockito.mock(PollStrategy.class, AdditionalAnswers.delegatesTo(PollStrategy.natural()));
-        PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
+        PollManager<AssignedPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
         pollManager.activateAssigned(consumer, Arrays.asList(partition1, partition2), Function.identity());
 
-        Collection<TopicPartition> result = pollManager.unassigned(Collections.singletonList(partition1));
+        Collection<AssignedPartition> result =
+                pollManager.unassigned(Collections.singletonList(partition1.topicPartition()));
 
         assertEquals(1, result.size());
         assertTrue(result.contains(partition1));
-        verify(pollStrategy).onPollingProhibited(argThat(it -> it.size() == 1 && it.contains(partition1)));
-        assertEquals(partition2, pollManager.activated(partition2));
+        verify(pollStrategy)
+                .onPollingProhibited(argThat(it -> it.size() == 1 && it.contains(partition1.topicPartition())));
+        assertEquals(partition2, pollManager.activated(partition2.topicPartition()));
     }
 
     @Test
@@ -144,13 +148,13 @@ class PollManagerTest {
 
     @Test
     public void pollWakeably_givenBackpressureTransition_expectsStateUpdate() {
-        TopicPartition partition = new TopicPartition("topic", 0);
+        AssignedPartition partition = new AssignedPartition(new TopicPartition("topic", 0), Optional::empty);
         Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
         when(consumer.poll(any())).thenReturn(ConsumerRecords.empty());
 
         PollStrategy pollStrategy =
                 Mockito.mock(PollStrategy.class, AdditionalAnswers.delegatesTo(PollStrategy.natural()));
-        PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 2, Duration.ZERO);
+        PollManager<AssignedPartition> pollManager = new PollManager<>(pollStrategy, 2, Duration.ZERO);
         pollManager.activateAssigned(consumer, Collections.singletonList(partition), Function.identity());
 
         // First call with sufficient capacity
@@ -159,7 +163,7 @@ class PollManagerTest {
 
         // Second call with insufficient capacity - should pause
         pollManager.pollWakeably(consumer, () -> 1);
-        verify(consumer).pause(argThat(partitions -> partitions.contains(partition)));
+        verify(consumer).pause(argThat(partitions -> partitions.contains(partition.topicPartition())));
     }
 
     @Test

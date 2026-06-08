@@ -4,6 +4,7 @@ import io.atleon.util.Throwing;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.MockConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
@@ -12,13 +13,17 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -168,6 +173,49 @@ class ReceivingConsumerTest {
     }
 
     @Test
+    public void onPartitionsAssigned_givenCommittedOffsets_expectsQueryableMetadata() {
+        TopicPartition topicPartition1 = new TopicPartition("topic", 0);
+        TopicPartition topicPartition2 = new TopicPartition("topic", 1);
+        MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+        mockConsumer.assign(Arrays.asList(topicPartition1, topicPartition2));
+        mockConsumer.commitSync(Collections.singletonMap(topicPartition1, new OffsetAndMetadata(42L, "meta")));
+
+        Collection<AssignedPartition> assigned = new ArrayList<>();
+        ReceivingConsumer.PartitionListener partitionListener = new NoOpPartitionListener() {
+            @Override
+            public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<AssignedPartition> partitions) {
+                assigned.addAll(partitions);
+            }
+        };
+
+        KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .build();
+
+        ReceivingConsumer<String, String> receivingConsumer =
+                new ReceivingConsumer<>(options, partitionListener, this::throwPropagated);
+        receivingConsumer.onPartitionsAssigned(Arrays.asList(topicPartition1, topicPartition2));
+
+        assertEquals(2, assigned.size());
+        AssignedPartition assignedPartition1 = assigned.stream()
+                .filter(it -> it.topicPartition().equals(topicPartition1))
+                .findFirst()
+                .orElseThrow(NullPointerException::new);
+        AssignedPartition assignedPartition2 = assigned.stream()
+                .filter(it -> it.topicPartition().equals(topicPartition2))
+                .findFirst()
+                .orElseThrow(NullPointerException::new);
+
+        assertEquals(topicPartition1, assignedPartition1.topicPartition());
+        assertEquals(Optional.of(42L), assignedPartition1.committedOffset());
+        assertEquals(Optional.of("meta"), assignedPartition1.committedMetadata());
+
+        assertEquals(topicPartition2, assignedPartition2.topicPartition());
+        assertFalse(assignedPartition2.committedOffset().isPresent());
+        assertFalse(assignedPartition2.committedMetadata().isPresent());
+    }
+
+    @Test
     public void init_givenConsumptionError_expectsContinuationOfTaskLoop() {
         MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
 
@@ -235,7 +283,7 @@ class ReceivingConsumerTest {
     public static class NoOpPartitionListener implements ReceivingConsumer.PartitionListener {
 
         @Override
-        public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {}
+        public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<AssignedPartition> partitions) {}
 
         @Override
         public void onPartitionsRevoked(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {}
