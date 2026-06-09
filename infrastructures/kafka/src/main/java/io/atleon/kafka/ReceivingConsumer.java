@@ -81,14 +81,14 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
     public void onPartitionsLost(Collection<TopicPartition> partitions) {
         validAssignment.removeAll(partitions);
         LOGGER.info("Notifying listeners of lost partitions={}", partitions);
-        onRebalance(partitionListener::onPartitionsLost, consumerListener::onPartitionsLost, partitions);
+        onUnassign(partitionListener::onPartitionsLost, consumerListener::onPartitionsLost, partitions);
     }
 
     @Override
     public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
         validAssignment.removeAll(partitions);
         LOGGER.info("Notifying listeners of revoked partitions={}", partitions);
-        onRebalance(partitionListener::onPartitionsRevoked, consumerListener::onPartitionsRevoked, partitions);
+        onUnassign(partitionListener::onPartitionsRevoked, consumerListener::onPartitionsRevoked, partitions);
     }
 
     @Override
@@ -121,7 +121,10 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         }
 
         LOGGER.info("Notifying listeners of assigned partitions={}", partitions);
-        onRebalance(partitionListener::onPartitionsAssigned, consumerListener::onPartitionsAssigned, partitions);
+        // Not wrapping with try-catch. If user does something naughty, let the error be emitted.
+        consumerListener.onPartitionsAssigned(externalConsumerProxy, partitions);
+        // Done after external listening to account for possible seeking or metadata updates.
+        partitionListener.onPartitionsAssigned(consumer, partitions);
     }
 
     @Override
@@ -164,7 +167,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         taskLoop.schedule(() -> task.accept(consumer));
     }
 
-    private void onRebalance(
+    private void onUnassign(
             BiConsumer<Consumer<?, ?>, Collection<TopicPartition>> internalHandler,
             BiConsumer<Consumer<?, ?>, Collection<TopicPartition>> externalHandler,
             Collection<TopicPartition> partitions) {

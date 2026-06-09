@@ -1,5 +1,6 @@
 package io.atleon.kafka;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
 import java.util.Objects;
@@ -18,10 +19,18 @@ final class ConsumerOffset {
 
     private final Optional<Integer> leaderEpoch;
 
-    public ConsumerOffset(TopicPartition topicPartition, long offset, Optional<Integer> leaderEpoch) {
+    public ConsumerOffset(TopicPartition topicPartition, long offset) {
+        this(topicPartition, offset, Optional.empty());
+    }
+
+    private ConsumerOffset(TopicPartition topicPartition, long offset, Optional<Integer> leaderEpoch) {
         this.topicPartition = topicPartition;
         this.offset = offset;
         this.leaderEpoch = leaderEpoch;
+    }
+
+    static ConsumerOffset create(TopicPartition topicPartition, ConsumerRecord<?, ?> consumerRecord) {
+        return new ConsumerOffset(topicPartition, consumerRecord.offset(), consumerRecord.leaderEpoch());
     }
 
     @Override

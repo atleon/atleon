@@ -57,7 +57,7 @@ final class ActivePartition {
      * This will only return a non-empty result if this partition has not yet been deactivated.
      */
     public <K, V> Optional<KafkaReceiverRecord<K, V>> activateForProcessing(ConsumerRecord<K, V> consumerRecord) {
-        return activate(new ConsumerOffset(topicPartition, consumerRecord.offset(), consumerRecord.leaderEpoch()))
+        return activate(ConsumerOffset.create(topicPartition, consumerRecord))
                 .map(it -> KafkaReceiverRecord.create(consumerRecord, () -> ack(it), error -> nack(it, error)));
     }
 
