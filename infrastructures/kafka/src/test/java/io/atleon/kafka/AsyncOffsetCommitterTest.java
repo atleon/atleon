@@ -11,7 +11,6 @@ import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -30,7 +29,7 @@ class AsyncOffsetCommitterTest {
     @Test
     public void commit_givenNonRetriableFailure_expectsError() {
         TopicPartition topicPartition = new TopicPartition("topic", 0);
-        ConsumerOffset consumerOffset = new ConsumerOffset(topicPartition, 1L, Optional.empty());
+        ConsumerOffset consumerOffset = new ConsumerOffset(topicPartition, 1L);
         Consumer<?, ?> consumer = mock(Consumer.class);
         AtomicReference<Throwable> error = new AtomicReference<>();
 
@@ -58,7 +57,7 @@ class AsyncOffsetCommitterTest {
     @Test
     public void commit_givenRetriableFailureWithEventualSuccess_expectsRetryAndSuccess() {
         TopicPartition topicPartition = new TopicPartition("topic", 0);
-        ConsumerOffset consumerOffset = new ConsumerOffset(topicPartition, 1L, Optional.empty());
+        ConsumerOffset consumerOffset = new ConsumerOffset(topicPartition, 1L);
         Consumer<?, ?> consumer = mock(Consumer.class);
         AtomicReference<Throwable> error = new AtomicReference<>();
 
@@ -95,7 +94,7 @@ class AsyncOffsetCommitterTest {
     @Test
     public void commit_givenRetriableFailureWithRetriesExhausted_expectsError() {
         TopicPartition topicPartition = new TopicPartition("topic", 0);
-        ConsumerOffset consumerOffset = new ConsumerOffset(topicPartition, 1L, Optional.empty());
+        ConsumerOffset consumerOffset = new ConsumerOffset(topicPartition, 1L);
         int maxCommitAttempts = 3;
         Consumer<?, ?> consumer = mock(Consumer.class);
         AtomicReference<Throwable> error = new AtomicReference<>();
