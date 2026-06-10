@@ -29,6 +29,8 @@ final class ActivePartition {
 
     private final AcknowledgementQueue acknowledgementQueue;
 
+    private final PartitionProcessingMetadataManager processingMetadataManager;
+
     // This counter doubles as both our publishing state (via polarity: positive == ACTIVE,
     // negative == TERMINABLE, zero == TERMINATED) and our count of activated in-flight records
     // (via magnitude: subtract 1 if positive, negate if negative). The extra/initializing count of
@@ -47,18 +49,31 @@ final class ActivePartition {
     private final Sinks.Many<Long> deactivatedRecordCounts =
             Sinks.unsafe().many().unicast().onBackpressureError();
 
-    public ActivePartition(TopicPartition topicPartition, AcknowledgementQueueMode acknowledgementQueueMode) {
+    public ActivePartition(
+            TopicPartition topicPartition,
+            AcknowledgementQueueMode acknowledgementQueueMode,
+            PartitionProcessingMetadataManager processingMetadataManager) {
         this.topicPartition = topicPartition;
         this.acknowledgementQueue = AcknowledgementQueue.create(acknowledgementQueueMode);
+        this.processingMetadataManager = processingMetadataManager;
     }
 
     /**
      * Activates a {@link ConsumerRecord} for processing, which is a prerequisite for emission.
-     * This will only return a non-empty result if this partition has not yet been deactivated.
+     * This will only return a non-empty result if the provided record has not been previously
+     * processed (per the initialized processing manager) and if this partition has not yet been
+     * deactivated.
      */
     public <K, V> Optional<KafkaReceiverRecord<K, V>> activateForProcessing(ConsumerRecord<K, V> consumerRecord) {
-        return activate(ConsumerOffset.create(topicPartition, consumerRecord))
-                .map(it -> KafkaReceiverRecord.create(consumerRecord, () -> ack(it), error -> nack(it, error)));
+        return activate(ConsumerOffset.create(topicPartition, consumerRecord)).map(it -> {
+            if (processingMetadataManager.previouslyProcessed(consumerRecord.offset())) {
+                ack(consumerRecord.offset(), it);
+                return null;
+            } else {
+                long offset = consumerRecord.offset();
+                return KafkaReceiverRecord.create(consumerRecord, () -> ack(offset, it), error -> nack(it, error));
+            }
+        });
     }
 
     /**
@@ -119,10 +134,16 @@ final class ActivePartition {
     }
 
     /**
-     * Returns a publisher of offsets that have been acknowledged and may be directly committed.
+     * Returns a publisher of offsets that have been acknowledged and may be directly committed. If
+     * previous processing is tracked (via processing metadata manager), then the resulting
+     * publisher may start with an offset that hasn't actually been acknowledged by this process,
+     * but is safe to commit in order to facilitate commitment of lazily evaluated commit metadata.
      */
     public Flux<AcknowledgedOffset> acknowledgedOffsets() {
-        return consumerOffsetsOfAcknowledged.asFlux().map(it -> new AcknowledgedOffset(it, __ -> ""));
+        return Mono.justOrEmpty(processingMetadataManager.initialAcknowledgeableOffset())
+                .map(it -> new ConsumerOffset(topicPartition, it))
+                .concatWith(consumerOffsetsOfAcknowledged.asFlux())
+                .map(it -> new AcknowledgedOffset(it, processingMetadataManager::updateAndGetMetadataOnCommit));
     }
 
     public Flux<Long> deactivatedRecordCounts() {
@@ -149,7 +170,8 @@ final class ActivePartition {
         }
     }
 
-    private void ack(AcknowledgementQueue.InFlight inFlight) {
+    private void ack(long offset, AcknowledgementQueue.InFlight inFlight) {
+        processingMetadataManager.processed(offset);
         acknowledge(queue -> queue.complete(inFlight));
     }
 

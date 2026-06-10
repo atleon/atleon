@@ -70,6 +70,8 @@ public final class KafkaReceiverOptions<K, V> {
 
     private final boolean commitlessOffsets;
 
+    private final int honoredProcessingAheadOfCommit;
+
     private final Duration revocationGracePeriod;
 
     private final Duration terminationGracePeriod;
@@ -92,6 +94,7 @@ public final class KafkaReceiverOptions<K, V> {
             Duration commitTimeout,
             int maxCommitAttempts,
             boolean commitlessOffsets,
+            int honoredProcessingAheadOfCommit,
             Duration revocationGracePeriod,
             Duration terminationGracePeriod,
             Duration closeTimeout) {
@@ -110,6 +113,7 @@ public final class KafkaReceiverOptions<K, V> {
         this.commitTimeout = commitTimeout;
         this.maxCommitAttempts = maxCommitAttempts;
         this.commitlessOffsets = commitlessOffsets;
+        this.honoredProcessingAheadOfCommit = honoredProcessingAheadOfCommit;
         this.revocationGracePeriod = revocationGracePeriod;
         this.terminationGracePeriod = terminationGracePeriod;
         this.closeTimeout = closeTimeout;
@@ -149,6 +153,7 @@ public final class KafkaReceiverOptions<K, V> {
                 .commitTimeout(commitTimeout)
                 .maxCommitAttempts(maxCommitAttempts)
                 .commitlessOffsets(commitlessOffsets)
+                .honoredProcessingAheadOfCommit(honoredProcessingAheadOfCommit)
                 .revocationGracePeriod(revocationGracePeriod)
                 .terminationGracePeriod(terminationGracePeriod)
                 .closeTimeout(closeTimeout);
@@ -278,6 +283,13 @@ public final class KafkaReceiverOptions<K, V> {
     }
 
     /**
+     * @see Builder#honoredProcessingAheadOfCommit(int)
+     */
+    public int honoredProcessingAheadOfCommit() {
+        return honoredProcessingAheadOfCommit;
+    }
+
+    /**
      * @see Builder#revocationGracePeriod(Duration)
      */
     public Duration revocationGracePeriod() {
@@ -309,6 +321,7 @@ public final class KafkaReceiverOptions<K, V> {
         validatePositive(commitBatchSize, "commitBatchSize");
         validatePositive(commitPeriod, "commitPeriod");
         validatePositive(maxCommitAttempts, "maxCommitAttempts");
+        validateNonNegative(honoredProcessingAheadOfCommit, "honoredProcessingAheadOfCommit");
         validateNonNegative(revocationGracePeriod, "revocationGracePeriod");
 
         if (!terminationGracePeriod.isZero() && terminationGracePeriod.compareTo(closeTimeout) >= 0) {
@@ -325,6 +338,12 @@ public final class KafkaReceiverOptions<K, V> {
     private static void validatePositive(Duration value, String name) {
         if (value.isZero() || value.isNegative()) {
             throw new IllegalArgumentException(name + " must be positive");
+        }
+    }
+
+    private static void validateNonNegative(long value, String name) {
+        if (value < 0) {
+            throw new IllegalArgumentException(name + " must be non-negative");
         }
     }
 
@@ -365,6 +384,8 @@ public final class KafkaReceiverOptions<K, V> {
         private int maxCommitAttempts = DEFAULT_MAX_COMMIT_ATTEMPTS;
 
         private boolean commitlessOffsets = false;
+
+        private int honoredProcessingAheadOfCommit = 0;
 
         private Duration revocationGracePeriod = DEFAULT_REVOCATION_GRACE_PERIOD;
 
@@ -544,6 +565,23 @@ public final class KafkaReceiverOptions<K, V> {
         }
 
         /**
+         * Configures the maximum number of records for which completed processing ahead of the
+         * committed offset for a given partition will be honored. This is implemented by keeping
+         * track of the offsets of records ahead of the committed offset which have been
+         * acknowledged, and storing this as commit metadata. It is reasonable to set this value
+         * to {@link Integer#MAX_VALUE} if the maximum number of acknowledged records ahead of
+         * what can be committed is known to be bounded (i.e. {@link #maxActiveInFlight(long)}).
+         * Otherwise, the max value of this setting is governed by the broker-side configuration
+         * {@code offset.metadata.max.bytes}. The offsets of completed records are stored using a
+         * base 64 string wrapping a byte array representing those offsets in sorted order,
+         * leveraging varint and delta-run encoding for optimal storage.
+         */
+        public Builder<K, V> honoredProcessingAheadOfCommit(int honoredProcessingAheadOfCommit) {
+            this.honoredProcessingAheadOfCommit = honoredProcessingAheadOfCommit;
+            return this;
+        }
+
+        /**
          * Configures the maximum amount of time that will be awaited for in-flight records to be
          * acknowledged from a partition whose assignment is being revoked. The latest acknowledged
          * offsets from such a partition are then used to issue one last commit before
@@ -598,6 +636,7 @@ public final class KafkaReceiverOptions<K, V> {
                     commitTimeout,
                     maxCommitAttempts,
                     commitlessOffsets,
+                    honoredProcessingAheadOfCommit,
                     revocationGracePeriod,
                     terminationGracePeriod,
                     closeTimeout);

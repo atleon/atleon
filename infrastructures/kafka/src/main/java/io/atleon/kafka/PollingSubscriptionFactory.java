@@ -133,8 +133,14 @@ final class PollingSubscriptionFactory<K, V> {
 
         @Override
         public final void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+            Map<TopicPartition, PartitionProcessingMetadataManager> processingMetadataManagers =
+                    PartitionProcessingMetadataManager.create(honorshipAheadOfCommit(), consumer, partitions);
+
             pollManager.activateAssigned(consumer, partitions, partition -> {
-                ActivePartition activePartition = new ActivePartition(partition, options.acknowledgementQueueMode());
+                PartitionProcessingMetadataManager processingMetadataManager =
+                        processingMetadataManagers.getOrDefault(partition, PartitionProcessingMetadataManager.noOp());
+                ActivePartition activePartition =
+                        new ActivePartition(partition, options.acknowledgementQueueMode(), processingMetadataManager);
                 onPartitionActivated(consumer, activePartition);
                 listener.onPartitionActivated(partition);
 
@@ -186,6 +192,10 @@ final class PollingSubscriptionFactory<K, V> {
         @Override
         public final Collection<TopicPartition> grantedPartitionPauses() {
             return pollManager.forcePaused();
+        }
+
+        protected int honorshipAheadOfCommit() {
+            return options.commitlessOffsets() ? 0 : options.honoredProcessingAheadOfCommit();
         }
 
         protected abstract void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition partition);
@@ -474,6 +484,11 @@ final class PollingSubscriptionFactory<K, V> {
                     .windowWhen(offsetsState(TxOffsetsState.PROCESSING), __ -> offsetsState(TxOffsetsState.COMMITTING))
                     .concatMap(it -> it.collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffset))
                     .subscribe(this::maybeSendOffsetsInCurrentTransaction, this::failSafely);
+        }
+
+        @Override
+        protected int honorshipAheadOfCommit() {
+            return 0; // Honoring completed processing ahead of commit is not applicable to TXs
         }
 
         @Override

@@ -151,6 +151,15 @@ public class AloKafkaReceiver<K, V> {
     public static final String MAX_COMMIT_ATTEMPTS_CONFIG = CONFIG_PREFIX + "max.commit.attempts";
 
     /**
+     * Non-zero values activate non-volatile tracking of completed record processing ahead of
+     * committed offset(s).
+     *
+     * @see KafkaReceiverOptions#honoredProcessingAheadOfCommit()
+     */
+    public static final String HONORED_PROCESSING_AHEAD_OF_COMMIT_CONFIG =
+            CONFIG_PREFIX + "honored.processing.ahead.of.commit";
+
+    /**
      * Closing the underlying Kafka Consumer is a fallible process. In order to not infinitely
      * deadlock a Consumer during this process (which can lead to non-consumption of assigned
      * partitions), we use a default equal to what's used in KafkaConsumer::close
@@ -483,6 +492,8 @@ public class AloKafkaReceiver<K, V> {
                     .commitPeriod(config.loadDuration(COMMIT_INTERVAL_CONFIG).orElse(defaultOptions.commitPeriod()))
                     .maxCommitAttempts(
                             config.loadInt(MAX_COMMIT_ATTEMPTS_CONFIG).orElse(defaultOptions.maxCommitAttempts()))
+                    .honoredProcessingAheadOfCommit(config.loadInt(HONORED_PROCESSING_AHEAD_OF_COMMIT_CONFIG)
+                            .orElse(defaultOptions.honoredProcessingAheadOfCommit()))
                     .revocationGracePeriod(loadRevocationGracePeriod().orElse(defaultOptions.revocationGracePeriod()))
                     .terminationGracePeriod(config.loadDuration(TERMINATION_GRACE_PERIOD_CONFIG)
                             .orElse(defaultOptions.terminationGracePeriod()))

@@ -12,8 +12,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -26,6 +28,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class ActivePartitionTest {
 
@@ -36,7 +41,8 @@ class ActivePartitionTest {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
         List<Long> deactivatedRecordCounts = new ArrayList<>();
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(
+                TOPIC_PARTITION, AcknowledgementQueueMode.STRICT, PartitionProcessingMetadataManager.noOp());
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add);
         activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
 
@@ -53,7 +59,8 @@ class ActivePartitionTest {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
         List<Long> deactivatedRecordCounts = new ArrayList<>();
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(
+                TOPIC_PARTITION, AcknowledgementQueueMode.STRICT, PartitionProcessingMetadataManager.noOp());
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add);
         activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
 
@@ -69,11 +76,68 @@ class ActivePartitionTest {
     }
 
     @Test
+    public void activateForProcessing_givenPreviouslyProcessed_expectsNoReceiverRecordButAccountedForAcknowledgement() {
+        List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
+        List<Long> deactivatedRecordCounts = new ArrayList<>();
+
+        ActivePartition activePartition = new ActivePartition(
+                TOPIC_PARTITION, AcknowledgementQueueMode.STRICT, managerWithPreviouslyProcessed(1L));
+        activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add);
+        activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
+
+        // The first record is activated for processing, but not yet acknowledged.
+        KafkaReceiverRecord<String, String> receiverRecord1 =
+                activePartition.activateForProcessing(newConsumerRecord(0)).get();
+
+        // The second record was previously processed, so it is not activated for emission/
+        // processing, but it is still accounted for in acknowledgement queueing.
+        ConsumerRecord<String, String> previouslyProcessedRecord = newConsumerRecord(1);
+        Optional<KafkaReceiverRecord<String, String>> previouslyProcessedActivated =
+                activePartition.activateForProcessing(previouslyProcessedRecord);
+
+        // The third record is activated for processing, but not yet acknowledged.
+        KafkaReceiverRecord<String, String> receiverRecord3 =
+                activePartition.activateForProcessing(newConsumerRecord(2)).get();
+
+        assertFalse(previouslyProcessedActivated.isPresent());
+
+        // Nothing is acknowledged yet: strict ordering keeps the previously processed second record
+        // queued behind the not-yet-acknowledged first record.
+        assertTrue(acknowledgedOffsets.isEmpty());
+        assertTrue(deactivatedRecordCounts.isEmpty());
+
+        // Acknowledging the first record drains it along with the previously processed second
+        // record, in offset order, proving the previously processed record was accounted for in
+        // acknowledgement queueing.
+        receiverRecord1.acknowledge();
+        assertEquals(2, acknowledgedOffsets.size());
+        assertEquals(TOPIC_PARTITION, acknowledgedOffsets.get(0).topicPartition());
+        assertEquals(
+                receiverRecord1.consumerRecord().offset() + 1,
+                acknowledgedOffsets.get(0).nextOffset().offset());
+        assertEquals(TOPIC_PARTITION, acknowledgedOffsets.get(1).topicPartition());
+        assertEquals(
+                previouslyProcessedRecord.offset() + 1,
+                acknowledgedOffsets.get(1).nextOffset().offset());
+        assertEquals(Collections.singletonList(2L), deactivatedRecordCounts);
+
+        // Acknowledging the third record drains it after the previously verified behavior.
+        receiverRecord3.acknowledge();
+        assertEquals(3, acknowledgedOffsets.size());
+        assertEquals(TOPIC_PARTITION, acknowledgedOffsets.get(2).topicPartition());
+        assertEquals(
+                receiverRecord3.consumerRecord().offset() + 1,
+                acknowledgedOffsets.get(2).nextOffset().offset());
+        assertEquals(Arrays.asList(2L, 1L), deactivatedRecordCounts);
+    }
+
+    @Test
     public void acknowledge_givenActivatedRecordIsAcknowledged_expectsCorrectAcknowledgements() {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
         List<Long> deactivatedRecordCounts = new ArrayList<>();
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(
+                TOPIC_PARTITION, AcknowledgementQueueMode.STRICT, PartitionProcessingMetadataManager.noOp());
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add);
         activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
 
@@ -93,7 +157,8 @@ class ActivePartitionTest {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
         List<Long> deactivatedRecordCounts = new ArrayList<>();
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(
+                TOPIC_PARTITION, AcknowledgementQueueMode.STRICT, PartitionProcessingMetadataManager.noOp());
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add);
         activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
 
@@ -132,7 +197,8 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(
+                TOPIC_PARTITION, AcknowledgementQueueMode.STRICT, PartitionProcessingMetadataManager.noOp());
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add, acknowledgedOffsetsError::set);
         activePartition
                 .deactivatedRecordCounts()
@@ -161,7 +227,8 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(
+                TOPIC_PARTITION, AcknowledgementQueueMode.STRICT, PartitionProcessingMetadataManager.noOp());
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add, acknowledgedOffsetsError::set);
         activePartition
                 .deactivatedRecordCounts()
@@ -203,7 +270,8 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(
+                TOPIC_PARTITION, AcknowledgementQueueMode.STRICT, PartitionProcessingMetadataManager.noOp());
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
@@ -244,7 +312,8 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(
+                TOPIC_PARTITION, AcknowledgementQueueMode.STRICT, PartitionProcessingMetadataManager.noOp());
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
@@ -299,7 +368,8 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(
+                TOPIC_PARTITION, AcknowledgementQueueMode.STRICT, PartitionProcessingMetadataManager.noOp());
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
@@ -346,7 +416,8 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(
+                TOPIC_PARTITION, AcknowledgementQueueMode.STRICT, PartitionProcessingMetadataManager.noOp());
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
@@ -395,7 +466,8 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(
+                TOPIC_PARTITION, AcknowledgementQueueMode.STRICT, PartitionProcessingMetadataManager.noOp());
         activePartition
                 .acknowledgedOffsets()
                 .subscribe(
@@ -431,7 +503,8 @@ class ActivePartitionTest {
         AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
         CompletableFuture<Void> deactivatedRecordCountsCompletion = new CompletableFuture<>();
 
-        ActivePartition activePartition = new ActivePartition(TOPIC_PARTITION, AcknowledgementQueueMode.STRICT);
+        ActivePartition activePartition = new ActivePartition(
+                TOPIC_PARTITION, AcknowledgementQueueMode.STRICT, PartitionProcessingMetadataManager.noOp());
         activePartition
                 .acknowledgedOffsets()
                 .publishOn(Schedulers.boundedElastic())
@@ -479,5 +552,13 @@ class ActivePartitionTest {
 
     private static ConsumerRecord<String, String> newConsumerRecord(int offset) {
         return new ConsumerRecord<>(TOPIC_PARTITION.topic(), TOPIC_PARTITION.partition(), offset, "key", "value");
+    }
+
+    private static PartitionProcessingMetadataManager managerWithPreviouslyProcessed(Long... offsets) {
+        Set<Long> previouslyProcessed = new HashSet<>(Arrays.asList(offsets));
+        PartitionProcessingMetadataManager processingMetadataManager = mock(PartitionProcessingMetadataManager.class);
+        when(processingMetadataManager.previouslyProcessed(anyLong()))
+                .thenAnswer(it -> previouslyProcessed.contains(it.<Long>getArgument(0)));
+        return processingMetadataManager;
     }
 }
