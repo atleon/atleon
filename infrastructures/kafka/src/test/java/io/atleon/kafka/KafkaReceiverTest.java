@@ -130,7 +130,7 @@ class KafkaReceiverTest {
         ConsumerListener.Closure closureListener = ConsumerListener.closure();
         KafkaReceiverOptions<String, String> receiverOptions = newStringReceiverOptionsBuilder()
                 .consumerListener(closureListener)
-                .commitlessOffsets(true)
+                .commitlessOffsetTracking()
                 .build();
 
         KafkaReceiver.create(receiverOptions)
@@ -387,11 +387,12 @@ class KafkaReceiverTest {
                 KafkaSenderRecord.create(topic, partition, "key", "value1", null),
                 KafkaSenderRecord.create(topic, partition, "key", "value2", null));
 
-        KafkaReceiverOptions<String, String> receiverOptions = KafkaReceiverOptions.<String, String>newBuilder()
+        KafkaReceiverOptions.Builder<String, String> optionsBuilder = KafkaReceiverOptions.<String, String>newBuilder()
                 .consumerProperties(newStringConsumerProperties(groupId))
-                .commitBatchSize(2)
-                .commitlessOffsets(commitlessOffsets)
-                .build();
+                .commitBatchSize(2);
+        KafkaReceiverOptions<String, String> receiverOptions = commitlessOffsets
+                ? optionsBuilder.commitlessOffsetTracking().build()
+                : optionsBuilder.simpleOffsetTracking().build();
 
         KafkaTxManager txManager = mock(KafkaTxManager.class);
         when(txManager.begin()).thenReturn(Mono.empty());
@@ -796,7 +797,7 @@ class KafkaReceiverTest {
     private static <C extends Collection<Long>> C receiveLongValues(
             String topic, OffsetRangeProvider offsetRangeProvider, Collector<Long, ?, C> collector) {
         KafkaReceiverOptions<Long, Long> receiverOptions =
-                newLongReceiverOptionsBuilder().commitlessOffsets(true).build();
+                newLongReceiverOptionsBuilder().commitlessOffsetTracking().build();
         return receiveLongValues(receiverOptions, topic, offsetRangeProvider, collector);
     }
 

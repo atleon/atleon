@@ -109,7 +109,7 @@ public class KafkaBoundedReceiver<K, V> {
         KafkaReceiverOptions<K, V> receiverOptions = KafkaReceiverOptions.<K, V>newBuilder()
                 .consumerListener(ConsumerListener.seekOnce(recordRange.topicPartition(), recordRange.minInclusive()))
                 .consumerProperties(kafkaConfig.nativeProperties())
-                .commitlessOffsets(true)
+                .commitlessOffsetTracking()
                 .pollTimeout(kafkaConfig.loadDuration(POLL_TIMEOUT_CONFIG).orElse(DEFAULT_POLL_TIMEOUT))
                 .closeTimeout(kafkaConfig.loadDuration(CLOSE_TIMEOUT_CONFIG).orElse(DEFAULT_CLOSE_TIMEOUT))
                 .build();

@@ -25,7 +25,7 @@ import java.util.function.ToLongFunction;
  */
 final class ActivePartition {
 
-    private final TopicPartition topicPartition;
+    private final OffsetTracker offsetTracker;
 
     private final AcknowledgementQueue acknowledgementQueue;
 
@@ -47,18 +47,27 @@ final class ActivePartition {
     private final Sinks.Many<Long> deactivatedRecordCounts =
             Sinks.unsafe().many().unicast().onBackpressureError();
 
-    public ActivePartition(TopicPartition topicPartition, AcknowledgementQueueMode acknowledgementQueueMode) {
-        this.topicPartition = topicPartition;
+    public ActivePartition(OffsetTracker offsetTracker, AcknowledgementQueueMode acknowledgementQueueMode) {
+        this.offsetTracker = offsetTracker;
         this.acknowledgementQueue = AcknowledgementQueue.create(acknowledgementQueueMode);
     }
 
     /**
      * Activates a {@link ConsumerRecord} for processing, which is a prerequisite for emission.
-     * This will only return a non-empty result if this partition has not yet been deactivated.
+     * This will only return a non-empty result if this partition has not yet been deactivated,
+     * and if the configured {@link OffsetTracker} does not prohibit processing, based on the given
+     * record's offset.
      */
     public <K, V> Optional<KafkaReceiverRecord<K, V>> activateForProcessing(ConsumerRecord<K, V> consumerRecord) {
-        return activate(ConsumerOffset.create(topicPartition, consumerRecord))
-                .map(it -> KafkaReceiverRecord.create(consumerRecord, () -> ack(it), error -> nack(it, error)));
+        return activate(ConsumerOffset.create(topicPartition(), consumerRecord)).map(it -> {
+            if (offsetTracker.prohibitsProcessing(consumerRecord.offset())) {
+                ack(consumerRecord.offset(), it);
+                return null;
+            } else {
+                long offset = consumerRecord.offset();
+                return KafkaReceiverRecord.create(consumerRecord, () -> ack(offset, it), error -> nack(it, error));
+            }
+        });
     }
 
     /**
@@ -119,10 +128,17 @@ final class ActivePartition {
     }
 
     /**
-     * Returns a publisher of offsets that have been acknowledged and may be directly committed.
+     * Returns a publisher of offsets that have been acknowledged and may be prepared for
+     * commitment. The configured {@link OffsetTracker} may provide an initially committable offset
+     * which can be used to create an initially acknowledgeable offset through which updated
+     * metadata can be attached. Such updated metadata is created and subscribed via delegation to
+     * the offset tracker for all acknowledged offsets.
      */
     public Flux<AcknowledgedOffset> acknowledgedOffsets() {
-        return consumerOffsetsOfAcknowledged.asFlux().map(it -> new AcknowledgedOffset(it, __ -> Mono.just("")));
+        return Mono.justOrEmpty(offsetTracker.initiallyCommittableOffset())
+                .map(it -> new ConsumerOffset(topicPartition(), it - 1))
+                .concatWith(consumerOffsetsOfAcknowledged.asFlux())
+                .map(it -> new AcknowledgedOffset(it, offsetTracker::commitMetadata));
     }
 
     public Flux<Long> deactivatedRecordCounts() {
@@ -130,7 +146,7 @@ final class ActivePartition {
     }
 
     public TopicPartition topicPartition() {
-        return topicPartition;
+        return offsetTracker.topicPartition();
     }
 
     private Optional<AcknowledgementQueue.InFlight> activate(ConsumerOffset consumerOffset) {
@@ -149,7 +165,8 @@ final class ActivePartition {
         }
     }
 
-    private void ack(AcknowledgementQueue.InFlight inFlight) {
+    private void ack(long offset, AcknowledgementQueue.InFlight inFlight) {
+        offsetTracker.acknowledged(offset);
         acknowledge(queue -> queue.complete(inFlight));
     }
 
