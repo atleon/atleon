@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -235,7 +236,7 @@ class ReceivingConsumerTest {
     public static class NoOpPartitionListener implements ReceivingConsumer.PartitionListener {
 
         @Override
-        public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {}
+        public void onPartitionsAssigned(Consumer<?, ?> consumer, Map<TopicPartition, OffsetTracker> assignment) {}
 
         @Override
         public void onPartitionsRevoked(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {}

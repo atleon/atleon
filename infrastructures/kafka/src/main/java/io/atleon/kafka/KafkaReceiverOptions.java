@@ -68,7 +68,7 @@ public final class KafkaReceiverOptions<K, V> {
 
     private final int maxCommitAttempts;
 
-    private final boolean commitlessOffsets;
+    private final OffsetTrackingStrategy offsetTrackingStrategy;
 
     private final Duration revocationGracePeriod;
 
@@ -91,7 +91,7 @@ public final class KafkaReceiverOptions<K, V> {
             Duration commitPeriod,
             Duration commitTimeout,
             int maxCommitAttempts,
-            boolean commitlessOffsets,
+            OffsetTrackingStrategy offsetTrackingStrategy,
             Duration revocationGracePeriod,
             Duration terminationGracePeriod,
             Duration closeTimeout) {
@@ -109,7 +109,7 @@ public final class KafkaReceiverOptions<K, V> {
         this.commitPeriod = commitPeriod;
         this.commitTimeout = commitTimeout;
         this.maxCommitAttempts = maxCommitAttempts;
-        this.commitlessOffsets = commitlessOffsets;
+        this.offsetTrackingStrategy = offsetTrackingStrategy;
         this.revocationGracePeriod = revocationGracePeriod;
         this.terminationGracePeriod = terminationGracePeriod;
         this.closeTimeout = closeTimeout;
@@ -148,7 +148,7 @@ public final class KafkaReceiverOptions<K, V> {
                 .commitPeriod(commitPeriod)
                 .commitTimeout(commitTimeout)
                 .maxCommitAttempts(maxCommitAttempts)
-                .commitlessOffsets(commitlessOffsets)
+                .offsetTrackingStrategy(offsetTrackingStrategy)
                 .revocationGracePeriod(revocationGracePeriod)
                 .terminationGracePeriod(terminationGracePeriod)
                 .closeTimeout(closeTimeout);
@@ -273,8 +273,17 @@ public final class KafkaReceiverOptions<K, V> {
     /**
      * @see Builder#commitlessOffsets(boolean)
      */
+    @Deprecated
     public boolean commitlessOffsets() {
-        return commitlessOffsets;
+        return offsetTrackingStrategy instanceof OffsetTrackingStrategy.Commitless;
+    }
+
+    /**
+     * @see Builder#simpleOffsetTracking()
+     * @see Builder#commitlessOffsetTracking()
+     */
+    public OffsetTrackingStrategy offsetTrackingStrategy() {
+        return offsetTrackingStrategy;
     }
 
     /**
@@ -364,7 +373,7 @@ public final class KafkaReceiverOptions<K, V> {
 
         private int maxCommitAttempts = DEFAULT_MAX_COMMIT_ATTEMPTS;
 
-        private boolean commitlessOffsets = false;
+        private OffsetTrackingStrategy offsetTrackingStrategy = OffsetTrackingStrategy.simple();
 
         private Duration revocationGracePeriod = DEFAULT_REVOCATION_GRACE_PERIOD;
 
@@ -537,10 +546,33 @@ public final class KafkaReceiverOptions<K, V> {
         /**
          * Configures whether offset commitment is disabled, which can be useful for stateless
          * consumption.
+         * @deprecated Use {@link #commitlessOffsetTracking()}
          */
+        @Deprecated
         public Builder<K, V> commitlessOffsets(boolean commitlessOffsets) {
-            this.commitlessOffsets = commitlessOffsets;
-            return this;
+            if (commitlessOffsets) {
+                return commitlessOffsetTracking();
+            } else if (offsetTrackingStrategy instanceof OffsetTrackingStrategy.Commitless) {
+                return simpleOffsetTracking();
+            } else if (offsetTrackingStrategy instanceof OffsetTrackingStrategy.Simple) {
+                return this;
+            } else {
+                throw new UnsupportedOperationException("Cannot disable commitless offsets with non-trivial strategy");
+            }
+        }
+
+        /**
+         * Sets (or resets) offset tracking strategy to {@link OffsetTrackingStrategy#simple()}.
+         */
+        public Builder<K, V> simpleOffsetTracking() {
+            return offsetTrackingStrategy(OffsetTrackingStrategy.simple());
+        }
+
+        /**
+         * Sets offset tracking strategy to {@link OffsetTrackingStrategy#commitless()}.
+         */
+        public Builder<K, V> commitlessOffsetTracking() {
+            return offsetTrackingStrategy(OffsetTrackingStrategy.commitless());
         }
 
         /**
@@ -581,6 +613,11 @@ public final class KafkaReceiverOptions<K, V> {
             return this;
         }
 
+        private Builder<K, V> offsetTrackingStrategy(OffsetTrackingStrategy offsetTrackingStrategy) {
+            this.offsetTrackingStrategy = offsetTrackingStrategy;
+            return this;
+        }
+
         public KafkaReceiverOptions<K, V> build() {
             return new KafkaReceiverOptions<>(
                     consumerSupplierFactory,
@@ -597,7 +634,7 @@ public final class KafkaReceiverOptions<K, V> {
                     commitPeriod,
                     commitTimeout,
                     maxCommitAttempts,
-                    commitlessOffsets,
+                    offsetTrackingStrategy,
                     revocationGracePeriod,
                     terminationGracePeriod,
                     closeTimeout);

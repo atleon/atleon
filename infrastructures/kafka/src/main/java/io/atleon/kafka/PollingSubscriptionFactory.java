@@ -2,7 +2,6 @@ package io.atleon.kafka;
 
 import io.atleon.core.SerialQueue;
 import io.atleon.core.ShouldBeTerminatedEmitFailureHandler;
-import io.atleon.util.Consuming;
 import io.atleon.util.Publishing;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
@@ -26,7 +25,6 @@ import reactor.util.function.Tuples;
 
 import java.time.Duration;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -144,9 +142,10 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         @Override
-        public final void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-            pollManager.activateAssigned(consumer, partitions, partition -> {
-                ActivePartition activePartition = new ActivePartition(partition, options.acknowledgementQueueMode());
+        public final void onPartitionsAssigned(Consumer<?, ?> consumer, Map<TopicPartition, OffsetTracker> assignment) {
+            pollManager.activateAssigned(consumer, assignment.keySet(), partition -> {
+                ActivePartition activePartition =
+                        new ActivePartition(assignment.get(partition), options.acknowledgementQueueMode());
                 onPartitionActivated(consumer, activePartition);
                 listener.onPartitionActivated(partition);
 
@@ -375,9 +374,8 @@ final class PollingSubscriptionFactory<K, V> {
 
         @Override
         protected void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition partition) {
-            java.util.function.Consumer<AcknowledgedOffset> acknowledgementHandler = options.commitlessOffsets()
-                    ? Consuming.noOp()
-                    : asyncOffsetCommitter.acknowledgementHandlerForAssigned(partition.topicPartition());
+            java.util.function.Consumer<AcknowledgedOffset> acknowledgementHandler =
+                    asyncOffsetCommitter.acknowledgementHandlerForAssigned(partition.topicPartition());
             partition.acknowledgedOffsets().subscribe(acknowledgementHandler, this::failSafely);
         }
 
@@ -406,8 +404,7 @@ final class PollingSubscriptionFactory<K, V> {
                     prepareCommit(latestAcknowledgedOffsets).as(Publishing::cacheSuccess);
 
             try {
-                Map<TopicPartition, OffsetAndMetadata> offsetsToCommit =
-                        options.commitlessOffsets() ? Collections.emptyMap() : preparedOffsetsToCommit.block();
+                Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = preparedOffsetsToCommit.block();
                 if (!offsetsToCommit.isEmpty()) {
                     LOGGER.info("Committing offsets on revocation: {}", offsetsToCommit);
                     consumer.commitSync(offsetsToCommit, options.commitTimeout());
@@ -626,7 +623,7 @@ final class PollingSubscriptionFactory<K, V> {
 
         private void maybeSendOffsetsInCurrentTransaction(Map<TopicPartition, OffsetAndMetadata> offsets) {
             if (capState.compareAndSet(0, TxCapStates.OFFSETTING)) {
-                if (!options.commitlessOffsets()) {
+                if (!offsets.isEmpty()) {
                     transact(it -> it.sendOffsets(offsets, groupMetadata), () -> {
                         if (capState.compareAndSet(TxCapStates.OFFSETTING, TxCapStates.COMMITTABLE)) {
                             drain();

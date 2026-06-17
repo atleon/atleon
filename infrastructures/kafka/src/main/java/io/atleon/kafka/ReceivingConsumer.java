@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.BiConsumer;
@@ -55,6 +56,8 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     private final Consumer<K, V> externalConsumerProxy;
 
+    private final OffsetTrackingStrategy offsetTrackingStrategy;
+
     private final PartitionListener partitionListener;
 
     private final TaskLoop taskLoop;
@@ -71,6 +74,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
             java.util.function.Consumer<Throwable> errorHandler) {
         this.consumer = options.createConsumer();
         this.externalConsumerProxy = Proxying.interfaceMethods(Consumer.class, this::invokeConsumerFromExternal);
+        this.offsetTrackingStrategy = options.offsetTrackingStrategy();
         this.partitionListener = partitionListener;
         this.taskLoop = TaskLoop.start(options.loadConsumerTaskLoopName(), it -> runSafely(it, errorHandler));
         this.consumerListener = options.createConsumerListener(this);
@@ -107,9 +111,9 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
                 assignment.stream().filter(it -> !validAssignment.contains(it)).collect(Collectors.toList());
         if (!invalidAssignment.isEmpty()) {
             throw new IllegalStateException("After rebalancing, there are partitions currently assigned that are"
-                    + " missing from the onPartitionsAssigned callback. These partitions have either never been assigned to"
-                    + " this consumer, or (more likely) were just recently revoked. This is suspected to be a bug in the"
-                    + " Kafka Consumer implementation that could lead to skipped records due to improper position"
+                    + " missing from the onPartitionsAssigned callback. These partitions have either never been assigned"
+                    + " to this consumer, or (more likely) were just recently revoked. This is suspected to be a bug in"
+                    + " the Kafka Consumer implementation that could lead to skipped records due to improper position"
                     + " management on partition reassignment. For future debugging, this condition tends to be correlated"
                     + " with paused partitions being revoked, followed by interruption to the rebalance process due to"
                     + " invoking Consumer.wakeup(). The affected partitions are: "
@@ -124,7 +128,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         // Not wrapping with try-catch. If user does something naughty, let the error be emitted.
         consumerListener.onPartitionsAssigned(externalConsumerProxy, partitions);
         // Done after external listening to account for possible seeking or metadata updates.
-        partitionListener.onPartitionsAssigned(consumer, partitions);
+        partitionListener.onPartitionsAssigned(consumer, assignOffsetTrackers(partitions));
     }
 
     @Override
@@ -177,6 +181,11 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
         externalHandler.accept(externalConsumerProxy, partitions);
     }
 
+    private Map<TopicPartition, OffsetTracker> assignOffsetTrackers(Collection<TopicPartition> partitions) {
+        return offsetTrackingStrategy.assignTrackers(externalConsumerProxy, partitions).stream()
+                .collect(Collectors.toMap(OffsetTracker::topicPartition, Function.identity()));
+    }
+
     private Object invokeConsumerFromExternal(Method method, Object[] args) throws ReflectiveOperationException {
         if (!taskLoop.isSourceOfCurrentThread()) {
             throw new UnsupportedOperationException("Kafka Consumer must be invoked from polling thread");
@@ -215,7 +224,7 @@ final class ReceivingConsumer<K, V> implements ConsumerRebalanceListener, Consum
 
     public interface PartitionListener {
 
-        void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions);
+        void onPartitionsAssigned(Consumer<?, ?> consumer, Map<TopicPartition, OffsetTracker> assignment);
 
         void onPartitionsRevoked(Consumer<?, ?> consumer, Collection<TopicPartition> partitions);
 

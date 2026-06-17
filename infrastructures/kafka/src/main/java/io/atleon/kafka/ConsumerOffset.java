@@ -19,7 +19,7 @@ public final class ConsumerOffset {
 
     private final Optional<Integer> leaderEpoch;
 
-    public ConsumerOffset(TopicPartition topicPartition, long offset) {
+    ConsumerOffset(TopicPartition topicPartition, long offset) {
         this(topicPartition, offset, Optional.empty());
     }
 
