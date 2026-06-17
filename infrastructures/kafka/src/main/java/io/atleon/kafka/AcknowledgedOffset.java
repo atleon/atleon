@@ -2,6 +2,9 @@ package io.atleon.kafka;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
+import reactor.util.function.Tuples;
 
 import java.util.function.LongFunction;
 
@@ -15,11 +18,17 @@ final class AcknowledgedOffset {
 
     private final ConsumerOffset consumerOffset;
 
-    private final LongFunction<String> offsetCommitmentMetadataFactory;
+    private final LongFunction<Mono<String>> metadataCommitment;
 
-    public AcknowledgedOffset(ConsumerOffset consumerOffset, LongFunction<String> offsetCommitmentMetadataFactory) {
+    public AcknowledgedOffset(ConsumerOffset consumerOffset, LongFunction<Mono<String>> metadataCommitment) {
         this.consumerOffset = consumerOffset;
-        this.offsetCommitmentMetadataFactory = offsetCommitmentMetadataFactory;
+        this.metadataCommitment = metadataCommitment;
+    }
+
+    public Mono<Tuple2<TopicPartition, OffsetAndMetadata>> prepareCommitment() {
+        long commitOffset = consumerOffset.offset() + 1;
+        Mono<String> commitMetadata = metadataCommitment.apply(commitOffset);
+        return commitMetadata.map(it -> Tuples.of(topicPartition(), newOffsetAndMetadata(commitOffset, it)));
     }
 
     public TopicPartition topicPartition() {
@@ -30,17 +39,7 @@ final class AcknowledgedOffset {
         return consumerOffset;
     }
 
-    public OffsetAndMetadata nextOffset() {
-        return nextOffsetAndMetadata(__ -> "");
-    }
-
-    public OffsetAndMetadata commitOffset() {
-        return nextOffsetAndMetadata(offsetCommitmentMetadataFactory);
-    }
-
-    private OffsetAndMetadata nextOffsetAndMetadata(LongFunction<String> nextOffsetMetadataFactory) {
-        long nextOffset = consumerOffset.offset() + 1;
-        String metadata = nextOffsetMetadataFactory.apply(nextOffset);
-        return new OffsetAndMetadata(nextOffset, consumerOffset.leaderEpoch(), metadata);
+    private OffsetAndMetadata newOffsetAndMetadata(long offset, String metadata) {
+        return new OffsetAndMetadata(offset, consumerOffset.leaderEpoch(), metadata);
     }
 }

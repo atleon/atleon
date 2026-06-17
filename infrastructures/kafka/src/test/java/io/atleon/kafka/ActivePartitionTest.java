@@ -84,7 +84,7 @@ class ActivePartitionTest {
         assertEquals(TOPIC_PARTITION, acknowledgedOffsets.get(0).topicPartition());
         assertEquals(
                 consumerRecord.offset() + 1,
-                acknowledgedOffsets.get(0).nextOffset().offset());
+                acknowledgedOffsets.get(0).prepareCommitment().block().getT2().offset());
         assertEquals(Collections.singletonList(1L), deactivatedRecordCounts);
     }
 
@@ -114,13 +114,13 @@ class ActivePartitionTest {
         assertEquals(TOPIC_PARTITION, acknowledgedOffsets.get(2).topicPartition());
         assertEquals(
                 receiverRecord1.consumerRecord().offset() + 1,
-                acknowledgedOffsets.get(0).nextOffset().offset());
+                acknowledgedOffsets.get(0).prepareCommitment().block().getT2().offset());
         assertEquals(
                 receiverRecord2.consumerRecord().offset() + 1,
-                acknowledgedOffsets.get(1).nextOffset().offset());
+                acknowledgedOffsets.get(1).prepareCommitment().block().getT2().offset());
         assertEquals(
                 receiverRecord3.consumerRecord().offset() + 1,
-                acknowledgedOffsets.get(2).nextOffset().offset());
+                acknowledgedOffsets.get(2).prepareCommitment().block().getT2().offset());
         assertEquals(Arrays.asList(1L, 2L), deactivatedRecordCounts);
     }
 
@@ -187,7 +187,7 @@ class ActivePartitionTest {
         assertEquals(1, acknowledgedOffsets.size());
         assertEquals(
                 receiverRecord1.consumerRecord().offset() + 1,
-                acknowledgedOffsets.get(0).nextOffset().offset());
+                acknowledgedOffsets.get(0).prepareCommitment().block().getT2().offset());
         assertInstanceOf(IllegalStateException.class, acknowledgedOffsetsError.get());
         assertEquals(Arrays.asList(1L, 3L), deactivatedRecordCounts);
         assertNull(deactivatedRecordCountsError.get());
@@ -471,7 +471,7 @@ class ActivePartitionTest {
         assertEquals(1, acknowledgedOffsets.size());
         assertEquals(
                 receiverRecord1.consumerRecord().offset() + 1,
-                acknowledgedOffsets.get(0).nextOffset().offset());
+                acknowledgedOffsets.get(0).prepareCommitment().block().getT2().offset());
         assertNull(acknowledgedOffsetsError.get());
         assertEquals(Arrays.asList(1L, 2L), deactivatedRecordCounts);
         assertNull(deactivatedRecordCountsError.get());

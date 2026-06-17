@@ -7,6 +7,7 @@ import org.apache.kafka.clients.consumer.RetriableCommitFailedException;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
@@ -48,7 +49,7 @@ class AsyncOffsetCommitterTest {
 
         committer
                 .acknowledgementHandlerForAssigned(topicPartition)
-                .accept(new AcknowledgedOffset(consumerOffset, __ -> ""));
+                .accept(new AcknowledgedOffset(consumerOffset, __ -> Mono.just("")));
 
         assertInstanceOf(UnsupportedOperationException.class, error.get());
         assertFalse(committer.isCommitTrialExhausted(topicPartition));
@@ -84,7 +85,7 @@ class AsyncOffsetCommitterTest {
 
         committer
                 .acknowledgementHandlerForAssigned(topicPartition)
-                .accept(new AcknowledgedOffset(consumerOffset, __ -> ""));
+                .accept(new AcknowledgedOffset(consumerOffset, __ -> Mono.just("")));
 
         assertEquals(2, commitAttempts.get());
         assertNull(error.get());
@@ -117,7 +118,7 @@ class AsyncOffsetCommitterTest {
 
         committer
                 .acknowledgementHandlerForAssigned(topicPartition)
-                .accept(new AcknowledgedOffset(consumerOffset, __ -> ""));
+                .accept(new AcknowledgedOffset(consumerOffset, __ -> Mono.just("")));
 
         assertEquals(maxCommitAttempts, commitAttempts.get());
         assertInstanceOf(KafkaException.class, error.get());

@@ -2,6 +2,7 @@ package io.atleon.kafka;
 
 import io.atleon.core.SerialQueue;
 import io.atleon.core.ShouldBeTerminatedEmitFailureHandler;
+import io.atleon.util.Publishing;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.KafkaException;
@@ -9,8 +10,10 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Scheduler;
+import reactor.util.function.Tuple2;
 
 import java.time.Duration;
 import java.util.Map;
@@ -120,8 +123,10 @@ final class AsyncOffsetCommitter {
             Map<TopicPartition, OffsetAndMetadata> validatedOffsets = committableOffsets.entrySet().stream()
                     .filter(it -> it.getValue().sequence() == getAssignment(it.getKey()))
                     .filter(it -> commitSequences.get(it.getKey()) == getCommit(it.getKey()))
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey, it -> it.getValue().commitOffset()));
+                    .map(entry -> entry.getValue().prepareCommitment())
+                    .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
+                    .collectMap(Tuple2::getT1, Tuple2::getT2)
+                    .block();
             commit(consumer, validatedOffsets, commitSequences);
         });
     }
@@ -210,12 +215,12 @@ final class AsyncOffsetCommitter {
             this.sequence = sequence;
         }
 
-        public TopicPartition topicPartition() {
-            return acknowledgedOffset.topicPartition();
+        public Mono<Tuple2<TopicPartition, OffsetAndMetadata>> prepareCommitment() {
+            return acknowledgedOffset.prepareCommitment();
         }
 
-        public OffsetAndMetadata commitOffset() {
-            return acknowledgedOffset.commitOffset();
+        public TopicPartition topicPartition() {
+            return acknowledgedOffset.topicPartition();
         }
 
         public long sequence() {
