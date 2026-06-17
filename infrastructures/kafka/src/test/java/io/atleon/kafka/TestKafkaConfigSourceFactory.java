@@ -23,7 +23,6 @@ public final class TestKafkaConfigSourceFactory {
                 .with(
                         ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
                         OffsetResetStrategy.EARLIEST.name().toLowerCase())
-                .with(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, false) // Avoid flakiness with embedded broker
                 .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
                 .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
                 .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())

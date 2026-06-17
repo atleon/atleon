@@ -122,7 +122,7 @@ final class ActivePartition {
      * Returns a publisher of offsets that have been acknowledged and may be directly committed.
      */
     public Flux<AcknowledgedOffset> acknowledgedOffsets() {
-        return consumerOffsetsOfAcknowledged.asFlux().map(it -> new AcknowledgedOffset(it, __ -> ""));
+        return consumerOffsetsOfAcknowledged.asFlux().map(it -> new AcknowledgedOffset(it, __ -> Mono.just("")));
     }
 
     public Flux<Long> deactivatedRecordCounts() {

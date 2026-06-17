@@ -8,10 +8,10 @@ import java.util.Optional;
 
 /**
  * Hydrated descriptor of an offset associated with a consumed (or consumable)
- * {@link org.apache.kafka.clients.consumer.ConsumerRecord}. This includes the originating
- * {@link TopicPartition}, record offset, and epoch of the partition leader.
+ * {@link ConsumerRecord}. This includes the originating {@link TopicPartition}, record offset,
+ * and epoch of the partition leader.
  */
-final class ConsumerOffset {
+public final class ConsumerOffset {
 
     private final TopicPartition topicPartition;
 

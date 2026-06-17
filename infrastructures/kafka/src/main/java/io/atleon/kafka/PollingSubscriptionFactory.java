@@ -26,6 +26,7 @@ import reactor.util.function.Tuples;
 
 import java.time.Duration;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -56,6 +57,17 @@ final class PollingSubscriptionFactory<K, V> {
             ConsumptionSpec consumptionSpec,
             Subscriber<? super KafkaReceiverRecord<K, V>> subscriber) {
         return new TransactionalPoller(txManager, consumptionSpec, subscriber);
+    }
+
+    private static Mono<Map<TopicPartition, OffsetAndMetadata>> prepareCommit(Flux<AcknowledgedOffset> offsets) {
+        return offsets.collectMap(AcknowledgedOffset::topicPartition).flatMap(it -> prepareCommit(it.values()));
+    }
+
+    private static Mono<Map<TopicPartition, OffsetAndMetadata>> prepareCommit(Collection<AcknowledgedOffset> offsets) {
+        return offsets.stream()
+                .map(AcknowledgedOffset::prepareCommitment)
+                .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
+                .collectMap(Tuple2::getT1, Tuple2::getT2);
     }
 
     private static void runSafely(Runnable task, String name) {
@@ -377,17 +389,26 @@ final class PollingSubscriptionFactory<K, V> {
             // this redundancy is significantly undesirable. Under low load, the overhead of a
             // synchronous commit is not likely to meaningfully degrade already-low throughput. As
             // load increases, so does the likelihood that there will be acknowledged uncommitted
-            // offsets, and it becomes more desirable to attempt to honor that progress.
+            // offsets, and it becomes more desirable to attempt to honor that progress. Moreover,
+            // it may be the case that commit metadata has changed, and committing with the most
+            // recent acknowledged offset ensures that update.
             Duration gracePeriod = options.revocationGracePeriod();
-            Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = partitions.stream()
+            Collection<AcknowledgedOffset> latestAcknowledgedOffsets = partitions.stream()
                     .map(it -> it.deactivateLatest(gracePeriod, auxiliaryScheduler, termination.asMono()))
                     .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
                     .filter(it -> !asyncOffsetCommitter.isCommitTrialExhausted(it.topicPartition()))
-                    .collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::commitOffset)
+                    .collectList()
                     .block();
+            // Prepare offsets for commitment, but defer subscription so we can choose (or not
+            // choose) to block on it inside both try and catch blocks (and cache result so we only
+            // prepare commitment once).
+            Mono<Map<TopicPartition, OffsetAndMetadata>> preparedOffsetsToCommit =
+                    prepareCommit(latestAcknowledgedOffsets).as(Publishing::cacheSuccess);
 
             try {
-                if (!offsetsToCommit.isEmpty() && !options.commitlessOffsets()) {
+                Map<TopicPartition, OffsetAndMetadata> offsetsToCommit =
+                        options.commitlessOffsets() ? Collections.emptyMap() : preparedOffsetsToCommit.block();
+                if (!offsetsToCommit.isEmpty()) {
                     LOGGER.info("Committing offsets on revocation: {}", offsetsToCommit);
                     consumer.commitSync(offsetsToCommit, options.commitTimeout());
                 }
@@ -402,10 +423,10 @@ final class PollingSubscriptionFactory<K, V> {
                 // we retry one LAST time. Note that the wakeup signal is not re-emitted, such as
                 // to let the rebalance continue as normal.
                 try {
-                    consumer.commitSync(offsetsToCommit, options.commitTimeout());
+                    consumer.commitSync(preparedOffsetsToCommit.block(), options.commitTimeout());
                 } catch (WakeupException __) {
                     LOGGER.info("Consumer commit-on-revocation woken (last attempt)");
-                    consumer.commitSync(offsetsToCommit, options.commitTimeout());
+                    consumer.commitSync(preparedOffsetsToCommit.block(), options.commitTimeout());
                 }
             } finally {
                 // Lastly, sanitize sequence counters to account for possible in-flight commits and
@@ -472,7 +493,7 @@ final class PollingSubscriptionFactory<K, V> {
             this.transactionalOffsetsSend = acknowledgedOffsets
                     .asFlux()
                     .windowWhen(offsetsState(TxOffsetsState.PROCESSING), __ -> offsetsState(TxOffsetsState.COMMITTING))
-                    .concatMap(it -> it.collectMap(AcknowledgedOffset::topicPartition, AcknowledgedOffset::nextOffset))
+                    .concatMap(PollingSubscriptionFactory::prepareCommit)
                     .subscribe(this::maybeSendOffsetsInCurrentTransaction, this::failSafely);
         }
 
