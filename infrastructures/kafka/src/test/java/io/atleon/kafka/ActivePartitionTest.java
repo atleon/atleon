@@ -112,9 +112,9 @@ class ActivePartitionTest {
     public void acknowledgedOffsets_givenInitiallyCommittableOffset_expectsAcknowledgedOffsetWithUpdatedMetadata() {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
 
-        long initiallyCommittableOffset = 5L;
-        ActivePartition activePartition = new ActivePartition(
-                committableOffsetTracker(initiallyCommittableOffset), AcknowledgementQueueMode.STRICT);
+        ConsumerOffset initialConsumerOffset = new ConsumerOffset(TOPIC_PARTITION, 4L);
+        ActivePartition activePartition =
+                new ActivePartition(initializedOffsetTracker(initialConsumerOffset), AcknowledgementQueueMode.STRICT);
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add);
 
         // Even without any record being acknowledged, an initially committable offset is emitted as
@@ -122,14 +122,14 @@ class ActivePartitionTest {
         // less than the committable offset, since the committed offset is the numerical increment.
         assertEquals(1, acknowledgedOffsets.size());
         assertEquals(
-                initiallyCommittableOffset - 1,
+                initialConsumerOffset.offset(),
                 acknowledgedOffsets.get(0).consumerOffset().offset());
 
         // On commitment, the offset tracker supplies updated metadata for the committable offset.
         OffsetAndMetadata committed =
                 acknowledgedOffsets.get(0).prepareCommitment().block().getT2();
-        assertEquals(initiallyCommittableOffset, committed.offset());
-        assertEquals("metadata-" + initiallyCommittableOffset, committed.metadata());
+        assertEquals(initialConsumerOffset.offset() + 1, committed.offset());
+        assertEquals("metadata-" + (initialConsumerOffset.offset() + 1), committed.metadata());
     }
 
     @Test
@@ -555,9 +555,9 @@ class ActivePartitionTest {
         return offsetTracker;
     }
 
-    private static OffsetTracker committableOffsetTracker(long initiallyCommittableOffset) {
+    private static OffsetTracker initializedOffsetTracker(ConsumerOffset initialConsumerOffset) {
         OffsetTracker offsetTracker = mock(OffsetTracker.class, AdditionalAnswers.delegatesTo(newOffsetTracker()));
-        when(offsetTracker.initiallyCommittableOffset()).thenReturn(Optional.of(initiallyCommittableOffset));
+        when(offsetTracker.initialConsumerOffset()).thenReturn(Optional.of(initialConsumerOffset));
         when(offsetTracker.commitMetadata(anyLong()))
                 .thenAnswer(invocation -> Mono.just("metadata-" + invocation.<Long>getArgument(0)));
         return offsetTracker;

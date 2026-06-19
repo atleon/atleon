@@ -129,14 +129,13 @@ final class ActivePartition {
 
     /**
      * Returns a publisher of offsets that have been acknowledged and may be prepared for
-     * commitment. The configured {@link OffsetTracker} may provide an initially committable offset
-     * which can be used to create an initially acknowledgeable offset through which updated
-     * metadata can be attached. Such updated metadata is created and subscribed via delegation to
-     * the offset tracker for all acknowledged offsets.
+     * commitment. The configured {@link OffsetTracker} may provide an initial consumer offset
+     * which can be used to create an initial acknowledgeable offset through which updated metadata
+     * can be attached. Such updated metadata is created and subscribed via delegation to the
+     * offset tracker for all acknowledged offsets.
      */
     public Flux<AcknowledgedOffset> acknowledgedOffsets() {
-        return Mono.justOrEmpty(offsetTracker.initiallyCommittableOffset())
-                .map(it -> new ConsumerOffset(topicPartition(), it - 1))
+        return Mono.justOrEmpty(offsetTracker.initialConsumerOffset())
                 .concatWith(consumerOffsetsOfAcknowledged.asFlux())
                 .map(it -> new AcknowledgedOffset(it, offsetTracker::commitMetadata));
     }

@@ -30,6 +30,16 @@ public interface OffsetTrackingStrategy {
     }
 
     /**
+     * Strategy that assigns {@link OffsetTracker#acknowledgedAheadOfCommit(ConsumerPartition)}
+     * to all assigned partitions.
+     */
+    static OffsetTrackingStrategy acknowledgedAheadOfCommit() {
+        return (consumer, partitions) -> ConsumerPartition.create(consumer, partitions).stream()
+                .map(OffsetTracker::acknowledgedAheadOfCommit)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Creates a {@link Collection} of {@link OffsetTracker} instances for each of the
      * provided/assigned {@link TopicPartition}s. Implementations should return an entry for each
      * given partition.

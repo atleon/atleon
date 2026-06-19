@@ -23,7 +23,7 @@ public final class ConsumerOffset {
         this(topicPartition, offset, Optional.empty());
     }
 
-    private ConsumerOffset(TopicPartition topicPartition, long offset, Optional<Integer> leaderEpoch) {
+    ConsumerOffset(TopicPartition topicPartition, long offset, Optional<Integer> leaderEpoch) {
         this.topicPartition = topicPartition;
         this.offset = offset;
         this.leaderEpoch = leaderEpoch;
