@@ -64,6 +64,19 @@ public class AloKafkaReceiver<K, V> {
     public static final String CONFIG_PREFIX = "kafka.receiver.";
 
     /**
+     * Configures the {@link OffsetTrackingStrategy} used to control behavior of offset state
+     * management.
+     *
+     * @see OffsetTrackingStrategy
+     */
+    public static final String OFFSET_TRACKING_STRATEGY_CONFIG = CONFIG_PREFIX + "offset.tracking.strategy";
+
+    public static final String OFFSET_TRACKING_STRATEGY_TYPE_SIMPLE = "simple";
+
+    public static final String OFFSET_TRACKING_STRATEGY_TYPE_ACKNOWLEDGED_AHEAD_OF_COMMIT =
+            "acknowledged-ahead-of-commit";
+
+    /**
      * Configures the operating mode of the Acknowledgement Queue used to maintain commitment order
      * of consumer offsets. By default, the mode is STRICT, where any given record's offset is not
      * committed until all records received before it have been committed, and each record's offset
@@ -108,6 +121,7 @@ public class AloKafkaReceiver<K, V> {
      * When negative acknowledgement results in emitting the corresponding error, this configures
      * the timeout on successfully emitting that error.
      */
+    @Deprecated
     public static final String ERROR_EMISSION_TIMEOUT_CONFIG = CONFIG_PREFIX + "error.emission.timeout";
 
     /**
@@ -483,6 +497,7 @@ public class AloKafkaReceiver<K, V> {
                     .commitPeriod(config.loadDuration(COMMIT_INTERVAL_CONFIG).orElse(defaultOptions.commitPeriod()))
                     .maxCommitAttempts(
                             config.loadInt(MAX_COMMIT_ATTEMPTS_CONFIG).orElse(defaultOptions.maxCommitAttempts()))
+                    .offsetTrackingStrategy(loadOffsetTrackingStrategy().orElseGet(OffsetTrackingStrategy::simple))
                     .revocationGracePeriod(loadRevocationGracePeriod().orElse(defaultOptions.revocationGracePeriod()))
                     .terminationGracePeriod(config.loadDuration(TERMINATION_GRACE_PERIOD_CONFIG)
                             .orElse(defaultOptions.terminationGracePeriod()))
@@ -501,6 +516,13 @@ public class AloKafkaReceiver<K, V> {
                             CommonClientConfigs.CLIENT_ID_CONFIG, (__, id) -> incrementId(id.toString()));
                 }
             });
+        }
+
+        private Optional<OffsetTrackingStrategy> loadOffsetTrackingStrategy() {
+            return config.loadInstanceWithPredefinedTypes(
+                    OFFSET_TRACKING_STRATEGY_CONFIG,
+                    OffsetTrackingStrategy.class,
+                    ReceiveResources::newPredefinedOffsetTrackingStrategy);
         }
 
         private Optional<Duration> loadRevocationGracePeriod() {
@@ -535,6 +557,16 @@ public class AloKafkaReceiver<K, V> {
                 aloRecords = aloRecords.tap(factory);
             }
             return aloRecords;
+        }
+
+        private static Optional<OffsetTrackingStrategy> newPredefinedOffsetTrackingStrategy(String typeName) {
+            if (typeName.equalsIgnoreCase(OFFSET_TRACKING_STRATEGY_TYPE_SIMPLE)) {
+                return Optional.of(OffsetTrackingStrategy.simple());
+            } else if (typeName.equalsIgnoreCase(OFFSET_TRACKING_STRATEGY_TYPE_ACKNOWLEDGED_AHEAD_OF_COMMIT)) {
+                return Optional.of(OffsetTrackingStrategy.acknowledgedAheadOfCommit());
+            } else {
+                return Optional.empty();
+            }
         }
 
         private static PollStrategyFactory createPollStrategyFactory(KafkaConfig config) {

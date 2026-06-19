@@ -576,6 +576,13 @@ public final class KafkaReceiverOptions<K, V> {
         }
 
         /**
+         * Sets offset tracking strategy to {@link OffsetTrackingStrategy#acknowledgedAheadOfCommit()}.
+         */
+        public Builder<K, V> acknowledgedAheadOfCommitOffsetTracking() {
+            return offsetTrackingStrategy(OffsetTrackingStrategy.acknowledgedAheadOfCommit());
+        }
+
+        /**
          * Configures the maximum amount of time that will be awaited for in-flight records to be
          * acknowledged from a partition whose assignment is being revoked. The latest acknowledged
          * offsets from such a partition are then used to issue one last commit before
@@ -613,7 +620,7 @@ public final class KafkaReceiverOptions<K, V> {
             return this;
         }
 
-        private Builder<K, V> offsetTrackingStrategy(OffsetTrackingStrategy offsetTrackingStrategy) {
+        Builder<K, V> offsetTrackingStrategy(OffsetTrackingStrategy offsetTrackingStrategy) {
             this.offsetTrackingStrategy = offsetTrackingStrategy;
             return this;
         }

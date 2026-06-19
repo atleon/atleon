@@ -19,6 +19,8 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -374,6 +376,122 @@ class KafkaReceiverTest {
                     .block();
             assertEquals(1, maxOffset);
         }
+    }
+
+    @Test
+    public void receiveManual_givenAcknowledgedRecordAheadOfCommit_expectsHonoredProcessingOnResubscription() {
+        String topic = UUID.randomUUID().toString();
+        String groupId = UUID.randomUUID().toString();
+
+        // All records share the same key so that they are produced to (and consumed from) the same
+        // partition, where ahead-of-commit honorship applies.
+        KafkaSenderRecord<String, String, Object> senderRecord1 =
+                KafkaSenderRecord.create(topic, "key", "value1", null);
+        KafkaSenderRecord<String, String, Object> senderRecord2 =
+                KafkaSenderRecord.create(topic, "key", "value2", null);
+        KafkaSenderRecord<String, String, Object> senderRecord3 =
+                KafkaSenderRecord.create(topic, "key", "value3", null);
+        KafkaSenderRecord<String, String, Object> senderRecord4 =
+                KafkaSenderRecord.create(topic, "key", "value4", null);
+        KafkaSenderRecord<String, String, Object> senderRecord5 =
+                KafkaSenderRecord.create(topic, "key", "value5", null);
+
+        sendStrings(senderRecord1, senderRecord2, senderRecord3, senderRecord4, senderRecord5);
+
+        ConsumerListener.Closure closureListener = ConsumerListener.closure();
+        KafkaReceiverOptions<String, String> receiverOptions = KafkaReceiverOptions.<String, String>newBuilder()
+                .consumerListener(closureListener)
+                .consumerProperties(newStringConsumerProperties(groupId))
+                .acknowledgedAheadOfCommitOffsetTracking()
+                .build();
+
+        // Receive all five records, then acknowledge the first and the fourth. Strict acknowledgement
+        // ordering advances the committed offset only past the first record, while the fourth record's
+        // completed processing is recorded ahead of the committed offset as commit metadata.
+        List<KafkaReceiverRecord<String, String>> receivedRecords = new ArrayList<>();
+        KafkaReceiver.create(receiverOptions)
+                .receiveManual(Collections.singletonList(topic))
+                .as(StepVerifier::create)
+                .consumeNextWith(receivedRecords::add)
+                .consumeNextWith(receivedRecords::add)
+                .consumeNextWith(receivedRecords::add)
+                .consumeNextWith(receivedRecords::add)
+                .consumeNextWith(receivedRecords::add)
+                .then(() -> {
+                    receivedRecords.get(0).acknowledge();
+                    receivedRecords.get(3).acknowledge();
+                })
+                .thenCancel()
+                .verify();
+
+        assertEquals(
+                Arrays.asList("value1", "value2", "value3", "value4", "value5"),
+                receivedRecords.stream().map(KafkaReceiverRecord::value).collect(Collectors.toList()));
+        assertNull(closureListener.closed().block());
+
+        // On resubscription, consumption resumes from the committed offset (past the first record),
+        // and the honored fourth record is not re-emitted, leaving the second, third, and fifth.
+        KafkaReceiver.create(receiverOptions)
+                .receiveManual(Collections.singletonList(topic))
+                .as(StepVerifier::create)
+                .consumeNextWith(it -> assertEquals(senderRecord2.value(), it.value()))
+                .consumeNextWith(it -> assertEquals(senderRecord3.value(), it.value()))
+                .consumeNextWith(it -> assertEquals(senderRecord5.value(), it.value()))
+                .thenCancel()
+                .verify();
+    }
+
+    @Test
+    public void receiveManual_givenAcknowledgedRecordAheadOfNoCommit_expectsHonoredProcessingOnResubscription() {
+        String topic = UUID.randomUUID().toString();
+        String groupId = UUID.randomUUID().toString();
+
+        // All records share the same key so that they are produced to (and consumed from) the same
+        // partition, where ahead-of-commit honorship applies.
+        KafkaSenderRecord<String, String, Object> senderRecord1 =
+                KafkaSenderRecord.create(topic, "key", "value1", null);
+        KafkaSenderRecord<String, String, Object> senderRecord2 =
+                KafkaSenderRecord.create(topic, "key", "value2", null);
+        KafkaSenderRecord<String, String, Object> senderRecord3 =
+                KafkaSenderRecord.create(topic, "key", "value3", null);
+
+        sendStrings(senderRecord1, senderRecord2, senderRecord3);
+
+        ConsumerListener.Closure closureListener = ConsumerListener.closure();
+        KafkaReceiverOptions<String, String> receiverOptions = KafkaReceiverOptions.<String, String>newBuilder()
+                .consumerListener(closureListener)
+                .consumerProperties(newStringConsumerProperties(groupId))
+                .acknowledgedAheadOfCommitOffsetTracking()
+                .build();
+
+        // Receive all three records, then acknowledge the second. Since the first is not
+        // acknowledged the committed offset will not advance, but we should still end up honoring
+        // uncommitted progress.
+        List<KafkaReceiverRecord<String, String>> receivedRecords = new ArrayList<>();
+        KafkaReceiver.create(receiverOptions)
+                .receiveManual(Collections.singletonList(topic))
+                .as(StepVerifier::create)
+                .consumeNextWith(receivedRecords::add)
+                .consumeNextWith(receivedRecords::add)
+                .consumeNextWith(receivedRecords::add)
+                .then(() -> receivedRecords.get(1).acknowledge())
+                .thenCancel()
+                .verify();
+
+        assertEquals(
+                Arrays.asList("value1", "value2", "value3"),
+                receivedRecords.stream().map(KafkaReceiverRecord::value).collect(Collectors.toList()));
+        assertNull(closureListener.closed().block());
+
+        // On resubscription, consumption resumes from the initializing offset ("earliest")
+        // and the honored second record is not re-emitted, leaving the first and third.
+        KafkaReceiver.create(receiverOptions)
+                .receiveManual(Collections.singletonList(topic))
+                .as(StepVerifier::create)
+                .consumeNextWith(it -> assertEquals(senderRecord1.value(), it.value()))
+                .consumeNextWith(it -> assertEquals(senderRecord3.value(), it.value()))
+                .thenCancel()
+                .verify();
     }
 
     @ParameterizedTest
