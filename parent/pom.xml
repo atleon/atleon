@@ -26,7 +26,7 @@
         <kotlinx-coroutines.version>1.8.0</kotlinx-coroutines.version>
         <micrometer.version>1.13.1</micrometer.version>
         <mockito.version>4.11.0</mockito.version>
-        <netty.version>4.1.133.Final</netty.version>
+        <netty.version>4.1.135.Final</netty.version>
         <opentelemetry.version>1.62.0</opentelemetry.version>
         <opentracing.verion>0.32.0</opentracing.verion>
         <protobuf.version>3.25.5</protobuf.version>
