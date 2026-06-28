@@ -255,7 +255,7 @@ public class AcknowledgementQueueTest {
 
         assertEquals(count, drained.get());
         assertEquals(errorCount.get(), negativeCount.get());
-        if (mode != AcknowledgementQueueMode.COMPACT) {
+        if (!mode.isCompact()) {
             assertEquals(count, positiveCount.get() + negativeCount.get());
         }
     }
