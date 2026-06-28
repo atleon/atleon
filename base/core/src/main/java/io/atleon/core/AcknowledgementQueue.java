@@ -58,27 +58,40 @@ public final class AcknowledgementQueue {
     }
 
     /**
-     * Complete an In-Flight Acknowledgement in this Queue
+     * Complete an In-Flight Acknowledgement in this Queue. Depending on configured
+     * {@link AcknowledgementQueueMode}, this method will return either the number of in-flight
+     * elements removed from the queue (non-EAGER), or 1 to represent successful completion of the
+     * provided {@link InFlight} (and {@link Long#MIN_VALUE} otherwise).
      *
-     * @return The number of elements drained from this Queue due to completion of Acknowledgement,
-     *         or {@link Long#MIN_VALUE} if already completed.
+     * @return The number of elements <i>effectively/logically</i> dequeued, or
+     *         {@link Long#MIN_VALUE} if already completed.
      */
     public long complete(InFlight toComplete) {
         return complete(toComplete, InFlight::complete);
     }
 
     /**
-     * Exceptionally complete an In-Flight Acknowledgement in this Queue
+     * Exceptionally complete an In-Flight Acknowledgement in this Queue. Depending on configured
+     * {@link AcknowledgementQueueMode}, this method will return either the number of in-flight
+     * elements removed from the queue (non-EAGER), or 1 to represent successful completion of the
+     * provided {@link InFlight} (and {@link Long#MIN_VALUE} otherwise).
      *
-     * @return The number of elements drained from this Queue due to completion of Acknowledgement,
-     *         or {@link Long#MIN_VALUE} if already completed.
+     * @return The number of elements <i>effectively/logically</i> dequeued, or
+     *         {@link Long#MIN_VALUE} if already completed.
      */
     public long completeExceptionally(InFlight toComplete, Throwable error) {
         return complete(toComplete, inFlight -> inFlight.completeExceptionally(error));
     }
 
     private long complete(InFlight inFlight, Predicate<InFlight> completer) {
-        return completer.test(inFlight) ? drainFrom(inFlight) : Long.MIN_VALUE;
+        if (!completer.test(inFlight)) {
+            return Long.MIN_VALUE;
+        } else if (mode.isDemandEager()) {
+            drainFrom(inFlight);
+            return 1L;
+        } else {
+            return drainFrom(inFlight);
+        }
     }
 
     private long drainFrom(InFlight completed) {
@@ -123,7 +136,7 @@ public final class AcknowledgementQueue {
     }
 
     private long drainNonHead(InFlight nonHead) {
-        return mode == AcknowledgementQueueMode.COMPACT ? nonHead.tryCompact() : 0L;
+        return mode.isCompact() ? nonHead.tryCompact() : 0L;
     }
 
     public static final class InFlight {
