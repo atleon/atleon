@@ -48,6 +48,8 @@ public final class KafkaReceiverOptions<K, V> {
 
     private final PollStrategyFactory pollStrategyFactory;
 
+    private final OffsetTrackingStrategy offsetTrackingStrategy;
+
     private final Supplier<Scheduler> auxiliarySchedulerSupplier;
 
     private final Map<String, Object> consumerProperties;
@@ -68,8 +70,6 @@ public final class KafkaReceiverOptions<K, V> {
 
     private final int maxCommitAttempts;
 
-    private final OffsetTrackingStrategy offsetTrackingStrategy;
-
     private final Duration revocationGracePeriod;
 
     private final Duration terminationGracePeriod;
@@ -81,6 +81,7 @@ public final class KafkaReceiverOptions<K, V> {
             ConsumerListenerFactory consumerListenerFactory,
             ReceptionListenerFactory receptionListenerFactory,
             PollStrategyFactory pollStrategyFactory,
+            OffsetTrackingStrategy offsetTrackingStrategy,
             Supplier<Scheduler> auxiliarySchedulerSupplier,
             Map<String, Object> consumerProperties,
             int fullPollRecordsPrefetch,
@@ -91,7 +92,6 @@ public final class KafkaReceiverOptions<K, V> {
             Duration commitPeriod,
             Duration commitTimeout,
             int maxCommitAttempts,
-            OffsetTrackingStrategy offsetTrackingStrategy,
             Duration revocationGracePeriod,
             Duration terminationGracePeriod,
             Duration closeTimeout) {
@@ -99,6 +99,7 @@ public final class KafkaReceiverOptions<K, V> {
         this.consumerListenerFactory = consumerListenerFactory;
         this.receptionListenerFactory = receptionListenerFactory;
         this.pollStrategyFactory = pollStrategyFactory;
+        this.offsetTrackingStrategy = offsetTrackingStrategy;
         this.auxiliarySchedulerSupplier = auxiliarySchedulerSupplier;
         this.consumerProperties = consumerProperties;
         this.fullPollRecordsPrefetch = fullPollRecordsPrefetch;
@@ -109,7 +110,6 @@ public final class KafkaReceiverOptions<K, V> {
         this.commitPeriod = commitPeriod;
         this.commitTimeout = commitTimeout;
         this.maxCommitAttempts = maxCommitAttempts;
-        this.offsetTrackingStrategy = offsetTrackingStrategy;
         this.revocationGracePeriod = revocationGracePeriod;
         this.terminationGracePeriod = terminationGracePeriod;
         this.closeTimeout = closeTimeout;
@@ -138,6 +138,7 @@ public final class KafkaReceiverOptions<K, V> {
                 .consumerListenerFactory(consumerListenerFactory)
                 .receptionListenerFactory(receptionListenerFactory)
                 .pollStrategyFactory(pollStrategyFactory)
+                .offsetTrackingStrategy(offsetTrackingStrategy)
                 .auxiliarySchedulerSupplier(auxiliarySchedulerSupplier)
                 .consumerProperties(consumerProperties)
                 .fullPollRecordsPrefetch(fullPollRecordsPrefetch)
@@ -148,7 +149,6 @@ public final class KafkaReceiverOptions<K, V> {
                 .commitPeriod(commitPeriod)
                 .commitTimeout(commitTimeout)
                 .maxCommitAttempts(maxCommitAttempts)
-                .offsetTrackingStrategy(offsetTrackingStrategy)
                 .revocationGracePeriod(revocationGracePeriod)
                 .terminationGracePeriod(terminationGracePeriod)
                 .closeTimeout(closeTimeout);
@@ -185,6 +185,22 @@ public final class KafkaReceiverOptions<K, V> {
      */
     public PollStrategy createPollStrategy() {
         return pollStrategyFactory.create();
+    }
+
+    /**
+     * @see Builder#commitlessOffsets(boolean)
+     */
+    @Deprecated
+    public boolean commitlessOffsets() {
+        return offsetTrackingStrategy instanceof OffsetTrackingStrategy.Commitless;
+    }
+
+    /**
+     * @see Builder#simpleOffsetTracking()
+     * @see Builder#commitlessOffsetTracking()
+     */
+    public OffsetTrackingStrategy offsetTrackingStrategy() {
+        return offsetTrackingStrategy;
     }
 
     /**
@@ -271,22 +287,6 @@ public final class KafkaReceiverOptions<K, V> {
     }
 
     /**
-     * @see Builder#commitlessOffsets(boolean)
-     */
-    @Deprecated
-    public boolean commitlessOffsets() {
-        return offsetTrackingStrategy instanceof OffsetTrackingStrategy.Commitless;
-    }
-
-    /**
-     * @see Builder#simpleOffsetTracking()
-     * @see Builder#commitlessOffsetTracking()
-     */
-    public OffsetTrackingStrategy offsetTrackingStrategy() {
-        return offsetTrackingStrategy;
-    }
-
-    /**
      * @see Builder#revocationGracePeriod(Duration)
      */
     public Duration revocationGracePeriod() {
@@ -353,6 +353,8 @@ public final class KafkaReceiverOptions<K, V> {
 
         private PollStrategyFactory pollStrategyFactory = PollStrategyFactory.natural();
 
+        private OffsetTrackingStrategy offsetTrackingStrategy = OffsetTrackingStrategy.simple();
+
         private Supplier<Scheduler> auxiliarySchedulerSupplier = Schedulers::parallel;
 
         private Map<String, Object> consumerProperties = Collections.emptyMap();
@@ -372,8 +374,6 @@ public final class KafkaReceiverOptions<K, V> {
         private Duration commitTimeout = DEFAULT_COMMIT_TIMEOUT;
 
         private int maxCommitAttempts = DEFAULT_MAX_COMMIT_ATTEMPTS;
-
-        private OffsetTrackingStrategy offsetTrackingStrategy = OffsetTrackingStrategy.simple();
 
         private Duration revocationGracePeriod = DEFAULT_REVOCATION_GRACE_PERIOD;
 
@@ -429,6 +429,45 @@ public final class KafkaReceiverOptions<K, V> {
         public Builder<K, V> pollStrategyFactory(PollStrategyFactory pollStrategyFactory) {
             this.pollStrategyFactory = pollStrategyFactory;
             return this;
+        }
+
+        /**
+         * Configures whether offset commitment is disabled, which can be useful for stateless
+         * consumption.
+         * @deprecated Use {@link #commitlessOffsetTracking()}
+         */
+        @Deprecated
+        public Builder<K, V> commitlessOffsets(boolean commitlessOffsets) {
+            if (commitlessOffsets) {
+                return commitlessOffsetTracking();
+            } else if (offsetTrackingStrategy instanceof OffsetTrackingStrategy.Commitless) {
+                return simpleOffsetTracking();
+            } else if (offsetTrackingStrategy instanceof OffsetTrackingStrategy.Simple) {
+                return this;
+            } else {
+                throw new UnsupportedOperationException("Cannot disable commitless offsets with non-trivial strategy");
+            }
+        }
+
+        /**
+         * Sets (or resets) offset tracking strategy to {@link OffsetTrackingStrategy#simple()}.
+         */
+        public Builder<K, V> simpleOffsetTracking() {
+            return offsetTrackingStrategy(OffsetTrackingStrategy.simple());
+        }
+
+        /**
+         * Sets offset tracking strategy to {@link OffsetTrackingStrategy#commitless()}.
+         */
+        public Builder<K, V> commitlessOffsetTracking() {
+            return offsetTrackingStrategy(OffsetTrackingStrategy.commitless());
+        }
+
+        /**
+         * Sets offset tracking strategy to {@link OffsetTrackingStrategy#acknowledgedAheadOfCommit()}.
+         */
+        public Builder<K, V> acknowledgedAheadOfCommitOffsetTracking() {
+            return offsetTrackingStrategy(OffsetTrackingStrategy.acknowledgedAheadOfCommit());
         }
 
         /**
@@ -544,45 +583,6 @@ public final class KafkaReceiverOptions<K, V> {
         }
 
         /**
-         * Configures whether offset commitment is disabled, which can be useful for stateless
-         * consumption.
-         * @deprecated Use {@link #commitlessOffsetTracking()}
-         */
-        @Deprecated
-        public Builder<K, V> commitlessOffsets(boolean commitlessOffsets) {
-            if (commitlessOffsets) {
-                return commitlessOffsetTracking();
-            } else if (offsetTrackingStrategy instanceof OffsetTrackingStrategy.Commitless) {
-                return simpleOffsetTracking();
-            } else if (offsetTrackingStrategy instanceof OffsetTrackingStrategy.Simple) {
-                return this;
-            } else {
-                throw new UnsupportedOperationException("Cannot disable commitless offsets with non-trivial strategy");
-            }
-        }
-
-        /**
-         * Sets (or resets) offset tracking strategy to {@link OffsetTrackingStrategy#simple()}.
-         */
-        public Builder<K, V> simpleOffsetTracking() {
-            return offsetTrackingStrategy(OffsetTrackingStrategy.simple());
-        }
-
-        /**
-         * Sets offset tracking strategy to {@link OffsetTrackingStrategy#commitless()}.
-         */
-        public Builder<K, V> commitlessOffsetTracking() {
-            return offsetTrackingStrategy(OffsetTrackingStrategy.commitless());
-        }
-
-        /**
-         * Sets offset tracking strategy to {@link OffsetTrackingStrategy#acknowledgedAheadOfCommit()}.
-         */
-        public Builder<K, V> acknowledgedAheadOfCommitOffsetTracking() {
-            return offsetTrackingStrategy(OffsetTrackingStrategy.acknowledgedAheadOfCommit());
-        }
-
-        /**
          * Configures the maximum amount of time that will be awaited for in-flight records to be
          * acknowledged from a partition whose assignment is being revoked. The latest acknowledged
          * offsets from such a partition are then used to issue one last commit before
@@ -631,6 +631,7 @@ public final class KafkaReceiverOptions<K, V> {
                     consumerListenerFactory,
                     receptionListenerFactory,
                     pollStrategyFactory,
+                    offsetTrackingStrategy,
                     auxiliarySchedulerSupplier,
                     consumerProperties,
                     fullPollRecordsPrefetch,
@@ -641,7 +642,6 @@ public final class KafkaReceiverOptions<K, V> {
                     commitPeriod,
                     commitTimeout,
                     maxCommitAttempts,
-                    offsetTrackingStrategy,
                     revocationGracePeriod,
                     terminationGracePeriod,
                     closeTimeout);

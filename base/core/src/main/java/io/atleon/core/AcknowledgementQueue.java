@@ -63,7 +63,7 @@ public final class AcknowledgementQueue {
      * @return The number of elements drained from this Queue due to completion of Acknowledgement
      */
     public long complete(InFlight toComplete) {
-        return complete(toComplete, InFlight::complete) ? drainFrom(toComplete) : 0L;
+        return complete(toComplete, InFlight::complete);
     }
 
     /**
@@ -72,11 +72,11 @@ public final class AcknowledgementQueue {
      * @return The number of elements drained from this Queue due to completion of Acknowledgement
      */
     public long completeExceptionally(InFlight toComplete, Throwable error) {
-        return complete(toComplete, inFlight -> inFlight.completeExceptionally(error)) ? drainFrom(toComplete) : 0L;
+        return complete(toComplete, inFlight -> inFlight.completeExceptionally(error));
     }
 
-    private boolean complete(InFlight inFlight, Predicate<InFlight> completer) {
-        return completer.test(inFlight);
+    private long complete(InFlight inFlight, Predicate<InFlight> completer) {
+        return completer.test(inFlight) ? drainFrom(inFlight) : 0L;
     }
 
     private long drainFrom(InFlight completed) {
