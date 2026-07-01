@@ -23,11 +23,11 @@ import java.util.function.ToLongFunction;
  * A partition that is currently assigned, being actively consumed, and may be associated with
  * records that are being processed.
  */
-final class ActivePartition {
-
-    private final OffsetTracker offsetTracker;
+final class ActivePartition<K, V> {
 
     private final AcknowledgementQueue acknowledgementQueue;
+
+    private final OffsetTracker offsetTracker;
 
     // This counter doubles as both our publishing state (via polarity: positive == ACTIVE,
     // negative == TERMINABLE, zero == TERMINATED) and our count of activated in-flight records
@@ -48,8 +48,8 @@ final class ActivePartition {
             Sinks.unsafe().many().unicast().onBackpressureError();
 
     public ActivePartition(OffsetTracker offsetTracker, AcknowledgementQueueMode acknowledgementQueueMode) {
-        this.offsetTracker = offsetTracker;
         this.acknowledgementQueue = AcknowledgementQueue.create(acknowledgementQueueMode);
+        this.offsetTracker = offsetTracker;
     }
 
     /**
@@ -58,7 +58,7 @@ final class ActivePartition {
      * and if the configured {@link OffsetTracker} does not prohibit processing, based on the given
      * record's offset.
      */
-    public <K, V> Optional<KafkaReceiverRecord<K, V>> activateForProcessing(ConsumerRecord<K, V> consumerRecord) {
+    public Optional<KafkaReceiverRecord<K, V>> activateForProcessing(ConsumerRecord<K, V> consumerRecord) {
         return activate(ConsumerOffset.create(topicPartition(), consumerRecord)).map(it -> {
             if (offsetTracker.prohibitsProcessing(consumerRecord.offset())) {
                 ack(consumerRecord.offset(), it);
