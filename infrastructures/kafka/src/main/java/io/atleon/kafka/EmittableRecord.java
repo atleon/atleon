@@ -11,11 +11,11 @@ import java.util.Optional;
  */
 final class EmittableRecord<K, V> {
 
-    private final ActivePartition activePartition;
+    private final ActivePartition<K, V> activePartition;
 
     private final ConsumerRecord<K, V> consumerRecord;
 
-    public EmittableRecord(ActivePartition activePartition, ConsumerRecord<K, V> consumerRecord) {
+    public EmittableRecord(ActivePartition<K, V> activePartition, ConsumerRecord<K, V> consumerRecord) {
         this.activePartition = activePartition;
         this.consumerRecord = consumerRecord;
     }

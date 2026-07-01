@@ -88,7 +88,7 @@ final class PollingSubscriptionFactory<K, V> {
 
         private final ReceptionListener listener;
 
-        private final PollManager<ActivePartition> pollManager;
+        private final PollManager<ActivePartition<K, V>> pollManager;
 
         private final AtomicInteger freePrefetchCapacity = new AtomicInteger(options.calculateMaxRecordsPrefetch());
 
@@ -144,8 +144,8 @@ final class PollingSubscriptionFactory<K, V> {
         @Override
         public final void onPartitionsAssigned(Consumer<?, ?> consumer, Map<TopicPartition, OffsetTracker> assignment) {
             pollManager.activateAssigned(consumer, assignment.keySet(), partition -> {
-                ActivePartition activePartition =
-                        new ActivePartition(assignment.get(partition), options.acknowledgementQueueMode());
+                ActivePartition<K, V> activePartition =
+                        new ActivePartition<>(assignment.get(partition), options.acknowledgementQueueMode());
                 onPartitionActivated(consumer, activePartition);
                 listener.onPartitionActivated(partition);
 
@@ -159,7 +159,7 @@ final class PollingSubscriptionFactory<K, V> {
 
         @Override
         public final void onPartitionsRevoked(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-            Collection<ActivePartition> revokedPartitions = pollManager.unassigned(partitions);
+            Collection<ActivePartition<K, V>> revokedPartitions = pollManager.unassigned(partitions);
 
             try {
                 onActivePartitionsRevoked(consumer, revokedPartitions);
@@ -199,10 +199,10 @@ final class PollingSubscriptionFactory<K, V> {
             return pollManager.forcePaused();
         }
 
-        protected abstract void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition partition);
+        protected abstract void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition<K, V> partition);
 
         protected abstract void onActivePartitionsRevoked(
-                Consumer<?, ?> consumer, Collection<ActivePartition> partitions);
+                Consumer<?, ?> consumer, Collection<ActivePartition<K, V>> partitions);
 
         protected abstract void onActivePartitionsLost(Map<TopicPartition, Long> lostPartitionRecordCounts);
 
@@ -289,7 +289,7 @@ final class PollingSubscriptionFactory<K, V> {
 
             int queuedForEmission = 0;
             for (TopicPartition partition : consumerRecords.partitions()) {
-                ActivePartition activePartition = pollManager.activated(partition);
+                ActivePartition<K, V> activePartition = pollManager.activated(partition);
                 for (ConsumerRecord<K, V> consumerRecord : consumerRecords.records(partition)) {
                     emittableRecords.add(new EmittableRecord<>(activePartition, consumerRecord));
                     queuedForEmission++;
@@ -373,14 +373,15 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         @Override
-        protected void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition partition) {
+        protected void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition<K, V> partition) {
             java.util.function.Consumer<AcknowledgedOffset> acknowledgementHandler =
                     asyncOffsetCommitter.acknowledgementHandlerForAssigned(partition.topicPartition());
             partition.acknowledgedOffsets().subscribe(acknowledgementHandler, this::failSafely);
         }
 
         @Override
-        protected void onActivePartitionsRevoked(Consumer<?, ?> consumer, Collection<ActivePartition> partitions) {
+        protected void onActivePartitionsRevoked(
+                Consumer<?, ?> consumer, Collection<ActivePartition<K, V>> partitions) {
             // Get the latest committable offsets for the partitions that have been revoked (with
             // possible grace period), such that we can commit them synchronously. Although it is
             // possible that these offsets may have been previously committed, it is unlikely that
@@ -495,13 +496,14 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         @Override
-        protected void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition partition) {
+        protected void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition<K, V> partition) {
             groupMetadata = consumer.groupMetadata();
             partition.acknowledgedOffsets().subscribe(acknowledgedOffsetsQueue::addAndDrain, this::failSafely);
         }
 
         @Override
-        protected void onActivePartitionsRevoked(Consumer<?, ?> consumer, Collection<ActivePartition> partitions) {
+        protected void onActivePartitionsRevoked(
+                Consumer<?, ?> consumer, Collection<ActivePartition<K, V>> partitions) {
             groupMetadata = consumer.groupMetadata();
             Mono<TxOffsetsState> txClosure =
                     offsetsState(TxOffsetsState.INACTIVE).next().cache();
