@@ -58,25 +58,32 @@ public final class AcknowledgementQueue {
     }
 
     /**
-     * Complete an In-Flight Acknowledgement in this Queue
+     * Complete an In-Flight Acknowledgement in this Queue.
      *
-     * @return The number of elements drained from this Queue due to completion of Acknowledgement
+     * @return The amount of upstream demand to signal due to completion of Acknowledgement
      */
     public long complete(InFlight toComplete) {
         return complete(toComplete, InFlight::complete);
     }
 
     /**
-     * Exceptionally complete an In-Flight Acknowledgement in this Queue
+     * Exceptionally complete an In-Flight Acknowledgement in this Queue.
      *
-     * @return The number of elements drained from this Queue due to completion of Acknowledgement
+     * @return The amount of upstream demand to signal due to completion of Acknowledgement
      */
     public long completeExceptionally(InFlight toComplete, Throwable error) {
         return complete(toComplete, inFlight -> inFlight.completeExceptionally(error));
     }
 
     private long complete(InFlight inFlight, Predicate<InFlight> completer) {
-        return completer.test(inFlight) ? drainFrom(inFlight) : 0L;
+        if (!completer.test(inFlight)) {
+            return 0L;
+        } else if (mode.isDemandEager()) {
+            drainFrom(inFlight);
+            return 1L;
+        } else {
+            return drainFrom(inFlight);
+        }
     }
 
     private long drainFrom(InFlight completed) {
@@ -121,7 +128,7 @@ public final class AcknowledgementQueue {
     }
 
     private long drainNonHead(InFlight nonHead) {
-        return mode == AcknowledgementQueueMode.COMPACT ? nonHead.tryCompact() : 0L;
+        return mode.isCompact() ? nonHead.tryCompact() : 0L;
     }
 
     public static final class InFlight {

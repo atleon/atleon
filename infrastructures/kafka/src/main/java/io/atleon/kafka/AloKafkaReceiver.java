@@ -530,7 +530,7 @@ public class AloKafkaReceiver<K, V> {
             revocationGracePeriod = revocationGracePeriod.isPresent()
                     ? revocationGracePeriod
                     : config.loadDuration(MAX_DELAY_REBALANCE_CONFIG);
-            return revocationGracePeriod.isPresent() || acknowledgementQueueMode == AcknowledgementQueueMode.STRICT
+            return revocationGracePeriod.isPresent() || !acknowledgementQueueMode.isCompact()
                     ? revocationGracePeriod
                     : Optional.of(Duration.ZERO); // By default, disable delay if acknowledgements may be skipped
         }
