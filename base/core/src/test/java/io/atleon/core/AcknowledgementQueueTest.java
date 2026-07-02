@@ -33,16 +33,14 @@ public class AcknowledgementQueueTest {
         AcknowledgementQueue.InFlight secondInFlight = queue.add(() -> secondAcknowledged.set(true), error -> {});
         queue.add(() -> thirdAcknowledged.set(true), error -> {});
 
-        long drained = queue.complete(secondInFlight);
+        assertEquals(0L, queue.complete(secondInFlight));
 
-        assertEquals(0L, drained);
         assertFalse(firstAcknowledged.get());
         assertFalse(secondAcknowledged.get());
         assertFalse(thirdAcknowledged.get());
 
-        drained = queue.complete(firstInFlight);
+        assertEquals(2L, queue.complete(firstInFlight));
 
-        assertEquals(2L, drained);
         assertTrue(firstAcknowledged.get());
         assertTrue(secondAcknowledged.get());
         assertFalse(thirdAcknowledged.get());
@@ -62,17 +60,15 @@ public class AcknowledgementQueueTest {
         AcknowledgementQueue.InFlight secondInFlight =
                 queue.add(() -> secondAcknowledged.set(true), secondNacknowledged::set);
 
-        long drained = queue.completeExceptionally(secondInFlight, new IllegalStateException());
+        assertEquals(0L, queue.completeExceptionally(secondInFlight, new IllegalStateException()));
 
-        assertEquals(0L, drained);
         assertFalse(firstAcknowledged.get());
         assertNull(firstNacknowledged.get());
         assertFalse(secondAcknowledged.get());
         assertNull(secondNacknowledged.get());
 
-        drained = queue.complete(firstInFlight);
+        assertEquals(2L, queue.complete(firstInFlight));
 
-        assertEquals(2L, drained);
         assertTrue(firstAcknowledged.get());
         assertNull(firstNacknowledged.get());
         assertFalse(secondAcknowledged.get());
@@ -97,8 +93,8 @@ public class AcknowledgementQueueTest {
         AcknowledgementQueue.InFlight thirdInFlight =
                 queue.add(thirdAcknowledgements::incrementAndGet, thirdNacknowledged::set);
 
-        queue.completeExceptionally(secondInFlight, new IllegalStateException());
-        queue.complete(thirdInFlight);
+        assertEquals(0L, queue.completeExceptionally(secondInFlight, new IllegalStateException()));
+        assertEquals(0L, queue.complete(thirdInFlight));
 
         assertEquals(0, firstAcknowledgements.get());
         assertNull(firstNacknowledged.get());
@@ -107,8 +103,8 @@ public class AcknowledgementQueueTest {
         assertEquals(0, thirdAcknowledgements.get());
         assertNull(thirdNacknowledged.get());
 
-        queue.complete(secondInFlight);
-        queue.completeExceptionally(thirdInFlight, new IllegalStateException());
+        assertEquals(Long.MIN_VALUE, queue.complete(secondInFlight));
+        assertEquals(Long.MIN_VALUE, queue.completeExceptionally(thirdInFlight, new IllegalStateException()));
 
         assertEquals(0, firstAcknowledgements.get());
         assertNull(firstNacknowledged.get());
@@ -117,7 +113,7 @@ public class AcknowledgementQueueTest {
         assertEquals(0, thirdAcknowledgements.get());
         assertNull(thirdNacknowledged.get());
 
-        queue.complete(firstInFlight);
+        assertEquals(3, queue.complete(firstInFlight));
 
         assertEquals(1, firstAcknowledgements.get());
         assertNull(firstNacknowledged.get());
@@ -126,7 +122,7 @@ public class AcknowledgementQueueTest {
         assertEquals(1, thirdAcknowledgements.get());
         assertNull(thirdNacknowledged.get());
 
-        queue.complete(firstInFlight);
+        assertEquals(Long.MIN_VALUE, queue.complete(firstInFlight));
 
         assertEquals(1, firstAcknowledgements.get());
         assertNull(firstNacknowledged.get());
@@ -135,7 +131,7 @@ public class AcknowledgementQueueTest {
         assertEquals(1, thirdAcknowledgements.get());
         assertNull(thirdNacknowledged.get());
 
-        queue.complete(secondInFlight);
+        assertEquals(Long.MIN_VALUE, queue.complete(secondInFlight));
 
         assertEquals(1, firstAcknowledgements.get());
         assertNull(firstNacknowledged.get());
@@ -172,9 +168,7 @@ public class AcknowledgementQueueTest {
         assertTrue(firstAcknowledgementStarted.get());
 
         // Would block indefinitely here if execution blocked since first execution in progress
-        long syncDrained = queue.complete(secondInFlight);
-
-        assertEquals(0, syncDrained);
+        assertEquals(0, queue.complete(secondInFlight));
 
         firstAcknowledgementAllowed.complete(true);
 
