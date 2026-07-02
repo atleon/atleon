@@ -1,5 +1,7 @@
 package io.atleon.kafka;
 
+import io.atleon.core.Alo;
+import io.atleon.core.ComposedAlo;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
@@ -30,6 +32,10 @@ public final class KafkaReceiverRecord<K, V> {
     public static <K, V> KafkaReceiverRecord<K, V> create(
             ConsumerRecord<K, V> consumerRecord, Runnable acknowledger, Consumer<Throwable> nacknowledger) {
         return new KafkaReceiverRecord<>(consumerRecord, acknowledger, nacknowledger);
+    }
+
+    public Alo<ConsumerRecord<K, V>> toAloConsumerRecord() {
+        return new ComposedAlo<>(consumerRecord, acknowledger, nacknowledger);
     }
 
     public TopicPartition topicPartition() {

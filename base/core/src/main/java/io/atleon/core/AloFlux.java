@@ -50,6 +50,14 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * Convenience function for creating a wrapping {@link Function} based on a mapping of some raw
+     * type into an {@link Alo} container. Useful for fluent passage to {@link Flux#as(Function)}.
+     */
+    public static <T, V> Function<Flux<T>, AloFlux<V>> wrapper(Function<? super T, ? extends Alo<V>> aloWrapper) {
+        return flux -> wrap(flux.map(aloWrapper));
+    }
+
+    /**
      * Wraps a Publisher of Alo elements as an AloFlux
      */
     public static <T> AloFlux<T> wrap(Publisher<? extends Alo<T>> publisher) {
