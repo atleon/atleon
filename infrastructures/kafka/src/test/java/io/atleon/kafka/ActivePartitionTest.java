@@ -21,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -260,6 +262,54 @@ class ActivePartitionTest {
                 acknowledgedOffsets.get(0).prepareCommitment().block().getT2().offset());
         assertInstanceOf(IllegalStateException.class, acknowledgedOffsetsError.get());
         assertEquals(Arrays.asList(1L, 3L), deactivatedRecordCounts);
+        assertNull(deactivatedRecordCountsError.get());
+        assertTrue(deactivatedRecordCountsCompleted.get());
+    }
+
+    @Test
+    public void acknowledge_givenRecordAcknowledgedAfterNacknowledgement_expectsAcknowledgementNotTracked() {
+        List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
+        AtomicReference<Throwable> acknowledgedOffsetsError = new AtomicReference<>();
+        List<Long> deactivatedRecordCounts = new ArrayList<>();
+        AtomicReference<Throwable> deactivatedRecordCountsError = new AtomicReference<>();
+        AtomicBoolean deactivatedRecordCountsCompleted = new AtomicBoolean(false);
+
+        List<Long> trackedAcknowledgedOffsets = new ArrayList<>();
+        ActivePartition<String, String> activePartition = new ActivePartition<>(
+                recordingOffsetTracker(trackedAcknowledgedOffsets::add), AcknowledgementQueueMode.STRICT);
+        activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add, acknowledgedOffsetsError::set);
+        activePartition
+                .deactivatedRecordCounts()
+                .subscribe(
+                        deactivatedRecordCounts::add,
+                        deactivatedRecordCountsError::set,
+                        () -> deactivatedRecordCountsCompleted.set(true));
+
+        ConsumerRecord<String, String> recordA = newConsumerRecord(0);
+        ConsumerRecord<String, String> recordB = newConsumerRecord(1);
+        KafkaReceiverRecord<String, String> receiverRecordA =
+                activePartition.activateForProcessing(recordA).get();
+        KafkaReceiverRecord<String, String> receiverRecordB =
+                activePartition.activateForProcessing(recordB).get();
+
+        // Negatively acknowledge B, then erroneously (positively) acknowledge B, then acknowledge A.
+        receiverRecordB.nacknowledge(new IllegalStateException("Boom"));
+        receiverRecordB.acknowledge();
+        receiverRecordA.acknowledge();
+
+        // A is emitted as acknowledged immediately ahead of the error resulting from B's negative
+        // acknowledgement, and the stream is terminated with that error.
+        assertEquals(1, acknowledgedOffsets.size());
+        assertEquals(
+                recordA.offset() + 1,
+                acknowledgedOffsets.get(0).prepareCommitment().block().getT2().offset());
+        assertInstanceOf(IllegalStateException.class, acknowledgedOffsetsError.get());
+
+        // Crucially, only A's offset was tracked as acknowledged. B's offset must never be tracked,
+        // since B's effective (first) acknowledgement was negative.
+        assertEquals(Collections.singletonList(recordA.offset()), trackedAcknowledgedOffsets);
+
+        assertEquals(Collections.singletonList(2L), deactivatedRecordCounts);
         assertNull(deactivatedRecordCountsError.get());
         assertTrue(deactivatedRecordCountsCompleted.get());
     }
@@ -564,6 +614,17 @@ class ActivePartitionTest {
             Long offset = invocation.getArgument(0);
             return prohibited.contains(offset);
         });
+        return offsetTracker;
+    }
+
+    private static OffsetTracker recordingOffsetTracker(Consumer<Long> acknowledgedOffsets) {
+        OffsetTracker offsetTracker = mock(OffsetTracker.class, AdditionalAnswers.delegatesTo(newOffsetTracker()));
+        doAnswer(invocation -> {
+                    acknowledgedOffsets.accept(invocation.getArgument(0));
+                    return null;
+                })
+                .when(offsetTracker)
+                .acknowledged(anyLong());
         return offsetTracker;
     }
 

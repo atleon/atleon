@@ -165,8 +165,13 @@ final class ActivePartition<K, V> {
     }
 
     private void ack(long offset, AcknowledgementQueue.InFlight inFlight) {
-        offsetTracker.acknowledged(offset);
-        acknowledge(queue -> queue.complete(inFlight));
+        acknowledge(queue -> {
+            long result = queue.complete(inFlight);
+            if (result >= 0) {
+                offsetTracker.acknowledged(offset);
+            }
+            return result;
+        });
     }
 
     private void nack(AcknowledgementQueue.InFlight inFlight, Throwable error) {
@@ -176,6 +181,10 @@ final class ActivePartition<K, V> {
     private void acknowledge(ToLongFunction<AcknowledgementQueue> completer) {
         enqueueAndDrain(() -> {
             long completedRecords = completer.applyAsLong(acknowledgementQueue);
+            if (completedRecords <= 0) {
+                return 0L;
+            }
+
             long previousActivated = activated.getAndUpdate(count -> {
                 if (count > 0) {
                     // Not deactivated yet, so just subtract.
