@@ -30,20 +30,9 @@ public enum AcknowledgementQueueMode {
      */
     COMPACT(true, false),
     /**
-     * As {@link #STRICT}, but each completion is reported as a single upstream demand as soon as
-     * the in-flight completes, rather than only when it is executed+drained. This frees downstream
-     * backpressure capacity per logical completion instead of waiting for in-order execution, at
-     * the cost of allowing more work to be requested ahead of that execution. Note that this mode
-     * can result in unbounded memory usage if/when an in-flight at the head of the queue takes a
-     * long time to complete (or never does), while elements continue to be processed.
-     */
-    EAGER(false, true),
-    /**
-     * Combines {@link #COMPACT} and {@link #EAGER}, where acknowledgements are allowed to coalesce
-     * when multiple sequential acknowledgements are ready to be executed, and each completion is
-     * reported as a single upstream demand as soon as the in-flight completes. This mode is
-     * protected from unbounded memory usage, although the queue may hold up to twice as many
-     * acknowledgements as the number of allowed in-flight elements.
+     * As {@link #COMPACT}, where acknowledgements are allowed to coalesce when multiple sequential
+     * acknowledgements are ready to be executed, but each completion is reported as a single
+     * upstream demand as soon as each in-flight completes.
      */
     COMPACT_EAGER(true, true);
 
