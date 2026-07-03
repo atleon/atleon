@@ -505,7 +505,7 @@
                         <artifactId>maven-javadoc-plugin</artifactId>
                         <version>3.11.2</version>
                         <configuration>
-                            <source>8</source>
+                            <source>${java.version}</source>
                             <links>
                                 <link>https://docs.spring.io/spring-framework/docs/${spring.version}/javadoc-api</link>
                                 <link>https://javadoc.io/doc/org.reactivestreams/reactive-streams/${reactive-streams.version}</link>
