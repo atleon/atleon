@@ -73,7 +73,7 @@
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
-                <version>2.43.0</version>
+                <version>2.46.1</version>
                 <configuration>
                     <java>
                         <palantirJavaFormat />
@@ -115,6 +115,8 @@
                         </path>
                     </annotationProcessorPaths>
                     <compilerArgs>
+                        <!-- ErrorProne does not support default should-stop=ifError -->
+                        <arg>--should-stop=ifError=FLOW</arg>
                         <!-- ErrorProne requires explicitly setting simple compile policy -->
                         <arg>-XDcompilePolicy=simple</arg>
                         <!-- NullAway in JSpecify mode with JDK <22 requires this flag -->
@@ -128,7 +130,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>3.11.0</version>
                 <executions>
                     <execution>
                         <id>analyze</id>
