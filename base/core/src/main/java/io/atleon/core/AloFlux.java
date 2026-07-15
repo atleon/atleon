@@ -182,6 +182,14 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * Convenience method for applying {@link AloDecorator} decoration to underlying emitted
+     * {@link Alo} elements.
+     */
+    public AloFlux<T> decorateAlo(AloDecorator<T> decorator) {
+        return new AloFlux<>(wrapped.map(decorator::decorate));
+    }
+
+    /**
      * @see Flux#map(Function)
      */
     public <V> AloFlux<V> map(Function<? super T, ? extends V> mapper) {
