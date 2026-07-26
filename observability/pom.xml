@@ -15,6 +15,7 @@
     <modules>
         <module>micrometer</module>
         <module>micrometer-auto</module>
+        <module>micrometer-observation</module>
         <module>opentelemetry</module>
         <module>opentelemetry-tracing-auto</module>
         <module>opentracing</module>
