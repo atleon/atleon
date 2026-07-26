@@ -17,14 +17,14 @@
         <apache-kafka-doc.version>39</apache-kafka-doc.version>
         <avro.version>1.12.1</avro.version>
         <bucket4j.version>8.17.0</bucket4j.version>
-        <bytebuddy.version>1.12.19</bytebuddy.version>
+        <bytebuddy.version>1.18.3</bytebuddy.version>
         <confluent.version>7.9.5</confluent.version> <!-- https://docs.confluent.io/platform/current/installation/versions-interoperability.html -->
         <jackson.version>2.22.1</jackson.version>
         <jspecify.version>1.0.0</jspecify.version>
-        <junit-jupiter.version>5.10.1</junit-jupiter.version>
+        <junit-jupiter.version>5.12.2</junit-jupiter.version>
         <kotlin.version>1.9.21</kotlin.version> <!-- Dictated by kotlinx-coroutines version -->
         <kotlinx-coroutines.version>1.8.0</kotlinx-coroutines.version>
-        <micrometer.version>1.13.1</micrometer.version>
+        <micrometer.version>1.15.11</micrometer.version>
         <mockito.version>4.11.0</mockito.version>
         <netty.version>4.1.136.Final</netty.version>
         <opentelemetry.version>1.62.0</opentelemetry.version>
