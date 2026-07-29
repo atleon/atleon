@@ -16,23 +16,23 @@ import java.util.Map;
  * @param <V> The types of values in records decorated by this decorator
  */
 public final class ObservingAloKafkaConsumerRecordDecorator<K, V>
-        extends ObservingAloConsumptionDecorator<ConsumerRecord<K, V>, KafkaReceiverContext>
+        extends ObservingAloConsumptionDecorator<ConsumerRecord<K, V>, KafkaConsumeContext>
         implements AloKafkaConsumerRecordDecorator<K, V> {
 
-    private KafkaReceiverContext.Factory contextFactory;
+    private KafkaConsumeContext.Factory contextFactory;
 
     public ObservingAloKafkaConsumerRecordDecorator() {
-        super(KafkaObservation.RECEIVER_OBSERVATION);
-        this.contextFactory = KafkaReceiverContext.newFactory();
+        super(KafkaObservations.PROCESS);
+        this.contextFactory = KafkaConsumeContext.newFactory();
     }
 
     public ObservingAloKafkaConsumerRecordDecorator(ObservationRegistry registry) {
-        this(registry, KafkaReceiverContext.newFactory());
+        this(registry, KafkaConsumeContext.newFactory());
     }
 
     public ObservingAloKafkaConsumerRecordDecorator(
-            ObservationRegistry registry, KafkaReceiverContext.Factory contextFactory) {
-        super(KafkaObservation.RECEIVER_OBSERVATION, registry);
+            ObservationRegistry registry, KafkaConsumeContext.Factory contextFactory) {
+        super(KafkaObservations.PROCESS, registry);
         this.contextFactory = contextFactory;
     }
 
@@ -42,12 +42,12 @@ public final class ObservingAloKafkaConsumerRecordDecorator<K, V>
     }
 
     @Override
-    protected ObservationConvention<KafkaReceiverContext> defaultConvention() {
-        return KafkaReceiverObservationConvention.Default.instance();
+    protected ObservationConvention<KafkaConsumeContext> defaultConvention() {
+        return KafkaProcessObservationConvention.Default.INSTANCE;
     }
 
     @Override
-    protected KafkaReceiverContext createContext(ConsumerRecord<K, V> consumerRecord) {
+    protected KafkaConsumeContext createContext(ConsumerRecord<K, V> consumerRecord) {
         return contextFactory.create(consumerRecord);
     }
 }

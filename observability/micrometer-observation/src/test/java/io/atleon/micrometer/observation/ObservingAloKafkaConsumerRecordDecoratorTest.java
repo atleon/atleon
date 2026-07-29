@@ -29,7 +29,7 @@ class ObservingAloKafkaConsumerRecordDecoratorTest {
         // Decoration starts the observation before the record is acknowledged
         assertThat(registry)
                 .hasNumberOfObservationsEqualTo(1)
-                .hasObservationWithNameEqualTo("atleon.receive.kafka")
+                .hasObservationWithNameEqualTo("atleon.kafka.process")
                 .that()
                 .hasBeenStarted()
                 .isNotStopped();
@@ -39,14 +39,16 @@ class ObservingAloKafkaConsumerRecordDecoratorTest {
         assertEquals(1, alo.acknowledgeCount());
         assertThat(registry)
                 .hasNumberOfObservationsEqualTo(1)
-                .hasObservationWithNameEqualTo("atleon.receive.kafka")
+                .hasObservationWithNameEqualTo("atleon.kafka.process")
                 .that()
                 .hasBeenStopped()
                 .doesNotHaveError()
-                .hasLowCardinalityKeyValue("client_id", "test-client")
-                .hasLowCardinalityKeyValue("topic", "topic")
-                .hasLowCardinalityKeyValue("partition", "2")
-                .hasHighCardinalityKeyValue("offset", "42");
+                .hasLowCardinalityKeyValue("messaging.system", "kafka")
+                .hasLowCardinalityKeyValue("messaging.operation.type", "process")
+                .hasLowCardinalityKeyValue("messaging.client.id", "test-client")
+                .hasLowCardinalityKeyValue("messaging.destination.name", "topic")
+                .hasLowCardinalityKeyValue("messaging.destination.partition.id", "2")
+                .hasHighCardinalityKeyValue("messaging.kafka.offset", "42");
     }
 
     @Test
@@ -59,13 +61,13 @@ class ObservingAloKafkaConsumerRecordDecoratorTest {
 
         assertThat(registry)
                 .hasNumberOfObservationsEqualTo(1)
-                .hasObservationWithNameEqualTo("atleon.receive.kafka")
+                .hasObservationWithNameEqualTo("atleon.kafka.process")
                 .that()
                 .hasBeenStopped()
-                .doesNotHaveLowCardinalityKeyValueWithKey("client_id")
-                .hasLowCardinalityKeyValue("topic", "topic")
-                .hasLowCardinalityKeyValue("partition", "0")
-                .hasHighCardinalityKeyValue("offset", "0");
+                .doesNotHaveLowCardinalityKeyValueWithKey("messaging.client.id")
+                .hasLowCardinalityKeyValue("messaging.destination.name", "topic")
+                .hasLowCardinalityKeyValue("messaging.destination.partition.id", "0")
+                .hasHighCardinalityKeyValue("messaging.kafka.offset", "0");
     }
 
     @Test
@@ -82,7 +84,7 @@ class ObservingAloKafkaConsumerRecordDecoratorTest {
         assertEquals(1, alo.nacknowledgeCount());
         assertThat(registry)
                 .hasNumberOfObservationsEqualTo(1)
-                .hasObservationWithNameEqualTo("atleon.receive.kafka")
+                .hasObservationWithNameEqualTo("atleon.kafka.process")
                 .that()
                 .hasBeenStopped()
                 .hasError(error);

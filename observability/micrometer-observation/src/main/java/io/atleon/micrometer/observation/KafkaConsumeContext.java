@@ -2,6 +2,9 @@ package io.atleon.micrometer.observation;
 
 import io.atleon.kafka.KafkaReceiverRecord;
 import io.atleon.util.ConfigLoading;
+import io.micrometer.common.KeyValue;
+import io.micrometer.common.docs.KeyName;
+import io.micrometer.observation.transport.Kind;
 import io.micrometer.observation.transport.ReceiverContext;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -11,14 +14,15 @@ import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 
 /**
- * Context associated with the reception of data from Kafka. Note that this implementation uses
- * only the headers (of received records) as the carrier object, rather than (e.g.) an entire
- * consumer record; This is because it is very possible that the lifecycle of
- * observation/processing extends beyond the visibility lifecycle of received records.
+ * Context associated with the consumption of data from Kafka. Note that this implementation uses
+ * only {@link Headers} as the carrier object, rather than (e.g.) an entire consumer record; This
+ * is because it is very possible that the lifecycle of observation/processing extends beyond the
+ * visibility lifecycle of what's actually consumed.
  */
-public final class KafkaReceiverContext extends ReceiverContext<Headers> {
+public final class KafkaConsumeContext extends ReceiverContext<Headers> {
 
     private final @Nullable String clientId;
 
@@ -28,8 +32,8 @@ public final class KafkaReceiverContext extends ReceiverContext<Headers> {
 
     private final long offset;
 
-    private KafkaReceiverContext(@Nullable String clientId, ConsumerRecord<?, ?> consumerRecord) {
-        super(KafkaReceiverContext::extractLastHeaderValue);
+    private KafkaConsumeContext(@Nullable String clientId, ConsumerRecord<?, ?> consumerRecord) {
+        super(KafkaConsumeContext::extractLastHeaderValue, Kind.CONSUMER);
         this.clientId = clientId;
         this.topic = consumerRecord.topic();
         this.partition = consumerRecord.partition();
@@ -37,7 +41,7 @@ public final class KafkaReceiverContext extends ReceiverContext<Headers> {
         setCarrier(consumerRecord.headers());
     }
 
-    public static KafkaReceiverContext create(KafkaReceiverRecord<?, ?> receiverRecord) {
+    public static KafkaConsumeContext create(KafkaReceiverRecord<?, ?> receiverRecord) {
         return newFactory().create(receiverRecord);
     }
 
@@ -45,20 +49,20 @@ public final class KafkaReceiverContext extends ReceiverContext<Headers> {
         return new Factory(null);
     }
 
-    public @Nullable String getClientId() {
-        return clientId;
+    public Optional<KeyValue> clientIdValue(KeyName name) {
+        return clientId != null ? Optional.of(name.withValue(clientId)) : Optional.empty();
     }
 
-    public String getTopic() {
-        return topic;
+    public KeyValue topicValue(KeyName name) {
+        return name.withValue(topic);
     }
 
-    public String getPartitionAsString() {
-        return Integer.toString(partition);
+    public KeyValue partitionValue(KeyName name) {
+        return name.withValue(Long.toString(partition));
     }
 
-    public String getOffsetAsString() {
-        return Long.toString(offset);
+    public KeyValue offsetValue(KeyName name) {
+        return name.withValue(Long.toString(offset));
     }
 
     private static @Nullable String extractLastHeaderValue(Headers carrier, String key) {
@@ -74,12 +78,12 @@ public final class KafkaReceiverContext extends ReceiverContext<Headers> {
             this.clientId = clientId;
         }
 
-        public KafkaReceiverContext create(KafkaReceiverRecord<?, ?> receiverRecord) {
+        public KafkaConsumeContext create(KafkaReceiverRecord<?, ?> receiverRecord) {
             return create(receiverRecord.consumerRecord());
         }
 
-        public KafkaReceiverContext create(ConsumerRecord<?, ?> consumerRecord) {
-            return new KafkaReceiverContext(clientId, consumerRecord);
+        public KafkaConsumeContext create(ConsumerRecord<?, ?> consumerRecord) {
+            return new KafkaConsumeContext(clientId, consumerRecord);
         }
 
         public Factory withConsumerProperties(Map<String, ?> consumerProperties) {
