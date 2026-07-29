@@ -31,7 +31,7 @@ public abstract class ObservingAloConsumptionDecorator<T, C extends Observation.
 
     @Override
     public int order() {
-        return INNERMOST_ORDER + 4000;
+        return INNERMOST_ORDER + 5000;
     }
 
     @Override
