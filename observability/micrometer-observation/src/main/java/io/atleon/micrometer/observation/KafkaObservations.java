@@ -14,6 +14,10 @@ import java.util.function.Supplier;
  */
 public enum KafkaObservations implements ObservationDocumentation {
     /**
+     * Observation for records received from polling
+     */
+    POLLED(KafkaPolledObservationConvention.Default.class),
+    /**
      * Observation for processing consumed records
      */
     PROCESS(KafkaProcessObservationConvention.Default.class);
@@ -22,6 +26,13 @@ public enum KafkaObservations implements ObservationDocumentation {
 
     KafkaObservations(Class<? extends ObservationConvention<? extends Observation.Context>> defaultConvention) {
         this.defaultConvention = defaultConvention;
+    }
+
+    /**
+     * Convenience function for creating a "polled" {@link Observation} with default convention
+     */
+    public static Observation polled(Supplier<KafkaConsumeContext> contextSupplier, ObservationRegistry registry) {
+        return POLLED.observation(null, KafkaPolledObservationConvention.Default.INSTANCE, contextSupplier, registry);
     }
 
     /**
