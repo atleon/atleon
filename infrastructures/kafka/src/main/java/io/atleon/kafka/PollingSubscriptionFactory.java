@@ -291,6 +291,7 @@ final class PollingSubscriptionFactory<K, V> {
             for (TopicPartition partition : consumerRecords.partitions()) {
                 ActivePartition<K, V> activePartition = pollManager.activated(partition);
                 for (ConsumerRecord<K, V> consumerRecord : consumerRecords.records(partition)) {
+                    listener.onRecordPolled(consumerRecord);
                     emittableRecords.add(new EmittableRecord<>(activePartition, consumerRecord));
                     queuedForEmission++;
                 }

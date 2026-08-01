@@ -1,5 +1,6 @@
 package io.atleon.kafka;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
 /**
@@ -28,6 +29,13 @@ public interface ReceptionListener {
      * that partition have also been deactivated.
      */
     default void onPartitionDeactivated(TopicPartition partition) {}
+
+    /**
+     * Invoked when the provided {@link ConsumerRecord} has been polled. Note that this does not
+     * guarantee outstanding downstream demand for the given record, nor that the given record will
+     * be emitted, but rather that the record has been prefetched for possible emission.
+     */
+    default void onRecordPolled(ConsumerRecord<?, ?> consumerRecord) {}
 
     /**
      * Invoked when records have been received from the given partition and activated for
