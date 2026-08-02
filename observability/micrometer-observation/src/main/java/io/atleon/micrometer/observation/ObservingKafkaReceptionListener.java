@@ -11,7 +11,7 @@ import java.time.Duration;
  * A {@link ReceptionListener} that exports {@link KafkaObservations#POLLED} observations for every
  * {@link ConsumerRecord} received from {@link org.apache.kafka.clients.consumer.Consumer#poll(Duration)}
  */
-public class ObservingKafkaReceptionListener implements ReceptionListener {
+public final class ObservingKafkaReceptionListener implements ReceptionListener {
 
     private final ObservationRegistry registry;
 
@@ -32,7 +32,7 @@ public class ObservingKafkaReceptionListener implements ReceptionListener {
 
     @Override
     public void onRecordPolled(ConsumerRecord<?, ?> consumerRecord) {
-        KafkaObservations.polled(() -> contextFactory.create(consumerRecord), registry)
+        KafkaObservations.polled(() -> contextFactory.polled(consumerRecord), registry)
                 .start()
                 .stop();
     }

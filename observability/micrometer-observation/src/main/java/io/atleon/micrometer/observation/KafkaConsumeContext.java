@@ -22,7 +22,7 @@ import java.util.Optional;
  * is because it is very possible that the lifecycle of observation/processing extends beyond the
  * visibility lifecycle of what's actually consumed.
  */
-public final class KafkaConsumeContext extends ReceiverContext<Headers> {
+public abstract class KafkaConsumeContext extends ReceiverContext<Headers> {
 
     private final @Nullable String clientId;
 
@@ -32,22 +32,26 @@ public final class KafkaConsumeContext extends ReceiverContext<Headers> {
 
     private final long offset;
 
-    private KafkaConsumeContext(@Nullable String clientId, ConsumerRecord<?, ?> consumerRecord) {
+    private KafkaConsumeContext(Factory factory, ConsumerRecord<?, ?> consumerRecord) {
         super(KafkaConsumeContext::extractLastHeaderValue, Kind.CONSUMER);
-        this.clientId = clientId;
+        this.clientId = factory.clientId;
         this.topic = consumerRecord.topic();
         this.partition = consumerRecord.partition();
         this.offset = consumerRecord.offset();
         setCarrier(consumerRecord.headers());
     }
 
-    public static KafkaConsumeContext create(KafkaReceiverRecord<?, ?> receiverRecord) {
-        return newFactory().create(receiverRecord);
+    public static KafkaConsumeContext process(KafkaReceiverRecord<?, ?> receiverRecord) {
+        return newFactory().process(receiverRecord);
     }
 
     public static Factory newFactory() {
         return new Factory(null);
     }
+
+    public abstract KeyValue operationNameValue(KeyName name);
+
+    public abstract KeyValue operationTypeValue(KeyName name);
 
     public Optional<KeyValue> clientIdValue(KeyName name) {
         return clientId != null ? Optional.of(name.withValue(clientId)) : Optional.empty();
@@ -70,6 +74,40 @@ public final class KafkaConsumeContext extends ReceiverContext<Headers> {
         return header != null && header.value() != null ? new String(header.value(), StandardCharsets.UTF_8) : null;
     }
 
+    public static final class Polled extends KafkaConsumeContext {
+
+        private Polled(Factory factory, ConsumerRecord<?, ?> consumerRecord) {
+            super(factory, consumerRecord);
+        }
+
+        @Override
+        public KeyValue operationNameValue(KeyName name) {
+            return name.withValue("polled");
+        }
+
+        @Override
+        public KeyValue operationTypeValue(KeyName name) {
+            return name.withValue("receive");
+        }
+    }
+
+    public static final class Process extends KafkaConsumeContext {
+
+        private Process(Factory factory, ConsumerRecord<?, ?> consumerRecord) {
+            super(factory, consumerRecord);
+        }
+
+        @Override
+        public KeyValue operationNameValue(KeyName name) {
+            return name.withValue("process");
+        }
+
+        @Override
+        public KeyValue operationTypeValue(KeyName name) {
+            return name.withValue("process");
+        }
+    }
+
     public static final class Factory {
 
         private final @Nullable String clientId;
@@ -78,12 +116,16 @@ public final class KafkaConsumeContext extends ReceiverContext<Headers> {
             this.clientId = clientId;
         }
 
-        public KafkaConsumeContext create(KafkaReceiverRecord<?, ?> receiverRecord) {
-            return create(receiverRecord.consumerRecord());
+        public KafkaConsumeContext polled(ConsumerRecord<?, ?> consumerRecord) {
+            return new Polled(this, consumerRecord);
         }
 
-        public KafkaConsumeContext create(ConsumerRecord<?, ?> consumerRecord) {
-            return new KafkaConsumeContext(clientId, consumerRecord);
+        public KafkaConsumeContext process(KafkaReceiverRecord<?, ?> receiverRecord) {
+            return process(receiverRecord.consumerRecord());
+        }
+
+        public KafkaConsumeContext process(ConsumerRecord<?, ?> consumerRecord) {
+            return new Process(this, consumerRecord);
         }
 
         public Factory withConsumerProperties(Map<String, ?> consumerProperties) {
