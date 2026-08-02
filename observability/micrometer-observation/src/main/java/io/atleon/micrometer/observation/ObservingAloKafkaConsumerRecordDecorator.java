@@ -48,6 +48,6 @@ public final class ObservingAloKafkaConsumerRecordDecorator<K, V>
 
     @Override
     protected KafkaConsumeContext createContext(ConsumerRecord<K, V> consumerRecord) {
-        return contextFactory.create(consumerRecord);
+        return contextFactory.process(consumerRecord);
     }
 }

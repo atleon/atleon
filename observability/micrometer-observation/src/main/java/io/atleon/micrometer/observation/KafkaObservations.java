@@ -63,7 +63,7 @@ public enum KafkaObservations implements ObservationDocumentation {
          */
         MESSAGING_SYSTEM("messaging.system"),
         /**
-         * The name of operation being applied (e.g. "poll", "process", "send", etc.)
+         * The name of operation being applied (e.g. "polled", "process", "send", etc.)
          */
         MESSAGING_OPERATION_NAME("messaging.operation.name"),
         /**
