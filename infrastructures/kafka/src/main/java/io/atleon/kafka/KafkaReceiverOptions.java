@@ -177,7 +177,9 @@ public final class KafkaReceiverOptions<K, V> {
      * @see Builder#receptionListenerFactory(ReceptionListenerFactory)
      */
     public ReceptionListener createReceptionListener() {
-        return receptionListenerFactory.create();
+        return receptionListenerFactory
+                .withConsumerProperties(consumerProperties)
+                .create();
     }
 
     /**
