@@ -1,20 +1,23 @@
 package io.atleon.micrometer.observation;
 
 import io.micrometer.observation.tck.TestObservationRegistry;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
+
 import static io.micrometer.observation.tck.TestObservationRegistryAssert.assertThat;
 
-class ObservingKafkaReceptionListenerTest {
+class ObservingKafkaReceptionListenerFactoryTest {
 
     private final TestObservationRegistry registry = TestObservationRegistry.create();
 
     @Test
     public void onRecordPolled_givenConsumerRecord_expectsStoppedObservationTaggedFromRecord() {
-        ObservingKafkaReceptionListener listener = new ObservingKafkaReceptionListener(registry);
-
-        listener.onRecordPolled(new ConsumerRecord<>("topic", 2, 42L, "key", "value"));
+        new ObservingKafkaReceptionListenerFactory(registry)
+                .create()
+                .onRecordPolled(new ConsumerRecord<>("topic", 2, 42L, "key", "value"));
 
         assertThat(registry)
                 .hasNumberOfObservationsEqualTo(1)
@@ -32,11 +35,11 @@ class ObservingKafkaReceptionListenerTest {
     }
 
     @Test
-    public void onRecordPolled_givenContextFactoryWithClientId_expectsObservationTaggedWithClientId() {
-        ObservingKafkaReceptionListener listener = new ObservingKafkaReceptionListener(
-                registry, KafkaConsumeContext.newFactory().withClientId("test-client"));
-
-        listener.onRecordPolled(new ConsumerRecord<>("topic", 0, 0L, "key", "value"));
+    public void onRecordPolled_givenConsumerPropertiesWithClientId_expectsObservationTaggedWithClientId() {
+        new ObservingKafkaReceptionListenerFactory(registry)
+                .withConsumerProperties(Collections.singletonMap(ConsumerConfig.CLIENT_ID_CONFIG, "test-client"))
+                .create()
+                .onRecordPolled(new ConsumerRecord<>("topic", 0, 0L, "key", "value"));
 
         assertThat(registry)
                 .hasNumberOfObservationsEqualTo(1)
