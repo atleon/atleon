@@ -6,19 +6,18 @@ import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.observation.Observations;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 
 /**
  * A {@link ReceptionListener} that exports {@link KafkaObservations#POLLED} observations for every
- * {@link ConsumerRecord} received from {@link org.apache.kafka.clients.consumer.Consumer#poll(Duration)}
+ * {@link ConsumerRecord} received from {@link org.apache.kafka.clients.consumer.Consumer#poll(java.time.Duration)}
  */
 public final class ObservingKafkaReceptionListenerFactory implements ReceptionListenerFactory {
 
     private final ObservationRegistry registry;
 
-    private final Map<String, Object> consumerProperties;
+    private final Map<String, ?> consumerProperties;
 
     public ObservingKafkaReceptionListenerFactory() {
         this(Observations.getGlobalRegistry(), Collections.emptyMap());
@@ -28,14 +27,13 @@ public final class ObservingKafkaReceptionListenerFactory implements ReceptionLi
         this(registry, Collections.emptyMap());
     }
 
-    private ObservingKafkaReceptionListenerFactory(
-            ObservationRegistry registry, Map<String, Object> consumerProperties) {
+    private ObservingKafkaReceptionListenerFactory(ObservationRegistry registry, Map<String, ?> consumerProperties) {
         this.registry = registry;
         this.consumerProperties = consumerProperties;
     }
 
     @Override
-    public ReceptionListenerFactory withConsumerProperties(Map<String, Object> consumerProperties) {
+    public ReceptionListenerFactory withConsumerProperties(Map<String, ?> consumerProperties) {
         return new ObservingKafkaReceptionListenerFactory(registry, consumerProperties);
     }
 
@@ -54,7 +52,7 @@ public final class ObservingKafkaReceptionListenerFactory implements ReceptionLi
 
         @Override
         public void onRecordPolled(ConsumerRecord<?, ?> consumerRecord) {
-            KafkaObservations.polled(() -> contextFactory.polled(consumerRecord), registry)
+            KafkaObservations.polled(registry, contextFactory, consumerRecord)
                     .start()
                     .stop();
         }

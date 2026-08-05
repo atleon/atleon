@@ -6,6 +6,7 @@ import io.micrometer.observation.ObservationConvention;
 import io.micrometer.observation.ObservationRegistry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import java.util.Collections;
 import java.util.Map;
 
 /**
@@ -27,13 +28,12 @@ public final class ObservingAloKafkaConsumerRecordDecorator<K, V>
     }
 
     public ObservingAloKafkaConsumerRecordDecorator(ObservationRegistry registry) {
-        this(registry, KafkaConsumeContext.newFactory());
+        this(registry, Collections.emptyMap());
     }
 
-    public ObservingAloKafkaConsumerRecordDecorator(
-            ObservationRegistry registry, KafkaConsumeContext.Factory contextFactory) {
+    public ObservingAloKafkaConsumerRecordDecorator(ObservationRegistry registry, Map<String, ?> consumerProperties) {
         super(KafkaObservations.PROCESS, registry);
-        this.contextFactory = contextFactory;
+        this.contextFactory = KafkaConsumeContext.newFactory().withConsumerProperties(consumerProperties);
     }
 
     @Override
