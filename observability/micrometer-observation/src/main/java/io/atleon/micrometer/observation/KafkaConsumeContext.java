@@ -1,6 +1,5 @@
 package io.atleon.micrometer.observation;
 
-import io.atleon.kafka.KafkaReceiverRecord;
 import io.atleon.util.ConfigLoading;
 import io.micrometer.common.KeyValue;
 import io.micrometer.common.docs.KeyName;
@@ -39,10 +38,6 @@ public abstract class KafkaConsumeContext extends ReceiverContext<Headers> {
         this.partition = consumerRecord.partition();
         this.offset = consumerRecord.offset();
         setCarrier(consumerRecord.headers());
-    }
-
-    public static KafkaConsumeContext process(KafkaReceiverRecord<?, ?> receiverRecord) {
-        return newFactory().process(receiverRecord);
     }
 
     public static Factory newFactory() {
@@ -118,10 +113,6 @@ public abstract class KafkaConsumeContext extends ReceiverContext<Headers> {
 
         public KafkaConsumeContext polled(ConsumerRecord<?, ?> consumerRecord) {
             return new Polled(this, consumerRecord);
-        }
-
-        public KafkaConsumeContext process(KafkaReceiverRecord<?, ?> receiverRecord) {
-            return process(receiverRecord.consumerRecord());
         }
 
         public KafkaConsumeContext process(ConsumerRecord<?, ?> consumerRecord) {

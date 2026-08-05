@@ -1,10 +1,12 @@
 package io.atleon.micrometer.observation;
 
+import io.atleon.kafka.KafkaReceiverRecord;
 import io.micrometer.common.docs.KeyName;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationConvention;
 import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.observation.docs.ObservationDocumentation;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import java.util.function.Supplier;
 
@@ -31,14 +33,22 @@ public enum KafkaObservations implements ObservationDocumentation {
     /**
      * Convenience function for creating a "polled" {@link Observation} with default convention
      */
-    public static Observation polled(Supplier<KafkaConsumeContext> contextSupplier, ObservationRegistry registry) {
+    public static Observation polled(
+            ObservationRegistry registry,
+            KafkaConsumeContext.Factory contextFactory,
+            ConsumerRecord<?, ?> consumerRecord) {
+        Supplier<KafkaConsumeContext> contextSupplier = () -> contextFactory.polled(consumerRecord);
         return POLLED.observation(null, KafkaPolledObservationConvention.Default.INSTANCE, contextSupplier, registry);
     }
 
     /**
      * Convenience function for creating a "process" {@link Observation} with default convention
      */
-    public static Observation process(Supplier<KafkaConsumeContext> contextSupplier, ObservationRegistry registry) {
+    public static Observation process(
+            ObservationRegistry registry,
+            KafkaConsumeContext.Factory contextFactory,
+            KafkaReceiverRecord<?, ?> receiverRecord) {
+        Supplier<KafkaConsumeContext> contextSupplier = () -> contextFactory.process(receiverRecord.consumerRecord());
         return PROCESS.observation(null, KafkaProcessObservationConvention.Default.INSTANCE, contextSupplier, registry);
     }
 

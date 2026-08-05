@@ -23,7 +23,11 @@ public interface ReceptionListenerFactory {
         return () -> receptionListener;
     }
 
-    default ReceptionListenerFactory withConsumerProperties(Map<String, Object> consumerProperties) {
+    /**
+     * Invoked at subscription time to allow this factory to incorporate the provided consumer
+     * properties in the configuration of subsequently-created {@link ReceptionListener} instances.
+     */
+    default ReceptionListenerFactory withConsumerProperties(Map<String, ?> consumerProperties) {
         return this;
     }
 
