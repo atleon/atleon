@@ -3,13 +3,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.46.0]
+atleon `0.46.0` is a beta release containing updates outlined below
+
+### Additions
+* [#577] Micrometer Observation: Added `micrometer-observation` module to facilitate observability integration for Kafka, and further support migration from `reactor-kafka`
+
 # [0.45.0]
 atleon `0.45.0` is a beta release containing updates outlined below
 
 ### Additions
 * [#574] Core: Added convenient `AloFlux::decorateAlo` operator to support `AloDecorator` (re)usage
 
-### Fixes
+### Updates
 * [#568] Baseline JDK version bumped from 1.8 to 17
 
 # [0.44.0]
