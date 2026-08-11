@@ -1,11 +1,17 @@
+<div align="center">
+
+<img src="assets/atleon-icon.png" style="width: 10%" alt="Atleon"/>
+
 # Atleon
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Main Build Workflow](https://github.com/atleon/atleon/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/atleon/atleon/actions/workflows/main.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/io.atleon/atleon-core)](https://search.maven.org/artifact/io.atleon/atleon-core)
 [![Javadoc](https://javadoc.io/badge2/io.atleon/atleon-core/javadoc.svg)](https://javadoc.io/doc/io.atleon/atleon-core)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-Atleon is a lightweight reactive stream processing framework that scalably transforms data from any supported infrastructure, and allows sending that data nearly anywhere, while _seamlessly_ maintaining **at** **le**ast **on**ce processing guarantees.
+</div>
+
+Atleon is an embeddable stream processing library that scalably transforms data from any supported infrastructure, and allows sending that data anywhere, while _seamlessly_ maintaining **at** **le**ast **on**ce processing guarantees.
 
 Atleon is based on [Reactive Streams](https://www.reactive-streams.org/) and backed by [Project Reactor](https://projectreactor.io/). There are two levels of client APIs offered:
 
