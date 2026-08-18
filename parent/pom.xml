@@ -30,7 +30,7 @@
         <opentelemetry.version>1.62.0</opentelemetry.version>
         <opentracing.verion>0.32.0</opentracing.verion>
         <protobuf.version>3.25.5</protobuf.version>
-        <rabbitmq.version>5.18.0</rabbitmq.version>
+        <rabbitmq.version>5.33.1</rabbitmq.version>
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor.version>3.5.14</reactor.version>
         <reactor-pool.version>1.0.5</reactor-pool.version>
