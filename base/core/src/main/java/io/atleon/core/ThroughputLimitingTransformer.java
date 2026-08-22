@@ -5,6 +5,7 @@ import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.TimeMeter;
 import io.github.bucket4j.TokensInheritanceStrategy;
+import io.github.bucket4j.local.SynchronizationStrategy;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -15,6 +16,7 @@ import reactor.core.scheduler.Schedulers;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 
@@ -180,19 +182,17 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
             // Implementation notes:
             // 1. Limits are kept dynamic/updated on the created grantor by subscribing to the
             //    limits with a side effect on the grantor.
-            // 2. We can safely skip the emission of initial limits that equal the initial limit,
-            //    since we know the grantor is initialized with that limit. Zero and consecutive
-            //    equal limits are also skipped to avoid needless resetting/configuration on the
-            //    grantor.
+            // 2. Zero and consecutive equal limits (including starting limits equal to the initial
+            //    limit) are skipped to avoid needless resetting/configuration on the grantor.
             // 3. The limit updating process is characterized as a publisher that never completes,
             //    which allows us to use it as a "takeUntilOther" condition on the source
             //    publisher. This makes it such that errors on the limit stream are propagated
             //    to the main publisher, and termination of the main publisher also terminates
             //    the limit updating process. Using "takeUntilOther" rather than "merge" prevents
             //    inadvertent introduction of an unnecessary prefetch buffer.
-            ThroughputGrantor grantor = new Bucket4jThroughputGrantor(scheduler, initialLimit);
-            Mono<Void> limitUpdating = limits.skipWhile(initialLimit::equals)
-                    .filter(it -> !it.isZero())
+            ThroughputGrantor grantor = new Bucket4jThroughputGrantor(scheduler);
+            Mono<Void> limitUpdating = limits.filter(it -> !it.isZero())
+                    .startWith(initialLimit)
                     .distinctUntilChanged()
                     .doOnNext(grantor::updateLimit)
                     .thenEmpty(Mono.never());
@@ -202,9 +202,9 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
         }
 
         private Mono<T> maybeDelay(ThroughputGrantor grantor, T t) {
-            int weight = weighting.applyAsInt(t);
-            long delayNanos = grantor.reserveCapacity(weight);
-            return delayNanos <= 0 ? Mono.just(t) : Mono.just(t).delayElement(Duration.ofNanos(delayNanos), scheduler);
+            return grantor.reserveCapacity(weighting.applyAsInt(t))
+                    .delayUntil(it -> it > 0 ? Mono.delay(Duration.ofNanos(it), scheduler) : Mono.empty())
+                    .thenReturn(t);
         }
     }
 
@@ -218,20 +218,22 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
 
     /**
      * API through which throughput capacity is reserved and updated. Reservation of throughput
-     * capacity may require waiting/delaying until the return number of nanoseconds has elapsed.
-     * Limitation of available throughput capacity can be dynamic, in which case the grantor will
+     * capacity may require waiting/delaying until the emitted number of nanoseconds has elapsed.
+     * Limitation of available throughput capacity can be dynamic, in which case the grantor should
      * update its internal state to reflect the new limit.
      */
     private interface ThroughputGrantor {
 
         /**
-         * Request reservation of throughput capacity for the provided throughput weight. Returns
-         * the number of nanoseconds to wait before safely using the reserved capacity.
+         * Creates reservation of throughput capacity for the provided throughput weight. Returns
+         * a {@link Mono} that may emit the number of nanoseconds to wait before safely using the
+         * reserved capacity. Emitting nothing or a non-positive value is treated as "no wait
+         * necessary".
          *
          * @param weight The weight of throughput capacity to reserve
-         * @return The number of nanoseconds to wait before safely using the reserved capacity
+         * @return A {@link Mono} emitting number of nanoseconds to wait before using reservation
          */
-        long reserveCapacity(int weight);
+        Mono<Long> reserveCapacity(int weight);
 
         /**
          * Requests a change in any configured throughput limit.
@@ -246,34 +248,50 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
         private final TimeMeter timeMeter;
 
         // Nullity signifies the difference between infinite and non-infinite limits
-        private volatile Bucket bucket;
+        private volatile SerialQueue<Consumer<Bucket>> bucketQueue = null;
 
-        public Bucket4jThroughputGrantor(Scheduler scheduler, Rate initialLimit) {
+        public Bucket4jThroughputGrantor(Scheduler scheduler) {
             this.timeMeter = new SchedulerTimeMeter(scheduler);
-            this.bucket = initialLimit.isInfinite() ? null : newBucket(initialLimit, timeMeter);
         }
 
         @Override
-        public long reserveCapacity(int weight) {
-            Bucket nvBucket = bucket;
-            return nvBucket != null ? nvBucket.consumeIgnoringRateLimits(weight) : 0L;
+        public Mono<Long> reserveCapacity(int weight) {
+            SerialQueue<Consumer<Bucket>> nvBucketQueue = bucketQueue;
+            return nvBucketQueue != null ? reserveCapacity(nvBucketQueue, weight) : Mono.empty();
         }
 
         @Override
         public void updateLimit(Rate limit) {
-            Bucket nvBucket = bucket;
+            SerialQueue<Consumer<Bucket>> nvBucketQueue = bucketQueue;
             if (limit.isInfinite()) {
-                bucket = null;
-            } else if (nvBucket != null) {
-                updateLimit(nvBucket, limit);
+                bucketQueue = null;
+            } else if (nvBucketQueue != null) {
+                nvBucketQueue.addAndDrain(it -> updateLimit(it, limit));
             } else {
-                bucket = newBucket(limit, timeMeter);
+                bucketQueue = SerialQueue.on(newBucket(limit, timeMeter));
             }
+        }
+
+        private static Mono<Long> reserveCapacity(SerialQueue<Consumer<Bucket>> queue, int weight) {
+            return Mono.create(sink -> queue.addAndDrain(bucket -> {
+                try {
+                    if (weight > 0) {
+                        sink.success(bucket.consumeIgnoringRateLimits(weight));
+                    } else if (weight == 0) {
+                        sink.success();
+                    } else {
+                        throw new IllegalArgumentException("Weight must be non-negative: " + weight);
+                    }
+                } catch (Throwable error) {
+                    sink.error(error);
+                }
+            }));
         }
 
         private static Bucket newBucket(Rate limit, TimeMeter timeMeter) {
             return Bucket.builder()
                     .addLimit(it -> applyLimit(it, limit))
+                    .withSynchronizationStrategy(SynchronizationStrategy.NONE)
                     .withCustomTimePrecision(timeMeter)
                     .build();
         }
