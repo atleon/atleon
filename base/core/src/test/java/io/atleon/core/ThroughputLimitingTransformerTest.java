@@ -74,6 +74,25 @@ class ThroughputLimitingTransformerTest {
                 .verifyComplete();
     }
 
+    @Test
+    public void concatMap_givenLimitIndivisibleByItsDuration_expectsExactlyLimitedThroughput() {
+        StepVerifier.withVirtualTime(() -> Flux.just(1L, 2L, 3L, 4L, 5L, 6L)
+                        .transform(newConcatMap()
+                                .limits(Mono.just(Rate.perSecond(3)))
+                                .build()))
+                .expectNext(1L, 2L, 3L)
+                .expectNoEvent(Duration.ofMillis(333))
+                .thenAwait(Duration.ofMillis(1))
+                .expectNext(4L)
+                .expectNoEvent(Duration.ofMillis(332))
+                .thenAwait(Duration.ofMillis(1))
+                .expectNext(5L)
+                .expectNoEvent(Duration.ofMillis(332))
+                .thenAwait(Duration.ofMillis(1))
+                .expectNext(6L)
+                .verifyComplete();
+    }
+
     // ===== concatMap: Weighting scenarios =====
 
     @Test
@@ -88,6 +107,28 @@ class ThroughputLimitingTransformerTest {
                 .thenAwait(Duration.ofMillis(500))
                 .expectNext(2L)
                 .verifyComplete();
+    }
+
+    @Test
+    public void concatMap_givenZeroWeighting_expectsNoThroughputLimit() {
+        StepVerifier.withVirtualTime(() -> Flux.just(1L, 2L, 3L)
+                        .transform(newConcatMap()
+                                .limits(Mono.just(Rate.perSecond(1)))
+                                .weighting(__ -> 0)
+                                .build()))
+                .expectNext(1L, 2L, 3L)
+                .verifyComplete();
+    }
+
+    @Test
+    public void concatMap_givenNegativeWeighting_expectsError() {
+        StepVerifier.withVirtualTime(() -> Flux.just(1L, 2L, 3L)
+                        .transform(newConcatMap()
+                                .limits(Mono.just(Rate.perSecond(1)))
+                                .weighting(__ -> -1)
+                                .build()))
+                .expectError(IllegalArgumentException.class)
+                .verify();
     }
 
     // ===== concatMap: Dynamic limit change scenarios =====
@@ -261,6 +302,71 @@ class ThroughputLimitingTransformerTest {
                 .expectNext(1L)
                 .then(() -> limitSink.tryEmitNext(Rate.zero()))
                 .expectNoEvent(Duration.ofSeconds(5))
+                .thenCancel()
+                .verify();
+    }
+
+    @Test
+    public void innerConcatMap_givenBacklogOfReservations_expectsLimitEnforcedAfterLimitChange() {
+        Sinks.Many<Rate> limitSink = Sinks.many().multicast().onBackpressureBuffer();
+        Sinks.Many<Flux<Long>> innerSink = Sinks.many().multicast().onBackpressureBuffer();
+
+        StepVerifier.withVirtualTime(() -> innerSink
+                        .asFlux()
+                        .transform(
+                                newInnerConcatMap().limits(limitSink.asFlux()).build())
+                        .flatMap(Function.identity()))
+                .expectSubscription()
+                .then(() -> limitSink.tryEmitNext(Rate.perSecond(1)))
+                // Concurrently reserve enough capacity to push the point of depletion many
+                // seconds in to the future, which must be preserved across a change of limit
+                .then(() -> {
+                    for (long i = 0; i < 12; i++) {
+                        innerSink.tryEmitNext(Flux.just(i));
+                    }
+                })
+                .expectNext(0L)
+                .then(() -> limitSink.tryEmitNext(Rate.perSecond(2)))
+                .then(() -> innerSink.tryEmitNext(Flux.just(100L)))
+                .thenAwait(Duration.ofSeconds(11))
+                .expectNext(1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L, 10L, 11L)
+                .thenAwait(Duration.ofMillis(500))
+                .expectNext(100L)
+                .thenCancel()
+                .verify();
+    }
+
+    @Test
+    public void innerConcatMap_givenBacklogOfReservations_expectsLowerLimitEnforcedAfterLimitChange() {
+        Sinks.Many<Rate> limitSink = Sinks.many().multicast().onBackpressureBuffer();
+        Sinks.Many<Flux<Long>> innerSink = Sinks.many().multicast().onBackpressureBuffer();
+
+        StepVerifier.withVirtualTime(() -> innerSink
+                        .asFlux()
+                        .transform(
+                                newInnerConcatMap().limits(limitSink.asFlux()).build())
+                        .flatMap(Function.identity()))
+                .expectSubscription()
+                .then(() -> limitSink.tryEmitNext(Rate.perSecond(2)))
+                // Concurrently reserve enough capacity to push the point of depletion several
+                // seconds in to the future, which must be preserved across a change of limit
+                .then(() -> {
+                    for (long i = 0; i < 10; i++) {
+                        innerSink.tryEmitNext(Flux.just(i));
+                    }
+                })
+                .expectNext(0L, 1L)
+                .then(() -> limitSink.tryEmitNext(Rate.perSecond(1)))
+                .then(() -> innerSink.tryEmitNext(Flux.just(100L)))
+                // Already granted reservations keep their originally scheduled times, i.e.
+                // lowering the limit does not retroactively slow down the existing backlog
+                .thenAwait(Duration.ofSeconds(4))
+                .expectNext(2L, 3L, 4L, 5L, 6L, 7L, 8L, 9L)
+                // The reservation made after the change is spaced by the lowered limit, i.e. a
+                // full second past the backlog rather than the half second the prior limit implied
+                .expectNoEvent(Duration.ofMillis(999))
+                .thenAwait(Duration.ofMillis(1))
+                .expectNext(100L)
                 .thenCancel()
                 .verify();
     }

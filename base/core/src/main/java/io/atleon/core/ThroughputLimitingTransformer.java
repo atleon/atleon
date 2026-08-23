@@ -1,11 +1,5 @@
 package io.atleon.core;
 
-import io.github.bucket4j.BandwidthBuilder;
-import io.github.bucket4j.Bucket;
-import io.github.bucket4j.BucketConfiguration;
-import io.github.bucket4j.TimeMeter;
-import io.github.bucket4j.TokensInheritanceStrategy;
-import io.github.bucket4j.local.SynchronizationStrategy;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -190,7 +184,7 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
             //    to the main publisher, and termination of the main publisher also terminates
             //    the limit updating process. Using "takeUntilOther" rather than "merge" prevents
             //    inadvertent introduction of an unnecessary prefetch buffer.
-            ThroughputGrantor grantor = new Bucket4jThroughputGrantor(scheduler);
+            ThroughputGrantor grantor = new TokenBucketThroughputGrantor(scheduler);
             Mono<Void> limitUpdating = limits.filter(it -> !it.isZero())
                     .startWith(initialLimit)
                     .distinctUntilChanged()
@@ -243,40 +237,40 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
         void updateLimit(Rate limit);
     }
 
-    private static final class Bucket4jThroughputGrantor implements ThroughputGrantor {
+    private static final class TokenBucketThroughputGrantor implements ThroughputGrantor {
 
-        private final TimeMeter timeMeter;
+        private final Scheduler scheduler;
 
         // Nullity signifies the difference between infinite and non-infinite limits
-        private volatile SerialQueue<Consumer<Bucket>> bucketQueue = null;
+        private volatile SerialQueue<Consumer<TokenBucket>> bucketQueue = null;
 
-        public Bucket4jThroughputGrantor(Scheduler scheduler) {
-            this.timeMeter = new SchedulerTimeMeter(scheduler);
+        public TokenBucketThroughputGrantor(Scheduler scheduler) {
+            this.scheduler = scheduler;
         }
 
         @Override
         public Mono<Long> reserveCapacity(int weight) {
-            SerialQueue<Consumer<Bucket>> nvBucketQueue = bucketQueue;
+            SerialQueue<Consumer<TokenBucket>> nvBucketQueue = bucketQueue;
             return nvBucketQueue != null ? reserveCapacity(nvBucketQueue, weight) : Mono.empty();
         }
 
         @Override
         public void updateLimit(Rate limit) {
-            SerialQueue<Consumer<Bucket>> nvBucketQueue = bucketQueue;
+            SerialQueue<Consumer<TokenBucket>> nvBucketQueue = bucketQueue;
             if (limit.isInfinite()) {
                 bucketQueue = null;
             } else if (nvBucketQueue != null) {
-                nvBucketQueue.addAndDrain(it -> updateLimit(it, limit));
+                nvBucketQueue.addAndDrain(it -> it.updateLimit(limit));
             } else {
-                bucketQueue = SerialQueue.on(newBucket(limit, timeMeter));
+                bucketQueue = SerialQueue.on(new TokenBucket(scheduler, limit));
             }
         }
 
-        private static Mono<Long> reserveCapacity(SerialQueue<Consumer<Bucket>> queue, int weight) {
+        private static Mono<Long> reserveCapacity(SerialQueue<Consumer<TokenBucket>> queue, int weight) {
             return Mono.create(sink -> queue.addAndDrain(bucket -> {
                 try {
                     if (weight > 0) {
-                        sink.success(bucket.consumeIgnoringRateLimits(weight));
+                        sink.success(bucket.reserveCapacity(weight));
                     } else if (weight == 0) {
                         sink.success();
                     } else {
@@ -287,44 +281,91 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
                 }
             }));
         }
-
-        private static Bucket newBucket(Rate limit, TimeMeter timeMeter) {
-            return Bucket.builder()
-                    .addLimit(it -> applyLimit(it, limit))
-                    .withSynchronizationStrategy(SynchronizationStrategy.NONE)
-                    .withCustomTimePrecision(timeMeter)
-                    .build();
-        }
-
-        private static void updateLimit(Bucket bucket, Rate limit) {
-            BucketConfiguration configuration = BucketConfiguration.builder()
-                    .addLimit(it -> applyLimit(it, limit))
-                    .build();
-            bucket.replaceConfiguration(configuration, TokensInheritanceStrategy.PROPORTIONALLY);
-        }
-
-        private static BandwidthBuilder.BandwidthBuilderBuildStage applyLimit(
-                BandwidthBuilder.BandwidthBuilderCapacityStage bandwidthBuilder, Rate limit) {
-            return bandwidthBuilder.capacity(limit.count()).refillGreedy(limit.count(), limit.duration());
-        }
     }
 
-    private static final class SchedulerTimeMeter implements TimeMeter {
+    /**
+     * A token bucket whose capacity is continuously (rather than discretely) replenished, i.e. a
+     * bucket holding up to {@link Rate#count()} tokens which are replenished smoothly over
+     * {@link Rate#duration()}. Reservation of capacity is always granted, and results in the
+     * number of nanoseconds that must elapse before the reserved capacity is safely usable.
+     *
+     * <p>Rather than tracking available tokens directly, this bucket tracks the point in time at
+     * which it is depleted, such that the number of tokens available at any given time is
+     * {@code min(count, ((now - depletion) * count) / duration)}. Reserving capacity is therefore
+     * implemented by pushing the point of depletion further in to the future, and the resulting
+     * delay is however much of that push extends beyond the current time. Note that this also
+     * means a full bucket is equivalent to a point of depletion exactly one duration in the past,
+     * which is used both to bound available capacity when reserving and to preserve the proportion
+     * of available capacity when the enforced limit changes.
+     *
+     * <p>This bucket is not thread safe, and therefore requires that invocation of its methods is
+     * serialized by the caller.
+     */
+    private static final class TokenBucket {
 
         private final Scheduler scheduler;
 
-        private SchedulerTimeMeter(Scheduler scheduler) {
+        private long count;
+
+        private long durationNanos;
+
+        private long depletionNanos;
+
+        // Remainder of division by count, which keeps replenishment exact for counts that do not
+        // evenly divide their duration
+        private long depletionRemainder;
+
+        public TokenBucket(Scheduler scheduler, Rate limit) {
             this.scheduler = scheduler;
+            this.count = limit.count();
+            this.durationNanos = limit.duration().toNanos();
+            this.depletionNanos = now() - durationNanos;
+            this.depletionRemainder = 0L;
         }
 
-        @Override
-        public long currentTimeNanos() {
+        public long reserveCapacity(int weight) {
+            long nowNanos = now();
+
+            // Check if this is the first request (in a "while") and if so, reset depletion time
+            long fullDepletionNanos = nowNanos - durationNanos;
+            if (depletionNanos < fullDepletionNanos) {
+                depletionNanos = fullDepletionNanos;
+                depletionRemainder = 0L;
+            }
+
+            // Push the depletion time forward based on weighted reservation
+            long pushNanos = Math.multiplyExact(durationNanos, weight) + depletionRemainder;
+            depletionNanos += pushNanos / count;
+            depletionRemainder = pushNanos % count;
+
+            // Delay is however far into the future the depletion time is (negative if no delay)
+            return (depletionNanos - nowNanos) + (depletionRemainder > 0L ? 1L : 0L);
+        }
+
+        public void updateLimit(Rate limit) {
+            long nowNanos = now();
+            long remainingNanos = Math.max(depletionNanos, nowNanos - durationNanos) - nowNanos;
+            long limitNanos = limit.duration().toNanos();
+
+            count = limit.count();
+            depletionNanos = nowNanos + scale(remainingNanos, limitNanos, durationNanos);
+            depletionRemainder = 0L;
+            durationNanos = limitNanos;
+        }
+
+        private long now() {
             return scheduler.now(TimeUnit.NANOSECONDS);
         }
 
-        @Override
-        public boolean isWallClockBased() {
-            return false;
+        /**
+         * Returns {@code (nanos * numerator) / denominator}, applied separately to the quotient
+         * and remainder of {@code nanos / denominator} such that the intermediate multiplication
+         * cannot overflow. Note that a naive multiplication would overflow once the point of
+         * depletion is more than roughly nine seconds in the future, which is reachable at low
+         * limits with many concurrently reserving streams.
+         */
+        private static long scale(long nanos, long numerator, long denominator) {
+            return ((nanos / denominator) * numerator) + (((nanos % denominator) * numerator) / denominator);
         }
     }
 }
