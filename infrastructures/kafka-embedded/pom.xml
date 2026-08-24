@@ -45,11 +45,6 @@
             <artifactId>kafka-server</artifactId>
             <scope>provided</scope>
         </dependency>
-        <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-            <scope>provided</scope>
-        </dependency>
 
         <!-- Third Party Runtime Dependencies -->
         <!-- log4j:log4j is excluded from above due to ban-hammer -->
