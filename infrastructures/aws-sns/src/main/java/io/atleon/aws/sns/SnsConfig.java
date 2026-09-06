@@ -1,6 +1,5 @@
 package io.atleon.aws.sns;
 
-import io.atleon.aws.util.SdkConfig;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
 import software.amazon.awssdk.services.sns.SnsAsyncClient;
@@ -15,12 +14,6 @@ import java.util.Optional;
  * Config used by SNS Resources to build Clients and load typed configuration values.
  */
 public class SnsConfig {
-
-    /**
-     * @deprecated Use {@link SdkConfig#SNS_ENDPOINT_OVERRIDE_CONFIG} instead.
-     */
-    @Deprecated
-    public static final String ENDPOINT_OVERRIDE_CONFIG = SdkConfig.SNS_ENDPOINT_OVERRIDE_CONFIG;
 
     private final Map<String, ?> properties;
 

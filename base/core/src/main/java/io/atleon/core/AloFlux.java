@@ -13,7 +13,6 @@ import reactor.core.scheduler.Schedulers;
 import reactor.util.context.Context;
 
 import java.time.Duration;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -252,14 +251,6 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
         return wrapped.<Alo<Publisher<V>>>handle(AloOps.mappingHandler(mapper))
                 .concatMap(AcknowledgingPublisher::fromAloPublisher, prefetch)
                 .as(AloFlux::new);
-    }
-
-    /**
-     * @deprecated Use {@link AloFlux#flatMapIterable(Function)} instead
-     */
-    @Deprecated
-    public <R> AloFlux<R> flatMapCollection(Function<? super T, ? extends Collection<? extends R>> mapper) {
-        return flatMapIterable(mapper);
     }
 
     /**

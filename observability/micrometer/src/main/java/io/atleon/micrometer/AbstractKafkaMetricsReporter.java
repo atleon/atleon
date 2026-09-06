@@ -19,11 +19,7 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
 
     public enum FilterInclusion {
         BLOCKLIST,
-        ALLOWLIST,
-        @Deprecated
-        BLACKLIST,
-        @Deprecated
-        WHITELIST
+        ALLOWLIST
     }
 
     public static final String CONFIG_PREFIX = "metric.reporter.";
@@ -140,19 +136,7 @@ public abstract class AbstractKafkaMetricsReporter implements MetricsReporter {
     }
 
     private static Optional<FilterInclusion> loadFilterInclusion(Map<String, ?> configs) {
-        return ConfigLoading.loadEnum(configs, FILTER_NAMES_INCLUSION_CONFIG, FilterInclusion.class)
-                .map(AbstractKafkaMetricsReporter::sanitize);
-    }
-
-    private static FilterInclusion sanitize(FilterInclusion filterInclusion) {
-        switch (filterInclusion) {
-            case BLACKLIST:
-                return FilterInclusion.BLOCKLIST;
-            case WHITELIST:
-                return FilterInclusion.ALLOWLIST;
-            default:
-                return filterInclusion;
-        }
+        return ConfigLoading.loadEnum(configs, FILTER_NAMES_INCLUSION_CONFIG, FilterInclusion.class);
     }
 
     private static void registerGauge(MeterRegistry meterRegistry, MeterKey meterKey, KafkaMetric metric) {

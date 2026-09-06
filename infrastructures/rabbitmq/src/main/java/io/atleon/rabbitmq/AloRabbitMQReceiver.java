@@ -30,17 +30,6 @@ import java.util.function.Consumer;
 public class AloRabbitMQReceiver<T> {
 
     /**
-     * @deprecated Use {@link #NACKNOWLEDGER_TYPE_EMIT}, {@link #NACKNOWLEDGER_TYPE_REQUEUE}, or
-     * {@link #NACKNOWLEDGER_TYPE_DISCARD}
-     */
-    @Deprecated
-    public enum NackStrategy {
-        EMIT,
-        REQUEUE,
-        DISCARD
-    }
-
-    /**
      * Prefix used on all AloRabbitMQReceiver-specific configurations
      */
     public static final String CONFIG_PREFIX = "rabbitmq.receiver.";
@@ -54,12 +43,6 @@ public class AloRabbitMQReceiver<T> {
      * An implementation of {@link BodyDeserializer} used to deserialized message bodies
      */
     public static final String BODY_DESERIALIZER_CONFIG = CONFIG_PREFIX + "body.deserializer";
-
-    /**
-     * @deprecated Use {@link #NACKNOWLEDGER_TYPE_CONFIG}
-     */
-    @Deprecated
-    public static final String NACK_STRATEGY_CONFIG = CONFIG_PREFIX + "nack.strategy";
 
     /**
      * Configures the behavior of negatively acknowledging SQS Messages. Several simple types are
@@ -216,22 +199,7 @@ public class AloRabbitMQReceiver<T> {
         private static <T> NacknowledgerFactory<T> createNacknowledgerFactory(RabbitMQConfig config) {
             Optional<NacknowledgerFactory<T>> nacknowledgerFactory =
                     loadNacknowledgerFactory(config, NACKNOWLEDGER_TYPE_CONFIG, NacknowledgerFactory.class);
-            if (nacknowledgerFactory.isPresent()) {
-                return nacknowledgerFactory.get();
-            }
-
-            Optional<NackStrategy> deprecatedNackStrategy = config.loadEnum(NACK_STRATEGY_CONFIG, NackStrategy.class);
-            if (deprecatedNackStrategy.isPresent()) {
-                LOGGER.warn("The configuration " + NACK_STRATEGY_CONFIG + " is deprecated. Use "
-                        + NACKNOWLEDGER_TYPE_CONFIG);
-                return deprecatedNackStrategy
-                        .map(Enum::name)
-                        .<NacknowledgerFactory<T>>flatMap(ReceiveResources::newPredefinedNacknowledgerFactory)
-                        .orElseThrow(() ->
-                                new IllegalStateException("Failed to convert NackStrategy to NacknowledgerFactory"));
-            }
-
-            return new NacknowledgerFactory.Emit<>();
+            return nacknowledgerFactory.orElseGet(NacknowledgerFactory.Emit::new);
         }
 
         private static <T, N extends NacknowledgerFactory<T>>

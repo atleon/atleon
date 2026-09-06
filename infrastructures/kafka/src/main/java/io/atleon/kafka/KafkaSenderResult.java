@@ -52,14 +52,6 @@ public final class KafkaSenderResult<T> implements SenderResult {
         return Optional.ofNullable(recordMetadata);
     }
 
-    /**
-     * Deprecated - use {@link KafkaSenderResult#failureCause()}
-     */
-    @Deprecated
-    public Optional<Exception> exception() {
-        return Optional.ofNullable(exception);
-    }
-
     public T correlationMetadata() {
         return correlationMetadata;
     }
