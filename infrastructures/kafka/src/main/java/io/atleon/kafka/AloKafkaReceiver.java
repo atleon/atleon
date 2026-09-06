@@ -118,13 +118,6 @@ public class AloKafkaReceiver<K, V> {
     public static final String NACKNOWLEDGER_TYPE_EMIT = "emit";
 
     /**
-     * When negative acknowledgement results in emitting the corresponding error, this configures
-     * the timeout on successfully emitting that error.
-     */
-    @Deprecated
-    public static final String ERROR_EMISSION_TIMEOUT_CONFIG = CONFIG_PREFIX + "error.emission.timeout";
-
-    /**
      * Controls the number of outstanding unacknowledged Records emitted per subscription. This is
      * helpful in controlling the number of data elements allowed in memory, particularly when
      * stream processes use any sort of buffering, windowing, or reduction operation(s).

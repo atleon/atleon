@@ -1,6 +1,5 @@
 package io.atleon.aws.sqs;
 
-import io.atleon.aws.util.SdkConfig;
 import io.atleon.util.ConfigLoading;
 import io.atleon.util.Configurable;
 import software.amazon.awssdk.services.sqs.SqsAsyncClient;
@@ -18,12 +17,6 @@ import java.util.function.Function;
  * Config used by SQS Resources to build Clients and load typed configuration values.
  */
 public class SqsConfig {
-
-    /**
-     * @deprecated Use {@link SdkConfig#SQS_ENDPOINT_OVERRIDE_CONFIG} instead.
-     */
-    @Deprecated
-    public static final String ENDPOINT_OVERRIDE_CONFIG = SdkConfig.SQS_ENDPOINT_OVERRIDE_CONFIG;
 
     private final Map<String, ?> properties;
 

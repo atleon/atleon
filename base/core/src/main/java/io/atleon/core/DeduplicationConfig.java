@@ -62,14 +62,6 @@ public final class DeduplicationConfig {
         return !deduplicationTimeout.isNegative() && !deduplicationTimeout.isZero();
     }
 
-    /**
-     * @deprecated Use {@link #getDeduplicationTimeout()}
-     */
-    @Deprecated
-    public Duration getDeduplicationDuration() {
-        return getDeduplicationTimeout();
-    }
-
     public Duration getDeduplicationTimeout() {
         return deduplicationTimeout;
     }
