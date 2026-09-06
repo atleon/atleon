@@ -62,4 +62,11 @@ public abstract class AloStream<C extends AloStreamConfig> {
     protected static Scheduler newBoundedElasticScheduler(String name, int threadCap) {
         return Schedulers.newBoundedElastic(threadCap, Integer.MAX_VALUE, name);
     }
+
+    /**
+     * @see Scheduling#newVirtualThreadScheduler(String)
+     */
+    protected static Scheduler newVirtualThreadScheduler(String name) {
+        return Scheduling.newVirtualThreadScheduler(name);
+    }
 }
