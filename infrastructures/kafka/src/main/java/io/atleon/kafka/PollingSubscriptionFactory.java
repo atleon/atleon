@@ -206,6 +206,32 @@ final class PollingSubscriptionFactory<K, V> {
 
         protected abstract void onActivePartitionsLost(Map<TopicPartition, Long> lostPartitionRecordCounts);
 
+        private void pollAndDrain(Consumer<K, V> consumer) {
+            if (freeActiveInFlightCapacity.get() == Long.MIN_VALUE) {
+                return;
+            }
+
+            // FUTURE Could wrap this in protected "poll" method, override to support at-most-once
+            ConsumerRecords<K, V> consumerRecords = pollManager.pollWakeably(consumer, freePrefetchCapacity::get);
+
+            int queuedForEmission = 0;
+            for (TopicPartition partition : consumerRecords.partitions()) {
+                ActivePartition<K, V> activePartition = pollManager.activated(partition);
+                for (ConsumerRecord<K, V> consumerRecord : consumerRecords.records(partition)) {
+                    listener.onRecordPolled(consumerRecord);
+                    emittableRecords.add(new EmittableRecord<>(activePartition, consumerRecord));
+                    queuedForEmission++;
+                }
+            }
+
+            if (queuedForEmission > 0) {
+                freePrefetchCapacity.addAndGet(-queuedForEmission);
+                drain();
+            }
+
+            receivingConsumer.schedule(this::pollAndDrain);
+        }
+
         protected final void drain() {
             if (drainsInProgress.getAndIncrement() != 0) {
                 return;
@@ -247,64 +273,6 @@ final class PollingSubscriptionFactory<K, V> {
             return emittableRecords.isEmpty() ? 0L : Math.min(freeActiveInFlightCapacity.get(), requested.get());
         }
 
-        protected boolean mayContinueActiveEmit() {
-            return active();
-        }
-
-        protected void handleRecordActivated(TopicPartition topicPartition) {
-            listener.onRecordsActivated(topicPartition, 1L);
-        }
-
-        protected boolean handleRecordsDeactivated(TopicPartition topicPartition, long count) {
-            listener.onRecordsDeactivated(topicPartition, count);
-            if (freeActiveInFlightCapacity.getAndUpdate(it -> it >= 0 && it != Long.MAX_VALUE ? it + count : it) == 0) {
-                drain();
-                return true;
-            } else {
-                return false;
-            }
-        }
-
-        protected abstract void terminate();
-
-        protected final void failSafely(Throwable failure) {
-            if (!active() || !error.compareAndSet(null, failure)) {
-                // Failures during termination and failures that don't initiate termination can be
-                // safely dropped.
-                LOGGER.info("Ignoring failure during termination", failure);
-            } else if (enterTerminableState()) {
-                // Could be racing with cancellation, but it's not a spec violation if onError
-                // emission is concurrent with downstream cancellation.
-                drain();
-            }
-        }
-
-        private void pollAndDrain(Consumer<K, V> consumer) {
-            if (freeActiveInFlightCapacity.get() == Long.MIN_VALUE) {
-                return;
-            }
-
-            // FUTURE Could wrap this in protected "poll" method, override to support at-most-once
-            ConsumerRecords<K, V> consumerRecords = pollManager.pollWakeably(consumer, freePrefetchCapacity::get);
-
-            int queuedForEmission = 0;
-            for (TopicPartition partition : consumerRecords.partitions()) {
-                ActivePartition<K, V> activePartition = pollManager.activated(partition);
-                for (ConsumerRecord<K, V> consumerRecord : consumerRecords.records(partition)) {
-                    listener.onRecordPolled(consumerRecord);
-                    emittableRecords.add(new EmittableRecord<>(activePartition, consumerRecord));
-                    queuedForEmission++;
-                }
-            }
-
-            if (queuedForEmission > 0) {
-                freePrefetchCapacity.addAndGet(-queuedForEmission);
-                drain();
-            }
-
-            receivingConsumer.schedule(this::pollAndDrain);
-        }
-
         private long emitActivatedRecords(long maxToEmit) {
             long emitted = 0;
             EmittableRecord<K, V> emittable;
@@ -329,8 +297,22 @@ final class PollingSubscriptionFactory<K, V> {
             return emitted;
         }
 
-        private boolean enterTerminableState() {
-            return freeActiveInFlightCapacity.getAndUpdate(it -> it >= 0 ? -1 : it) >= 0;
+        protected boolean mayContinueActiveEmit() {
+            return active();
+        }
+
+        protected void handleRecordActivated(TopicPartition topicPartition) {
+            listener.onRecordsActivated(topicPartition, 1L);
+        }
+
+        protected boolean handleRecordsDeactivated(TopicPartition topicPartition, long count) {
+            listener.onRecordsDeactivated(topicPartition, count);
+            if (freeActiveInFlightCapacity.getAndUpdate(it -> it >= 0 && it != Long.MAX_VALUE ? it + count : it) == 0) {
+                drain();
+                return true;
+            } else {
+                return false;
+            }
         }
 
         private void terminateSafely() {
@@ -349,6 +331,24 @@ final class PollingSubscriptionFactory<K, V> {
             } else {
                 LOGGER.debug("Terminated due to cancel");
             }
+        }
+
+        protected abstract void terminate();
+
+        protected final void failSafely(Throwable failure) {
+            if (!active() || !error.compareAndSet(null, failure)) {
+                // Failures during termination and failures that don't initiate termination can be
+                // safely dropped.
+                LOGGER.info("Ignoring failure during termination", failure);
+            } else if (enterTerminableState()) {
+                // Could be racing with cancellation, but it's not a spec violation if onError
+                // emission is concurrent with downstream cancellation.
+                drain();
+            }
+        }
+
+        private boolean enterTerminableState() {
+            return freeActiveInFlightCapacity.getAndUpdate(it -> it >= 0 ? -1 : it) >= 0;
         }
 
         private boolean active() {
