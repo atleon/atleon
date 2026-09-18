@@ -211,8 +211,7 @@ final class PollingSubscriptionFactory<K, V> {
                 return;
             }
 
-            // FUTURE Could wrap this in protected "poll" method, override to support at-most-once
-            ConsumerRecords<K, V> consumerRecords = pollManager.pollWakeably(consumer, freePrefetchCapacity::get);
+            ConsumerRecords<K, V> consumerRecords = poll(consumer);
 
             int queuedForEmission = 0;
             for (TopicPartition partition : consumerRecords.partitions()) {
@@ -230,6 +229,10 @@ final class PollingSubscriptionFactory<K, V> {
             }
 
             receivingConsumer.schedule(this::pollAndDrain);
+        }
+
+        protected ConsumerRecords<K, V> poll(Consumer<K, V> consumer) {
+            return pollManager.pollWakeably(consumer, freePrefetchCapacity::get);
         }
 
         protected final void drain() {
@@ -481,7 +484,7 @@ final class PollingSubscriptionFactory<K, V> {
         private final SerialQueue<AcknowledgedOffset> acknowledgedOffsetsQueue =
                 SerialQueue.onEmitNext(acknowledgedOffsets, new ShouldBeTerminatedEmitFailureHandler(LOGGER));
 
-        private ConsumerGroupMetadata groupMetadata = null;
+        private volatile ConsumerGroupMetadata groupMetadata = null;
 
         public TransactionalPoller(
                 KafkaTxManager txManager,
@@ -498,13 +501,17 @@ final class PollingSubscriptionFactory<K, V> {
 
         @Override
         protected void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition<K, V> partition) {
-            groupMetadata = consumer.groupMetadata();
             partition.acknowledgedOffsets().subscribe(acknowledgedOffsetsQueue::addAndDrain, this::failSafely);
         }
 
         @Override
         protected void onActivePartitionsRevoked(
                 Consumer<?, ?> consumer, Collection<ActivePartition<K, V>> partitions) {
+            // Prudent to refresh group metadata on revocation (despite per-poll refresh), due to
+            // subsequent blocking on transaction closure. This reduces the likelihood that stale
+            // metadata is used for offset sending while waiting for that closure to happen on
+            // another thread. Note that revocation is invoked before the subsequent generation is
+            // joined, making the current generation the one under which to commit consumption.
             groupMetadata = consumer.groupMetadata();
             Mono<TxOffsetsState> txClosure =
                     offsetsState(TxOffsetsState.INACTIVE).next().cache();
@@ -529,6 +536,13 @@ final class PollingSubscriptionFactory<K, V> {
             } else {
                 LOGGER.warn("Partitions lost during transactional reception");
             }
+        }
+
+        @Override
+        protected ConsumerRecords<K, V> poll(Consumer<K, V> consumer) {
+            ConsumerRecords<K, V> consumerRecords = super.poll(consumer);
+            groupMetadata = consumer.groupMetadata();
+            return consumerRecords;
         }
 
         @Override
