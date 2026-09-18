@@ -2,20 +2,33 @@ package io.atleon.kafka;
 
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class PollingSubscriptionFactoryTest {
 
@@ -126,10 +139,77 @@ class PollingSubscriptionFactoryTest {
                 .verify();
     }
 
+    @Test
+    public void poll_givenGroupMetadataChangedWithoutRebalance_expectsRefreshedGroupMetadataSentInTransaction() {
+        String topic = "topic";
+        String groupId = "group";
+        Map<TopicPartition, Long> beginningOffsets = Collections.singletonMap(new TopicPartition(topic, 0), 0L);
+        Sinks.Many<Long> polled = Sinks.many().multicast().directBestEffort();
+
+        CountDownLatch offsetsSent = new CountDownLatch(1);
+        KafkaTxManager txManager = mock(KafkaTxManager.class);
+        when(txManager.begin()).thenReturn(Mono.empty());
+        when(txManager.commit()).thenReturn(Mono.empty());
+        when(txManager.abort()).thenReturn(Mono.empty());
+        when(txManager.sendOffsets(any(), any())).thenAnswer(__ -> {
+            offsetsSent.countDown();
+            return Mono.empty();
+        });
+
+        // Emulates a generation bump that retains this member's assignment, as can happen with
+        // cooperative rebalancing. Note that no rebalance callback is invoked for such a bump, so
+        // polling is the only opportunity to observe the updated metadata.
+        AtomicInteger generation = new AtomicInteger(1);
+        MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST) {
+            @Override
+            public ConsumerGroupMetadata groupMetadata() {
+                return new ConsumerGroupMetadata(groupId, generation.get(), "member", Optional.empty());
+            }
+        };
+        mockConsumer.updateBeginningOffsets(beginningOffsets);
+        mockConsumer.schedulePollTask(() -> mockConsumer.rebalance(beginningOffsets.keySet()));
+        schedulePollEventing(mockConsumer, polled);
+
+        KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)
+                .fullPollRecordsPrefetch(1)
+                .commitBatchSize(1)
+                .build();
+
+        AtomicReference<KafkaReceiverRecord<String, String>> received = new AtomicReference<>();
+        KafkaReceiver.create(options)
+                .receiveTxManual(Mono.just(txManager), Collections.singletonList(topic))
+                .as(it -> StepVerifier.create(it, 1))
+                .then(polled.asFlux().take(5).then()::block)
+                .then(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 0L, "key", "value")))
+                .consumeNextWith(received::set)
+                .then(() -> generation.set(2))
+                .then(polled.asFlux().take(5).then()::block)
+                .then(() -> received.get().acknowledge())
+                .then(() -> assertTrue(awaitLatch(offsetsSent)))
+                .thenCancel()
+                .verify();
+
+        ArgumentCaptor<ConsumerGroupMetadata> metadata = ArgumentCaptor.forClass(ConsumerGroupMetadata.class);
+        verify(txManager, times(1)).sendOffsets(any(), metadata.capture());
+        assertEquals(groupId, metadata.getValue().groupId());
+        assertEquals(2, metadata.getValue().generationId());
+    }
+
     private static void schedulePollEventing(MockConsumer<String, String> mockConsumer, Sinks.Many<Long> polled) {
         mockConsumer.schedulePollTask(() -> {
             polled.tryEmitNext(System.currentTimeMillis());
             schedulePollEventing(mockConsumer, polled);
         });
+    }
+
+    private static boolean awaitLatch(CountDownLatch latch) {
+        try {
+            return latch.await(10L, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
     }
 }
