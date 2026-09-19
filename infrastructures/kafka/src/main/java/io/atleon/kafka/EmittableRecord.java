@@ -2,8 +2,9 @@ package io.atleon.kafka;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.jspecify.annotations.Nullable;
 
-import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * A received {@link ConsumerRecord} that is eligible for downstream emission, but has not been
@@ -20,11 +21,7 @@ final class EmittableRecord<K, V> {
         this.consumerRecord = consumerRecord;
     }
 
-    public Optional<KafkaReceiverRecord<K, V>> activateForProcessing() {
-        return activePartition.activateForProcessing(consumerRecord);
-    }
-
-    public TopicPartition topicPartition() {
-        return activePartition.topicPartition();
+    public @Nullable KafkaReceiverRecord<K, V> activateForProcessing(Consumer<TopicPartition> onActivate) {
+        return activePartition.activateForProcessing(consumerRecord, onActivate).orElse(null);
     }
 }
