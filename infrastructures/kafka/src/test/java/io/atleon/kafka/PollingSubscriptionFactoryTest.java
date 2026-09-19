@@ -13,6 +13,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,7 +21,9 @@ import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -108,6 +111,66 @@ class PollingSubscriptionFactoryTest {
                 .expectNextCount(1)
                 .then(polled.asFlux().take(5).then()::block)
                 .then(() -> assertEquals(Collections.singleton(firstTopicPartition), mockConsumer.paused()))
+                .thenCancel()
+                .verify();
+    }
+
+    @Test
+    public void poll_givenSkippedRecord_expectsActiveInFlightCapacityToRemainBounded() {
+        String topic = "topic";
+        Map<TopicPartition, Long> beginningOffsets = Collections.singletonMap(new TopicPartition(topic, 0), 0L);
+        Sinks.Many<Long> polled = Sinks.many().multicast().directBestEffort();
+
+        MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+        mockConsumer.updateBeginningOffsets(beginningOffsets);
+        mockConsumer.schedulePollTask(() -> mockConsumer.rebalance(beginningOffsets.keySet()));
+        schedulePollEventing(mockConsumer, polled);
+
+        AtomicLong activated = new AtomicLong();
+        AtomicLong deactivated = new AtomicLong();
+        KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
+                .receptionListener(new ReceptionListener() {
+                    @Override
+                    public void onRecordsActivated(TopicPartition partition, long count) {
+                        activated.addAndGet(count);
+                    }
+
+                    @Override
+                    public void onRecordsDeactivated(TopicPartition partition, long count) {
+                        deactivated.addAndGet(count);
+                    }
+                })
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 3)
+                .fullPollRecordsPrefetch(1)
+                .maxActiveInFlight(1L)
+                .offsetTrackingStrategy(skippingOffsetTrackingStrategy(0L))
+                .build();
+
+        AtomicReference<KafkaReceiverRecord<String, String>> firstReceived = new AtomicReference<>();
+        KafkaReceiver.create(options)
+                .receiveManual(Collections.singletonList(topic))
+                .as(StepVerifier::create)
+                .then(polled.asFlux().take(5).then()::block)
+                .then(() -> {
+                    mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 0L, "key", "skipped"));
+                    mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 1L, "key", "first"));
+                    mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 2L, "key", "second"));
+                })
+                .consumeNextWith(it -> {
+                    assertEquals(1L, it.consumerRecord().offset());
+                    firstReceived.set(it);
+                })
+                .expectNoEvent(Duration.ofMillis(100L))
+                .then(() -> firstReceived.get().acknowledge())
+                .consumeNextWith(it -> {
+                    assertEquals(2L, it.consumerRecord().offset());
+                    it.acknowledge();
+                })
+                .then(() -> {
+                    assertEquals(3L, activated.get());
+                    assertEquals(3L, deactivated.get());
+                })
                 .thenCancel()
                 .verify();
     }
@@ -210,6 +273,33 @@ class PollingSubscriptionFactoryTest {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return false;
+        }
+    }
+
+    private static OffsetTrackingStrategy skippingOffsetTrackingStrategy(long skippedOffset) {
+        return (consumer, partitions) -> partitions.stream()
+                .map(partition -> new SkippingOffsetTracker(partition, skippedOffset))
+                .collect(Collectors.toList());
+    }
+
+    private record SkippingOffsetTracker(TopicPartition topicPartition, long skippedOffset) implements OffsetTracker {
+
+        @Override
+        public boolean prohibitsProcessing(long offset) {
+            return offset == skippedOffset;
+        }
+
+        @Override
+        public void acknowledged(long offset) {}
+
+        @Override
+        public Mono<String> commitMetadata(long commitOffset) {
+            return Mono.just("");
+        }
+
+        @Override
+        public Optional<ConsumerOffset> initialConsumerOffset() {
+            return Optional.empty();
         }
     }
 }
