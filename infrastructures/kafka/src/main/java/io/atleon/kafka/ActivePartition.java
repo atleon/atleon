@@ -54,12 +54,14 @@ final class ActivePartition<K, V> {
 
     /**
      * Activates a {@link ConsumerRecord} for processing, which is a prerequisite for emission.
-     * This will only return a non-empty result if this partition has not yet been deactivated,
-     * and if the configured {@link OffsetTracker} does not prohibit processing, based on the given
-     * record's offset.
+     * This will only return a non-empty result if this partition has not yet been deactivated, AND
+     * if the configured {@link OffsetTracker} does not prohibit processing. Calling code can be
+     * notified of successful activation, independent of skip behavior, which aids accounting.
      */
-    public Optional<KafkaReceiverRecord<K, V>> activateForProcessing(ConsumerRecord<K, V> consumerRecord) {
+    public Optional<KafkaReceiverRecord<K, V>> activateForProcessing(
+            ConsumerRecord<K, V> consumerRecord, Consumer<TopicPartition> onActivate) {
         return activate(ConsumerOffset.create(topicPartition(), consumerRecord)).map(it -> {
+            onActivate.accept(topicPartition());
             if (offsetTracker.prohibitsProcessing(consumerRecord.offset())) {
                 ack(consumerRecord.offset(), it);
                 return null;

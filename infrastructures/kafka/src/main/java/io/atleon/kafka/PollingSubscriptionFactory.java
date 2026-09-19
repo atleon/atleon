@@ -249,9 +249,6 @@ final class PollingSubscriptionFactory<K, V> {
                 long maxToEmit = prepareForActiveEmit();
                 if (maxToEmit > 0) {
                     long activeEmitted = emitActivatedRecords(maxToEmit);
-                    if (freeActiveInFlightCapacity.get() != Long.MAX_VALUE) {
-                        freeActiveInFlightCapacity.addAndGet(-activeEmitted);
-                    }
                     if (requested.get() != Long.MAX_VALUE) {
                         requested.addAndGet(-activeEmitted);
                     }
@@ -284,11 +281,9 @@ final class PollingSubscriptionFactory<K, V> {
                     receivingConsumer.wakeupSafely();
                 }
 
-                KafkaReceiverRecord<K, V> activated =
-                        emittable.activateForProcessing().orElse(null);
                 try {
+                    KafkaReceiverRecord<K, V> activated = emittable.activateForProcessing(this::handleRecordActivated);
                     if (activated != null) {
-                        handleRecordActivated(emittable.topicPartition());
                         subscriber.onNext(activated);
                         emitted++;
                     }
@@ -306,6 +301,7 @@ final class PollingSubscriptionFactory<K, V> {
 
         protected void handleRecordActivated(TopicPartition topicPartition) {
             listener.onRecordsActivated(topicPartition, 1L);
+            freeActiveInFlightCapacity.getAndUpdate(it -> it != Long.MAX_VALUE ? it - 1 : it);
         }
 
         protected boolean handleRecordsDeactivated(TopicPartition topicPartition, long count) {
