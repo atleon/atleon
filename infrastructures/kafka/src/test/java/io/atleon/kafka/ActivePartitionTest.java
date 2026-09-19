@@ -1,6 +1,7 @@
 package io.atleon.kafka;
 
 import io.atleon.core.AcknowledgementQueueMode;
+import io.atleon.util.Consuming;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -35,6 +36,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class ActivePartitionTest {
@@ -52,7 +55,7 @@ class ActivePartitionTest {
         activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
 
         Optional<KafkaReceiverRecord<String, String>> activated =
-                activePartition.activateForProcessing(newConsumerRecord(0));
+                activePartition.activateForProcessing(newConsumerRecord(0), Consuming.noOp());
 
         assertTrue(activated.isPresent());
         assertTrue(acknowledgedOffsets.isEmpty());
@@ -72,7 +75,7 @@ class ActivePartitionTest {
         Long deactivatedRecordCount = activePartition.deactivateForcefully().block();
 
         Optional<KafkaReceiverRecord<String, String>> activated =
-                activePartition.activateForProcessing(newConsumerRecord(0));
+                activePartition.activateForProcessing(newConsumerRecord(0), Consuming.noOp());
 
         assertEquals(0L, deactivatedRecordCount);
         assertFalse(activated.isPresent());
@@ -92,10 +95,13 @@ class ActivePartitionTest {
 
         ConsumerRecord<String, String> allowedRecord = newConsumerRecord(0);
         ConsumerRecord<String, String> prohibitedRecord = newConsumerRecord(1);
-        Optional<KafkaReceiverRecord<String, String>> allowed = activePartition.activateForProcessing(allowedRecord);
+        Consumer<TopicPartition> onActivate = mock(Consumer.class);
+        Optional<KafkaReceiverRecord<String, String>> allowed =
+                activePartition.activateForProcessing(allowedRecord, onActivate);
         Optional<KafkaReceiverRecord<String, String>> prohibited =
-                activePartition.activateForProcessing(prohibitedRecord);
+                activePartition.activateForProcessing(prohibitedRecord, onActivate);
 
+        verify(onActivate, times(2)).accept(TOPIC_PARTITION);
         assertFalse(prohibited.isPresent());
         assertTrue(allowed.isPresent());
         assertTrue(acknowledgedOffsets.isEmpty());
@@ -147,7 +153,9 @@ class ActivePartitionTest {
         activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
 
         ConsumerRecord<String, String> consumerRecord = newConsumerRecord(0);
-        activePartition.activateForProcessing(consumerRecord).ifPresent(KafkaReceiverRecord::acknowledge);
+        activePartition
+                .activateForProcessing(consumerRecord, Consuming.noOp())
+                .ifPresent(KafkaReceiverRecord::acknowledge);
 
         assertEquals(1, acknowledgedOffsets.size());
         assertEquals(TOPIC_PARTITION, acknowledgedOffsets.get(0).topicPartition());
@@ -167,12 +175,15 @@ class ActivePartitionTest {
         activePartition.acknowledgedOffsets().subscribe(acknowledgedOffsets::add);
         activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
 
-        KafkaReceiverRecord<String, String> receiverRecord1 =
-                activePartition.activateForProcessing(newConsumerRecord(0)).get();
-        KafkaReceiverRecord<String, String> receiverRecord2 =
-                activePartition.activateForProcessing(newConsumerRecord(1)).get();
-        KafkaReceiverRecord<String, String> receiverRecord3 =
-                activePartition.activateForProcessing(newConsumerRecord(2)).get();
+        KafkaReceiverRecord<String, String> receiverRecord1 = activePartition
+                .activateForProcessing(newConsumerRecord(0), Consuming.noOp())
+                .get();
+        KafkaReceiverRecord<String, String> receiverRecord2 = activePartition
+                .activateForProcessing(newConsumerRecord(1), Consuming.noOp())
+                .get();
+        KafkaReceiverRecord<String, String> receiverRecord3 = activePartition
+                .activateForProcessing(newConsumerRecord(2), Consuming.noOp())
+                .get();
 
         receiverRecord3.acknowledge();
         receiverRecord1.acknowledge();
@@ -214,7 +225,7 @@ class ActivePartitionTest {
 
         ConsumerRecord<String, String> consumerRecord = newConsumerRecord(0);
         activePartition
-                .activateForProcessing(consumerRecord)
+                .activateForProcessing(consumerRecord, Consuming.noOp())
                 .ifPresent(it -> it.nacknowledge(new IllegalStateException("Boom")));
 
         assertTrue(acknowledgedOffsets.isEmpty());
@@ -242,14 +253,18 @@ class ActivePartitionTest {
                         deactivatedRecordCountsError::set,
                         () -> deactivatedRecordCountsCompleted.set(true));
 
-        KafkaReceiverRecord<String, String> receiverRecord1 =
-                activePartition.activateForProcessing(newConsumerRecord(0)).get();
-        KafkaReceiverRecord<String, String> receiverRecord2 =
-                activePartition.activateForProcessing(newConsumerRecord(1)).get();
-        KafkaReceiverRecord<String, String> receiverRecord3 =
-                activePartition.activateForProcessing(newConsumerRecord(2)).get();
-        KafkaReceiverRecord<String, String> receiverRecord4 =
-                activePartition.activateForProcessing(newConsumerRecord(2)).get();
+        KafkaReceiverRecord<String, String> receiverRecord1 = activePartition
+                .activateForProcessing(newConsumerRecord(0), Consuming.noOp())
+                .get();
+        KafkaReceiverRecord<String, String> receiverRecord2 = activePartition
+                .activateForProcessing(newConsumerRecord(1), Consuming.noOp())
+                .get();
+        KafkaReceiverRecord<String, String> receiverRecord3 = activePartition
+                .activateForProcessing(newConsumerRecord(2), Consuming.noOp())
+                .get();
+        KafkaReceiverRecord<String, String> receiverRecord4 = activePartition
+                .activateForProcessing(newConsumerRecord(2), Consuming.noOp())
+                .get();
 
         receiverRecord3.acknowledge();
         receiverRecord4.nacknowledge(new UnsupportedOperationException("Boom"));
@@ -288,9 +303,9 @@ class ActivePartitionTest {
         ConsumerRecord<String, String> recordA = newConsumerRecord(0);
         ConsumerRecord<String, String> recordB = newConsumerRecord(1);
         KafkaReceiverRecord<String, String> receiverRecordA =
-                activePartition.activateForProcessing(recordA).get();
+                activePartition.activateForProcessing(recordA, Consuming.noOp()).get();
         KafkaReceiverRecord<String, String> receiverRecordB =
-                activePartition.activateForProcessing(recordB).get();
+                activePartition.activateForProcessing(recordB, Consuming.noOp()).get();
 
         // Negatively acknowledge B, then erroneously (positively) acknowledge B, then acknowledge A.
         receiverRecordB.nacknowledge(new IllegalStateException("Boom"));
@@ -338,8 +353,9 @@ class ActivePartitionTest {
                         deactivatedRecordCountsError::set,
                         () -> deactivatedRecordCountsCompleted.set(true));
 
-        KafkaReceiverRecord<String, String> receiverRecord =
-                activePartition.activateForProcessing(newConsumerRecord(0)).get();
+        KafkaReceiverRecord<String, String> receiverRecord = activePartition
+                .activateForProcessing(newConsumerRecord(0), Consuming.noOp())
+                .get();
 
         receiverRecord.acknowledge();
 
@@ -380,10 +396,12 @@ class ActivePartitionTest {
                         deactivatedRecordCountsError::set,
                         () -> deactivatedRecordCountsCompleted.set(true));
 
-        KafkaReceiverRecord<String, String> receiverRecord1 =
-                activePartition.activateForProcessing(newConsumerRecord(0)).get();
-        KafkaReceiverRecord<String, String> receiverRecord2 =
-                activePartition.activateForProcessing(newConsumerRecord(0)).get();
+        KafkaReceiverRecord<String, String> receiverRecord1 = activePartition
+                .activateForProcessing(newConsumerRecord(0), Consuming.noOp())
+                .get();
+        KafkaReceiverRecord<String, String> receiverRecord2 = activePartition
+                .activateForProcessing(newConsumerRecord(0), Consuming.noOp())
+                .get();
 
         AtomicReference<AcknowledgedOffset> lastAcknowledgedOffset = new AtomicReference<>();
         activePartition
@@ -436,10 +454,12 @@ class ActivePartitionTest {
                         deactivatedRecordCountsError::set,
                         () -> deactivatedRecordCountsCompleted.set(true));
 
-        KafkaReceiverRecord<String, String> receiverRecord1 =
-                activePartition.activateForProcessing(newConsumerRecord(0)).get();
-        KafkaReceiverRecord<String, String> receiverRecord2 =
-                activePartition.activateForProcessing(newConsumerRecord(1)).get();
+        KafkaReceiverRecord<String, String> receiverRecord1 = activePartition
+                .activateForProcessing(newConsumerRecord(0), Consuming.noOp())
+                .get();
+        KafkaReceiverRecord<String, String> receiverRecord2 = activePartition
+                .activateForProcessing(newConsumerRecord(1), Consuming.noOp())
+                .get();
 
         Sinks.Empty<Void> forcedTimeout = Sinks.one();
         AtomicReference<AcknowledgedOffset> lastAcknowledgedOffset = new AtomicReference<>();
@@ -484,12 +504,15 @@ class ActivePartitionTest {
                         deactivatedRecordCountsError::set,
                         () -> deactivatedRecordCountsCompleted.set(true));
 
-        KafkaReceiverRecord<String, String> receiverRecord1 =
-                activePartition.activateForProcessing(newConsumerRecord(0)).get();
-        KafkaReceiverRecord<String, String> receiverRecord2 =
-                activePartition.activateForProcessing(newConsumerRecord(1)).get();
-        KafkaReceiverRecord<String, String> receiverRecord3 =
-                activePartition.activateForProcessing(newConsumerRecord(2)).get();
+        KafkaReceiverRecord<String, String> receiverRecord1 = activePartition
+                .activateForProcessing(newConsumerRecord(0), Consuming.noOp())
+                .get();
+        KafkaReceiverRecord<String, String> receiverRecord2 = activePartition
+                .activateForProcessing(newConsumerRecord(1), Consuming.noOp())
+                .get();
+        KafkaReceiverRecord<String, String> receiverRecord3 = activePartition
+                .activateForProcessing(newConsumerRecord(2), Consuming.noOp())
+                .get();
 
         receiverRecord3.acknowledge();
         receiverRecord1.acknowledge();
@@ -576,12 +599,15 @@ class ActivePartitionTest {
                         deactivatedRecordCountsError::set,
                         () -> deactivatedRecordCountsCompletion.complete(null));
 
-        KafkaReceiverRecord<String, String> receiverRecord1 =
-                activePartition.activateForProcessing(newConsumerRecord(0)).get();
-        KafkaReceiverRecord<String, String> receiverRecord2 =
-                activePartition.activateForProcessing(newConsumerRecord(1)).get();
-        KafkaReceiverRecord<String, String> receiverRecord3 =
-                activePartition.activateForProcessing(newConsumerRecord(2)).get();
+        KafkaReceiverRecord<String, String> receiverRecord1 = activePartition
+                .activateForProcessing(newConsumerRecord(0), Consuming.noOp())
+                .get();
+        KafkaReceiverRecord<String, String> receiverRecord2 = activePartition
+                .activateForProcessing(newConsumerRecord(1), Consuming.noOp())
+                .get();
+        KafkaReceiverRecord<String, String> receiverRecord3 = activePartition
+                .activateForProcessing(newConsumerRecord(2), Consuming.noOp())
+                .get();
 
         receiverRecord3.acknowledge();
         receiverRecord1.acknowledge();

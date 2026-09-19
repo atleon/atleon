@@ -38,8 +38,9 @@ public interface ReceptionListener {
     default void onRecordPolled(ConsumerRecord<?, ?> consumerRecord) {}
 
     /**
-     * Invoked when records have been received from the given partition and activated for
-     * downstream processing.
+     * Invoked when records have been received from the given partition and activated for ordered
+     * processing and acknowledgement. This includes records that an {@link OffsetTracker}
+     * prohibits from being emitted and which are therefore immediately acknowledged/deactivated.
      *
      * @param partition The active partition from which records have been activated
      * @param count     The number of records that have been activated
@@ -47,9 +48,9 @@ public interface ReceptionListener {
     default void onRecordsActivated(TopicPartition partition, long count) {}
 
     /**
-     * Invoked when activated records which have been emitted downstream have either had their
-     * processing been completed (via positive or negative acknowledgement), or forcefully
-     * deactivated, either due to reception error downstream cancellation.
+     * Invoked when activated records have either been immediately acknowledged without emission,
+     * had their downstream processing completed (via positive or negative acknowledgement), or
+     * been forcefully deactivated due to reception error or downstream cancellation.
      *
      * @param partition The active partition from which records have been deactivated
      * @param count     The number of records that have been deactivated
