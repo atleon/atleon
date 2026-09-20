@@ -512,15 +512,20 @@ final class PollingSubscriptionFactory<K, V> {
             // another thread. Note that revocation is invoked before the subsequent generation is
             // joined, making the current generation the one under which to commit consumption.
             groupMetadata = consumer.groupMetadata();
-            Mono<TxOffsetsState> txClosure =
-                    offsetsState(TxOffsetsState.INACTIVE).next().cache();
-            partitions.stream()
+
+            // Create subscriptions to deactivation and transaction closure separately so they can
+            // be blocked on concurrently. Concurrent subscription (vs. takeUntilOther) ensures an
+            // inactive transaction state does not cancel/prevent deactivation.
+            Mono<Void> partitionDeactivation = partitions.stream()
                     .map(it -> it.deactivateTimeout(options.revocationGracePeriod(), auxiliaryScheduler))
                     .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
                     .onErrorMap(TimeoutException.class, __ -> new TimeoutException("Revocation deactivation timeout"))
-                    .takeUntilOther(txClosure)
-                    .then(txClosure.timeout(options.closeTimeout(), auxiliaryScheduler))
-                    .block();
+                    .then();
+            Mono<Void> transactionClosure = offsetsState(TxOffsetsState.INACTIVE)
+                    .next()
+                    .timeout(options.closeTimeout(), auxiliaryScheduler)
+                    .then();
+            Mono.when(partitionDeactivation, transactionClosure).block();
         }
 
         @Override
