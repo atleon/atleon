@@ -10,6 +10,8 @@ import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
@@ -28,6 +30,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -351,6 +355,83 @@ class PollingSubscriptionFactoryTest {
         verify(txManager).abort();
         verify(txManager, never()).sendOffsets(any(), any());
         verify(txManager, never()).commit();
+    }
+
+    @Test
+    public void rebalance_givenBufferedRecordAndInactiveTransaction_expectsNoEmissionFromRevokedPartition()
+            throws InterruptedException {
+        String topic = "topic";
+        Map<TopicPartition, Long> beginningOffsets = Collections.singletonMap(new TopicPartition(topic, 0), 0L);
+
+        MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+        mockConsumer.updateBeginningOffsets(beginningOffsets);
+        mockConsumer.schedulePollTask(() -> {
+            mockConsumer.rebalance(beginningOffsets.keySet());
+            mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 0L, "key", "first"));
+            mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 1L, "key", "buffered"));
+        });
+
+        CountDownLatch transactionCommitted = new CountDownLatch(1);
+        CountDownLatch partitionsRevoked = new CountDownLatch(1);
+        CountDownLatch firstReceived = new CountDownLatch(1);
+        CountDownLatch secondReceived = new CountDownLatch(1);
+        KafkaTxManager txManager = mock(KafkaTxManager.class);
+        when(txManager.begin()).thenReturn(Mono.empty());
+        when(txManager.sendOffsets(any(), any())).thenReturn(Mono.empty());
+        when(txManager.commit()).thenReturn(Mono.fromRunnable(transactionCommitted::countDown));
+        when(txManager.abort()).thenReturn(Mono.empty());
+
+        KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2)
+                .fullPollRecordsPrefetch(1)
+                .commitBatchSize(1)
+                .build();
+
+        AtomicInteger received = new AtomicInteger();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Subscriber<KafkaReceiverRecord<String, String>> subscriber = new Subscriber<>() {
+            @Override
+            public void onSubscribe(Subscription subscription) {}
+
+            @Override
+            public void onNext(KafkaReceiverRecord<String, String> record) {
+                record.acknowledge();
+                if (received.getAndIncrement() == 0) {
+                    firstReceived.countDown();
+                } else {
+                    secondReceived.countDown();
+                }
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                failure.set(error);
+            }
+
+            @Override
+            public void onComplete() {}
+        };
+        Subscription subscription = new PollingSubscriptionFactory<>(options)
+                .transactional(txManager, ConsumptionSpec.subscribe(Collections.singletonList(topic)), subscriber);
+
+        try {
+            subscription.request(1L);
+            assertTrue(awaitLatch(firstReceived));
+            assertTrue(awaitLatch(transactionCommitted));
+
+            mockConsumer.schedulePollTask(() -> {
+                mockConsumer.rebalance(Collections.emptyList());
+                partitionsRevoked.countDown();
+            });
+            assertTrue(awaitLatch(partitionsRevoked));
+
+            subscription.request(1L);
+            assertFalse(secondReceived.await(100L, TimeUnit.MILLISECONDS));
+            assertNull(failure.get());
+        } finally {
+            subscription.cancel();
+        }
     }
 
     private static void schedulePollEventing(MockConsumer<String, String> mockConsumer, Sinks.Many<Long> polled) {
