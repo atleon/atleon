@@ -21,7 +21,6 @@ import reactor.core.publisher.Operators;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Scheduler;
 import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -170,17 +169,12 @@ final class PollingSubscriptionFactory<K, V> {
 
         @Override
         public final void onPartitionsLost(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-            // No longer assigned, so impossible to commit, and all we can do is clean up.
-            Map<TopicPartition, Long> lostPartitionRecordCounts = pollManager.unassigned(partitions).stream()
-                    .map(active -> active.deactivateForcefully().map(it -> Tuples.of(active.topicPartition(), it)))
-                    .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
-                    .collectMap(Tuple2::getT1, Tuple2::getT2)
-                    .block();
+            Collection<ActivePartition<K, V>> lostPartitions = pollManager.unassigned(partitions);
 
             try {
-                onActivePartitionsLost(lostPartitionRecordCounts);
+                onActivePartitionsLost(consumer, lostPartitions);
             } finally {
-                lostPartitionRecordCounts.keySet().forEach(listener::onPartitionDeactivated);
+                lostPartitions.forEach(it -> listener.onPartitionDeactivated(it.topicPartition()));
             }
         }
 
@@ -204,7 +198,8 @@ final class PollingSubscriptionFactory<K, V> {
         protected abstract void onActivePartitionsRevoked(
                 Consumer<?, ?> consumer, Collection<ActivePartition<K, V>> partitions);
 
-        protected abstract void onActivePartitionsLost(Map<TopicPartition, Long> lostPartitionRecordCounts);
+        protected abstract void onActivePartitionsLost(
+                Consumer<?, ?> consumer, Collection<ActivePartition<K, V>> partitions);
 
         private void pollAndDrain(Consumer<K, V> consumer) {
             if (freeActiveInFlightCapacity.get() == Long.MIN_VALUE) {
@@ -434,8 +429,16 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         @Override
-        protected void onActivePartitionsLost(Map<TopicPartition, Long> lostPartitionRecordCounts) {
-            lostPartitionRecordCounts.keySet().forEach(asyncOffsetCommitter::unassigned);
+        protected void onActivePartitionsLost(Consumer<?, ?> consumer, Collection<ActivePartition<K, V>> partitions) {
+            // No longer assigned, so impossible to commit, and all we can do is clean up.
+            Long deactivatedRecordCount = partitions.stream()
+                    .map(ActivePartition::deactivateForcefully)
+                    .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
+                    .reduce(0L, Long::sum)
+                    .block();
+
+            LOGGER.info("Partition loss resulted in deactivatedRecordCount={}", deactivatedRecordCount);
+            partitions.forEach(it -> asyncOffsetCommitter.unassigned(it.topicPartition()));
         }
 
         @Override
@@ -521,17 +524,12 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         @Override
-        protected void onActivePartitionsLost(Map<TopicPartition, Long> lostPartitionRecordCounts) {
-            // Losing partitions during transactional reception almost certainly indicates some
-            // form of systemic processing degradation. However, it is conceivable that partitions
-            // might be signalled as "lost" without having any participation in a recent or ongoing
-            // transaction, in which case losing them isn't necessarily fatal, and we can continue,
-            // letting transaction(s) possibly fail asynchronously due to stale group metadata.
-            if (lostPartitionRecordCounts.values().stream().anyMatch(it -> it > 0)) {
-                failSafely(new IllegalStateException("Partitions lost during transactional reception"));
-            } else {
-                LOGGER.warn("Partitions lost during transactional reception");
-            }
+        protected void onActivePartitionsLost(Consumer<?, ?> consumer, Collection<ActivePartition<K, V>> partitions) {
+            // Losing partitions during transactional reception generally indicates some form of
+            // systemic processing degradation. This should end up in any opened transaction being
+            // invalidated and subsequently aborted, so attempt to atomically enter that state now.
+            capState.getAndUpdate(it -> it > TxCapStates.UNOPENED ? TxCapStates.INVALIDATED : it);
+            failSafely(new IllegalStateException("Partitions lost during transactional reception"));
         }
 
         @Override
@@ -578,7 +576,7 @@ final class PollingSubscriptionFactory<K, V> {
             activeInTransaction.incrementAndGet();
             super.handleRecordActivated(topicPartition);
 
-            if (capState.getAndUpdate(it -> Math.max(0, it - 1)) == 1) {
+            if (capState.getAndUpdate(it -> it > 0 ? it - 1 : it) == 1) {
                 // When the capState reaches zero, we need to decrement our count of active
                 // "entities" in the transaction, since the transaction itself is included in that
                 // count. This completes transition of transaction state from ACTIVE to PENDING.
@@ -717,6 +715,9 @@ final class PollingSubscriptionFactory<K, V> {
 
         // A new transaction has been requested for opening and awaiting completion
         public static final long OPENING = Long.MIN_VALUE + 7;
+
+        // Transaction that was open(ing) has been invalidated
+        public static final long INVALIDATED = Long.MIN_VALUE + 8;
 
         private TxCapStates() {}
     }

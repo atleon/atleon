@@ -3,6 +3,7 @@ package io.atleon.kafka;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
@@ -14,6 +15,7 @@ import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -293,6 +296,61 @@ class PollingSubscriptionFactoryTest {
         verify(txManager, times(1)).sendOffsets(any(), metadata.capture());
         assertEquals(groupId, metadata.getValue().groupId());
         assertEquals(2, metadata.getValue().generationId());
+    }
+
+    @Test
+    public void poll_givenPartitionsLostWhileTransactionOpening_expectsErrorAndAbortWithoutEmission() {
+        String topic = "topic";
+        Map<TopicPartition, Long> beginningOffsets = Collections.singletonMap(new TopicPartition(topic, 0), 0L);
+
+        AtomicReference<ConsumerRebalanceListener> rebalanceListener = new AtomicReference<>();
+        MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST) {
+            @Override
+            public void subscribe(Collection<String> topics, ConsumerRebalanceListener listener) {
+                rebalanceListener.set(listener);
+                super.subscribe(topics, listener);
+            }
+        };
+        mockConsumer.updateBeginningOffsets(beginningOffsets);
+        mockConsumer.schedulePollTask(() -> {
+            mockConsumer.rebalance(beginningOffsets.keySet());
+            mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 0L, "key", "value"));
+        });
+
+        Sinks.Empty<Void> transactionOpened = Sinks.empty();
+        KafkaTxManager txManager = mock(KafkaTxManager.class);
+        when(txManager.begin()).thenReturn(transactionOpened.asMono().doOnSubscribe(__ -> {
+            // Keep begin pending until loss is reported on the polling thread, then allow its
+            // completion to verify that the buffered record cannot escape the invalidated state.
+            mockConsumer.schedulePollTask(() -> {
+                rebalanceListener.get().onPartitionsLost(beginningOffsets.keySet());
+                mockConsumer.assign(Collections.emptyList());
+                transactionOpened.tryEmitEmpty();
+            });
+        }));
+        // As with the producer task loop, abortion completes after the pending begin operation.
+        when(txManager.abort()).thenReturn(transactionOpened.asMono());
+
+        ConsumerListener.Closure closureListener = ConsumerListener.closure();
+        KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
+                .consumerListener(closureListener)
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)
+                .fullPollRecordsPrefetch(1)
+                .build();
+
+        KafkaReceiver.create(options)
+                .receiveTxManual(Mono.just(txManager), Collections.singletonList(topic))
+                .as(it -> StepVerifier.create(it, 1))
+                .expectErrorMatches(it -> it instanceof IllegalStateException
+                        && it.getMessage().equals("Partitions lost during transactional reception"))
+                .verify(Duration.ofSeconds(10L));
+
+        closureListener.closed().block(Duration.ofSeconds(10L));
+        verify(txManager).begin();
+        verify(txManager).abort();
+        verify(txManager, never()).sendOffsets(any(), any());
+        verify(txManager, never()).commit();
     }
 
     private static void schedulePollEventing(MockConsumer<String, String> mockConsumer, Sinks.Many<Long> polled) {
