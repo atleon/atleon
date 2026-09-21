@@ -116,6 +116,41 @@ class PollingSubscriptionFactoryTest {
     }
 
     @Test
+    public void poll_givenExhaustedActiveInFlightCapacity_expectsEmissionPaused() {
+        String topic = "topic";
+        Map<TopicPartition, Long> beginningOffsets = Collections.singletonMap(new TopicPartition(topic, 0), 0L);
+        Sinks.Many<Long> polled = Sinks.many().multicast().directBestEffort();
+
+        MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+        mockConsumer.updateBeginningOffsets(beginningOffsets);
+        mockConsumer.schedulePollTask(() -> mockConsumer.rebalance(beginningOffsets.keySet()));
+        schedulePollEventing(mockConsumer, polled);
+
+        KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2)
+                .fullPollRecordsPrefetch(1)
+                .maxActiveInFlight(1L)
+                .build();
+
+        AtomicReference<KafkaReceiverRecord<String, String>> firstReceived = new AtomicReference<>();
+        KafkaReceiver.create(options)
+                .receiveManual(Collections.singletonList(topic))
+                .as(StepVerifier::create)
+                .then(polled.asFlux().take(5).then()::block)
+                .then(() -> {
+                    mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 0L, "key", "first"));
+                    mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 1L, "key", "second"));
+                })
+                .consumeNextWith(firstReceived::set)
+                .expectNoEvent(Duration.ofMillis(100L))
+                .then(() -> firstReceived.get().acknowledge())
+                .consumeNextWith(KafkaReceiverRecord::acknowledge)
+                .thenCancel()
+                .verify();
+    }
+
+    @Test
     public void poll_givenSkippedRecord_expectsActiveInFlightCapacityToRemainBounded() {
         String topic = "topic";
         Map<TopicPartition, Long> beginningOffsets = Collections.singletonMap(new TopicPartition(topic, 0), 0L);

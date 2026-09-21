@@ -242,9 +242,9 @@ final class PollingSubscriptionFactory<K, V> {
 
             int missed = 1;
             do {
-                // Handle onNext emission, update outstanding capacities, and re-trigger drain loop
-                // if we exhaust whatever resource first limits emission. This makes it such that
-                // we don't need to invoke drain every time a possibly-limiting resource is updated
+                // Handle onNext emission, update outstanding request, and re-trigger drain loop if
+                // we exhaust whatever resource first limits emission. This makes it such that we
+                // don't need to invoke drain every time a possibly-limiting resource is updated
                 // (request, active cap, etc.), unless/until it is updated from (or to) zero.
                 long maxToEmit = prepareForActiveEmit();
                 if (maxToEmit > 0) {
@@ -270,7 +270,7 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         protected long prepareForActiveEmit() {
-            return emittableRecords.isEmpty() ? 0L : Math.min(freeActiveInFlightCapacity.get(), requested.get());
+            return emittableRecords.isEmpty() ? 0L : requested.get();
         }
 
         private long emitActivatedRecords(long maxToEmit) {
