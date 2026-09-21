@@ -517,7 +517,7 @@ final class PollingSubscriptionFactory<K, V> {
             // be blocked on concurrently. Concurrent subscription (vs. takeUntilOther) ensures an
             // inactive transaction state does not cancel/prevent deactivation.
             Mono<Void> partitionDeactivation = partitions.stream()
-                    .map(it -> it.deactivateTimeout(options.revocationGracePeriod(), auxiliaryScheduler))
+                    .map(this::deactivate)
                     .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
                     .onErrorMap(TimeoutException.class, __ -> new TimeoutException("Revocation deactivation timeout"))
                     .then();
@@ -533,7 +533,7 @@ final class PollingSubscriptionFactory<K, V> {
             // Losing partitions during transactional reception generally indicates some form of
             // systemic processing degradation. This should end up in any opened transaction being
             // invalidated and subsequently aborted, so attempt to atomically enter that state now.
-            capState.getAndUpdate(it -> it > TxCapStates.UNOPENED ? TxCapStates.INVALIDATED : it);
+            invalidateCurrentTransaction();
             failSafely(new IllegalStateException("Partitions lost during transactional reception"));
         }
 
@@ -612,6 +612,16 @@ final class PollingSubscriptionFactory<K, V> {
             } else {
                 completeTermination();
             }
+        }
+
+        private Mono<?> deactivate(ActivePartition<K, V> activePartition) {
+            return activePartition
+                    .deactivateTimeout(options.revocationGracePeriod(), auxiliaryScheduler)
+                    .doOnError(GracelessTimeoutException.class, __ -> invalidateCurrentTransaction());
+        }
+
+        private void invalidateCurrentTransaction() {
+            capState.getAndUpdate(it -> it > TxCapStates.UNOPENED ? TxCapStates.INVALIDATED : it);
         }
 
         private void maybeOpenNewTransaction() {
