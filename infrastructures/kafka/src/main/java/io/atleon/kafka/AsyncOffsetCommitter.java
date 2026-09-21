@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * assignment and commit sequence numbers, which are used for in-flight offset commitment
  * invalidation. Such invalidation may occur due to rebalances or scheduling of commitments that
  * supersede previous scheduled commits that may not yet have completed. Also keeps track of
- * consecutive commit retry counts, which if/when exhausted, will trigger error emission.
+ * consecutive commit attempt counts, which if/when exhausted, will trigger error emission.
  */
 final class AsyncOffsetCommitter {
 
@@ -48,8 +48,8 @@ final class AsyncOffsetCommitter {
     // whose commitment is in-flight with older sequence numbers.
     private final Map<TopicPartition, AtomicLong> commits = new ConcurrentHashMap<>();
 
-    // Consecutive commit retry sequence numbers.
-    private final Map<TopicPartition, AtomicInteger> commitRetries = new ConcurrentHashMap<>();
+    // Consecutive commit attempt counts.
+    private final Map<TopicPartition, AtomicInteger> commitAttempts = new ConcurrentHashMap<>();
 
     private final Sinks.Many<CommittableOffset> committableOffsets =
             Sinks.unsafe().many().unicast().onBackpressureError();
@@ -79,7 +79,7 @@ final class AsyncOffsetCommitter {
     public java.util.function.Consumer<AcknowledgedOffset> acknowledgementHandlerForAssigned(TopicPartition partition) {
         AtomicLong assignmentSequenceCounter = assignments.computeIfAbsent(partition, __ -> new AtomicLong(0));
         commits.computeIfAbsent(partition, __ -> new AtomicLong(0));
-        commitRetries.computeIfAbsent(partition, __ -> new AtomicInteger(0));
+        commitAttempts.computeIfAbsent(partition, __ -> new AtomicInteger(0));
 
         long assignmentSequence = assignmentSequenceCounter.incrementAndGet();
         return it -> committableOffsetQueue.addAndDrain(new CommittableOffset(it, assignmentSequence));
@@ -91,7 +91,7 @@ final class AsyncOffsetCommitter {
             // For a partition that is un-assigned, increment its assignment sequence such that
             // emitted offsets for which commitment has not yet been attempted are invalidated,
             // increment its commit sequence such that any offsets for which commitment is
-            // currently being attempted/retried are invalidated, and reset its commit retry count.
+            // currently being attempted/retried are invalidated, and reset its commit attempts.
             // Keep any entries for this partition around, though, in case it is quickly
             // reassigned, which could theoretically happen while there is still an in-flight
             // commit from previous assignment. Note that this method is always invoked from the
@@ -102,7 +102,7 @@ final class AsyncOffsetCommitter {
             // then it will have all sequence counters.
             assignmentSequenceCounter.incrementAndGet();
             incrementAndGetCommit(partition);
-            resetCommitRetry(partition);
+            resetCommitAttempts(partition);
         }
     }
 
@@ -139,9 +139,10 @@ final class AsyncOffsetCommitter {
             return;
         }
 
+        validatedOffsets.keySet().forEach(this::incrementCommitAttempt);
         consumer.commitAsync(validatedOffsets, (offsets, exception) -> {
             if (exception == null) {
-                offsets.keySet().forEach(this::resetCommitRetry);
+                offsets.keySet().forEach(this::resetCommitAttempts);
                 return;
             } else if (!KafkaErrors.isRetriableCommitFailure(exception)) {
                 errorEmitter.accept(exception);
@@ -152,8 +153,8 @@ final class AsyncOffsetCommitter {
                     .mapToInt(this::calculateRemainingCommitAttempts)
                     .reduce(maxAttempts, Math::min);
 
-            if (remainingAttempts == 0) {
-                errorEmitter.accept(new KafkaException("Retries exhausted", exception));
+            if (remainingAttempts <= 0) {
+                errorEmitter.accept(new KafkaException("Commit attempts exhausted", exception));
             } else {
                 LOGGER.warn("Retrying failed commit (remaining: {}): {}", remainingAttempts, exception.toString());
                 scheduleCommitRetry(offsets, commitSequences);
@@ -166,7 +167,6 @@ final class AsyncOffsetCommitter {
         consumerTaskScheduler.schedule(consumer -> {
             Map<TopicPartition, OffsetAndMetadata> validatedOffsets = offsets.entrySet().stream()
                     .filter(it -> commitSequences.get(it.getKey()) == getCommit(it.getKey()))
-                    .peek(it -> incrementCommitRetry(it.getKey()))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
             commit(consumer, validatedOffsets, commitSequences);
         });
@@ -185,17 +185,17 @@ final class AsyncOffsetCommitter {
     }
 
     private int calculateRemainingCommitAttempts(TopicPartition partition) {
-        AtomicInteger commitRetryCounter = commitRetries.get(partition);
-        int commitRetryCount = commitRetryCounter == null ? 0 : commitRetryCounter.get();
-        return maxAttempts - commitRetryCount - 1;
+        AtomicInteger commitAttemptCounter = commitAttempts.get(partition);
+        int commitAttemptCount = commitAttemptCounter == null ? 0 : commitAttemptCounter.get();
+        return maxAttempts - commitAttemptCount;
     }
 
-    private void incrementCommitRetry(TopicPartition partition) {
-        commitRetries.get(partition).incrementAndGet();
+    private void incrementCommitAttempt(TopicPartition partition) {
+        commitAttempts.get(partition).incrementAndGet();
     }
 
-    private void resetCommitRetry(TopicPartition partition) {
-        commitRetries.get(partition).set(0);
+    private void resetCommitAttempts(TopicPartition partition) {
+        commitAttempts.get(partition).set(0);
     }
 
     @FunctionalInterface
