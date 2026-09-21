@@ -125,4 +125,36 @@ class AsyncOffsetCommitterTest {
         assertInstanceOf(RetriableCommitFailedException.class, error.get().getCause());
         assertTrue(committer.isCommitTrialExhausted(topicPartition));
     }
+
+    @Test
+    public void commit_givenSingleAllowedAttempt_expectsExhaustionAfterAttempt() {
+        TopicPartition topicPartition = new TopicPartition("topic", 0);
+        ConsumerOffset consumerOffset = new ConsumerOffset(topicPartition, 1L);
+        Consumer<?, ?> consumer = mock(Consumer.class);
+        AtomicReference<Throwable> error = new AtomicReference<>();
+
+        AtomicInteger commitAttempts = new AtomicInteger(0);
+        doAnswer(invocation -> {
+                    Map<TopicPartition, OffsetAndMetadata> offsets = invocation.getArgument(0);
+                    OffsetCommitCallback callback = invocation.getArgument(1);
+                    commitAttempts.incrementAndGet();
+                    callback.onComplete(offsets, new RetriableCommitFailedException("Persistent error"));
+                    return null;
+                })
+                .when(consumer)
+                .commitAsync(anyMap(), any(OffsetCommitCallback.class));
+
+        AsyncOffsetCommitter committer = new AsyncOffsetCommitter(1, it -> it.accept(consumer), error::set);
+        committer.schedulePeriodically(1, Duration.ofSeconds(1), Schedulers.parallel());
+        java.util.function.Consumer<AcknowledgedOffset> acknowledgementHandler =
+                committer.acknowledgementHandlerForAssigned(topicPartition);
+
+        assertFalse(committer.isCommitTrialExhausted(topicPartition));
+
+        acknowledgementHandler.accept(new AcknowledgedOffset(consumerOffset, __ -> Mono.just("")));
+
+        assertEquals(1, commitAttempts.get());
+        assertInstanceOf(KafkaException.class, error.get());
+        assertTrue(committer.isCommitTrialExhausted(topicPartition));
+    }
 }
