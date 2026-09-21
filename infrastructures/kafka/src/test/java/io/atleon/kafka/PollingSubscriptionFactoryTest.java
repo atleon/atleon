@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
+import reactor.core.Exceptions;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.test.StepVerifier;
@@ -24,6 +25,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -429,6 +431,73 @@ class PollingSubscriptionFactoryTest {
             subscription.request(1L);
             assertFalse(secondReceived.await(100L, TimeUnit.MILLISECONDS));
             assertNull(failure.get());
+        } finally {
+            subscription.cancel();
+        }
+    }
+
+    @Test
+    public void rebalance_givenZeroGraceAndUnacknowledgedRecord_expectsTransactionAbortedWithoutCommit() {
+        String topic = "topic";
+        Map<TopicPartition, Long> beginningOffsets = Collections.singletonMap(new TopicPartition(topic, 0), 0L);
+
+        KafkaTxManager txManager = mock(KafkaTxManager.class);
+        when(txManager.begin()).thenReturn(Mono.empty());
+        when(txManager.sendOffsets(any(), any())).thenReturn(Mono.empty());
+        when(txManager.commit()).thenReturn(Mono.empty());
+        when(txManager.abort()).thenReturn(Mono.empty());
+
+        MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+        mockConsumer.updateBeginningOffsets(beginningOffsets);
+        mockConsumer.schedulePollTask(() -> {
+            mockConsumer.rebalance(beginningOffsets.keySet());
+            mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 0L, "key", "value"));
+        });
+
+        KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)
+                .fullPollRecordsPrefetch(1)
+                .commitBatchSize(1)
+                .revocationGracePeriod(Duration.ZERO)
+                .build();
+
+        CountDownLatch recordReceived = new CountDownLatch(1);
+        CountDownLatch failureReceived = new CountDownLatch(1);
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Subscriber<KafkaReceiverRecord<String, String>> subscriber = new Subscriber<>() {
+            @Override
+            public void onSubscribe(Subscription subscription) {}
+
+            @Override
+            public void onNext(KafkaReceiverRecord<String, String> record) {
+                recordReceived.countDown();
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                failure.set(error);
+                failureReceived.countDown();
+            }
+
+            @Override
+            public void onComplete() {}
+        };
+        Subscription subscription = new PollingSubscriptionFactory<>(options)
+                .transactional(txManager, ConsumptionSpec.subscribe(Collections.singletonList(topic)), subscriber);
+
+        try {
+            subscription.request(1L);
+            assertTrue(awaitLatch(recordReceived));
+
+            mockConsumer.schedulePollTask(() -> mockConsumer.rebalance(Collections.emptyList()));
+            assertTrue(awaitLatch(failureReceived));
+
+            Throwable unwrappedFailure = Exceptions.unwrap(failure.get());
+            assertTrue(unwrappedFailure instanceof TimeoutException);
+            assertEquals("Revocation deactivation timeout", unwrappedFailure.getMessage());
+            verify(txManager, never()).commit();
+            verify(txManager).abort();
         } finally {
             subscription.cancel();
         }

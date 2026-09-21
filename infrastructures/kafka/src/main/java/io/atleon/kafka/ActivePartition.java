@@ -251,8 +251,6 @@ final class ActivePartition<K, V> {
         } while (missed != 0);
     }
 
-    private static final class GracelessTimeoutException extends TimeoutException {}
-
     private interface Deactivation {
 
         long executeAndGetDeactivatedRecordCount();
