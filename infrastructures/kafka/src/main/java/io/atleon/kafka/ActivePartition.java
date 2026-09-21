@@ -199,6 +199,7 @@ final class ActivePartition<K, V> {
                     return count + completedRecords;
                 }
             });
+
             // It is only valid to emit termination if the updated activation count has reached
             // zero. In order for that to be the case, the previous count must have been negative
             // (indicating TERMINABLE state, but not yet TERMINATED) and its magnitude must be
@@ -208,7 +209,9 @@ final class ActivePartition<K, V> {
             if (previousActivated < 0 && completedRecords + previousActivated == 0) {
                 consumerOffsetsOfAcknowledged.tryEmitComplete();
             }
-            return completedRecords;
+
+            // Guard against re-counting completed records (e.g. if forcefully terminated).
+            return previousActivated == 0 ? 0L : completedRecords;
         });
     }
 

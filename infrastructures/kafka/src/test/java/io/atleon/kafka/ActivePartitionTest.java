@@ -629,6 +629,26 @@ class ActivePartitionTest {
         assertNull(deactivatedRecordCountsError.get());
     }
 
+    @Test
+    public void deactivateForcefully_givenAcknowledgementDuringDeactivation_expectsRecordDeactivatedOnce() {
+        ActivePartition<String, String> activePartition =
+                new ActivePartition<>(newOffsetTracker(), AcknowledgementQueueMode.STRICT);
+
+        List<Long> deactivatedRecordCounts = new ArrayList<>();
+        activePartition.deactivatedRecordCounts().subscribe(deactivatedRecordCounts::add);
+
+        KafkaReceiverRecord<String, String> receiverRecord = activePartition
+                .activateForProcessing(newConsumerRecord(0), Consuming.noOp())
+                .get();
+
+        // Acknowledge after forceful deactivation has released the record, but before its drain
+        // finishes, reproducing the concurrent acknowledgement ordering without thread timing.
+        Mono<Long> deactivation = activePartition.deactivateForcefully().doOnNext(__ -> receiverRecord.acknowledge());
+
+        assertEquals(1L, deactivation.block());
+        assertEquals(Collections.singletonList(1L), deactivatedRecordCounts);
+    }
+
     private static ConsumerRecord<String, String> newConsumerRecord(int offset) {
         return new ConsumerRecord<>(TOPIC_PARTITION.topic(), TOPIC_PARTITION.partition(), offset, "key", "value");
     }
