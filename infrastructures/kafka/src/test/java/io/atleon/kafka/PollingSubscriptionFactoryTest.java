@@ -503,6 +503,85 @@ class PollingSubscriptionFactoryTest {
         }
     }
 
+    @Test
+    public void cancel_givenShorterTerminationGrace_expectsTerminationGraceUsedForTransactionalDeactivation()
+            throws InterruptedException {
+        String topic = "topic";
+        TopicPartition topicPartition = new TopicPartition(topic, 0);
+        Map<TopicPartition, Long> beginningOffsets = Collections.singletonMap(topicPartition, 0L);
+
+        KafkaTxManager txManager = mock(KafkaTxManager.class);
+        when(txManager.begin()).thenReturn(Mono.empty());
+        when(txManager.sendOffsets(any(), any())).thenReturn(Mono.empty());
+        when(txManager.commit()).thenReturn(Mono.empty());
+        when(txManager.abort()).thenReturn(Mono.empty());
+
+        MockConsumer<String, String> mockConsumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+        mockConsumer.updateBeginningOffsets(beginningOffsets);
+        mockConsumer.schedulePollTask(() -> mockConsumer.addRecord(new ConsumerRecord<>(topic, 0, 0L, "key", "value")));
+
+        CountDownLatch consumerClosed = new CountDownLatch(1);
+        ConsumerListener consumerListener = new ConsumerListener() {
+            @Override
+            public void close() {
+                consumerClosed.countDown();
+            }
+        };
+
+        KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
+                .consumerListener(consumerListener)
+                .consumerProperty(CommonClientConfigs.CLIENT_ID_CONFIG, "test")
+                .consumerProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1)
+                .fullPollRecordsPrefetch(1)
+                .commitBatchSize(1)
+                .revocationGracePeriod(Duration.ofSeconds(5L))
+                .terminationGracePeriod(Duration.ofMillis(100L))
+                .build();
+
+        CountDownLatch recordReceived = new CountDownLatch(1);
+        AtomicReference<KafkaReceiverRecord<String, String>> received = new AtomicReference<>();
+        AtomicReference<Throwable> failure = new AtomicReference<>();
+        Subscriber<KafkaReceiverRecord<String, String>> subscriber = new Subscriber<>() {
+            @Override
+            public void onSubscribe(Subscription subscription) {}
+
+            @Override
+            public void onNext(KafkaReceiverRecord<String, String> record) {
+                received.set(record);
+                recordReceived.countDown();
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                failure.set(error);
+            }
+
+            @Override
+            public void onComplete() {}
+        };
+        Subscription subscription = new PollingSubscriptionFactory<>(options)
+                .transactional(
+                        txManager, ConsumptionSpec.assign(Collections.singletonList(topicPartition)), subscriber);
+
+        try {
+            subscription.request(1L);
+            assertTrue(awaitLatch(recordReceived));
+
+            subscription.cancel();
+
+            assertTrue(consumerClosed.await(2L, TimeUnit.SECONDS));
+            assertNull(failure.get());
+            verify(txManager).abort();
+            verify(txManager, never()).commit();
+        } finally {
+            KafkaReceiverRecord<String, String> record = received.get();
+            if (record != null) {
+                record.acknowledge();
+            }
+            consumerClosed.await(10L, TimeUnit.SECONDS);
+        }
+    }
+
     private static void schedulePollEventing(MockConsumer<String, String> mockConsumer, Sinks.Many<Long> polled) {
         mockConsumer.schedulePollTask(() -> {
             polled.tryEmitNext(System.currentTimeMillis());

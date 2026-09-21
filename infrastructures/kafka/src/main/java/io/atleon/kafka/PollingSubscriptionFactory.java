@@ -75,6 +75,10 @@ final class PollingSubscriptionFactory<K, V> {
         }
     }
 
+    private static <T extends Comparable<? super T>> T min(T t1, T t2) {
+        return t1.compareTo(t2) <= 0 ? t1 : t2;
+    }
+
     private abstract class Poller implements Subscription, ReceivingConsumer.PartitionListener {
 
         protected final ReceivingConsumer<K, V> receivingConsumer;
@@ -106,6 +110,8 @@ final class PollingSubscriptionFactory<K, V> {
         private final AtomicReference<Throwable> error = new AtomicReference<>();
 
         private final AtomicInteger drainsInProgress = new AtomicInteger(0);
+
+        private final Sinks.Empty<Void> termination = Sinks.empty();
 
         public Poller(ConsumptionSpec consumptionSpec, Subscriber<? super KafkaReceiverRecord<K, V>> subscriber) {
             this.receivingConsumer = new ReceivingConsumer<>(options, this, this::failSafely);
@@ -311,6 +317,7 @@ final class PollingSubscriptionFactory<K, V> {
 
         private void terminateSafely() {
             runSafely(this::terminate, "this::terminate");
+            triggerTerminationPublishing();
             receivingConsumer
                     .closeSafely(consumptionSpec)
                     .doOnTerminate(() -> runSafely(listener::close, "listener::close"))
@@ -328,6 +335,21 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         protected abstract void terminate();
+
+        private void triggerTerminationPublishing() {
+            Duration gracePeriod = options.terminationGracePeriod();
+            if (gracePeriod.isZero() || gracePeriod.isNegative()) {
+                termination.tryEmitEmpty();
+            } else {
+                Mono.fromRunnable(termination::tryEmitEmpty)
+                        .delaySubscription(gracePeriod, auxiliaryScheduler)
+                        .subscribe();
+            }
+        }
+
+        protected final Mono<Void> terminated() {
+            return termination.asMono();
+        }
 
         protected final void failSafely(Throwable failure) {
             if (!active() || !error.compareAndSet(null, failure)) {
@@ -355,8 +377,6 @@ final class PollingSubscriptionFactory<K, V> {
         private final AsyncOffsetCommitter asyncOffsetCommitter;
 
         private final Disposable periodicOffsetCommit;
-
-        private final Sinks.Empty<Void> termination = Sinks.empty();
 
         public PeriodicCommitPoller(
                 ConsumptionSpec consumptionSpec, Subscriber<? super KafkaReceiverRecord<K, V>> subscriber) {
@@ -388,7 +408,7 @@ final class PollingSubscriptionFactory<K, V> {
             // recent acknowledged offset ensures that update.
             Duration gracePeriod = options.revocationGracePeriod();
             Collection<AcknowledgedOffset> latestAcknowledgedOffsets = partitions.stream()
-                    .map(it -> it.deactivateLatest(gracePeriod, auxiliaryScheduler, termination.asMono()))
+                    .map(it -> it.deactivateLatest(gracePeriod, auxiliaryScheduler, terminated()))
                     .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
                     .filter(it -> !asyncOffsetCommitter.isCommitTrialExhausted(it.topicPartition()))
                     .collectList()
@@ -443,17 +463,7 @@ final class PollingSubscriptionFactory<K, V> {
 
         @Override
         protected void terminate() {
-            // Stop commit scheduling, then schedule termination of in-progress deactivations.
             periodicOffsetCommit.dispose();
-
-            Duration gracePeriod = options.terminationGracePeriod();
-            if (gracePeriod.isZero() || gracePeriod.isNegative()) {
-                termination.tryEmitEmpty();
-            } else {
-                Mono.fromRunnable(termination::tryEmitEmpty)
-                        .delaySubscription(gracePeriod, auxiliaryScheduler)
-                        .subscribe();
-            }
         }
     }
 
@@ -616,8 +626,9 @@ final class PollingSubscriptionFactory<K, V> {
 
         private Mono<?> deactivate(ActivePartition<K, V> activePartition) {
             return activePartition
-                    .deactivateTimeout(options.revocationGracePeriod(), auxiliaryScheduler)
-                    .doOnError(GracelessTimeoutException.class, __ -> invalidateCurrentTransaction());
+                    .<Long>deactivateTimeout(options.revocationGracePeriod(), auxiliaryScheduler)
+                    .doOnError(GracelessTimeoutException.class, __ -> invalidateCurrentTransaction())
+                    .timeout(terminated(), activePartition.deactivateForcefully());
         }
 
         private void invalidateCurrentTransaction() {
