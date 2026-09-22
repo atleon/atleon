@@ -324,18 +324,19 @@ class PollingSubscriptionFactoryTest {
         });
 
         Sinks.Empty<Void> transactionOpened = Sinks.empty();
+        CountDownLatch transactionAborted = new CountDownLatch(1);
         KafkaTxManager txManager = mock(KafkaTxManager.class);
         when(txManager.begin()).thenReturn(transactionOpened.asMono().doOnSubscribe(__ -> {
             // Keep begin pending until loss is reported on the polling thread, then allow its
             // completion to verify that the buffered record cannot escape the invalidated state.
             mockConsumer.schedulePollTask(() -> {
                 rebalanceListener.get().onPartitionsLost(beginningOffsets.keySet());
-                mockConsumer.assign(Collections.emptyList());
                 transactionOpened.tryEmitEmpty();
             });
         }));
         // As with the producer task loop, abortion completes after the pending begin operation.
-        when(txManager.abort()).thenReturn(transactionOpened.asMono());
+        when(txManager.abort())
+                .thenReturn(transactionOpened.asMono().doOnSuccess(__ -> transactionAborted.countDown()));
 
         ConsumerListener.Closure closureListener = ConsumerListener.closure();
         KafkaReceiverOptions<String, String> options = KafkaReceiverOptions.newBuilder(__ -> mockConsumer)
@@ -353,6 +354,7 @@ class PollingSubscriptionFactoryTest {
                 .verify(Duration.ofSeconds(10L));
 
         closureListener.closed().block(Duration.ofSeconds(10L));
+        assertTrue(awaitLatch(transactionAborted), "Transaction abortion did not complete after the delayed open");
         verify(txManager).begin();
         verify(txManager).abort();
         verify(txManager, never()).sendOffsets(any(), any());
