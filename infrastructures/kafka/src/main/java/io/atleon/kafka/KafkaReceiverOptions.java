@@ -224,7 +224,7 @@ public final class KafkaReceiverOptions<K, V> {
      * @see Builder#fullPollRecordsPrefetch(int)
      */
     public int calculateMaxRecordsPrefetch() {
-        return loadMaxPollRecords() * fullPollRecordsPrefetch;
+        return Math.multiplyExact(loadMaxPollRecords(), fullPollRecordsPrefetch);
     }
 
     public int loadMaxPollRecords() {
