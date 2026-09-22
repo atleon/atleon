@@ -143,6 +143,21 @@ class ActivePartitionTest {
     }
 
     @Test
+    public void acknowledgedOffsets_givenTrackedInitialOffsetIsProhibited_expectsError() {
+        List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
+        AtomicReference<Throwable> acknowledgedOffsetsError = new AtomicReference<>();
+
+        ConsumerOffset initialConsumerOffset = new ConsumerOffset(TOPIC_PARTITION, 4L);
+        ActivePartition<String, String> activePartition =
+                new ActivePartition<>(initializedOffsetTracker(initialConsumerOffset), AcknowledgementQueueMode.STRICT);
+
+        activePartition.acknowledgedOffsets(true).subscribe(acknowledgedOffsets::add, acknowledgedOffsetsError::set);
+
+        assertTrue(acknowledgedOffsets.isEmpty());
+        assertInstanceOf(UnsupportedOperationException.class, acknowledgedOffsetsError.get());
+    }
+
+    @Test
     public void acknowledge_givenActivatedRecordIsAcknowledged_expectsCorrectAcknowledgements() {
         List<AcknowledgedOffset> acknowledgedOffsets = new ArrayList<>();
         List<Long> deactivatedRecordCounts = new ArrayList<>();

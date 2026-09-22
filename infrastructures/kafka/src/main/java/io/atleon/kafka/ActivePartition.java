@@ -129,15 +129,24 @@ final class ActivePartition<K, V> {
         }));
     }
 
+    public Flux<AcknowledgedOffset> acknowledgedOffsets() {
+        return acknowledgedOffsets(false);
+    }
+
     /**
      * Returns a publisher of offsets that have been acknowledged and may be prepared for
      * commitment. The configured {@link OffsetTracker} may provide an initial consumer offset
      * which can be used to create an initial acknowledgeable offset through which updated metadata
      * can be attached. Such updated metadata is created and subscribed via delegation to the
-     * offset tracker for all acknowledged offsets.
+     * offset tracker for all acknowledged offsets. Usage of the initial consumer offset may be
+     * prohibited for certain use cases (e.g. exactly-once/transactional reception).
      */
-    public Flux<AcknowledgedOffset> acknowledgedOffsets() {
-        return Mono.justOrEmpty(offsetTracker.initialConsumerOffset())
+    public Flux<AcknowledgedOffset> acknowledgedOffsets(boolean prohibitTrackedInitialOffset) {
+        Optional<ConsumerOffset> initialConsumerOffset = offsetTracker.initialConsumerOffset();
+        if (initialConsumerOffset.isPresent() && prohibitTrackedInitialOffset) {
+            return Flux.error(new UnsupportedOperationException("Initial consumer offset tracking is prohibited"));
+        }
+        return Mono.justOrEmpty(initialConsumerOffset)
                 .concatWith(consumerOffsetsOfAcknowledged.asFlux())
                 .map(it -> new AcknowledgedOffset(it, offsetTracker::commitMetadata));
     }

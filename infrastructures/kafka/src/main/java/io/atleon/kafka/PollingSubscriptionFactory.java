@@ -506,7 +506,7 @@ final class PollingSubscriptionFactory<K, V> {
 
         @Override
         protected void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition<K, V> partition) {
-            partition.acknowledgedOffsets().subscribe(acknowledgedOffsetsQueue::addAndDrain, this::failSafely);
+            partition.acknowledgedOffsets(true).subscribe(acknowledgedOffsetsQueue::addAndDrain, this::failSafely);
         }
 
         @Override
