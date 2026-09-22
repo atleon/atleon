@@ -62,15 +62,14 @@ final class PollManager<T> {
         });
 
         // Newly assigned partitions may either be paused due to external control, or need pausing
-        // because there isn't enough outstanding downstream demand (back-pressure). There is no
-        // need to let the poll strategy know about these partitions, since polling them is
-        // prohibited anyway, and even if they were permitted in the past, they MUST have been
-        // previously prohibited due to unassignment (or else exception would be thrown above). Do,
-        // however, let the strategy know about newly-assigned poll-permitted partitions.
+        // because there isn't enough outstanding downstream demand (back-pressure). All partitions
+        // not forcefully paused must be permitted on the poll strategy such that it can know to
+        // select them if/when current possible back-pressure subsides.
         Map<Boolean, ? extends Collection<TopicPartition>> permissibility = partitionByPollPermissibility(partitions);
-        Collection<TopicPartition> prohibitedPartitions = permissibility.get(false);
-        if (!prohibitedPartitions.isEmpty()) {
-            consumer.pause(prohibitedPartitions);
+        Collection<TopicPartition> pausedPartitions =
+                isPausedDueToBackpressure() ? partitions : permissibility.get(false);
+        if (!pausedPartitions.isEmpty()) {
+            consumer.pause(pausedPartitions);
         }
         Collection<TopicPartition> permittedPartitions = permissibility.get(true);
         if (!permittedPartitions.isEmpty()) {
@@ -124,7 +123,7 @@ final class PollManager<T> {
     }
 
     public void allowResumption(Collection<TopicPartition> partitions) {
-        pollStrategy.onPollingPermitted(partitions);
+        pollStrategy.onPollingPermitted(filterAssigned(partitions));
         forcePaused.removeAll(partitions);
     }
 
@@ -138,12 +137,7 @@ final class PollManager<T> {
 
     private Map<Boolean, ? extends Collection<TopicPartition>> partitionByPollPermissibility(
             Collection<TopicPartition> partitions) {
-        if (isPausedDueToBackpressure()) {
-            Map<Boolean, Collection<TopicPartition>> result = new HashMap<>();
-            result.put(false, partitions);
-            result.put(true, Collections.emptyList());
-            return result;
-        } else if (forcePaused.isEmpty()) {
+        if (forcePaused.isEmpty()) {
             Map<Boolean, Collection<TopicPartition>> result = new HashMap<>();
             result.put(false, Collections.emptyList());
             result.put(true, partitions);
@@ -155,6 +149,10 @@ final class PollManager<T> {
 
     private boolean isPausedDueToBackpressure() {
         return pausedDueToBackpressure.get();
+    }
+
+    private Collection<TopicPartition> filterAssigned(Collection<TopicPartition> partitions) {
+        return partitions.stream().filter(assignments::containsKey).collect(Collectors.toList());
     }
 
     private final class ConsumerPollSelectionContext implements PollSelectionContext {
@@ -177,7 +175,7 @@ final class PollManager<T> {
             if (forcePaused.isEmpty()) {
                 consumer.resume(assignments.keySet());
             } else {
-                consumer.pause(forcePaused);
+                consumer.pause(filterAssigned(forcePaused));
                 consumer.resume(Collecting.difference(assignments.keySet(), forcePaused));
             }
         }
@@ -185,8 +183,8 @@ final class PollManager<T> {
         @Override
         public Map<TopicPartition, Long> currentLag(Set<TopicPartition> partitions, long defaultValue) {
             validatePermissibility(partitions, "request metadata for");
-            return partitions.stream().collect(Collectors.toMap(Function.identity(), it -> consumer.currentLag(it)
-                    .orElse(defaultValue)));
+            return partitions.stream()
+                    .collect(Collectors.toMap(Function.identity(), it -> currentLag(it, defaultValue)));
         }
 
         @Override
@@ -197,8 +195,12 @@ final class PollManager<T> {
         }
 
         private long currentBatchLag(TopicPartition topicPartition, long defaultValue) {
-            long currentLag = consumer.currentLag(topicPartition).orElse(Long.MAX_VALUE);
+            long currentLag = currentLag(topicPartition, Long.MAX_VALUE);
             return currentLag == Long.MAX_VALUE ? defaultValue : (currentLag / maxPollRecords);
+        }
+
+        private long currentLag(TopicPartition topicPartition, long defaultValue) {
+            return consumer.currentLag(topicPartition).orElse(defaultValue);
         }
 
         private void validatePermissibility(Set<TopicPartition> partitions, String action) {

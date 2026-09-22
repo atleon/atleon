@@ -1,7 +1,10 @@
 package io.atleon.kafka;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.MockConsumer;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.junit.jupiter.api.Test;
@@ -21,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -163,6 +167,57 @@ class PollManagerTest {
     }
 
     @Test
+    public void pollWakeably_givenPartitionAssignedWhileBackpressured_expectsPollingWhenCapacityReturns() {
+        TopicPartition partition = new TopicPartition("topic", 0);
+        ConsumerRecord<String, String> record = new ConsumerRecord<>("topic", 0, 0L, "key", "value");
+        PollManager<TopicPartition> pollManager =
+                new PollManager<>(PollStrategy.priorityCutoffOnLag(), 1, Duration.ZERO);
+
+        try (MockConsumer<String, String> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST)) {
+            consumer.updateBeginningOffsets(Collections.singletonMap(partition, 0L));
+            consumer.updateEndOffsets(Collections.singletonMap(partition, 1L));
+            consumer.assign(Collections.singletonList(partition));
+
+            // A rebalance activates the partition while polling is paused due to backpressure.
+            pollManager.pollWakeably(consumer, () -> 0);
+            pollManager.activateAssigned(consumer, Collections.singletonList(partition), Function.identity());
+            consumer.addRecord(record);
+
+            assertTrue(consumer.paused().contains(partition));
+            assertTrue(pollManager.pollWakeably(consumer, () -> 0).isEmpty());
+
+            ConsumerRecords<String, String> records = pollManager.pollWakeably(consumer, () -> 1);
+
+            assertEquals(Collections.singletonList(record), records.records(partition));
+            assertFalse(consumer.paused().contains(partition));
+        }
+    }
+
+    @Test
+    public void pollWakeably_givenForcePausedPartitionUnassigned_expectsStatePreservedAndPolling() {
+        TopicPartition unassignedPartition = new TopicPartition("topic", 0);
+        TopicPartition assignedPartition = new TopicPartition("topic", 1);
+        PollManager<TopicPartition> pollManager = new PollManager<>(PollStrategy.natural(), 1, Duration.ZERO);
+
+        try (MockConsumer<String, String> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST)) {
+            consumer.updateBeginningOffsets(Collections.singletonMap(assignedPartition, 0L));
+            consumer.assign(Collections.singletonList(unassignedPartition));
+            pollManager.activateAssigned(consumer, Collections.singletonList(unassignedPartition), Function.identity());
+            pollManager.forcePause(Collections.singletonList(unassignedPartition));
+
+            pollManager.unassigned(Collections.singletonList(unassignedPartition));
+            consumer.assign(Collections.singletonList(assignedPartition));
+            pollManager.activateAssigned(consumer, Collections.singletonList(assignedPartition), Function.identity());
+
+            ConsumerRecords<String, String> records = pollManager.pollWakeably(consumer, () -> 1);
+
+            assertTrue(pollManager.forcePaused().contains(unassignedPartition));
+            assertTrue(records.isEmpty());
+            assertFalse(consumer.paused().contains(assignedPartition));
+        }
+    }
+
+    @Test
     public void shouldWakeupOnSingularCapacityReclamation_givenCorrectConditions_expectsTrue() {
         PollStrategy pollStrategy =
                 Mockito.mock(PollStrategy.class, AdditionalAnswers.delegatesTo(PollStrategy.natural()));
@@ -180,9 +235,12 @@ class PollManagerTest {
     @Test
     public void forcePause_givenPartitions_expectsCoordination() {
         TopicPartition partition = new TopicPartition("topic", 0);
+        Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
         PollStrategy pollStrategy =
                 Mockito.mock(PollStrategy.class, AdditionalAnswers.delegatesTo(PollStrategy.natural()));
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
+        pollManager.activateAssigned(consumer, Collections.singletonList(partition), Function.identity());
+        reset(pollStrategy);
 
         pollManager.forcePause(Collections.singletonList(partition));
 
@@ -192,9 +250,12 @@ class PollManagerTest {
     @Test
     public void allowResumption_givenPartitions_expectsCoordination() {
         TopicPartition partition = new TopicPartition("topic", 0);
+        Consumer<?, ?> consumer = Mockito.mock(Consumer.class);
         PollStrategy pollStrategy =
                 Mockito.mock(PollStrategy.class, AdditionalAnswers.delegatesTo(PollStrategy.natural()));
         PollManager<TopicPartition> pollManager = new PollManager<>(pollStrategy, 1, Duration.ZERO);
+        pollManager.activateAssigned(consumer, Collections.singletonList(partition), Function.identity());
+        reset(pollStrategy);
 
         pollManager.forcePause(Collections.singletonList(partition));
         pollManager.allowResumption(Collections.singletonList(partition));
