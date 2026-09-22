@@ -313,7 +313,7 @@ final class PollingSubscriptionFactory<K, V> {
 
         private void terminateSafely() {
             runSafely(this::terminate, "this::terminate");
-            triggerTerminationPublishing();
+            runSafely(this::triggerTerminationPublishing, "this::triggerTerminationPublishing");
             receivingConsumer
                     .closeSafely(consumptionSpec)
                     .doOnTerminate(() -> runSafely(listener::close, "listener::close"))
@@ -526,10 +526,11 @@ final class PollingSubscriptionFactory<K, V> {
                     .map(this::deactivate)
                     .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
                     .onErrorMap(TimeoutException.class, __ -> new TimeoutException("Revocation deactivation timeout"))
-                    .then();
+                    .then()
+                    .cache();
             Mono<Void> transactionClosure = offsetsState(TxOffsetsState.INACTIVE)
                     .next()
-                    .timeout(options.closeTimeout(), auxiliaryScheduler)
+                    .timeout(partitionDeactivation.then(Mono.delay(options.closeTimeout(), auxiliaryScheduler)))
                     .then();
             Mono.when(partitionDeactivation, transactionClosure).block();
         }
@@ -686,7 +687,7 @@ final class PollingSubscriptionFactory<K, V> {
         }
 
         private void transact(Function<KafkaTxManager, Mono<Void>> invocation, Runnable onSuccess) {
-            invocation.apply(txManager).subscribe(__ -> {}, this::failSafely, onSuccess);
+            Mono.defer(() -> invocation.apply(txManager)).subscribe(__ -> {}, this::failSafely, onSuccess);
         }
 
         private void completeTermination() {
