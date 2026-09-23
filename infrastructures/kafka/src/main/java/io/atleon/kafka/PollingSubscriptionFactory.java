@@ -25,6 +25,7 @@ import reactor.util.function.Tuple2;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeoutException;
@@ -92,10 +93,10 @@ final class PollingSubscriptionFactory<K, V> {
         private final AtomicInteger freePrefetchCapacity = new AtomicInteger(options.calculateMaxRecordsPrefetch());
 
         // This counter doubles as both our publishing state (via polarity: non-negative == ACTIVE,
-        // negative == TERMINABLE or TERMINATED) and (when non-negative) our count of activated
-        // in-flight records. As such, when this first becomes negative, it means we have entered a
-        // TERMINABLE state (error or cancellation). When it is set to Long.MIN_VALUE it means
-        // we've reached TERMINATED state and termination has (at least) been enqueued.
+        // negative == TERMINABLE or TERMINATED) and (when non-negative) our count of available
+        // capacity for in-flight records. As such, when this first becomes negative, it means we
+        // have entered a TERMINABLE state (error or cancellation). When set to Long.MIN_VALUE it
+        // means we've reached TERMINATED state and termination has (at least) been enqueued.
         private final AtomicLong freeActiveInFlightCapacity = new AtomicLong(options.maxActiveInFlight());
 
         // Initialized as negative to indicate "no initial request" (yet).
@@ -506,7 +507,9 @@ final class PollingSubscriptionFactory<K, V> {
 
         @Override
         protected void onPartitionActivated(Consumer<?, ?> consumer, ActivePartition<K, V> partition) {
-            partition.acknowledgedOffsets().subscribe(acknowledgedOffsetsQueue::addAndDrain, this::failSafely);
+            partition
+                    .acknowledgedOffsets(Optional::empty)
+                    .subscribe(acknowledgedOffsetsQueue::addAndDrain, this::failSafely);
         }
 
         @Override
