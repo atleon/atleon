@@ -38,11 +38,19 @@ public interface PollStrategyFactory {
     }
 
     /**
+     * @deprecated Typo. Use {@link #priorityCutoffOnLag()}
+     */
+    @Deprecated
+    static PollStrategyFactory priorityCutoffOnLog() {
+        return priorityCutoffOnLag();
+    }
+
+    /**
      * Creates a factory that always returns a "priority cutoff on lag" polling strategy.
      *
      * @see PollStrategy#priorityCutoffOnLag()
      */
-    static PollStrategyFactory priorityCutoffOnLog() {
+    static PollStrategyFactory priorityCutoffOnLag() {
         return PollStrategy::priorityCutoffOnLag;
     }
 

@@ -578,7 +578,7 @@ public class AloKafkaReceiver<K, V> {
             } else if (typeName.equalsIgnoreCase(POLL_STRATEGY_FACTORY_TYPE_GREATEST_BATCH_LAG)) {
                 return Optional.of(PollStrategyFactory.greatestBatchLag());
             } else if (typeName.equalsIgnoreCase(POLL_STRATEGY_FACTORY_TYPE_PRIORITY_CUTOFF_ON_LAG)) {
-                return Optional.of(PollStrategyFactory.priorityCutoffOnLog());
+                return Optional.of(PollStrategyFactory.priorityCutoffOnLag());
             } else {
                 return Optional.empty();
             }
