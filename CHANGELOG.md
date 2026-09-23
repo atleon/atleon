@@ -3,6 +3,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.47.1]
+atleon `0.47.1` is a beta release containing updates outlined below
+
+### Fixes
+* [#595] Kafka: Reduce likelihood of stale transactional commit metadata
+* [#597] Kafka: Fix `maxActiveInFlight` honorship when processing is skipped
+* [#599] Kafka: Avoid premature commitment, emission, and blocked deactivation on transactional partition revocation/loss
+* [#601] Kafka: Avoid exhausting final commit trial when `maxCommitAttempts` is 1
+* [#602] Kafka: Honor termination grace period on transactional deactivation
+* [#605] Kafka: Avoid double counting of deactivated records in acknowledge-deactivation race
+* [#610] Kafka: Ensure stateful poll strategies do not become stale when partitions are assigned during backpressure
+* [#613] Kafka: Ignore initial strategic offset for transactional reception
+
 # [0.47.0]
 atleon `0.47.0` is a beta release containing updates outlined below
 
