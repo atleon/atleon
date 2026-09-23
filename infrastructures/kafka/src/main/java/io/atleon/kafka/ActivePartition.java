@@ -17,6 +17,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.function.ToLongFunction;
 
 /**
@@ -131,13 +132,25 @@ final class ActivePartition<K, V> {
 
     /**
      * Returns a publisher of offsets that have been acknowledged and may be prepared for
-     * commitment. The configured {@link OffsetTracker} may provide an initial consumer offset
-     * which can be used to create an initial acknowledgeable offset through which updated metadata
-     * can be attached. Such updated metadata is created and subscribed via delegation to the
-     * offset tracker for all acknowledged offsets.
+     * commitment. The configured {@link OffsetTracker} is used to potentially produce the first
+     * acknowledgeable offset from initial consumer offset.
+     *
+     * @see #acknowledgedOffsets(Supplier)
      */
     public Flux<AcknowledgedOffset> acknowledgedOffsets() {
-        return Mono.justOrEmpty(offsetTracker.initialConsumerOffset())
+        return acknowledgedOffsets(offsetTracker::initialConsumerOffset);
+    }
+
+    /**
+     * Returns a publisher of offsets that have been acknowledged and may be prepared for
+     * commitment. The provided {@link Supplier} may produce an initial consumer offset which can
+     * be used to emit the first acknowledgeable offset through which updated metadata can be
+     * attached. Such updated metadata is created and subscribed via delegation to the configured
+     * offset tracker for all acknowledged offsets. Certain use cases (like EOS/transactional) may
+     * force initial offset emission to be empty if such emission is inherently incompatible.
+     */
+    public Flux<AcknowledgedOffset> acknowledgedOffsets(Supplier<Optional<ConsumerOffset>> initialOffsetSupplier) {
+        return Mono.justOrEmpty(initialOffsetSupplier.get())
                 .concatWith(consumerOffsetsOfAcknowledged.asFlux())
                 .map(it -> new AcknowledgedOffset(it, offsetTracker::commitMetadata));
     }
