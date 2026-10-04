@@ -18,7 +18,7 @@
         <avro.version>1.12.1</avro.version>
         <bytebuddy.version>1.18.3</bytebuddy.version>
         <confluent.version>7.9.5</confluent.version> <!-- https://docs.confluent.io/platform/current/installation/versions-interoperability.html -->
-        <jackson.version>2.22.2</jackson.version>
+        <jackson.version>2.22.3</jackson.version>
         <jspecify.version>1.0.0</jspecify.version>
         <junit-jupiter.version>5.12.2</junit-jupiter.version>
         <kotlin.version>1.9.21</kotlin.version> <!-- Dictated by kotlinx-coroutines version -->
