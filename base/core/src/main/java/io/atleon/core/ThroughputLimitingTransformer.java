@@ -29,27 +29,19 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
 
     private final Scheduler scheduler;
 
-    private final int prefetch;
-
     private ThroughputLimitingTransformer(
             DelayApplicator<T, V> delayApplicator,
             Publisher<Rate> limits,
             ToIntFunction<? super T> weighting,
-            Scheduler scheduler,
-            int prefetch) {
+            Scheduler scheduler) {
         this.delayApplicator = delayApplicator;
         this.limits = limits;
         this.weighting = weighting;
         this.scheduler = scheduler;
-        this.prefetch = prefetch;
     }
 
-    static <T> ThroughputLimitingTransformer.Builder<T, T> concatMap() {
-        return new Builder<>(DelayApplicator.concatMap());
-    }
-
-    static <T> ThroughputLimitingTransformer.Builder<T, Flux<T>> innerConcatMap() {
-        return innerConcatMap(Function.identity(), (__, delayedInner) -> delayedInner);
+    static <T> ThroughputLimitingTransformer.Builder<T, T> concatMap(int prefetch) {
+        return new Builder<>(DelayApplicator.concatMap(prefetch));
     }
 
     /**
@@ -62,7 +54,9 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
      * stream never completes.
      */
     static <T, V extends Publisher<T>> ThroughputLimitingTransformer.Builder<T, V> innerConcatMap(
-            Function<V, ? extends Publisher<T>> innerUnwrapper, BiFunction<V, ? super Flux<T>, V> innerRewrapper) {
+            Function<V, ? extends Publisher<T>> innerUnwrapper,
+            BiFunction<V, ? super Flux<T>, V> innerRewrapper,
+            int prefetch) {
         // Implementation notes:
         // 1. Cancellation of outer stream requires explicit propagation to inner streams. This is
         //    accomplished with an empty sink that inner publishers subscribe to for cancellation.
@@ -73,13 +67,13 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
         //    makes it safe to attach resources (like dynamic limit updates) to the lifecycle of
         //    the outer stream. Note that this cardinality is otherwise already a technical
         //    possibility, since setting limit to zero causes subscription to a "never" publisher.
-        return new Builder<>((outer, delayer, prefetch) -> {
+        return new Builder<>((outer, delayer) -> {
             Sinks.Empty<Void> cancellation = Sinks.empty();
             Flux<V> decoratedOuter = outer.concatWith(Flux.never()).doOnCancel(cancellation::tryEmitEmpty);
             BiFunction<V, Flux<T>, V> decoratedInnerRewrapper = (originalInner, delayedElements) ->
                     innerRewrapper.apply(originalInner, delayedElements.takeUntilOther(cancellation.asMono()));
-            return DelayApplicator.innerConcatMap(innerUnwrapper, decoratedInnerRewrapper)
-                    .apply(decoratedOuter, delayer, prefetch);
+            return DelayApplicator.innerConcatMap(innerUnwrapper, decoratedInnerRewrapper, prefetch)
+                    .apply(decoratedOuter, delayer);
         });
     }
 
@@ -114,14 +108,12 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
 
         private Scheduler scheduler = Schedulers.parallel();
 
-        private int prefetch = 0;
-
         private Builder(DelayApplicator<T, V> delayApplicator) {
             this.delayApplicator = delayApplicator;
         }
 
         public ThroughputLimitingTransformer<T, V> build() {
-            return new ThroughputLimitingTransformer<>(delayApplicator, limits, weighting, scheduler, prefetch);
+            return new ThroughputLimitingTransformer<>(delayApplicator, limits, weighting, scheduler);
         }
 
         public Builder<T, V> limits(Publisher<Rate> limits) {
@@ -136,11 +128,6 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
 
         public Builder<T, V> scheduler(Scheduler scheduler) {
             this.scheduler = scheduler;
-            return this;
-        }
-
-        public Builder<T, V> prefetch(int prefetch) {
-            this.prefetch = prefetch;
             return this;
         }
     }
@@ -196,7 +183,6 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
             return GrantedThroughputLimitingTransformer.newBuilder(delayApplicator)
                     .grantor(grantor)
                     .scheduler(scheduler)
-                    .prefetch(prefetch)
                     .build();
         }
     }

@@ -13,7 +13,7 @@ class GrantedThroughputLimitingTransformerTest {
     @Test
     public void concatMap_givenAsynchronousGrant_expectsDelayAfterReservationResult() {
         StepVerifier.withVirtualTime(() -> Flux.just(1L, 2L)
-                        .transform(GrantedThroughputLimitingTransformer.newBuilder(DelayApplicator.<Long>concatMap())
+                        .transform(GrantedThroughputLimitingTransformer.newBuilder(DelayApplicator.<Long>concatMap(0))
                                 .grantor(__ -> Mono.delay(Duration.ofMillis(100))
                                         .thenReturn(Duration.ofMillis(200).toNanos()))
                                 .build()))
@@ -32,7 +32,7 @@ class GrantedThroughputLimitingTransformerTest {
         PublisherProbe<Long> reservation = PublisherProbe.of(Mono.never());
 
         StepVerifier.create(Flux.just(1L)
-                        .transform(GrantedThroughputLimitingTransformer.newBuilder(DelayApplicator.<Long>concatMap())
+                        .transform(GrantedThroughputLimitingTransformer.newBuilder(DelayApplicator.<Long>concatMap(0))
                                 .grantor(__ -> reservation.mono())
                                 .build()))
                 .then(reservation::assertWasSubscribed)
