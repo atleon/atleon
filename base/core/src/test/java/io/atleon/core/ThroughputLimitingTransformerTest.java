@@ -374,10 +374,10 @@ class ThroughputLimitingTransformerTest {
     // ===== Utility methods =====
 
     private static ThroughputLimitingTransformer.Builder<Long, Long> newConcatMap() {
-        return ThroughputLimitingTransformer.concatMap(0);
+        return ThroughputLimitingTransformer.concatMap();
     }
 
     private static ThroughputLimitingTransformer.Builder<Long, Flux<Long>> newInnerConcatMap() {
-        return ThroughputLimitingTransformer.innerConcatMap(0);
+        return ThroughputLimitingTransformer.innerConcatMap();
     }
 }

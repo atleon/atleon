@@ -22,7 +22,7 @@ import java.util.function.ToIntFunction;
  */
 public final class ThroughputLimitingTransformer<T, V> implements Function<Publisher<? extends V>, Publisher<V>> {
 
-    private final Applicator<T, V> applicator;
+    private final DelayApplicator<T, V> delayApplicator;
 
     private final Publisher<Rate> limits;
 
@@ -30,23 +30,27 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
 
     private final Scheduler scheduler;
 
+    private final int prefetch;
+
     private ThroughputLimitingTransformer(
-            Applicator<T, V> applicator,
+            DelayApplicator<T, V> delayApplicator,
             Publisher<Rate> limits,
             ToIntFunction<? super T> weighting,
-            Scheduler scheduler) {
-        this.applicator = applicator;
+            Scheduler scheduler,
+            int prefetch) {
+        this.delayApplicator = delayApplicator;
         this.limits = limits;
         this.weighting = weighting;
         this.scheduler = scheduler;
+        this.prefetch = prefetch;
     }
 
-    static <T> ThroughputLimitingTransformer.Builder<T, T> concatMap(int prefetch) {
-        return new Builder<>((flux, mapper) -> flux.concatMap(mapper, prefetch));
+    static <T> ThroughputLimitingTransformer.Builder<T, T> concatMap() {
+        return new Builder<>(Flux::concatMap);
     }
 
-    static <T> ThroughputLimitingTransformer.Builder<T, Flux<T>> innerConcatMap(int prefetch) {
-        return innerConcatMap(Function.identity(), prefetch, (__, delayedInner) -> delayedInner);
+    static <T> ThroughputLimitingTransformer.Builder<T, Flux<T>> innerConcatMap() {
+        return innerConcatMap(Function.identity(), (__, delayedInner) -> delayedInner);
     }
 
     /**
@@ -59,9 +63,7 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
      * stream never completes.
      */
     static <T, V extends Publisher<T>> ThroughputLimitingTransformer.Builder<T, V> innerConcatMap(
-            Function<V, ? extends Publisher<T>> innerUnwrapper,
-            int innerPrefetch,
-            BiFunction<V, ? super Flux<T>, V> innerRewrapper) {
+            Function<V, ? extends Publisher<T>> innerUnwrapper, BiFunction<V, ? super Flux<T>, V> innerRewrapper) {
         // Implementation notes:
         // 1. Cancellation of outer stream requires explicit propagation to inner streams. This is
         //    accomplished with an empty sink that inner publishers subscribe to for cancellation.
@@ -72,13 +74,13 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
         //    makes it safe to attach resources (like dynamic limit updates) to the lifecycle of
         //    the outer stream. Note that this cardinality is otherwise already a technical
         //    possibility, since setting limit to zero causes subscription to a "never" publisher.
-        return new Builder<>((outer, mapper) -> {
+        return new Builder<>((outer, delayer, prefetch) -> {
             Sinks.Empty<Void> cancellation = Sinks.empty();
             return outer.concatWith(Flux.never())
                     .doOnCancel(cancellation::tryEmitEmpty)
                     .map(inner -> {
                         Flux<T> delayedInner = Flux.from(innerUnwrapper.apply(inner))
-                                .concatMap(mapper, innerPrefetch)
+                                .concatMap(delayer, prefetch)
                                 .takeUntilOther(cancellation.asMono());
                         return innerRewrapper.apply(inner, delayedInner);
                     });
@@ -108,7 +110,7 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
 
     public static final class Builder<T, V> {
 
-        private final Applicator<T, V> applicator;
+        private final DelayApplicator<T, V> delayApplicator;
 
         private Publisher<Rate> limits = Mono.empty();
 
@@ -116,12 +118,14 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
 
         private Scheduler scheduler = Schedulers.parallel();
 
-        private Builder(Applicator<T, V> applicator) {
-            this.applicator = applicator;
+        private int prefetch = 0;
+
+        private Builder(DelayApplicator<T, V> delayApplicator) {
+            this.delayApplicator = delayApplicator;
         }
 
         public ThroughputLimitingTransformer<T, V> build() {
-            return new ThroughputLimitingTransformer<>(applicator, limits, weighting, scheduler);
+            return new ThroughputLimitingTransformer<>(delayApplicator, limits, weighting, scheduler, prefetch);
         }
 
         public Builder<T, V> limits(Publisher<Rate> limits) {
@@ -138,12 +142,22 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
             this.scheduler = scheduler;
             return this;
         }
+
+        public Builder<T, V> prefetch(int prefetch) {
+            this.prefetch = prefetch;
+            return this;
+        }
     }
 
+    /**
+     * Interface through which per-element delays can be applied to a source, which is assumed to
+     * emit either elements of the delayed type, or elements containing/emitting that type (i.e. a
+     * Grouped Flux of elements).
+     */
     @FunctionalInterface
-    private interface Applicator<T, V> {
+    private interface DelayApplicator<T, V> {
 
-        Flux<V> apply(Flux<? extends V> source, Function<T, ? extends Publisher<T>> delayer);
+        Flux<V> apply(Flux<V> source, Function<T, ? extends Publisher<T>> delayer, int prefetch);
     }
 
     /**
@@ -184,19 +198,19 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
             //    to the main publisher, and termination of the main publisher also terminates
             //    the limit updating process. Using "takeUntilOther" rather than "merge" prevents
             //    inadvertent introduction of an unnecessary prefetch buffer.
-            ThroughputGrantor grantor = new TokenBucketThroughputGrantor(scheduler);
+            TokenBucketThroughputGrantor<T> grantor = new TokenBucketThroughputGrantor<>(weighting, scheduler);
             Mono<Void> limitUpdating = limits.filter(it -> !it.isZero())
                     .startWith(initialLimit)
                     .distinctUntilChanged()
                     .doOnNext(grantor::updateLimit)
                     .thenEmpty(Mono.never());
-            return applicator
-                    .apply(Flux.from(publisher), it -> maybeDelay(grantor, it))
+            return delayApplicator
+                    .apply(Flux.from(publisher), it -> maybeDelay(grantor, it), prefetch)
                     .takeUntilOther(limitUpdating);
         }
 
-        private Mono<T> maybeDelay(ThroughputGrantor grantor, T t) {
-            return grantor.reserveCapacity(weighting.applyAsInt(t))
+        private Mono<T> maybeDelay(ThroughputGrantor<T> grantor, T t) {
+            return grantor.reserveCapacity(t)
                     .delayUntil(it -> it > 0 ? Mono.delay(Duration.ofNanos(it), scheduler) : Mono.empty())
                     .thenReturn(t);
         }
@@ -211,50 +225,43 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
     }
 
     /**
-     * API through which throughput capacity is reserved and updated. Reservation of throughput
-     * capacity may require waiting/delaying until the emitted number of nanoseconds has elapsed.
-     * Limitation of available throughput capacity can be dynamic, in which case the grantor should
-     * update its internal state to reflect the new limit.
+     * API through which throughput capacity is reserved for elements. Reservation of throughput
+     * capacity may require waiting until the emitted number of nanoseconds has elapsed.
      */
-    private interface ThroughputGrantor {
+    private interface ThroughputGrantor<T> {
 
         /**
-         * Creates reservation of throughput capacity for the provided throughput weight. Returns
+         * Creates a reservation of throughput capacity for the provided element. Returns
          * a {@link Mono} that may emit the number of nanoseconds to wait before safely using the
          * reserved capacity. Emitting nothing or a non-positive value is treated as "no wait
          * necessary".
          *
-         * @param weight The weight of throughput capacity to reserve
+         * @param t The element for which to reserve throughput capacity
          * @return A {@link Mono} emitting number of nanoseconds to wait before using reservation
          */
-        Mono<Long> reserveCapacity(int weight);
-
-        /**
-         * Requests a change in any configured throughput limit.
-         *
-         * @param limit The updated throughput limit to enforce from this grantor
-         */
-        void updateLimit(Rate limit);
+        Mono<Long> reserveCapacity(T t);
     }
 
-    private static final class TokenBucketThroughputGrantor implements ThroughputGrantor {
+    private static final class TokenBucketThroughputGrantor<T> implements ThroughputGrantor<T> {
+
+        private final ToIntFunction<? super T> weighting;
 
         private final Scheduler scheduler;
 
-        // Nullity signifies the difference between infinite and non-infinite limits
+        // Null means the limit is infinite, so reservations skip weight calculation and delay
         private volatile SerialQueue<Consumer<TokenBucket>> bucketQueue = null;
 
-        public TokenBucketThroughputGrantor(Scheduler scheduler) {
+        public TokenBucketThroughputGrantor(ToIntFunction<? super T> weighting, Scheduler scheduler) {
+            this.weighting = weighting;
             this.scheduler = scheduler;
         }
 
         @Override
-        public Mono<Long> reserveCapacity(int weight) {
+        public Mono<Long> reserveCapacity(T t) {
             SerialQueue<Consumer<TokenBucket>> nvBucketQueue = bucketQueue;
-            return nvBucketQueue != null ? reserveCapacity(nvBucketQueue, weight) : Mono.empty();
+            return nvBucketQueue != null ? reserveCapacity(nvBucketQueue, weighting.applyAsInt(t)) : Mono.empty();
         }
 
-        @Override
         public void updateLimit(Rate limit) {
             SerialQueue<Consumer<TokenBucket>> nvBucketQueue = bucketQueue;
             if (limit.isInfinite()) {
