@@ -7,7 +7,6 @@ import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
-import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -147,29 +146,6 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
     }
 
     /**
-     * Interface through which per-element delays can be applied to a source, which is assumed to
-     * emit either elements of the delayed type, or elements containing/emitting that type (i.e. a
-     * Grouped Flux of elements).
-     */
-    @FunctionalInterface
-    private interface DelayApplicator<T, V> {
-
-        static <T> DelayApplicator<T, T> concatMap() {
-            return Flux::concatMap;
-        }
-
-        static <T, V> DelayApplicator<T, V> innerConcatMap(
-                Function<V, ? extends Publisher<T>> innerUnwrapper, BiFunction<V, ? super Flux<T>, V> innerRewrapper) {
-            return (outer, delayer, prefetch) -> outer.map(originalInner -> {
-                Flux<T> elements = Flux.from(innerUnwrapper.apply(originalInner));
-                return innerRewrapper.apply(originalInner, elements.concatMap(delayer, prefetch));
-            });
-        }
-
-        Flux<V> apply(Flux<V> source, Function<T, ? extends Publisher<T>> delayer, int prefetch);
-    }
-
-    /**
      * Encapsulates if and how to apply a throughput limitation to a source publisher, given a
      * stream of throughput limits.
      */
@@ -213,15 +189,15 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
                     .distinctUntilChanged()
                     .doOnNext(grantor::updateLimit)
                     .thenEmpty(Mono.never());
-            return delayApplicator
-                    .apply(Flux.from(publisher), it -> maybeDelay(grantor, it), prefetch)
-                    .takeUntilOther(limitUpdating);
+            return newGrantedTransformer(grantor).apply(publisher).takeUntilOther(limitUpdating);
         }
 
-        private Mono<T> maybeDelay(ThroughputGrantor<T> grantor, T t) {
-            return grantor.reserveCapacity(t)
-                    .delayUntil(it -> it > 0 ? Mono.delay(Duration.ofNanos(it), scheduler) : Mono.empty())
-                    .thenReturn(t);
+        private GrantedThroughputLimitingTransformer<T, V> newGrantedTransformer(ThroughputGrantor<T> grantor) {
+            return GrantedThroughputLimitingTransformer.newBuilder(delayApplicator)
+                    .grantor(grantor)
+                    .scheduler(scheduler)
+                    .prefetch(prefetch)
+                    .build();
         }
     }
 
@@ -231,24 +207,6 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
         public Publisher<? extends T> apply(Publisher<? extends T> publisher, Flux<Rate> limits) {
             return publisher;
         }
-    }
-
-    /**
-     * API through which throughput capacity is reserved for elements. Reservation of throughput
-     * capacity may require waiting until the emitted number of nanoseconds has elapsed.
-     */
-    private interface ThroughputGrantor<T> {
-
-        /**
-         * Creates a reservation of throughput capacity for the provided element. Returns
-         * a {@link Mono} that may emit the number of nanoseconds to wait before safely using the
-         * reserved capacity. Emitting nothing or a non-positive value is treated as "no wait
-         * necessary".
-         *
-         * @param t The element for which to reserve throughput capacity
-         * @return A {@link Mono} emitting number of nanoseconds to wait before using reservation
-         */
-        Mono<Long> reserveCapacity(T t);
     }
 
     private static final class TokenBucketThroughputGrantor<T> implements ThroughputGrantor<T> {
