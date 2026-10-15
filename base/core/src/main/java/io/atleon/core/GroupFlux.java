@@ -261,14 +261,14 @@ public class GroupFlux<K, T> {
      * @see GroupFlux#limitCumulativeThroughput(Publisher, Scheduler, int)
      */
     public GroupFlux<K, T> limitCumulativeThroughput(Publisher<Rate> limits) {
-        return dynamicallyLimitCumulativeThroughput(it -> it.limits(limits));
+        return limitCumulativeThroughput(it -> it.limits(limits), 0);
     }
 
     /**
      * @see GroupFlux#limitCumulativeThroughput(Publisher, Scheduler, int)
      */
     public GroupFlux<K, T> limitCumulativeThroughput(Publisher<Rate> limits, Scheduler scheduler) {
-        return dynamicallyLimitCumulativeThroughput(it -> it.limits(limits).scheduler(scheduler));
+        return limitCumulativeThroughput(it -> it.limits(limits).scheduler(scheduler), 0);
     }
 
     /**
@@ -290,8 +290,7 @@ public class GroupFlux<K, T> {
      * @return a transformed {@link GroupFlux}
      */
     public GroupFlux<K, T> limitCumulativeThroughput(Publisher<Rate> limits, Scheduler scheduler, int prefetch) {
-        return dynamicallyLimitCumulativeThroughput(
-                it -> it.limits(limits).scheduler(scheduler).prefetch(prefetch));
+        return limitCumulativeThroughput(it -> it.limits(limits).scheduler(scheduler), prefetch);
     }
 
     /**
@@ -331,10 +330,11 @@ public class GroupFlux<K, T> {
         return wrapped.flatMap(mapper, cardinality).as(AloFlux::wrap);
     }
 
-    private GroupFlux<K, T> dynamicallyLimitCumulativeThroughput(
-            UnaryOperator<ThroughputLimitingTransformer.Builder<Alo<T>, AloGroupedFlux<K, T>>> configurator) {
+    private GroupFlux<K, T> limitCumulativeThroughput(
+            UnaryOperator<ThroughputLimitingTransformer.Builder<Alo<T>, AloGroupedFlux<K, T>>> configurator,
+            int prefetch) {
         ThroughputLimitingTransformer<Alo<T>, AloGroupedFlux<K, T>> transformer = configurator
-                .apply(ThroughputLimitingTransformer.innerConcatMap(AloFlux::toFlux, AloGroupedFlux::rewrap))
+                .apply(ThroughputLimitingTransformer.innerConcatMap(AloFlux::toFlux, AloGroupedFlux::rewrap, prefetch))
                 .build();
         return new GroupFlux<>(wrapped.transform(transformer), cardinality);
     }

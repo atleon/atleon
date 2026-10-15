@@ -27,14 +27,11 @@ final class GrantedThroughputLimitingTransformer<T, V> implements Function<Publi
 
     private final Scheduler scheduler;
 
-    private final int prefetch;
-
     private GrantedThroughputLimitingTransformer(
-            DelayApplicator<T, V> delayApplicator, ThroughputGrantor<T> grantor, Scheduler scheduler, int prefetch) {
+            DelayApplicator<T, V> delayApplicator, ThroughputGrantor<T> grantor, Scheduler scheduler) {
         this.delayApplicator = delayApplicator;
         this.grantor = grantor;
         this.scheduler = scheduler;
-        this.prefetch = prefetch;
     }
 
     static <T, V> GrantedThroughputLimitingTransformer.Builder<T, V> newBuilder(DelayApplicator<T, V> delayApplicator) {
@@ -43,7 +40,7 @@ final class GrantedThroughputLimitingTransformer<T, V> implements Function<Publi
 
     @Override
     public Flux<V> apply(Publisher<? extends V> publisher) {
-        return delayApplicator.apply(Flux.from(publisher), it -> maybeDelay(grantor, it), prefetch);
+        return delayApplicator.apply(Flux.from(publisher), it -> maybeDelay(grantor, it));
     }
 
     private Mono<T> maybeDelay(ThroughputGrantor<T> grantor, T t) {
@@ -60,14 +57,12 @@ final class GrantedThroughputLimitingTransformer<T, V> implements Function<Publi
 
         private Scheduler scheduler = Schedulers.parallel();
 
-        private int prefetch = 0;
-
         private Builder(DelayApplicator<T, V> delayApplicator) {
             this.delayApplicator = delayApplicator;
         }
 
         public GrantedThroughputLimitingTransformer<T, V> build() {
-            return new GrantedThroughputLimitingTransformer<>(delayApplicator, grantor, scheduler, prefetch);
+            return new GrantedThroughputLimitingTransformer<>(delayApplicator, grantor, scheduler);
         }
 
         public Builder<T, V> grantor(ThroughputGrantor<T> grantor) {
@@ -77,11 +72,6 @@ final class GrantedThroughputLimitingTransformer<T, V> implements Function<Publi
 
         public Builder<T, V> scheduler(Scheduler scheduler) {
             this.scheduler = scheduler;
-            return this;
-        }
-
-        public Builder<T, V> prefetch(int prefetch) {
-            this.prefetch = prefetch;
             return this;
         }
     }
