@@ -46,7 +46,7 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
     }
 
     static <T> ThroughputLimitingTransformer.Builder<T, T> concatMap() {
-        return new Builder<>(Flux::concatMap);
+        return new Builder<>(DelayApplicator.concatMap());
     }
 
     static <T> ThroughputLimitingTransformer.Builder<T, Flux<T>> innerConcatMap() {
@@ -76,14 +76,11 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
         //    possibility, since setting limit to zero causes subscription to a "never" publisher.
         return new Builder<>((outer, delayer, prefetch) -> {
             Sinks.Empty<Void> cancellation = Sinks.empty();
-            return outer.concatWith(Flux.never())
-                    .doOnCancel(cancellation::tryEmitEmpty)
-                    .map(inner -> {
-                        Flux<T> delayedInner = Flux.from(innerUnwrapper.apply(inner))
-                                .concatMap(delayer, prefetch)
-                                .takeUntilOther(cancellation.asMono());
-                        return innerRewrapper.apply(inner, delayedInner);
-                    });
+            Flux<V> decoratedOuter = outer.concatWith(Flux.never()).doOnCancel(cancellation::tryEmitEmpty);
+            BiFunction<V, Flux<T>, V> decoratedInnerRewrapper = (originalInner, delayedElements) ->
+                    innerRewrapper.apply(originalInner, delayedElements.takeUntilOther(cancellation.asMono()));
+            return DelayApplicator.innerConcatMap(innerUnwrapper, decoratedInnerRewrapper)
+                    .apply(decoratedOuter, delayer, prefetch);
         });
     }
 
@@ -156,6 +153,18 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
      */
     @FunctionalInterface
     private interface DelayApplicator<T, V> {
+
+        static <T> DelayApplicator<T, T> concatMap() {
+            return Flux::concatMap;
+        }
+
+        static <T, V> DelayApplicator<T, V> innerConcatMap(
+                Function<V, ? extends Publisher<T>> innerUnwrapper, BiFunction<V, ? super Flux<T>, V> innerRewrapper) {
+            return (outer, delayer, prefetch) -> outer.map(originalInner -> {
+                Flux<T> elements = Flux.from(innerUnwrapper.apply(originalInner));
+                return innerRewrapper.apply(originalInner, elements.concatMap(delayer, prefetch));
+            });
+        }
 
         Flux<V> apply(Flux<V> source, Function<T, ? extends Publisher<T>> delayer, int prefetch);
     }
