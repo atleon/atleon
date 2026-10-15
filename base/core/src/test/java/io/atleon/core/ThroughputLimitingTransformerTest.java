@@ -378,6 +378,6 @@ class ThroughputLimitingTransformerTest {
     }
 
     private static ThroughputLimitingTransformer.Builder<Long, Flux<Long>> newInnerConcatMap() {
-        return ThroughputLimitingTransformer.innerConcatMap(0);
+        return ThroughputLimitingTransformer.innerConcatMap(Function.identity(), (__, delayedInner) -> delayedInner, 0);
     }
 }

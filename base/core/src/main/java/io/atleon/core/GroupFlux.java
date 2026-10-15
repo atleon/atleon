@@ -334,7 +334,7 @@ public class GroupFlux<K, T> {
             UnaryOperator<ThroughputLimitingTransformer.Builder<Alo<T>, AloGroupedFlux<K, T>>> configurator,
             int prefetch) {
         ThroughputLimitingTransformer<Alo<T>, AloGroupedFlux<K, T>> transformer = configurator
-                .apply(ThroughputLimitingTransformer.innerConcatMap(AloFlux::toFlux, prefetch, AloGroupedFlux::rewrap))
+                .apply(ThroughputLimitingTransformer.innerConcatMap(AloFlux::toFlux, AloGroupedFlux::rewrap, prefetch))
                 .build();
         return new GroupFlux<>(wrapped.transform(transformer), cardinality);
     }
