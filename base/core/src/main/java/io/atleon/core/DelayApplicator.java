@@ -14,17 +14,19 @@ import java.util.function.Function;
 @FunctionalInterface
 interface DelayApplicator<T, V> {
 
-    static <T> DelayApplicator<T, T> concatMap() {
-        return Flux::concatMap;
+    static <T> DelayApplicator<T, T> concatMap(int prefetch) {
+        return (source, delayer) -> source.concatMap(delayer, prefetch);
     }
 
     static <T, V> DelayApplicator<T, V> innerConcatMap(
-            Function<V, ? extends Publisher<T>> innerUnwrapper, BiFunction<V, ? super Flux<T>, V> innerRewrapper) {
-        return (outer, delayer, prefetch) -> outer.map(originalInner -> {
+            Function<V, ? extends Publisher<T>> innerUnwrapper,
+            BiFunction<V, ? super Flux<T>, V> innerRewrapper,
+            int prefetch) {
+        return (outer, delayer) -> outer.map(originalInner -> {
             Flux<T> elements = Flux.from(innerUnwrapper.apply(originalInner));
             return innerRewrapper.apply(originalInner, elements.concatMap(delayer, prefetch));
         });
     }
 
-    Flux<V> apply(Flux<V> source, Function<T, ? extends Publisher<T>> delayer, int prefetch);
+    Flux<V> apply(Flux<V> source, Function<T, ? extends Publisher<T>> delayer);
 }

@@ -23,18 +23,15 @@ final class GrantedThroughputLimitingTransformer<T, V> implements Function<Publi
 
     private final DelayApplicator<T, V> delayApplicator;
 
-    private final ThroughputGrantor<T> grantor;
+    private final ThroughputGrantor<? super T> grantor;
 
     private final Scheduler scheduler;
 
-    private final int prefetch;
-
     private GrantedThroughputLimitingTransformer(
-            DelayApplicator<T, V> delayApplicator, ThroughputGrantor<T> grantor, Scheduler scheduler, int prefetch) {
+            DelayApplicator<T, V> delayApplicator, ThroughputGrantor<? super T> grantor, Scheduler scheduler) {
         this.delayApplicator = delayApplicator;
         this.grantor = grantor;
         this.scheduler = scheduler;
-        this.prefetch = prefetch;
     }
 
     static <T, V> GrantedThroughputLimitingTransformer.Builder<T, V> newBuilder(DelayApplicator<T, V> delayApplicator) {
@@ -43,10 +40,10 @@ final class GrantedThroughputLimitingTransformer<T, V> implements Function<Publi
 
     @Override
     public Flux<V> apply(Publisher<? extends V> publisher) {
-        return delayApplicator.apply(Flux.from(publisher), it -> maybeDelay(grantor, it), prefetch);
+        return delayApplicator.apply(Flux.from(publisher), it -> maybeDelay(grantor, it));
     }
 
-    private Mono<T> maybeDelay(ThroughputGrantor<T> grantor, T t) {
+    private Mono<T> maybeDelay(ThroughputGrantor<? super T> grantor, T t) {
         return grantor.reserveCapacity(t)
                 .delayUntil(it -> it > 0 ? Mono.delay(Duration.ofNanos(it), scheduler) : Mono.empty())
                 .thenReturn(t);
@@ -56,32 +53,25 @@ final class GrantedThroughputLimitingTransformer<T, V> implements Function<Publi
 
         private final DelayApplicator<T, V> delayApplicator;
 
-        private ThroughputGrantor<T> grantor = __ -> Mono.empty();
+        private ThroughputGrantor<? super T> grantor = __ -> Mono.empty();
 
         private Scheduler scheduler = Schedulers.parallel();
-
-        private int prefetch = 0;
 
         private Builder(DelayApplicator<T, V> delayApplicator) {
             this.delayApplicator = delayApplicator;
         }
 
         public GrantedThroughputLimitingTransformer<T, V> build() {
-            return new GrantedThroughputLimitingTransformer<>(delayApplicator, grantor, scheduler, prefetch);
+            return new GrantedThroughputLimitingTransformer<>(delayApplicator, grantor, scheduler);
         }
 
-        public Builder<T, V> grantor(ThroughputGrantor<T> grantor) {
+        public Builder<T, V> grantor(ThroughputGrantor<? super T> grantor) {
             this.grantor = grantor;
             return this;
         }
 
         public Builder<T, V> scheduler(Scheduler scheduler) {
             this.scheduler = scheduler;
-            return this;
-        }
-
-        public Builder<T, V> prefetch(int prefetch) {
-            this.prefetch = prefetch;
             return this;
         }
     }
