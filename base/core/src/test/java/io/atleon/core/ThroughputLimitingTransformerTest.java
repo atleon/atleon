@@ -46,6 +46,41 @@ class ThroughputLimitingTransformerTest {
     // ===== concatMap: Positive limit scenarios =====
 
     @Test
+    public void concatMap_givenFiniteSourceAndUncompletedLimits_expectsCompletion() {
+        StepVerifier.withVirtualTime(() -> Flux.just(1L, 2L, 3L)
+                        .transform(newConcatMap()
+                                .limits(Mono.just(Rate.perSecond(1)).concatWith(Mono.never()))
+                                .build()))
+                .expectNext(1L)
+                .thenAwait(Duration.ofSeconds(1))
+                .expectNext(2L)
+                .thenAwait(Duration.ofSeconds(1))
+                .expectNext(3L)
+                .expectComplete()
+                .verify(Duration.ofSeconds(5));
+    }
+
+    @Test
+    public void concatMap_givenRepeatedSubscription_expectsThroughputLimitOnEachSubscription() {
+        StepVerifier.withVirtualTime(() -> {
+                    Flux<Long> transformed = Flux.just(1L, 2L)
+                            .transform(newConcatMap()
+                                    .limits(Mono.just(Rate.perSecond(1)).concatWith(Mono.never()))
+                                    .build());
+                    return transformed.repeat(1);
+                })
+                .expectNext(1L)
+                .expectNoEvent(Duration.ofMillis(999))
+                .thenAwait(Duration.ofMillis(1))
+                .expectNext(2L, 1L)
+                .expectNoEvent(Duration.ofMillis(999))
+                .thenAwait(Duration.ofMillis(1))
+                .expectNext(2L)
+                .expectComplete()
+                .verify(Duration.ofSeconds(5));
+    }
+
+    @Test
     public void concatMap_givenPositiveLimit_expectsDelayedElements() {
         StepVerifier.withVirtualTime(() -> Flux.just(1L, 2L, 3L)
                         .transform(newConcatMap()
