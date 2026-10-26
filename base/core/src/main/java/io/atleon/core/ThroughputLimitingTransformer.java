@@ -80,22 +80,29 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
     @Override
     public Flux<V> apply(Publisher<? extends V> publisher) {
         // Implementation notes:
-        // 1. We create a "shared" publisher of limits such that it is only subscribed to once per
+        // 1. Per subscription, any completion signal emitted by the transformed publisher is
+        //    treated as a terminal signal on limit subscription such that application to finite
+        //    sources (when possible) propagates that completion.
+        // 2. We create a "shared" publisher of limits such that it is only subscribed to once per
         //    subscription to the source publisher. We cache the latest value such that a dynamic
         //    constraint is guaranteed to see the latest limit upon subscription.
-        // 2. Limits are only emitted when they change between zero and non-zero states, which
-        //    controls cancellation and subscription to the source publisher. Limit changes within
-        //    positive values are reflected by active changes to the enforced limit within the
-        //    dynamic throughput constraint.
-        // 3. We ensure that at least one constraint is always emitted, even if the limit publisher
+        // 3. Limits are only emitted when they change between zero and non-zero states, which
+        //    controls (non-completed) cancellation and subscription to the source publisher. Limit
+        //    changes within positive values are reflected by active changes to the enforced limit
+        //    within the dynamic throughput constraint.
+        // 4. We ensure that at least one constraint is always emitted, even if the limit publisher
         //    is empty, in which case the source publisher is subscribed to with a permanently
         //    infinite limit.
-        Flux<Rate> sharedLimits = Flux.from(limits).replay(1).refCount();
-        return sharedLimits
-                .distinctUntilChanged(Rate::isZero)
-                .map(it -> it.isZero() ? new ZeroThroughputConstraint<V>() : new DynamicThroughputConstraint(it))
-                .defaultIfEmpty(new UnlimitedThroughputConstraint<>())
-                .switchMap(constraint -> constraint.apply(publisher, sharedLimits));
+        return Flux.defer(() -> {
+            Sinks.Empty<Void> completed = Sinks.empty();
+            Flux<Rate> sharedLimits = Flux.from(limits).replay(1).refCount();
+            return sharedLimits
+                    .distinctUntilChanged(Rate::isZero)
+                    .map(it -> it.isZero() ? new ZeroThroughputConstraint<V>() : new DynamicThroughputConstraint(it))
+                    .defaultIfEmpty(new UnlimitedThroughputConstraint<>())
+                    .takeUntilOther(completed.asMono())
+                    .switchMap(it -> it.apply(publisher, sharedLimits).doOnComplete(completed::tryEmitEmpty));
+        });
     }
 
     public static final class Builder<T, V> {
@@ -138,13 +145,13 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
      */
     private interface ThroughputConstraint<T> {
 
-        Publisher<? extends T> apply(Publisher<? extends T> publisher, Flux<Rate> limits);
+        Flux<T> apply(Publisher<? extends T> publisher, Flux<Rate> limits);
     }
 
     private static final class ZeroThroughputConstraint<T> implements ThroughputConstraint<T> {
 
         @Override
-        public Publisher<? extends T> apply(Publisher<? extends T> publisher, Flux<Rate> limits) {
+        public Flux<T> apply(Publisher<? extends T> publisher, Flux<Rate> limits) {
             return Flux.never();
         }
     }
@@ -158,7 +165,7 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
         }
 
         @Override
-        public Publisher<? extends V> apply(Publisher<? extends V> publisher, Flux<Rate> limits) {
+        public Flux<V> apply(Publisher<? extends V> publisher, Flux<Rate> limits) {
             // Implementation notes:
             // 1. Limits are kept dynamic/updated on the created grantor by subscribing to the
             //    limits with a side effect on the grantor.
@@ -190,8 +197,8 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
     private static final class UnlimitedThroughputConstraint<T> implements ThroughputConstraint<T> {
 
         @Override
-        public Publisher<? extends T> apply(Publisher<? extends T> publisher, Flux<Rate> limits) {
-            return publisher;
+        public Flux<T> apply(Publisher<? extends T> publisher, Flux<Rate> limits) {
+            return Flux.from(publisher);
         }
     }
 
