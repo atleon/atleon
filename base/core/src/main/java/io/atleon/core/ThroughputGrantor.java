@@ -3,8 +3,8 @@ package io.atleon.core;
 import reactor.core.publisher.Mono;
 
 /**
- * API through which throughput capacity is reserved for elements. Reservation of throughput
- * capacity may require waiting until the emitted number of nanoseconds has elapsed.
+ * API through which throughput capacity is reserved for elements. Successful completion of a
+ * reservation signals that the reserved capacity is ready to use.
  *
  * <p>A grantor supplied to a throughput-limiting transformer is shared across subscriptions and
  * inner streams. Implementations must support concurrent reservation calls and concurrent
@@ -13,14 +13,15 @@ import reactor.core.publisher.Mono;
 interface ThroughputGrantor<T> {
 
     /**
-     * Creates reservation of throughput capacity for the provided element. Returns a {@link Mono}
-     * that may emit the number of nanoseconds to wait before safely using the reserved capacity.
-     * This is an additional delay measured from receipt of the emitted value, after any time spent
-     * obtaining the reservation, such as a remote service call. Emitting nothing or a non-positive
-     * value is treated as "no wait necessary".
+     * Creates a reservation of throughput capacity for the provided element. The returned
+     * {@link Mono} must complete successfully only when the reserved capacity is ready to use,
+     * including any time needed to obtain the reservation or wait for capacity to become available.
+     * Any emitted value is ignored. Immediate successful completion, including empty completion,
+     * means no wait is necessary. Errors prevent the element from being forwarded and propagate
+     * to the transformed stream.
      *
      * @param t The element for which to reserve throughput capacity
-     * @return A {@link Mono} emitting number of nanoseconds to wait before using reservation
+     * @return A {@link Mono} whose successful completion signals that capacity is ready to use
      */
-    Mono<Long> reserveCapacity(T t);
+    Mono<?> reserveCapacity(T t);
 }

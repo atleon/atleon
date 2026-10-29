@@ -11,11 +11,11 @@ import java.time.Duration;
 class GrantedThroughputLimitingTransformerTest {
 
     @Test
-    public void concatMap_givenAsynchronousGrant_expectsDelayAfterReservationResult() {
+    public void concatMap_givenAsynchronousGrant_expectsElementsAfterReservationCompletion() {
         StepVerifier.withVirtualTime(() -> Flux.just(1L, 2L)
                         .transform(GrantedThroughputLimitingTransformer.newBuilder(DelayApplicator.<Long>concatMap(0))
-                                .grantor(__ -> Mono.delay(Duration.ofMillis(100))
-                                        .thenReturn(Duration.ofMillis(200).toNanos()))
+                                .grantor(
+                                        __ -> Mono.delay(Duration.ofMillis(300)).thenReturn(100L))
                                 .build()))
                 .expectSubscription()
                 .expectNoEvent(Duration.ofMillis(299))
