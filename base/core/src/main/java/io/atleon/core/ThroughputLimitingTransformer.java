@@ -7,6 +7,7 @@ import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -189,7 +190,6 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
         private GrantedThroughputLimitingTransformer<T, V> newGrantedTransformer(ThroughputGrantor<T> grantor) {
             return GrantedThroughputLimitingTransformer.newBuilder(delayApplicator)
                     .grantor(grantor)
-                    .scheduler(scheduler)
                     .build();
         }
     }
@@ -217,9 +217,9 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
         }
 
         @Override
-        public Mono<Long> reserveCapacity(T t) {
+        public Mono<Duration> reserveCapacity(T t) {
             SerialQueue<Consumer<TokenBucket>> nvBucketQueue = bucketQueue;
-            return nvBucketQueue != null ? reserveCapacity(nvBucketQueue, weighting.applyAsInt(t)) : Mono.empty();
+            return nvBucketQueue != null ? reserveCapacity(nvBucketQueue, t) : Mono.empty();
         }
 
         public void updateLimit(Rate limit) {
@@ -233,12 +233,17 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
             }
         }
 
-        private static Mono<Long> reserveCapacity(SerialQueue<Consumer<TokenBucket>> queue, int weight) {
+        private Mono<Duration> reserveCapacity(SerialQueue<Consumer<TokenBucket>> queue, T t) {
+            return reserveTokens(queue, weighting.applyAsInt(t)).delayUntil(it -> Mono.delay(it, scheduler));
+        }
+
+        private static Mono<Duration> reserveTokens(SerialQueue<Consumer<TokenBucket>> queue, int weight) {
             return Mono.create(sink -> queue.addAndDrain(bucket -> {
                 try {
-                    if (weight > 0) {
-                        sink.success(bucket.reserveCapacity(weight));
-                    } else if (weight == 0) {
+                    long delayNanos = weight > 0 ? bucket.reserveTokens(weight) : 0;
+                    if (delayNanos > 0) {
+                        sink.success(Duration.ofNanos(delayNanos));
+                    } else if (weight >= 0) {
                         sink.success();
                     } else {
                         throw new IllegalArgumentException("Weight must be non-negative: " + weight);
@@ -290,7 +295,7 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
             this.depletionRemainder = 0L;
         }
 
-        public long reserveCapacity(int weight) {
+        public long reserveTokens(int weight) {
             long nowNanos = now();
 
             // Check if this is the first request (in a "while") and if so, reset depletion time
