@@ -101,8 +101,8 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
                     .distinctUntilChanged(Rate::isZero)
                     .map(it -> it.isZero() ? new ZeroThroughputConstraint<V>() : new DynamicThroughputConstraint(it))
                     .defaultIfEmpty(new UnlimitedThroughputConstraint<>())
-                    .takeUntilOther(completed.asMono())
-                    .switchMap(it -> it.apply(publisher, sharedLimits).doOnComplete(completed::tryEmitEmpty));
+                    .switchMap(it -> it.apply(publisher, sharedLimits).doOnComplete(completed::tryEmitEmpty))
+                    .takeUntilOther(completed.asMono());
         });
     }
 
