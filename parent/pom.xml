@@ -33,6 +33,7 @@
         <reactive-streams.version>1.0.4</reactive-streams.version>
         <reactor.version>3.5.14</reactor.version>
         <reactor-pool.version>1.0.5</reactor-pool.version>
+        <resilience4j.version>2.4.0</resilience4j.version>
         <slf4j.version>2.0.18</slf4j.version>
         <spring.version>6.2.19</spring.version>
         <spring-boot.version>3.5.15</spring-boot.version>
@@ -179,6 +180,16 @@
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-schema-serializer</artifactId>
                 <version>${confluent.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-circuitbreaker</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-core</artifactId>
+                <version>${resilience4j.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.micrometer</groupId>
