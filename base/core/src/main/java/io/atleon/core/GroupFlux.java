@@ -232,6 +232,24 @@ public class GroupFlux<K, T> {
     }
 
     /**
+     * Requires a circuit breaker permit before emitting each {@link Alo} from an inner grouped
+     * sequence, waiting for state notifications to retry denied permits. Acknowledgements report
+     * success to the breaker; negative acknowledgements report failure. Group keys are preserved.
+     * <p>
+     * Each subscription to this group sequence mounts the breaker once, with a separate permitter
+     * for each subscribed inner group. A tripped breaker completes active inner groups and cancels
+     * the upstream group subscription; recovery resubscribes to the upstream group sequence, so
+     * the upstream must support resubscription.
+     *
+     * @param breaker The circuit breaker controlling processing across all groups
+     * @return A transformed {@link GroupFlux}
+     * @see AloFlux#addAloCircuitBreaking(ReactiveCircuitBreaker)
+     */
+    public GroupFlux<K, T> innerAddAloCircuitBreaking(ReactiveCircuitBreaker breaker) {
+        return new GroupFlux<>(wrapped.transform(AloCircuitBreakingTransformer.groups(breaker)), cardinality);
+    }
+
+    /**
      * Apply a <i>cumulative</i> limit on the rate at which items are emitted across all inner
      * grouped sequences. Especially useful when interacting with resource-constrained I/O
      * dependencies.

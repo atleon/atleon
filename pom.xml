@@ -58,6 +58,7 @@
         <module>infrastructures</module>
         <module>observability</module>
         <module>parent</module>
+        <module>resiliency</module>
         <module>schemas</module>
     </modules>
 
