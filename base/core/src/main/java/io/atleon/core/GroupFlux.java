@@ -261,14 +261,14 @@ public class GroupFlux<K, T> {
      * @see GroupFlux#limitCumulativeThroughput(Publisher, Scheduler, int)
      */
     public GroupFlux<K, T> limitCumulativeThroughput(Publisher<Rate> limits) {
-        return limitCumulativeThroughput(it -> it.limits(limits), 0);
+        return limitCumulativeThroughput(0, it -> it.limits(limits));
     }
 
     /**
      * @see GroupFlux#limitCumulativeThroughput(Publisher, Scheduler, int)
      */
     public GroupFlux<K, T> limitCumulativeThroughput(Publisher<Rate> limits, Scheduler scheduler) {
-        return limitCumulativeThroughput(it -> it.limits(limits).scheduler(scheduler), 0);
+        return limitCumulativeThroughput(0, it -> it.limits(limits).scheduler(scheduler));
     }
 
     /**
@@ -290,7 +290,7 @@ public class GroupFlux<K, T> {
      * @return a transformed {@link GroupFlux}
      */
     public GroupFlux<K, T> limitCumulativeThroughput(Publisher<Rate> limits, Scheduler scheduler, int prefetch) {
-        return limitCumulativeThroughput(it -> it.limits(limits).scheduler(scheduler), prefetch);
+        return limitCumulativeThroughput(prefetch, it -> it.limits(limits).scheduler(scheduler));
     }
 
     /**
@@ -331,8 +331,8 @@ public class GroupFlux<K, T> {
     }
 
     private GroupFlux<K, T> limitCumulativeThroughput(
-            UnaryOperator<ThroughputLimitingTransformer.Builder<Alo<T>, AloGroupedFlux<K, T>>> configurator,
-            int prefetch) {
+            int prefetch,
+            UnaryOperator<ThroughputLimitingTransformer.Builder<Alo<T>, AloGroupedFlux<K, T>>> configurator) {
         ThroughputLimitingTransformer<Alo<T>, AloGroupedFlux<K, T>> transformer = configurator
                 .apply(ThroughputLimitingTransformer.innerConcatMap(AloFlux::toFlux, AloGroupedFlux::rewrap, prefetch))
                 .build();
