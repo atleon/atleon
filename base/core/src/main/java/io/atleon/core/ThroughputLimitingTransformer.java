@@ -184,13 +184,9 @@ public final class ThroughputLimitingTransformer<T, V> implements Function<Publi
                     .distinctUntilChanged()
                     .doOnNext(grantor::updateLimit)
                     .thenEmpty(Mono.never());
-            return newGrantedTransformer(grantor).apply(publisher).takeUntilOther(limitUpdating);
-        }
-
-        private GrantedThroughputLimitingTransformer<T, V> newGrantedTransformer(ThroughputGrantor<T> grantor) {
-            return GrantedThroughputLimitingTransformer.newBuilder(delayApplicator)
-                    .grantor(grantor)
-                    .build();
+            return delayApplicator
+                    .apply(Flux.from(publisher), t -> grantor.reserveCapacity(t).thenReturn(t))
+                    .takeUntilOther(limitUpdating);
         }
     }
 

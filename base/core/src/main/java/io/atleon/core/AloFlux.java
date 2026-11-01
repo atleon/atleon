@@ -668,14 +668,14 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see AloFlux#limitThroughput(Publisher, Scheduler, int)
      */
     public AloFlux<T> limitThroughput(Publisher<Rate> limits) {
-        return limitThroughput(it -> it.limits(limits), 0);
+        return limitThroughput(0, it -> it.limits(limits));
     }
 
     /**
      * @see AloFlux#limitThroughput(Publisher, Scheduler, int)
      */
     public AloFlux<T> limitThroughput(Publisher<Rate> limits, Scheduler scheduler) {
-        return limitThroughput(it -> it.limits(limits).scheduler(scheduler), 0);
+        return limitThroughput(0, it -> it.limits(limits).scheduler(scheduler));
     }
 
     /**
@@ -694,7 +694,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @return A new {@link AloFlux} with dynamic throughput limiting applied
      */
     public AloFlux<T> limitThroughput(Publisher<Rate> limits, Scheduler scheduler, int prefetch) {
-        return limitThroughput(it -> it.limits(limits).scheduler(scheduler), prefetch);
+        return limitThroughput(prefetch, it -> it.limits(limits).scheduler(scheduler));
     }
 
     /**
@@ -900,7 +900,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     private AloFlux<T> limitThroughput(
-            UnaryOperator<ThroughputLimitingTransformer.Builder<Alo<T>, Alo<T>>> configurator, int prefetch) {
+            int prefetch, UnaryOperator<ThroughputLimitingTransformer.Builder<Alo<T>, Alo<T>>> configurator) {
         ThroughputLimitingTransformer<Alo<T>, Alo<T>> transformer = configurator
                 .apply(ThroughputLimitingTransformer.concatMap(prefetch))
                 .build();
