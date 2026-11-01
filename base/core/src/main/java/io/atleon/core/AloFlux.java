@@ -825,6 +825,21 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * Requires a circuit breaker permit before emitting each {@link Alo} downstream, waiting for
+     * state notifications to retry denied permits. Acknowledgements report success to the breaker;
+     * negative acknowledgements report failure.
+     * <p>
+     * A tripped breaker cancels the upstream subscription; recovery resubscribes, so the upstream
+     * must support resubscription.
+     *
+     * @param breaker The circuit breaker controlling downstream processing
+     * @return A new {@link AloFlux}
+     */
+    public AloFlux<T> addAloCircuitBreaking(ReactiveCircuitBreaker breaker) {
+        return new AloFlux<>(wrapped.transform(AloCircuitBreakingTransformer.simple(breaker)));
+    }
+
+    /**
      * Transform this AloFlux to another AloFlux by mapping it to another Publisher of Alo. Note
      * that it is the responsibility of the transformation to assure that Alo elements from this
      * sequence have their acknowledgement propagated through the provided transformer
