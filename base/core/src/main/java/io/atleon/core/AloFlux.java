@@ -473,14 +473,16 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
-     * Apply grouping by round-robin emission on the provided number of "rails"
+     * Divide this sequence into integer-keyed groups by assigning elements in round-robin order.
+     * Groups are created as elements arrive, with keys from zero to {@code cardinality - 1}.
+     * The sequence of groups completes when the source completes, rather than when all groups
+     * have been emitted.
      *
-     * @param cardinality the number of processing "rails"
-     * @return a {@link GroupFlux} where keys are rail IDs
+     * @param cardinality the positive number of groups
+     * @return a {@link GroupFlux} where keys are group IDs
      */
     public GroupFlux<Integer, T> groupByRoundRobin(int cardinality) {
-        return wrapped.parallel(cardinality)
-                .groups()
+        return wrapped.transform(new RoundRobinGroupingTransformer<>(cardinality))
                 .map(AloGroupedFlux::create)
                 .as(flux -> GroupFlux.create(flux, cardinality));
     }
