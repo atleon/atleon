@@ -58,20 +58,9 @@ public class KafkaTopicPartitionParallelism {
         CountDownLatch latch = new CountDownLatch(NUM_SAMPLES);
         AloKafkaReceiver.<String, String>create(kafkaReceiverConfig)
                 .receiveAloRecords(TOPIC)
-                .groupBy(ConsumerRecordExtraction::topicPartition, Integer.MAX_VALUE, ConsumerRecord::value)
+                .groupBy(ConsumerRecordExtraction::topicPartition, Integer.MAX_VALUE)
                 .innerPublishOn(Schedulers.boundedElastic())
-                .innerMap(next -> {
-                    try {
-                        long sleepMillis = (long) (Math.random() * MAX_SLEEP_MILLIS + 1);
-                        System.out.printf(
-                                "next=%s thread=%s sleepMillis=%d%n",
-                                next, Thread.currentThread().getName(), sleepMillis);
-                        Thread.sleep(sleepMillis);
-                    } catch (Exception e) {
-                        System.err.println("Failed to sleep");
-                    }
-                    return next.toUpperCase();
-                })
+                .innerMap(KafkaTopicPartitionParallelism::process)
                 .flatMapAlo()
                 .consumeAloAndGet(Alo::acknowledge)
                 .subscribe(string -> latch.countDown());
@@ -91,5 +80,17 @@ public class KafkaTopicPartitionParallelism {
 
         System.out.println("Processing duration=" + Duration.between(begin, Instant.now()));
         System.exit(0);
+    }
+
+    private static String process(ConsumerRecord<String, String> consumerRecord) {
+        try {
+            long sleepMillis = (long) (Math.random() * MAX_SLEEP_MILLIS + 1);
+            String threadName = Thread.currentThread().getName();
+            System.out.printf("value=%s thread=%s sleepMillis=%d%n", consumerRecord.value(), threadName, sleepMillis);
+            Thread.sleep(sleepMillis);
+        } catch (Exception e) {
+            System.err.println("Failed to sleep");
+        }
+        return consumerRecord.value().toUpperCase();
     }
 }
