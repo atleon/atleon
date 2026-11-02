@@ -6,6 +6,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
 import reactor.test.StepVerifier;
+import reactor.test.publisher.TestPublisher;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -13,6 +14,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -27,12 +29,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AloFluxTest {
 
     @Test
-    public void sideEffectsCanBeAttachedToEmittedDataForExecutionUponPositiveAcknowledgement() {
+    public void doOnAloAcknowledge_givenAcknowledgement_expectsSideEffectWithOriginalData() {
         TestAlo alo = new TestAlo("DATA");
         AtomicReference<String> sideEffectSetData = new AtomicReference<>(null);
 
@@ -51,7 +54,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void alosCanBeFiltered() {
+    public void filter_givenMatchingAndNonMatchingValues_expectsOnlyNonMatchingValuesAcknowledged() {
         TestAlo empty = new TestAlo("");
         AloFlux.just(empty).filter(String::isEmpty).unwrap().then().block();
         assertFalse(empty.isAcknowledged());
@@ -62,7 +65,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void alosWithSpecificSubTypeOfDataItemCanBeProcessed() {
+    public void ofType_givenMixedValueTypes_expectsOnlyOtherTypesAcknowledged() {
         GenericAlo<Object> stringAlo = new GenericAlo<>("DATA");
         GenericAlo<Object> integralAlo = new GenericAlo<>(1234);
 
@@ -77,7 +80,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void acknowledgersArePropagated() {
+    public void map_givenMappedValueAcknowledged_expectsOriginalValueAcknowledged() {
         TestAlo alo = new TestAlo("DATA");
 
         Alo<String> result = AloFlux.just(alo).map(String::toLowerCase).unwrap().blockFirst();
@@ -91,7 +94,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void alosCanBeConsumed() {
+    public void consume_givenSuccessfulConsumer_expectsAcknowledgementWithoutEmission() {
         TestAlo alo = new TestAlo("DATA");
 
         AloFlux.just(alo).consume(System.out::println).subscribe(__ -> {
@@ -102,7 +105,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void emptyManyMappingHasConsumerExecuted() {
+    public void flatMapIterable_givenEmptyIterable_expectsOriginalValueAcknowledged() {
         TestAlo empty = new TestAlo("");
         AloFlux.just(empty)
                 .flatMapIterable(this::extractCharacters)
@@ -113,7 +116,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void acknowledgerIsRunUponManyMappingsBeingAcknowledged() {
+    public void flatMapIterable_givenAllOutputsAcknowledged_expectsOriginalValueAcknowledged() {
         TestAlo alo = new TestAlo("DATA");
 
         List<Alo<String>> result = AloFlux.just(alo)
@@ -140,7 +143,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void nacknowledgerIsRunWhenAnyMappingsNacknowledge() {
+    public void flatMapIterable_givenMultipleOutputsNacknowledged_expectsFirstErrorPropagated() {
         TestAlo alo = new TestAlo("DATA");
 
         List<Alo<String>> result = AloFlux.just(alo)
@@ -172,7 +175,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void nacknowledgerIsNotRunWhenAlreadyAcknowledged() {
+    public void flatMapIterable_givenAcknowledgedOutputThenNacknowledged_expectsNacknowledgementIgnored() {
         TestAlo alo = new TestAlo("DATA");
 
         List<Alo<String>> result = AloFlux.just(alo)
@@ -202,7 +205,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void publishedAloAcknowledgesAfterUpstreamCompletionAndAfterDownstreamAcknowledges() {
+    public void concatMap_givenCompletedPublisher_expectsAcknowledgementAfterAllOutputsAcknowledged() {
         TestAlo alo = new TestAlo("DATA");
 
         Function<String, Flux<String>> stringToChars = data -> Mono.just(data.chars())
@@ -249,7 +252,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void downstreamPublishedAlosAreAcknowledgedOnlyOnce() {
+    public void concatMap_givenOutputAcknowledgedThenNacknowledged_expectsNacknowledgementIgnored() {
         TestAlo alo = new TestAlo("DATA");
 
         Function<String, Flux<String>> stringToChars = data -> Mono.just(data.chars())
@@ -288,7 +291,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void publishedAloAcknowledgesAfterDownstreamCancelsAndAcknowledges() {
+    public void concatMap_givenPublisherLimitedByTake_expectsAcknowledgementAfterAllOutputsAcknowledged() {
         TestAlo alo = new TestAlo("DATA");
 
         Function<String, Flux<String>> stringToChars = data -> Mono.just(data.chars())
@@ -327,7 +330,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void publishedAloIsNotAcknowledgedWhenUpstreamErrors() {
+    public void concatMap_givenMappedPublisherError_expectsOriginalValueUnacknowledged() {
         TestAlo alo = new TestAlo("DATA");
 
         Sinks.Many<String> sink = Sinks.many().multicast().onBackpressureBuffer();
@@ -355,7 +358,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void publishedAloIsNotAcknowledgedWhenUpstreamErrorsFollowedByAcknowledgement() {
+    public void concatMap_givenMappedPublisherErrorThenOutputAcknowledged_expectsOriginalValueUnacknowledged() {
         TestAlo alo = new TestAlo("DATA");
 
         Sinks.Many<String> sink = Sinks.many().multicast().onBackpressureBuffer();
@@ -384,7 +387,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void publishedAloNacknowledgesAfterDownstreamNacknowledgement() {
+    public void concatMap_givenOutputNacknowledged_expectsOriginalValueNacknowledged() {
         TestAlo alo = new TestAlo("DATA");
 
         Function<String, Flux<String>> stringToChars = data -> Mono.just(data.chars())
@@ -429,7 +432,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void aloFluxValuesCanBeMappedToNonNullValues() {
+    public void mapNotNull_givenNullAndNonNullResults_expectsOnlyNullResultsAcknowledged() {
         TestAlo empty = new TestAlo("");
         TestAlo nonEmpty = new TestAlo("data");
 
@@ -446,7 +449,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void hooksAreAppliedToDiscardedValues() {
+    public void doOnDiscard_givenFilteredValue_expectsMatchingHooksInvokedInOrder() {
         TestAlo empty = new TestAlo("");
         TestAlo nonEmpty = new TestAlo("data");
 
@@ -464,7 +467,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void errorsCanBeEmitted() {
+    public void onAloErrorEmit_givenConsumerError_expectsErrorEmissionWithoutAcknowledgement() {
         TestAlo alo = new TestAlo("data");
 
         AloFlux<Void> aloFlux = AloFlux.just(alo)
@@ -480,7 +483,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void errorsCanBeEmittedWhenPublishing() {
+    public void onAloErrorEmit_givenMappedPublisherError_expectsErrorEmissionWithoutAcknowledgement() {
         TestAlo alo = new TestAlo("data");
 
         AloFlux<?> aloFlux = AloFlux.just(alo)
@@ -494,7 +497,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void errorsCanBeIgnoredRatherThanEmitted() {
+    public void onAloErrorEmitUnless_givenMatchingConsumerError_expectsAcknowledgementAndCompletion() {
         TestAlo alo = new TestAlo("data");
 
         AloFlux<?> aloFlux = AloFlux.just(alo)
@@ -510,7 +513,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void errorsCanBeIgnoredRatherThanEmittedWhenPublishing() {
+    public void onAloErrorEmitUnless_givenMatchingMappedPublisherError_expectsAcknowledgementAndCompletion() {
         TestAlo alo = new TestAlo("data");
 
         AloFlux<?> aloFlux = AloFlux.just(alo)
@@ -524,7 +527,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void errorHandlingCanBeDelegated() {
+    public void onAloErrorDelegate_givenConsumerError_expectsNacknowledgementAndCompletion() {
         TestAlo alo = new TestAlo("data");
 
         AloFlux<?> aloFlux = AloFlux.just(alo)
@@ -540,7 +543,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void errorHandlingCanBeDelegatedWhenPublishing() {
+    public void onAloErrorDelegate_givenMappedPublisherError_expectsNacknowledgementAndCompletion() {
         TestAlo alo = new TestAlo("data");
 
         AloFlux<?> aloFlux = AloFlux.just(alo)
@@ -554,7 +557,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void errorsCanBeIgnoredRatherThanDelegated() {
+    public void onAloErrorDelegateUnless_givenMatchingConsumerError_expectsAcknowledgementAndCompletion() {
         TestAlo alo = new TestAlo("data");
 
         AloFlux<?> aloFlux = AloFlux.just(alo)
@@ -570,7 +573,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void errorsCanBeIgnoredRatherThanDelegatedWhenPublishing() {
+    public void onAloErrorDelegateUnless_givenMatchingMappedPublisherError_expectsAcknowledgementAndCompletion() {
         TestAlo alo = new TestAlo("data");
 
         AloFlux<?> aloFlux = AloFlux.just(alo)
@@ -584,7 +587,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void errorsCanBeDelegatedToFluentDelegate() {
+    public void addAloErrorDelegation_givenSuccessfulDelegate_expectsAcknowledgementAndCompletion() {
         TestAlo alo = new TestAlo("data");
 
         AloFlux<?> aloFlux = AloFlux.just(alo)
@@ -601,7 +604,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void errorsCanBeDelegatedToFluentDelegateWhichMayPropagateTheError() {
+    public void addAloErrorDelegation_givenDelegatePropagatesError_expectsNacknowledgementWithOriginalError() {
         TestAlo alo = new TestAlo("data");
 
         AloFlux<?> aloFlux = AloFlux.just(alo)
@@ -620,7 +623,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void errorsCanBeDelegatedToFluentDelegateWhichMayConsolidateError() {
+    public void addAloErrorDelegation_givenDelegateEmitsDifferentError_expectsOriginalErrorSuppressed() {
         TestAlo alo = new TestAlo("data");
 
         AloFlux<?> aloFlux = AloFlux.just(alo)
@@ -640,7 +643,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void interleavedSynchronousErrorsResultInCorrectRepublishing() {
+    public void resubscribeOnError_givenInterleavedSynchronousErrors_expectsReprocessingOfUnacknowledgedValues() {
         TestAlo alo1 = new TestAlo("DATA1");
         TestAlo alo2 = new TestAlo("DATA2");
         TestAlo alo3 = new TestAlo("DATA3");
@@ -684,7 +687,7 @@ class AloFluxTest {
     }
 
     @Test
-    public void interleavedAsynchronousErrorsResultInCorrectRepublishing() {
+    public void resubscribeOnError_givenInterleavedAsynchronousErrors_expectsReprocessingOfUnacknowledgedValues() {
         TestAlo alo1 = new TestAlo("DATA1");
         TestAlo alo2 = new TestAlo("DATA2");
         TestAlo alo3 = new TestAlo("DATA3");
@@ -725,6 +728,71 @@ class AloFluxTest {
         assertEquals(1, successfullyProcessed.stream().filter("DATA1"::equals).count());
         assertEquals(1, successfullyProcessed.stream().filter("DATA2"::equals).count());
         assertEquals(2, successfullyProcessed.stream().filter("DATA3"::equals).count());
+    }
+
+    @Test
+    void groupByRoundRobin_givenMultipleElements_expectsRoundRobinIntegerGroups() {
+        Map<Integer, List<Integer>> groups = Flux.range(0, 8)
+                .map(GenericAlo::new)
+                .as(AloFlux::wrap)
+                .groupByRoundRobin(3)
+                .unwrap()
+                .flatMap(group ->
+                        group.unwrap().map(Alo::get).collectList().map(values -> Map.entry(group.key(), values)))
+                .collectMap(Map.Entry::getKey, Map.Entry::getValue)
+                .block();
+
+        assertEquals(Map.of(0, List.of(0, 3, 6), 1, List.of(1, 4, 7), 2, List.of(2, 5)), groups);
+    }
+
+    @Test
+    void groupByRoundRobin_givenAllGroupsEmitted_expectsCompletionOnlyWhenSourceCompletes() {
+        TestPublisher<Alo<Integer>> source = TestPublisher.create();
+        AtomicBoolean completed = new AtomicBoolean();
+        List<Integer> values = new ArrayList<>();
+
+        StepVerifier.create(AloFlux.wrap(source)
+                        .groupByRoundRobin(2)
+                        .unwrap()
+                        .doOnNext(group -> group.subscribe(alo -> values.add(alo.get())))
+                        .doOnComplete(() -> completed.set(true)))
+                .then(() -> source.next(new GenericAlo<>(0), new GenericAlo<>(1)))
+                .expectNextMatches(group -> group.key() == 0)
+                .expectNextMatches(group -> group.key() == 1)
+                .then(() -> assertFalse(completed.get()))
+                .then(() -> source.next(new GenericAlo<>(2), new GenericAlo<>(3)))
+                .then(() -> assertEquals(List.of(0, 1, 2, 3), values))
+                .then(source::complete)
+                .verifyComplete();
+    }
+
+    @Test
+    void groupByRoundRobin_givenResubscription_expectsGroupingToRestartAtZero() {
+        Flux<Integer> keys = Flux.range(0, 2)
+                .map(GenericAlo::new)
+                .as(AloFlux::wrap)
+                .groupByRoundRobin(3)
+                .unwrap()
+                .doOnNext(group -> group.subscribe())
+                .map(AloGroupedFlux::key);
+
+        StepVerifier.create(keys.repeat(1)).expectNext(0, 1, 0, 1).verifyComplete();
+    }
+
+    @Test
+    void groupByRoundRobin_givenEmptySource_expectsCompletionWithoutGroups() {
+        StepVerifier.create(AloFlux.wrap(Flux.<Alo<Integer>>empty())
+                        .groupByRoundRobin(3)
+                        .unwrap())
+                .verifyComplete();
+    }
+
+    @Test
+    void groupByRoundRobin_givenNonPositiveCardinality_expectsIllegalArgumentException() {
+        AloFlux<Integer> source = AloFlux.wrap(Flux.empty());
+
+        assertThrows(IllegalArgumentException.class, () -> source.groupByRoundRobin(0));
+        assertThrows(IllegalArgumentException.class, () -> source.groupByRoundRobin(-1));
     }
 
     private Collection<String> extractCharacters(String string) {
