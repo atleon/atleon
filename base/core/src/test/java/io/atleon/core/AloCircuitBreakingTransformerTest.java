@@ -10,7 +10,9 @@ import reactor.test.publisher.TestPublisher;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -26,7 +28,7 @@ class AloCircuitBreakingTransformerTest {
     private static final Duration VERIFY_TIMEOUT = Duration.ofSeconds(5);
 
     @Test
-    public void apply_givenInitiallyTrippedBreaker_expectsSubscriptionWhenHalfOpen() {
+    public void simple_givenInitiallyTrippedBreaker_expectsSubscriptionWhenHalfOpen() {
         Fixture fixture = new Fixture();
         fixture.breaker.transition(BreakerState.OPEN);
 
@@ -53,7 +55,7 @@ class AloCircuitBreakingTransformerTest {
     @EnumSource(
             value = BreakerState.class,
             names = {"CLOSED", "OPEN"})
-    public void apply_givenCancellationWhileTripped_expectsMountCleanupWithoutReconnection(BreakerState initialState) {
+    public void simple_givenCancellationWhileTripped_expectsMountCleanupWithoutReconnection(BreakerState initialState) {
         Fixture fixture = new Fixture();
         fixture.breaker.transition(initialState);
 
@@ -79,7 +81,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void apply_givenDefaultPrefetchAndDeniedPermission_expectsOneUpstreamRequest() {
+    public void simple_givenDefaultPrefetchAndDeniedPermission_expectsOneUpstreamRequest() {
         Fixture fixture = new Fixture();
         fixture.breaker.allowed = false;
 
@@ -95,7 +97,7 @@ class AloCircuitBreakingTransformerTest {
     @EnumSource(
             value = BreakerState.class,
             names = {"CLOSED", "HALF_OPEN"})
-    public void apply_givenDeniedPermissions_expectsBoundedBufferingAndOrderedResumptionOnStateChange(
+    public void simple_givenDeniedPermissions_expectsBoundedBufferingAndOrderedResumptionOnStateChange(
             BreakerState state) {
         Fixture fixture = new Fixture();
         fixture.breaker.allowed = false;
@@ -118,7 +120,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void apply_givenLimitedDownstreamDemand_expectsDeliveryWithinDemand() {
+    public void simple_givenLimitedDownstreamDemand_expectsDeliveryWithinDemand() {
         Fixture fixture = new Fixture();
 
         StepVerifier.create(fixture.flux(3), 0)
@@ -136,7 +138,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void apply_givenConnectedStateChanges_expectsExistingSourceSubscription() {
+    public void simple_givenConnectedStateChanges_expectsExistingSourceSubscription() {
         Fixture fixture = new Fixture();
 
         StepVerifier.create(fixture.flux())
@@ -153,7 +155,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void apply_givenAcknowledgement_expectsPermitSuccessAndOriginalAcknowledgement() {
+    public void simple_givenAcknowledgement_expectsPermitSuccessAndOriginalAcknowledgement() {
         Fixture fixture = new Fixture();
         AtomicInteger acknowledged = new AtomicInteger();
 
@@ -171,7 +173,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void apply_givenNegativeAcknowledgement_expectsOriginalErrorReportedToPermitAndNacknowledger() {
+    public void simple_givenNegativeAcknowledgement_expectsOriginalErrorReportedToPermitAndNacknowledger() {
         Fixture fixture = new Fixture();
         RuntimeException failure = new IllegalStateException("processing failed");
         AtomicReference<Throwable> nacknowledged = new AtomicReference<>();
@@ -190,7 +192,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void apply_givenBreakerOpensThenBecomesHalfOpen_expectsCancellationDisconnectionAndResubscription() {
+    public void simple_givenBreakerOpensThenBecomesHalfOpen_expectsCancellationDisconnectionAndResubscription() {
         Fixture fixture = new Fixture();
         AtomicReference<Alo<Integer>> first = new AtomicReference<>();
         AtomicInteger acknowledged = new AtomicInteger();
@@ -228,7 +230,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void apply_givenReusedPermitter_expectsSeparateConnectionAndMountCleanup() {
+    public void simple_givenReusedPermitter_expectsSeparateConnectionAndMountCleanup() {
         Fixture fixture = new Fixture();
         AtomicReference<Consumer<? super ReactiveCircuitBreaker.State>> stateConsumer = new AtomicReference<>();
         AtomicInteger connections = new AtomicInteger();
@@ -264,7 +266,7 @@ class AloCircuitBreakingTransformerTest {
             };
         };
 
-        StepVerifier.create(fixture.sourceFlux().transform(AloCircuitBreakingTransformer.create(breaker)))
+        StepVerifier.create(fixture.sourceFlux().transform(AloCircuitBreakingTransformer.simple(breaker)))
                 .then(() -> fixture.source.next(alo(1)))
                 .assertNext(Alo::acknowledge)
                 .then(() -> stateConsumer.get().accept(BreakerState.OPEN))
@@ -288,7 +290,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void apply_givenDownstreamCancellation_expectsDisconnectionAndForwardedLateOutcomes() {
+    public void simple_givenDownstreamCancellation_expectsDisconnectionAndForwardedLateOutcomes() {
         Fixture fixture = new Fixture();
         List<Alo<Integer>> received = new ArrayList<>();
         AtomicInteger acknowledged = new AtomicInteger();
@@ -324,7 +326,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void apply_givenSourceErrorWithDeniedBufferedItem_expectsImmediateErrorAndDisconnection() {
+    public void simple_givenSourceErrorWithDeniedBufferedItem_expectsImmediateErrorAndDisconnection() {
         Fixture fixture = new Fixture();
         RuntimeException failure = new IllegalStateException("source failed");
 
@@ -345,7 +347,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void apply_givenPermissionAcquirementFailure_expectsErrorAndSourceCancellation() {
+    public void simple_givenPermissionAcquirementFailure_expectsErrorAndSourceCancellation() {
         Fixture fixture = new Fixture();
         RuntimeException failure = new IllegalStateException("permission failed");
         fixture.breaker.acquirementFailure = Optional.of(failure);
@@ -362,7 +364,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void apply_givenSourceCompletion_expectsCompletionWithoutFurtherResubscription() {
+    public void simple_givenSourceCompletion_expectsCompletionWithoutFurtherResubscription() {
         Fixture fixture = new Fixture();
 
         StepVerifier.create(fixture.flux())
@@ -382,14 +384,14 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void apply_givenFinalAcknowledgementTripsBreakerDuringRecovery_expectsCompletionAndCleanup() {
+    public void simple_givenFinalAcknowledgementTripsBreakerDuringRecovery_expectsCompletionAndCleanup() {
         TestBreaker breaker = new TestBreaker();
         breaker.transition(BreakerState.OPEN);
         AtomicInteger subscriptions = new AtomicInteger();
         Alo<Integer> value = new ComposedAlo<>(1, () -> breaker.transition(BreakerState.OPEN), error -> {});
         Flux<Alo<Integer>> flux = Flux.just(value)
                 .doOnSubscribe(__ -> subscriptions.incrementAndGet())
-                .transform(AloCircuitBreakingTransformer.create(breaker))
+                .transform(AloCircuitBreakingTransformer.simple(breaker))
                 .doOnNext(Alo::acknowledge);
 
         StepVerifier.create(flux)
@@ -410,7 +412,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void apply_givenMultipleDownstreamSubscriptions_expectsIndependentBreakerMounts() {
+    public void simple_givenMultipleDownstreamSubscriptions_expectsIndependentBreakerMounts() {
         Fixture fixture = new Fixture();
         Flux<Alo<Integer>> flux = fixture.flux();
         assertEquals(0, fixture.breaker.mounts.size());
@@ -436,11 +438,252 @@ class AloCircuitBreakingTransformerTest {
         });
     }
 
+    @Test
+    public void groups_givenInitiallyTrippedBreaker_expectsGroupSubscriptionWhenHalfOpen() {
+        Fixture fixture = new Fixture();
+        fixture.breaker.transition(BreakerState.OPEN);
+
+        StepVerifier.create(fixture.groups().flatMapAlo().unwrap())
+                .then(() -> {
+                    fixture.source.assertNoSubscribers();
+                    assertEquals(1, fixture.breaker.mounts.size());
+                    assertEquals(0, fixture.breaker.mounts.get(0).permitters.size());
+                })
+                .then(() -> fixture.breaker.transition(BreakerState.HALF_OPEN))
+                .then(() -> fixture.source.next(alo(1), alo(2)))
+                .assertNext(value -> assertEquals(1, value.get()))
+                .assertNext(value -> assertEquals(2, value.get()))
+                .thenCancel()
+                .verify(VERIFY_TIMEOUT);
+
+        fixture.source.assertNoSubscribers();
+        assertEquals(1, fixture.breaker.mounts.size());
+        assertEquals(1, fixture.breaker.mounts.get(0).unmounts);
+        assertEquals(2, fixture.breaker.mounts.get(0).permitters.size());
+        fixture.breaker.mounts.get(0).permitters.forEach(permitter -> assertEquals(1, permitter.disconnects));
+    }
+
+    @Test
+    public void groups_expectsPreservedKeysAndSharedMountWithSeparatePermits() {
+        Fixture fixture = new Fixture();
+        GenericAlo<Integer> first = new GenericAlo<>(1);
+        GenericAlo<Integer> second = new GenericAlo<>(2);
+        RuntimeException failure = new IllegalStateException("processing failed");
+        List<Integer> keys = new ArrayList<>();
+
+        StepVerifier.create(fixture.groups()
+                        .flatMapAlo(group -> {
+                            keys.add(group.key());
+                            return group;
+                        })
+                        .unwrap())
+                .then(() -> fixture.source.next(first, second))
+                .assertNext(value -> {
+                    assertEquals(1, value.get());
+                    Alo.acknowledge(value);
+                })
+                .assertNext(value -> {
+                    assertEquals(2, value.get());
+                    Alo.nacknowledge(value, failure);
+                })
+                .thenCancel()
+                .verify(VERIFY_TIMEOUT);
+
+        assertEquals(List.of(0, 1), keys);
+        assertEquals(1, first.acknowledgedCount());
+        assertSame(failure, second.getError().orElseThrow());
+        assertEquals(2, fixture.breaker.permits.size());
+        assertEquals(1, fixture.breaker.permits.get(0).successes);
+        assertEquals(0, fixture.breaker.permits.get(0).errors);
+        assertEquals(0, fixture.breaker.permits.get(1).successes);
+        assertEquals(1, fixture.breaker.permits.get(1).errors);
+        assertSame(failure, fixture.breaker.permits.get(1).failure.get());
+        assertEquals(1, fixture.breaker.mounts.size());
+        assertEquals(1, fixture.breaker.mounts.get(0).unmounts);
+        assertEquals(2, fixture.breaker.mounts.get(0).permitters.size());
+        fixture.breaker.mounts.get(0).permitters.forEach(permitter -> {
+            assertEquals(1, permitter.acquiredPermits.get());
+            assertEquals(1, permitter.disconnects);
+        });
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 3})
+    public void groups_givenDeniedPermissions_expectsPrefetchPerGroupAndResumptionOnStateChange(int maxPrefetch) {
+        Fixture fixture = new Fixture();
+        fixture.breaker.allowed = false;
+        Map<Integer, Long> requestedByGroup = new HashMap<>();
+        Flux<Alo<Integer>> flux = fixture.sourceFlux()
+                .as(AloFlux::wrap)
+                .groupByRoundRobin(2)
+                .map(group -> group.unwrap().doOnRequest(n -> requestedByGroup.merge(group.key(), n, Long::sum)))
+                .unwrap()
+                .transform(AloCircuitBreakingTransformer.<Integer, Integer>groups(fixture.breaker)
+                        .withMaxPrefetch(maxPrefetch))
+                .flatMap(AloFlux::toFlux);
+
+        StepVerifier.create(flux)
+                .then(() -> fixture.source.next(alo(1), alo(2)))
+                .then(() -> {
+                    assertEquals(Map.of(0, (long) maxPrefetch, 1, (long) maxPrefetch), requestedByGroup);
+                    assertEquals(0, fixture.breaker.permits.size());
+                    fixture.breaker.allowed = true;
+                    fixture.breaker.transition(BreakerState.HALF_OPEN);
+                })
+                .assertNext(value -> assertEquals(1, value.get()))
+                .assertNext(value -> assertEquals(2, value.get()))
+                .thenCancel()
+                .verify(VERIFY_TIMEOUT);
+
+        assertEquals(1, fixture.subscriptions.get());
+        assertEquals(1, fixture.breaker.mounts.size());
+        assertEquals(2, fixture.breaker.mounts.get(0).permitters.size());
+    }
+
+    @Test
+    public void aloGroups_givenBreakerOpensThenBecomesHalfOpen_expectsAllGroupsDisconnectedAndSourceResubscribed() {
+        Fixture fixture = new Fixture();
+
+        StepVerifier.create(fixture.groups().flatMapAlo().unwrap())
+                .then(() -> fixture.source.next(alo(1), alo(2)))
+                .assertNext(Alo::acknowledge)
+                .assertNext(Alo::acknowledge)
+                .then(() -> fixture.breaker.transition(BreakerState.OPEN))
+                .then(() -> {
+                    fixture.source.assertNoSubscribers();
+                    assertEquals(1, fixture.cancellations.get());
+                    assertEquals(0, fixture.breaker.mounts.get(0).unmounts);
+                    assertEquals(2, fixture.breaker.mounts.get(0).permitters.size());
+                    fixture.breaker
+                            .mounts
+                            .get(0)
+                            .permitters
+                            .forEach(permitter -> assertEquals(1, permitter.disconnects));
+                })
+                .then(() -> fixture.breaker.transition(BreakerState.HALF_OPEN))
+                .then(() -> fixture.source.next(alo(3), alo(4)))
+                .assertNext(value -> assertEquals(3, value.get()))
+                .assertNext(value -> assertEquals(4, value.get()))
+                .thenCancel()
+                .verify(VERIFY_TIMEOUT);
+
+        fixture.source.assertNoSubscribers();
+        assertEquals(2, fixture.subscriptions.get());
+        assertEquals(2, fixture.cancellations.get());
+        assertEquals(1, fixture.breaker.mounts.size());
+        assertEquals(1, fixture.breaker.mounts.get(0).unmounts);
+        assertEquals(4, fixture.breaker.mounts.get(0).permitters.size());
+        fixture.breaker.mounts.get(0).permitters.forEach(permitter -> assertEquals(1, permitter.disconnects));
+    }
+
+    @Test
+    public void aloGroups_givenSourceCompletion_expectsAllGroupsCompletedWithoutOuterCompletion() {
+        Fixture fixture = new Fixture();
+        List<Integer> completedGroups = new ArrayList<>();
+
+        StepVerifier.create(fixture.groups()
+                        .flatMapAlo(group -> group.unwrap().doOnComplete(() -> completedGroups.add(group.key())))
+                        .unwrap())
+                .then(() -> fixture.source.next(alo(1), alo(2)))
+                .assertNext(Alo::acknowledge)
+                .assertNext(Alo::acknowledge)
+                .then(() -> assertEquals(0, fixture.breaker.mounts.get(0).unmounts))
+                .then(() -> fixture.source.next(alo(3)))
+                .assertNext(value -> assertEquals(3, value.get()))
+                .then(fixture.source::complete)
+                .then(() -> {
+                    assertEquals(List.of(0, 1), completedGroups);
+                    assertEquals(0, fixture.breaker.mounts.get(0).unmounts);
+                })
+                .expectNoEvent(Duration.ofMillis(50))
+                .thenCancel()
+                .verify(VERIFY_TIMEOUT);
+
+        fixture.breaker.transition(BreakerState.OPEN);
+        fixture.breaker.transition(BreakerState.HALF_OPEN);
+        fixture.source.assertNoSubscribers();
+        assertEquals(1, fixture.subscriptions.get());
+        assertEquals(1, fixture.breaker.mounts.size());
+        assertEquals(1, fixture.breaker.mounts.get(0).unmounts);
+        assertEquals(2, fixture.breaker.mounts.get(0).permitters.size());
+        fixture.breaker.mounts.get(0).permitters.forEach(permitter -> assertEquals(1, permitter.disconnects));
+    }
+
+    @Test
+    public void aloGroups_givenSourceError_expectsErrorAndCleanupOfAllGroups() {
+        Fixture fixture = new Fixture();
+        RuntimeException failure = new IllegalStateException("source failed");
+
+        StepVerifier.create(fixture.groups().flatMapAlo().unwrap())
+                .then(() -> fixture.source.next(alo(1), alo(2)))
+                .assertNext(Alo::acknowledge)
+                .assertNext(Alo::acknowledge)
+                .then(() -> fixture.source.error(failure))
+                .expectErrorMatches(error -> error == failure)
+                .verify(VERIFY_TIMEOUT);
+
+        fixture.source.assertNoSubscribers();
+        assertEquals(1, fixture.breaker.mounts.size());
+        assertEquals(1, fixture.breaker.mounts.get(0).unmounts);
+        assertEquals(2, fixture.breaker.mounts.get(0).permitters.size());
+        fixture.breaker.mounts.get(0).permitters.forEach(permitter -> assertEquals(1, permitter.disconnects));
+    }
+
+    @Test
+    public void groups_givenGroupSequenceCompletesBeforeInnerSource_expectsInnerValuesWithoutOuterCompletion() {
+        Fixture fixture = new Fixture();
+        TestPublisher<AloGroupedFlux<Integer, Integer>> groups = TestPublisher.create();
+        Flux<Alo<Integer>> flux = groups.flux()
+                .transform(AloCircuitBreakingTransformer.groups(fixture.breaker))
+                .flatMap(AloFlux::toFlux);
+
+        StepVerifier.create(flux)
+                .then(() -> groups.emit(new AloGroupedFlux<>(fixture.sourceFlux(), 0)))
+                .then(() -> fixture.source.next(alo(1)))
+                .assertNext(Alo::acknowledge)
+                .then(fixture.source::complete)
+                .expectNoEvent(Duration.ofMillis(50))
+                .thenCancel()
+                .verify(VERIFY_TIMEOUT);
+
+        assertEquals(1, fixture.breaker.permits.get(0).successes);
+        assertEquals(1, fixture.breaker.mounts.get(0).unmounts);
+        assertEquals(1, fixture.breaker.mounts.get(0).permitters.get(0).disconnects);
+    }
+
+    @Test
+    public void groups_givenDeniedInnerItemAfterOuterCompletion_expectsResumptionOnStateChange() {
+        Fixture fixture = new Fixture();
+        fixture.breaker.allowed = false;
+        TestPublisher<AloGroupedFlux<Integer, Integer>> groups = TestPublisher.create();
+        Flux<Alo<Integer>> flux = groups.flux()
+                .transform(AloCircuitBreakingTransformer.groups(fixture.breaker))
+                .flatMap(AloFlux::toFlux);
+
+        StepVerifier.create(flux)
+                .then(() -> groups.emit(new AloGroupedFlux<>(fixture.sourceFlux(), 0)))
+                .then(() -> fixture.source.next(alo(1)))
+                .then(() -> assertEquals(0, fixture.breaker.mounts.get(0).unmounts))
+                .then(() -> {
+                    fixture.breaker.allowed = true;
+                    fixture.breaker.transition(BreakerState.HALF_OPEN);
+                })
+                .assertNext(value -> assertEquals(1, value.get()))
+                .then(fixture.source::complete)
+                .expectNoEvent(Duration.ofMillis(50))
+                .thenCancel()
+                .verify(VERIFY_TIMEOUT);
+
+        assertEquals(1, fixture.subscriptions.get());
+        assertEquals(1, fixture.breaker.mounts.get(0).unmounts);
+        assertEquals(1, fixture.breaker.mounts.get(0).permitters.get(0).disconnects);
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {0, -1, Integer.MIN_VALUE})
     public void withMaxPrefetch_givenNonPositivePrefetch_expectsIllegalArgumentException(int maxPrefetch) {
-        assertThrows(IllegalArgumentException.class, () -> AloCircuitBreakingTransformer.create(new TestBreaker())
-                .withMaxPrefetch(maxPrefetch));
+        AloCircuitBreakingTransformer<?, ?> transformer = AloCircuitBreakingTransformer.simple(new TestBreaker());
+        assertThrows(IllegalArgumentException.class, () -> transformer.withMaxPrefetch(maxPrefetch));
     }
 
     private static Alo<Integer> alo(int value) {
@@ -471,13 +714,20 @@ class AloCircuitBreakingTransformerTest {
         private final AtomicLong requested = new AtomicLong();
 
         private Flux<Alo<Integer>> flux() {
-            return sourceFlux().transform(AloCircuitBreakingTransformer.create(breaker));
+            return sourceFlux().transform(newSimpleTransformer());
         }
 
         private Flux<Alo<Integer>> flux(int maxPrefetch) {
-            return sourceFlux()
-                    .transform(AloCircuitBreakingTransformer.<Integer>create(breaker)
-                            .withMaxPrefetch(maxPrefetch));
+            return sourceFlux().transform(newSimpleTransformer().withMaxPrefetch(maxPrefetch));
+        }
+
+        private GroupFlux<Integer, Integer> groups() {
+            Flux<AloGroupedFlux<Integer, Integer>> groupSource = sourceFlux()
+                    .as(AloFlux::wrap)
+                    .groupByRoundRobin(2)
+                    .unwrap()
+                    .transform(AloCircuitBreakingTransformer.groups(breaker));
+            return GroupFlux.create(groupSource, 2);
         }
 
         private Flux<Alo<Integer>> sourceFlux() {
@@ -485,6 +735,10 @@ class AloCircuitBreakingTransformerTest {
                     .doOnSubscribe(subscription -> subscriptions.incrementAndGet())
                     .doOnCancel(cancellations::incrementAndGet)
                     .doOnRequest(requested::addAndGet);
+        }
+
+        private AloCircuitBreakingTransformer<Alo<Integer>, Flux<Alo<Integer>>> newSimpleTransformer() {
+            return AloCircuitBreakingTransformer.simple(breaker);
         }
     }
 

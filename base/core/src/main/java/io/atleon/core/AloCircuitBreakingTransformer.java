@@ -2,46 +2,65 @@ package io.atleon.core;
 
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 /**
- * Gates an {@link Alo} stream with a circuit breaker, using an independent breaker registration
- * for each downstream subscription. A tripped breaker disconnects by canceling the source;
- * transitioning to a non-tripped state resubscribes. While connected, denied permissions cause
- * bounded buffering until state notifications prompt retries. Acknowledgements report permit
- * outcomes, and source completion ends the stream.
+ * Gates a stream or sequence of streams with a circuit breaker, using an independent breaker mount
+ * for each downstream subscription. A tripped breaker cancels the source subscription;
+ * transitioning to a non-tripped state resubscribes, so the source must support resubscription.
+ * While connected, denied permissions cause bounded buffering until state notifications prompt
+ * retries. Acknowledgements trigger reporting of permit outcomes. Completion of a non-grouped
+ * source completes its transformed stream without further resubscription.
+ * <p>
+ * For grouped streams, all groups share the mount, with a separate permitter and buffer for each
+ * subscribed inner group. Group keys are preserved. When the breaker trips, active inner groups
+ * complete downstream and their upstream subscriptions are canceled. Recovery resubscribes to
+ * the outer source to create fresh groups; previously completed groups remain completed. Normal
+ * completion of the outer group sequence allows existing inner groups to finish independently,
+ * but does not complete the transformed group sequence. A transformed group sequence remains
+ * active until canceled or errored.
  *
- * @param <T> The type of value carried by each Alo
+ * @param <T> The type emitted by the source: an Alo or an AloGroupedFlux
+ * @param <P> The type of source publisher
  */
-final class AloCircuitBreakingTransformer<T> implements Function<Publisher<Alo<T>>, Publisher<Alo<T>>> {
+final class AloCircuitBreakingTransformer<T, P extends Publisher<T>> implements Function<P, Flux<T>> {
 
     private final ReactiveCircuitBreaker breaker;
 
     private final int maxPrefetch;
 
-    private AloCircuitBreakingTransformer(ReactiveCircuitBreaker breaker, int maxPrefetch) {
+    private final Installer<T, P> installer;
+
+    private AloCircuitBreakingTransformer(ReactiveCircuitBreaker breaker, int maxPrefetch, Installer<T, P> installer) {
         this.breaker = breaker;
         this.maxPrefetch = maxPrefetch;
+        this.installer = installer;
     }
 
-    public static <T> AloCircuitBreakingTransformer<T> create(ReactiveCircuitBreaker breaker) {
-        return new AloCircuitBreakingTransformer<>(breaker, 1);
+    public static <T> AloCircuitBreakingTransformer<Alo<T>, Flux<Alo<T>>> simple(ReactiveCircuitBreaker breaker) {
+        return new AloCircuitBreakingTransformer<>(breaker, 1, AloInstallation::new);
     }
 
-    public AloCircuitBreakingTransformer<T> withMaxPrefetch(int maxPrefetch) {
+    public static <K, T> AloCircuitBreakingTransformer<AloGroupedFlux<K, T>, Flux<AloGroupedFlux<K, T>>> groups(
+            ReactiveCircuitBreaker breaker) {
+        return new AloCircuitBreakingTransformer<>(breaker, 1, AloGroupsInstallation::new);
+    }
+
+    public AloCircuitBreakingTransformer<T, P> withMaxPrefetch(int maxPrefetch) {
         if (maxPrefetch <= 0) {
             throw new IllegalArgumentException("maxPrefetch must be greater than 0");
         }
-        return new AloCircuitBreakingTransformer<>(breaker, maxPrefetch);
+        return new AloCircuitBreakingTransformer<>(breaker, maxPrefetch, installer);
     }
 
     @Override
-    public Flux<Alo<T>> apply(Publisher<Alo<T>> publisher) {
+    public Flux<T> apply(P publisher) {
         return Flux.defer(() -> {
-            Installation<T> installation = new Installation<>(breaker, maxPrefetch);
+            Installation<T, P> installation = installer.install(breaker, maxPrefetch);
             return installation
                     .currentStates()
                     .distinctUntilChanged(ReactiveCircuitBreaker.State::tripped)
@@ -51,7 +70,13 @@ final class AloCircuitBreakingTransformer<T> implements Function<Publisher<Alo<T
         });
     }
 
-    private static final class Installation<T> {
+    @FunctionalInterface
+    private interface Installer<T, P extends Publisher<T>> {
+
+        Installation<T, P> install(ReactiveCircuitBreaker breaker, int maxPrefetch);
+    }
+
+    private abstract static class Installation<T, P extends Publisher<T>> {
 
         private final SerialQueue<Consumer<Sinks.Many<ReactiveCircuitBreaker.State>>> currentStateQueue;
 
@@ -69,17 +94,55 @@ final class AloCircuitBreakingTransformer<T> implements Function<Publisher<Alo<T
             this.maxPrefetch = maxPrefetch;
         }
 
-        public Flux<ReactiveCircuitBreaker.State> currentStates() {
+        public final Flux<T> connect(P source) {
+            return wrap(source).doOnComplete(() -> currentStateQueue.addAndDrain(Sinks.Many::tryEmitComplete));
+        }
+
+        public final void uninstall() {
+            mounted.unmount();
+        }
+
+        public final Flux<ReactiveCircuitBreaker.State> currentStates() {
             return currentStates;
         }
 
-        public Flux<Alo<T>> connect(Publisher<Alo<T>> source) {
-            return new AloCircuitBreakingOperator<>(source, currentStates, mounted::connect, maxPrefetch)
-                    .doOnComplete(() -> currentStateQueue.addAndDrain(Sinks.Many::tryEmitComplete));
+        protected abstract Flux<T> wrap(P source);
+
+        protected final <V> Flux<Alo<V>> wrapAlo(Publisher<Alo<V>> aloSource) {
+            return new AloCircuitBreakingOperator<>(aloSource, currentStates, mounted::connect, maxPrefetch);
+        }
+    }
+
+    private static final class AloInstallation<T> extends Installation<Alo<T>, Flux<Alo<T>>> {
+
+        public AloInstallation(ReactiveCircuitBreaker breaker, int maxPrefetch) {
+            super(breaker, maxPrefetch);
         }
 
-        public void uninstall() {
-            mounted.unmount();
+        @Override
+        protected Flux<Alo<T>> wrap(Flux<Alo<T>> source) {
+            return wrapAlo(source);
+        }
+    }
+
+    private static final class AloGroupsInstallation<K, T>
+            extends Installation<AloGroupedFlux<K, T>, Flux<AloGroupedFlux<K, T>>> {
+
+        public AloGroupsInstallation(ReactiveCircuitBreaker breaker, int maxPrefetch) {
+            super(breaker, maxPrefetch);
+        }
+
+        @Override
+        public Flux<AloGroupedFlux<K, T>> wrap(Flux<AloGroupedFlux<K, T>> source) {
+            // Cancel active/inner groups when tripped or when the outer subscription is canceled.
+            Flux<ReactiveCircuitBreaker.State> trippedStates = currentStates()
+                    .filter(ReactiveCircuitBreaker.State::tripped)
+                    .concatWith(Flux.never());
+            Sinks.Empty<Void> outerCancellation = Sinks.empty();
+            Mono<?> innerCancel = Mono.firstWithSignal(trippedStates.next(), outerCancellation.asMono());
+            return source.concatWith(Flux.never())
+                    .map(it -> AloGroupedFlux.rewrap(it, wrapAlo(it).takeUntilOther(innerCancel)))
+                    .doOnCancel(outerCancellation::tryEmitEmpty);
         }
     }
 }
