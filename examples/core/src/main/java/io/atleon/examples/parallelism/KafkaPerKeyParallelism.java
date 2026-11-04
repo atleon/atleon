@@ -45,7 +45,8 @@ public class KafkaPerKeyParallelism {
                 .with(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS)
                 .with(CommonClientConfigs.CLIENT_ID_CONFIG, KafkaPerKeyParallelism.class.getSimpleName())
                 .with(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
-                .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+                .with(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName())
+                .with(ProducerConfig.MAX_IN_FLIGHT_REQUESTS_PER_CONNECTION, 1); // Embedded Kafka workaround
 
         // Step 2) Create Kafka Config for Consumer that backs Receiver. Note that set the auto
         // offset reset to earliest such that subsequently produced Records are processed
@@ -55,7 +56,9 @@ public class KafkaPerKeyParallelism {
                 .with(ConsumerConfig.GROUP_ID_CONFIG, KafkaPerKeyParallelism.class.getSimpleName())
                 .with(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
                 .with(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
-                .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+                .with(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName())
+                .with(AloKafkaReceiver.ACKNOWLEDGEMENT_QUEUE_MODE_CONFIG, "COMPACT")
+                .with(AloKafkaReceiver.OFFSET_TRACKING_STRATEGY_CONFIG, "acknowledged-ahead-of-commit");
 
         // Step 3) Apply stream processing to the Kafka topic we'll produce records to. The
         // "processing" in this case introduces a superficial blocking sleep which might mimic an
@@ -65,7 +68,7 @@ public class KafkaPerKeyParallelism {
                 .receiveAloRecords(TOPIC)
                 .groupByWithAutoComplete(ConsumerRecord::key, NUM_GROUPS)
                 .innerPublishOn(Schedulers.boundedElastic())
-                .innerMap(next -> process(next))
+                .innerMap(KafkaPerKeyParallelism::process)
                 .flatMapAlo()
                 .consumeAloAndGet(Alo::acknowledge)
                 .subscribe(string -> latch.countDown());
