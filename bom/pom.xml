@@ -125,6 +125,11 @@
             </dependency>
             <dependency>
                 <groupId>io.atleon</groupId>
+                <artifactId>atleon-resilience4j-circuitbreaker</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.atleon</groupId>
                 <artifactId>atleon-schema</artifactId>
                 <version>${project.version}</version>
             </dependency>

@@ -9,7 +9,7 @@ import java.util.function.Consumer;
  * provides a {@link Permitter} for each source connection. A breaker may be shared by multiple
  * concurrent mounts.
  */
-interface ReactiveCircuitBreaker {
+public interface ReactiveCircuitBreaker {
 
     /**
      * Mounts the breaker and delivers the current state and subsequent notifications to
