@@ -261,14 +261,15 @@ public class GroupFlux<K, T> {
      * @see GroupFlux#limitCumulativeThroughput(Publisher, Scheduler, int)
      */
     public GroupFlux<K, T> limitCumulativeThroughput(Publisher<Rate> limits) {
-        return limitCumulativeThroughput(0, it -> it.limits(limits));
+        return limitCumulativeThroughput(newThroughputLimiter(it -> it.limits(limits)));
     }
 
     /**
      * @see GroupFlux#limitCumulativeThroughput(Publisher, Scheduler, int)
      */
     public GroupFlux<K, T> limitCumulativeThroughput(Publisher<Rate> limits, Scheduler scheduler) {
-        return limitCumulativeThroughput(0, it -> it.limits(limits).scheduler(scheduler));
+        var limiter = newThroughputLimiter(it -> it.limits(limits).scheduler(scheduler));
+        return limitCumulativeThroughput(limiter);
     }
 
     /**
@@ -290,7 +291,8 @@ public class GroupFlux<K, T> {
      * @return a transformed {@link GroupFlux}
      */
     public GroupFlux<K, T> limitCumulativeThroughput(Publisher<Rate> limits, Scheduler scheduler, int prefetch) {
-        return limitCumulativeThroughput(prefetch, it -> it.limits(limits).scheduler(scheduler));
+        var limiter = newThroughputLimiter(it -> it.limits(limits).scheduler(scheduler));
+        return limitCumulativeThroughput(limiter, prefetch);
     }
 
     /**
@@ -330,12 +332,17 @@ public class GroupFlux<K, T> {
         return wrapped.flatMap(mapper, cardinality).as(AloFlux::wrap);
     }
 
-    private GroupFlux<K, T> limitCumulativeThroughput(
-            int prefetch,
-            UnaryOperator<ThroughputLimitingTransformer.Builder<Alo<T>, AloGroupedFlux<K, T>>> configurator) {
-        ThroughputLimitingTransformer<Alo<T>, AloGroupedFlux<K, T>> transformer = configurator
-                .apply(ThroughputLimitingTransformer.innerConcatMap(AloFlux::toFlux, AloGroupedFlux::rewrap, prefetch))
-                .build();
+    private GroupFlux<K, T> limitCumulativeThroughput(ReactiveThroughputLimiter<? super T> limiter) {
+        return limitCumulativeThroughput(limiter, 0);
+    }
+
+    private GroupFlux<K, T> limitCumulativeThroughput(ReactiveThroughputLimiter<? super T> limiter, int prefetch) {
+        var transformer = ThroughputLimitingTransformer.<K, T>aloGroups(limiter, prefetch);
         return new GroupFlux<>(wrapped.transform(transformer), cardinality);
+    }
+
+    private ReactiveThroughputLimiter<T> newThroughputLimiter(
+            UnaryOperator<TokenBucketThroughputLimiter.Builder<T>> configurator) {
+        return configurator.apply(TokenBucketThroughputLimiter.newBuilder()).build();
     }
 }

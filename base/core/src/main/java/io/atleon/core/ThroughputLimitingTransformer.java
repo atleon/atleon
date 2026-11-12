@@ -1,339 +1,161 @@
 package io.atleon.core;
 
-import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 
-import java.time.Duration;
-import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.ToIntFunction;
 
 /**
- * Transformer used to limit the throughput of some given source publisher.
+ * Limits the throughput of a stream or sequence of streams, using an independent limiter mount
+ * for each downstream subscription. A blocked limiter cancels the source subscription;
+ * transitioning to an unblocked state resubscribes, so the source must support resubscription.
+ * While connected, elements are emitted in order after their capacity reservations complete.
+ * Completion of a non-grouped source completes its transformed stream without further
+ * resubscription.
+ * <p>
+ * For grouped streams, all groups share the mount, with capacity reserved sequentially within
+ * each subscribed inner group. Group keys are preserved. When the limiter blocks, active inner
+ * groups complete downstream and their upstream subscriptions are canceled. Unblocking
+ * resubscribes to the outer source to create fresh groups; Normal completion of the outer group
+ * sequence allows existing inner groups to finish independently, but does not complete the
+ * transformed group sequence. A transformed group sequence remains active until canceled or
+ * errored, even when throughput is unlimited (including when the limit publisher is empty).
+ * This keeps the shared limiter mount available for active groups and subsequent state
+ * notifications.
  *
  * @param <T> The type of elements upon which throughput limiting is enforced
- * @param <V> A container of the elements being limited, which may be the element itself
+ * @param <I> A container of the elements being limited, which may be the element itself
  */
-public final class ThroughputLimitingTransformer<T, V> implements Function<Publisher<? extends V>, Publisher<V>> {
+final class ThroughputLimitingTransformer<T, I> implements Function<Flux<? extends I>, Flux<I>> {
 
-    private final DelayApplicator<T, V> delayApplicator;
+    private final Installer<T, I> installer;
 
-    private final Publisher<Rate> limits;
+    private final ReactiveThroughputLimiter<? super T> limiter;
 
-    private final ToIntFunction<? super T> weighting;
-
-    private final Scheduler scheduler;
+    private final int prefetch;
 
     private ThroughputLimitingTransformer(
-            DelayApplicator<T, V> delayApplicator,
-            Publisher<Rate> limits,
-            ToIntFunction<? super T> weighting,
-            Scheduler scheduler) {
-        this.delayApplicator = delayApplicator;
-        this.limits = limits;
-        this.weighting = weighting;
-        this.scheduler = scheduler;
+            Installer<T, I> installer, ReactiveThroughputLimiter<? super T> limiter, int prefetch) {
+        this.installer = installer;
+        this.limiter = limiter;
+        this.prefetch = prefetch;
     }
 
-    static <T> ThroughputLimitingTransformer.Builder<T, T> concatMap(int prefetch) {
-        return new Builder<>(DelayApplicator.concatMap(prefetch));
+    static <T> ThroughputLimitingTransformer<T, Alo<T>> alo(
+            ReactiveThroughputLimiter<? super T> limiter, int prefetch) {
+        return new ThroughputLimitingTransformer<>(AloInstallation::new, limiter, prefetch);
     }
 
-    /**
-     * Creates a {@link ThroughputLimitingTransformer} that can be applied to a Publisher of
-     * Publishers, across which is applied a cumulative dynamic throughput limit. Note that when a
-     * non-empty limit publisher is used, this transformation will result in making the transformed
-     * publisher an infinite publisher, i.e. it will never signal onComplete. The reason for this
-     * is that the throughput limiting resources have their lifecycle tied to the lifecycle of the
-     * outer stream, so in order to keep the throughput limiting dynamic, we must ensure the outer
-     * stream never completes.
-     */
-    static <T, V extends Publisher<T>> ThroughputLimitingTransformer.Builder<T, V> innerConcatMap(
-            Function<V, ? extends Publisher<T>> innerUnwrapper,
-            BiFunction<V, ? super Flux<T>, V> innerRewrapper,
-            int prefetch) {
-        // Implementation notes:
-        // 1. Cancellation of outer stream requires explicit propagation to inner streams. This is
-        //    accomplished with an empty sink that inner publishers subscribe to for cancellation.
-        //    Without this, the inner publishers would not terminate if (for example) the outer
-        //    stream is canceled due to having the throughput limit set to zero.
-        // 2. When this transformer is applied with a non-empty limit publisher, this Applicator
-        //    ensures the subscribed stream is infinite by concatenating with Flux.never(). This
-        //    makes it safe to attach resources (like dynamic limit updates) to the lifecycle of
-        //    the outer stream. Note that this cardinality is otherwise already a technical
-        //    possibility, since setting limit to zero causes subscription to a "never" publisher.
-        return new Builder<>((outer, delayer) -> {
-            Sinks.Empty<Void> cancellation = Sinks.empty();
-            Flux<V> decoratedOuter = outer.concatWith(Flux.never()).doOnCancel(cancellation::tryEmitEmpty);
-            BiFunction<V, Flux<T>, V> decoratedInnerRewrapper = (originalInner, delayedElements) ->
-                    innerRewrapper.apply(originalInner, delayedElements.takeUntilOther(cancellation.asMono()));
-            return DelayApplicator.innerConcatMap(innerUnwrapper, decoratedInnerRewrapper, prefetch)
-                    .apply(decoratedOuter, delayer);
-        });
+    static <K, T> ThroughputLimitingTransformer<T, AloGroupedFlux<K, T>> aloGroups(
+            ReactiveThroughputLimiter<? super T> limiter, int prefetch) {
+        return new ThroughputLimitingTransformer<>(AloGroupsInstallation::new, limiter, prefetch);
     }
 
     @Override
-    public Flux<V> apply(Publisher<? extends V> publisher) {
+    public Flux<I> apply(Flux<? extends I> source) {
         // Implementation notes:
-        // 1. Per subscription, any completion signal emitted by the transformed publisher is
-        //    treated as a terminal signal on limit subscription such that application to finite
+        // 1. Subscription, cancellation, and resubscription to the source publisher is gated based
+        //    on the underlying installation signaling blocked vs. unblocked state.
+        // 2. Per subscription, any completion signal emitted by the source publisher is treated
+        //    as a terminal signal on the transformed publisher such that application to finite
         //    sources (when possible) propagates that completion.
-        // 2. We create a "shared" publisher of limits such that it is only subscribed to once per
-        //    subscription to the source publisher. We cache the latest value such that a dynamic
-        //    constraint is guaranteed to see the latest limit upon subscription.
-        // 3. Limits are only emitted when they change between zero and non-zero states, which
-        //    controls (non-completed) cancellation and subscription to the source publisher. Limit
-        //    changes within positive values are reflected by active changes to the enforced limit
-        //    within the dynamic throughput constraint.
-        // 4. We ensure that at least one constraint is always emitted, even if the limit publisher
-        //    is empty, in which case the source publisher is subscribed to with a permanently
-        //    infinite limit.
         return Flux.defer(() -> {
-            Sinks.Empty<Void> completed = Sinks.empty();
-            Flux<Rate> sharedLimits = Flux.from(limits).replay(1).refCount();
-            return sharedLimits
-                    .distinctUntilChanged(Rate::isZero)
-                    .map(it -> it.isZero() ? new ZeroThroughputConstraint<V>() : new DynamicThroughputConstraint(it))
-                    .defaultIfEmpty(new UnlimitedThroughputConstraint<>())
-                    .switchMap(it -> it.apply(publisher, sharedLimits).doOnComplete(completed::tryEmitEmpty))
-                    .takeUntilOther(completed.asMono());
+            Installation<T, I> installation = installer.install(limiter, prefetch);
+            return installation
+                    .currentStates()
+                    .distinctUntilChanged(ReactiveThroughputLimiter.State::blocked)
+                    .switchMap(it -> it.blocked() ? Flux.never() : installation.connect(source))
+                    .takeUntilOther(installation.currentStates().then())
+                    .doFinally(__ -> installation.uninstall());
         });
     }
 
-    public static final class Builder<T, V> {
+    @FunctionalInterface
+    private interface Installer<T, I> {
 
-        private final DelayApplicator<T, V> delayApplicator;
+        Installation<T, I> install(ReactiveThroughputLimiter<? super T> limiter, int prefetch);
+    }
 
-        private Publisher<Rate> limits = Mono.empty();
+    private abstract static class Installation<T, I> {
 
-        private ToIntFunction<? super T> weighting = __ -> 1;
+        private final SerialQueue<Consumer<Sinks.Many<ReactiveThroughputLimiter.State>>> currentStateQueue;
 
-        private Scheduler scheduler = Schedulers.parallel();
+        private final Flux<ReactiveThroughputLimiter.State> currentStates;
 
-        private Builder(DelayApplicator<T, V> delayApplicator) {
-            this.delayApplicator = delayApplicator;
+        private final ReactiveThroughputLimiter.Mount<? super T> mount;
+
+        private final int prefetch;
+
+        public Installation(ReactiveThroughputLimiter<? super T> limiter, int prefetch) {
+            var currentStateSink = Sinks.unsafe().many().replay().<ReactiveThroughputLimiter.State>latest();
+            this.currentStateQueue = SerialQueue.on(currentStateSink);
+            this.currentStates = currentStateSink.asFlux();
+            this.mount = limiter.mount(this::emitCurrentState, this::emitCurrentStateError);
+            this.prefetch = prefetch;
         }
 
-        public ThroughputLimitingTransformer<T, V> build() {
-            return new ThroughputLimitingTransformer<>(delayApplicator, limits, weighting, scheduler);
+        public Flux<I> connect(Flux<? extends I> source) {
+            return apply(source).doOnComplete(this::emitCurrentStateCompletion);
         }
 
-        public Builder<T, V> limits(Publisher<Rate> limits) {
-            this.limits = limits;
-            return this;
+        public void uninstall() {
+            mount.unmount();
         }
 
-        public Builder<T, V> weighting(ToIntFunction<? super T> weighting) {
-            this.weighting = weighting;
-            return this;
+        public Flux<ReactiveThroughputLimiter.State> currentStates() {
+            return currentStates;
         }
 
-        public Builder<T, V> scheduler(Scheduler scheduler) {
-            this.scheduler = scheduler;
-            return this;
+        protected abstract Flux<I> apply(Flux<? extends I> source);
+
+        protected final Flux<Alo<T>> applyAlo(Flux<? extends Alo<T>> aloSource) {
+            return aloSource.concatMap(alo -> mount.reserveCapacity(alo.get()).thenReturn(alo), prefetch);
+        }
+
+        private void emitCurrentState(ReactiveThroughputLimiter.State state) {
+            currentStateQueue.addAndDrain(sink -> sink.tryEmitNext(state));
+        }
+
+        private void emitCurrentStateCompletion() {
+            currentStateQueue.addAndDrain(Sinks.Many::tryEmitComplete);
+        }
+
+        private void emitCurrentStateError(Throwable error) {
+            currentStateQueue.addAndDrain(sink -> sink.tryEmitError(error));
         }
     }
 
-    /**
-     * Encapsulates if and how to apply a throughput limitation to a source publisher, given a
-     * stream of throughput limits.
-     */
-    private interface ThroughputConstraint<T> {
+    private static final class AloInstallation<T> extends Installation<T, Alo<T>> {
 
-        Flux<T> apply(Publisher<? extends T> publisher, Flux<Rate> limits);
-    }
-
-    private static final class ZeroThroughputConstraint<T> implements ThroughputConstraint<T> {
-
-        @Override
-        public Flux<T> apply(Publisher<? extends T> publisher, Flux<Rate> limits) {
-            return Flux.never();
-        }
-    }
-
-    private final class DynamicThroughputConstraint implements ThroughputConstraint<V> {
-
-        private final Rate initialLimit;
-
-        private DynamicThroughputConstraint(Rate initialLimit) {
-            this.initialLimit = initialLimit;
-        }
-
-        @Override
-        public Flux<V> apply(Publisher<? extends V> publisher, Flux<Rate> limits) {
-            // Implementation notes:
-            // 1. Limits are kept dynamic/updated on the created grantor by subscribing to the
-            //    limits with a side effect on the grantor.
-            // 2. Zero and consecutive equal limits (including starting limits equal to the initial
-            //    limit) are skipped to avoid needless resetting/configuration on the grantor.
-            // 3. The limit updating process is characterized as a publisher that never completes,
-            //    which allows us to use it as a "takeUntilOther" condition on the source
-            //    publisher. This makes it such that errors on the limit stream are propagated
-            //    to the main publisher, and termination of the main publisher also terminates
-            //    the limit updating process. Using "takeUntilOther" rather than "merge" prevents
-            //    inadvertent introduction of an unnecessary prefetch buffer.
-            TokenBucketThroughputGrantor<T> grantor = new TokenBucketThroughputGrantor<>(weighting, scheduler);
-            Mono<Void> limitUpdating = limits.filter(it -> !it.isZero())
-                    .startWith(initialLimit)
-                    .distinctUntilChanged()
-                    .doOnNext(grantor::updateLimit)
-                    .thenEmpty(Mono.never());
-            return delayApplicator
-                    .apply(Flux.from(publisher), t -> grantor.reserveCapacity(t).thenReturn(t))
-                    .takeUntilOther(limitUpdating);
-        }
-    }
-
-    private static final class UnlimitedThroughputConstraint<T> implements ThroughputConstraint<T> {
-
-        @Override
-        public Flux<T> apply(Publisher<? extends T> publisher, Flux<Rate> limits) {
-            return Flux.from(publisher);
-        }
-    }
-
-    private static final class TokenBucketThroughputGrantor<T> implements ThroughputGrantor<T> {
-
-        private final ToIntFunction<? super T> weighting;
-
-        private final Scheduler scheduler;
-
-        // Null means the limit is infinite, so reservations skip weight calculation and delay
-        private volatile SerialQueue<Consumer<TokenBucket>> bucketQueue = null;
-
-        public TokenBucketThroughputGrantor(ToIntFunction<? super T> weighting, Scheduler scheduler) {
-            this.weighting = weighting;
-            this.scheduler = scheduler;
+        public AloInstallation(ReactiveThroughputLimiter<? super T> limiter, int prefetch) {
+            super(limiter, prefetch);
         }
 
         @Override
-        public Mono<Duration> reserveCapacity(T t) {
-            SerialQueue<Consumer<TokenBucket>> nvBucketQueue = bucketQueue;
-            return nvBucketQueue != null ? reserveCapacity(nvBucketQueue, t) : Mono.empty();
-        }
-
-        public void updateLimit(Rate limit) {
-            SerialQueue<Consumer<TokenBucket>> nvBucketQueue = bucketQueue;
-            if (limit.isInfinite()) {
-                bucketQueue = null;
-            } else if (nvBucketQueue != null) {
-                nvBucketQueue.addAndDrain(it -> it.updateLimit(limit));
-            } else {
-                bucketQueue = SerialQueue.on(new TokenBucket(scheduler, limit));
-            }
-        }
-
-        private Mono<Duration> reserveCapacity(SerialQueue<Consumer<TokenBucket>> queue, T t) {
-            return reserveTokens(queue, weighting.applyAsInt(t)).delayUntil(it -> Mono.delay(it, scheduler));
-        }
-
-        private static Mono<Duration> reserveTokens(SerialQueue<Consumer<TokenBucket>> queue, int weight) {
-            return Mono.create(sink -> queue.addAndDrain(bucket -> {
-                try {
-                    long delayNanos = weight > 0 ? bucket.reserveTokens(weight) : 0;
-                    if (delayNanos > 0) {
-                        sink.success(Duration.ofNanos(delayNanos));
-                    } else if (weight >= 0) {
-                        sink.success();
-                    } else {
-                        throw new IllegalArgumentException("Weight must be non-negative: " + weight);
-                    }
-                } catch (Throwable error) {
-                    sink.error(error);
-                }
-            }));
+        protected Flux<Alo<T>> apply(Flux<? extends Alo<T>> source) {
+            return applyAlo(source);
         }
     }
 
-    /**
-     * A token bucket whose capacity is continuously (rather than discretely) replenished, i.e. a
-     * bucket holding up to {@link Rate#count()} tokens which are replenished smoothly over
-     * {@link Rate#duration()}. Reservation of capacity is always granted, and results in the
-     * number of nanoseconds that must elapse before the reserved capacity is safely usable.
-     *
-     * <p>Rather than tracking available tokens directly, this bucket tracks the point in time at
-     * which it is depleted, such that the number of tokens available at any given time is
-     * {@code min(count, ((now - depletion) * count) / duration)}. Reserving capacity is therefore
-     * implemented by pushing the point of depletion further in to the future, and the resulting
-     * delay is however much of that push extends beyond the current time. Note that this also
-     * means a full bucket is equivalent to a point of depletion exactly one duration in the past,
-     * which is used both to bound available capacity when reserving and to preserve the proportion
-     * of available capacity when the enforced limit changes.
-     *
-     * <p>This bucket is not thread safe, and therefore requires that invocation of its methods is
-     * serialized by the caller.
-     */
-    private static final class TokenBucket {
+    private static final class AloGroupsInstallation<K, T> extends Installation<T, AloGroupedFlux<K, T>> {
 
-        private final Scheduler scheduler;
-
-        private long count;
-
-        private long durationNanos;
-
-        private long depletionNanos;
-
-        // Remainder of division by count, which keeps replenishment exact for counts that do not
-        // evenly divide their duration
-        private long depletionRemainder;
-
-        public TokenBucket(Scheduler scheduler, Rate limit) {
-            this.scheduler = scheduler;
-            this.count = limit.count();
-            this.durationNanos = limit.duration().toNanos();
-            this.depletionNanos = now() - durationNanos;
-            this.depletionRemainder = 0L;
+        public AloGroupsInstallation(ReactiveThroughputLimiter<? super T> limiter, int prefetch) {
+            super(limiter, prefetch);
         }
 
-        public long reserveTokens(int weight) {
-            long nowNanos = now();
-
-            // Check if this is the first request (in a "while") and if so, reset depletion time
-            long fullDepletionNanos = nowNanos - durationNanos;
-            if (depletionNanos < fullDepletionNanos) {
-                depletionNanos = fullDepletionNanos;
-                depletionRemainder = 0L;
-            }
-
-            // Push the depletion time forward based on weighted reservation
-            long pushNanos = Math.multiplyExact(durationNanos, weight) + depletionRemainder;
-            depletionNanos += pushNanos / count;
-            depletionRemainder = pushNanos % count;
-
-            // Delay is however far into the future the depletion time is (negative if no delay)
-            return (depletionNanos - nowNanos) + (depletionRemainder > 0L ? 1L : 0L);
-        }
-
-        public void updateLimit(Rate limit) {
-            long nowNanos = now();
-            long remainingNanos = Math.max(depletionNanos, nowNanos - durationNanos) - nowNanos;
-            long limitNanos = limit.duration().toNanos();
-
-            count = limit.count();
-            depletionNanos = nowNanos + scale(remainingNanos, limitNanos, durationNanos);
-            depletionRemainder = 0L;
-            durationNanos = limitNanos;
-        }
-
-        private long now() {
-            return scheduler.now(TimeUnit.NANOSECONDS);
-        }
-
-        /**
-         * Returns {@code (nanos * numerator) / denominator}, applied separately to the quotient
-         * and remainder of {@code nanos / denominator} such that the intermediate multiplication
-         * cannot overflow. Note that a naive multiplication would overflow once the point of
-         * depletion is more than roughly nine seconds in the future, which is reachable at low
-         * limits with many concurrently reserving streams.
-         */
-        private static long scale(long nanos, long numerator, long denominator) {
-            return ((nanos / denominator) * numerator) + (((nanos % denominator) * numerator) / denominator);
+        @Override
+        protected Flux<AloGroupedFlux<K, T>> apply(Flux<? extends AloGroupedFlux<K, T>> source) {
+            // Cancel active/inner groups when blocked or when the outer subscription is canceled.
+            Flux<ReactiveThroughputLimiter.State> blockedStates = currentStates()
+                    .filter(ReactiveThroughputLimiter.State::blocked)
+                    .concatWith(Flux.never());
+            Sinks.Empty<Void> outerCancellation = Sinks.empty();
+            Mono<?> innerCancel = Mono.firstWithSignal(blockedStates.next(), outerCancellation.asMono());
+            return source.concatWith(Flux.never())
+                    .map(it -> AloGroupedFlux.rewrap(it, applyAlo(it.unwrap()).takeUntilOther(innerCancel)))
+                    .doOnCancel(outerCancellation::tryEmitEmpty);
         }
     }
 }

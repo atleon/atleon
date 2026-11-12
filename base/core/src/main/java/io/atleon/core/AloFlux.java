@@ -670,14 +670,14 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @see AloFlux#limitThroughput(Publisher, Scheduler, int)
      */
     public AloFlux<T> limitThroughput(Publisher<Rate> limits) {
-        return limitThroughput(0, it -> it.limits(limits));
+        return limitThroughput(newThroughputLimiter(it -> it.limits(limits)));
     }
 
     /**
      * @see AloFlux#limitThroughput(Publisher, Scheduler, int)
      */
     public AloFlux<T> limitThroughput(Publisher<Rate> limits, Scheduler scheduler) {
-        return limitThroughput(0, it -> it.limits(limits).scheduler(scheduler));
+        return limitThroughput(newThroughputLimiter(it -> it.limits(limits).scheduler(scheduler)));
     }
 
     /**
@@ -696,7 +696,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @return A new {@link AloFlux} with dynamic throughput limiting applied
      */
     public AloFlux<T> limitThroughput(Publisher<Rate> limits, Scheduler scheduler, int prefetch) {
-        return limitThroughput(prefetch, it -> it.limits(limits).scheduler(scheduler));
+        return limitThroughput(newThroughputLimiter(it -> it.limits(limits).scheduler(scheduler)), prefetch);
     }
 
     /**
@@ -916,11 +916,16 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
         return wrapped.subscribeWith(subscriber);
     }
 
-    private AloFlux<T> limitThroughput(
-            int prefetch, UnaryOperator<ThroughputLimitingTransformer.Builder<Alo<T>, Alo<T>>> configurator) {
-        ThroughputLimitingTransformer<Alo<T>, Alo<T>> transformer = configurator
-                .apply(ThroughputLimitingTransformer.concatMap(prefetch))
-                .build();
-        return wrap(wrapped.transform(transformer));
+    private AloFlux<T> limitThroughput(ReactiveThroughputLimiter<? super T> limiter) {
+        return limitThroughput(limiter, 0);
+    }
+
+    private AloFlux<T> limitThroughput(ReactiveThroughputLimiter<? super T> limiter, int prefetch) {
+        return new AloFlux<>(wrapped.transform(ThroughputLimitingTransformer.alo(limiter, prefetch)));
+    }
+
+    private ReactiveThroughputLimiter<T> newThroughputLimiter(
+            UnaryOperator<TokenBucketThroughputLimiter.Builder<T>> configurator) {
+        return configurator.apply(TokenBucketThroughputLimiter.newBuilder()).build();
     }
 }
