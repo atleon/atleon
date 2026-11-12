@@ -38,6 +38,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+          show-download-progress: true
       - name: Maven Package Caching
         uses: actions/cache@v6
         with:
@@ -45,7 +46,11 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - name: Publish SNAPSHOT Artifacts
-        run: ./mvnw deploy --settings ./.mvn/settings/mvn-settings.xml -B -U -P oss-snapshot -DskipTests=true -Daether.connector.http.retryHandler.interval.maven-central-snapshots=30000
+        run: >-
+          ./mvnw deploy --settings ./.mvn/settings/mvn-settings.xml -B -U -P oss-snapshot
+          -DskipTests=true
+          -Daether.connector.basic.parallelPut.maven-central-snapshots=false
+          -Daether.connector.http.retryHandler.interval.maven-central-snapshots=30000
         env:
           MAVEN_CENTRAL_TOKEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_TOKEN_USERNAME }}
           MAVEN_CENTRAL_TOKEN_PASSWORD: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASSWORD }}
