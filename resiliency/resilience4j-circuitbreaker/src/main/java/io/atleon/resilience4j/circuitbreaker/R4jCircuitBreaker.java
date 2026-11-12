@@ -27,13 +27,13 @@ import java.util.stream.IntStream;
  * elapsed time since acquisition; disconnecting a permitter releases its outstanding permissions
  * without recording outcomes. Duplicate outcomes and outcomes received after release are ignored.
  */
-public class R4jReactiveCircuitBreaker implements ReactiveCircuitBreaker {
+public class R4jCircuitBreaker implements ReactiveCircuitBreaker {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(R4jReactiveCircuitBreaker.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(R4jCircuitBreaker.class);
 
     private static final Set<CircuitBreakerRegistry> ATTACHED_REGISTRIES = ConcurrentHashMap.newKeySet();
 
-    private static final Map<CircuitBreaker, R4jReactiveCircuitBreaker> CANONICAL_POOL = new ConcurrentHashMap<>();
+    private static final Map<CircuitBreaker, R4jCircuitBreaker> CANONICAL_POOL = new ConcurrentHashMap<>();
 
     private final SerialQueue<Consumer<Sinks.Many<State>>> currentStateQueue;
 
@@ -41,7 +41,7 @@ public class R4jReactiveCircuitBreaker implements ReactiveCircuitBreaker {
 
     private final CircuitBreaker circuitBreaker;
 
-    private R4jReactiveCircuitBreaker(CircuitBreaker circuitBreaker) {
+    private R4jCircuitBreaker(CircuitBreaker circuitBreaker) {
         var sink = Sinks.unsafe().many().replay().<State>latest();
         this.currentStateQueue = SerialQueue.on(sink);
         this.currentStates = sink.asFlux();
@@ -64,7 +64,7 @@ public class R4jReactiveCircuitBreaker implements ReactiveCircuitBreaker {
      * @return the existing or newly registered adapter
      * @throws IllegalArgumentException if automatic transition from OPEN to HALF_OPEN is disabled
      */
-    public static R4jReactiveCircuitBreaker register(CircuitBreakerRegistry registry, String name) {
+    public static R4jCircuitBreaker register(CircuitBreakerRegistry registry, String name) {
         CircuitBreaker circuitBreaker = registry.circuitBreaker(name);
         if (!circuitBreaker.getCircuitBreakerConfig().isAutomaticTransitionFromOpenToHalfOpenEnabled()) {
             throw new IllegalArgumentException("Automatic transition from OPEN to HALF_OPEN must be enabled");
@@ -80,7 +80,7 @@ public class R4jReactiveCircuitBreaker implements ReactiveCircuitBreaker {
         // much we can do about it since Resilience4j's API does not support removing listeners
         // after adding them, which is the only reason we need attachment and canonicalization.
         // Otherwise, we'd be at risk of registering an unbounded number of listeners.
-        return CANONICAL_POOL.computeIfAbsent(circuitBreaker, R4jReactiveCircuitBreaker::new);
+        return CANONICAL_POOL.computeIfAbsent(circuitBreaker, R4jCircuitBreaker::new);
     }
 
     /**
@@ -90,8 +90,8 @@ public class R4jReactiveCircuitBreaker implements ReactiveCircuitBreaker {
      * @return a new mounted handle
      */
     @Override
-    public Mounted mount(Consumer<? super State> currentStateConsumer) {
-        return new R4jMounted(currentStateConsumer);
+    public Mount mount(Consumer<? super State> currentStateConsumer) {
+        return new R4jMount(currentStateConsumer);
     }
 
     private void emitCurrentState() {
@@ -106,11 +106,11 @@ public class R4jReactiveCircuitBreaker implements ReactiveCircuitBreaker {
         }
     }
 
-    private final class R4jMounted implements Mounted {
+    private final class R4jMount implements Mount {
 
         private final Disposable currentStateSubscription;
 
-        public R4jMounted(Consumer<? super State> currentStateConsumer) {
+        public R4jMount(Consumer<? super State> currentStateConsumer) {
             this.currentStateSubscription = currentStates.subscribe(currentStateConsumer);
         }
 

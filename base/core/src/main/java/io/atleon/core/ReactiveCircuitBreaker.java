@@ -5,7 +5,7 @@ import java.util.function.Consumer;
 
 /**
  * Coordinates reactive processing through state notifications and per-element permissions.
- * Each downstream subscription mounts the breaker, obtaining a {@link Mounted} handle that
+ * Each downstream subscription mounts the breaker, obtaining a {@link Mount} handle that
  * provides a {@link Permitter} for each source connection. A breaker may be shared by multiple
  * concurrent mounts.
  */
@@ -16,7 +16,7 @@ public interface ReactiveCircuitBreaker {
      * the consumer until unmounted. Notify mounted consumers when denied permission requests may
      * be retried, even if {@link State#tripped()} is unchanged.
      */
-    Mounted mount(Consumer<? super State> currentStateConsumer);
+    Mount mount(Consumer<? super State> currentStateConsumer);
 
     /**
      * Describes the current breaker state, including whether it has tripped and processing must
@@ -35,7 +35,7 @@ public interface ReactiveCircuitBreaker {
      * Observes breaker state for one downstream subscription, including periods when its source
      * is disconnected.
      */
-    interface Mounted {
+    interface Mount {
 
         /**
          * Returns a permitter for a source subscription, initially or on reconnection. This

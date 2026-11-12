@@ -836,7 +836,7 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      * @return A new {@link AloFlux}
      */
     public AloFlux<T> addAloCircuitBreaking(ReactiveCircuitBreaker breaker) {
-        return new AloFlux<>(wrapped.transform(AloCircuitBreakingTransformer.simple(breaker)));
+        return new AloFlux<>(wrapped.transform(CircuitBreakingTransformer.alo(breaker)));
     }
 
     /**

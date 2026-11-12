@@ -23,12 +23,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class AloCircuitBreakingTransformerTest {
+class CircuitBreakingTransformerTest {
 
     private static final Duration VERIFY_TIMEOUT = Duration.ofSeconds(5);
 
     @Test
-    public void simple_givenInitiallyTrippedBreaker_expectsSubscriptionWhenHalfOpen() {
+    public void alo_givenInitiallyTrippedBreaker_expectsSubscriptionWhenHalfOpen() {
         Fixture fixture = new Fixture();
         fixture.breaker.transition(BreakerState.OPEN);
 
@@ -55,7 +55,7 @@ class AloCircuitBreakingTransformerTest {
     @EnumSource(
             value = BreakerState.class,
             names = {"CLOSED", "OPEN"})
-    public void simple_givenCancellationWhileTripped_expectsMountCleanupWithoutReconnection(BreakerState initialState) {
+    public void alo_givenCancellationWhileTripped_expectsMountCleanupWithoutReconnection(BreakerState initialState) {
         Fixture fixture = new Fixture();
         fixture.breaker.transition(initialState);
 
@@ -81,7 +81,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void simple_givenDefaultPrefetchAndDeniedPermission_expectsOneUpstreamRequest() {
+    public void alo_givenDefaultPrefetchAndDeniedPermission_expectsOneUpstreamRequest() {
         Fixture fixture = new Fixture();
         fixture.breaker.allowed = false;
 
@@ -97,7 +97,7 @@ class AloCircuitBreakingTransformerTest {
     @EnumSource(
             value = BreakerState.class,
             names = {"CLOSED", "HALF_OPEN"})
-    public void simple_givenDeniedPermissions_expectsBoundedBufferingAndOrderedResumptionOnStateChange(
+    public void alo_givenDeniedPermissions_expectsBoundedBufferingAndOrderedResumptionOnStateChange(
             BreakerState state) {
         Fixture fixture = new Fixture();
         fixture.breaker.allowed = false;
@@ -120,7 +120,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void simple_givenLimitedDownstreamDemand_expectsDeliveryWithinDemand() {
+    public void alo_givenLimitedDownstreamDemand_expectsDeliveryWithinDemand() {
         Fixture fixture = new Fixture();
 
         StepVerifier.create(fixture.flux(3), 0)
@@ -138,7 +138,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void simple_givenConnectedStateChanges_expectsExistingSourceSubscription() {
+    public void alo_givenConnectedStateChanges_expectsExistingSourceSubscription() {
         Fixture fixture = new Fixture();
 
         StepVerifier.create(fixture.flux())
@@ -155,7 +155,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void simple_givenAcknowledgement_expectsPermitSuccessAndOriginalAcknowledgement() {
+    public void alo_givenAcknowledgement_expectsPermitSuccessAndOriginalAcknowledgement() {
         Fixture fixture = new Fixture();
         AtomicInteger acknowledged = new AtomicInteger();
 
@@ -173,7 +173,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void simple_givenNegativeAcknowledgement_expectsOriginalErrorReportedToPermitAndNacknowledger() {
+    public void alo_givenNegativeAcknowledgement_expectsOriginalErrorReportedToPermitAndNacknowledger() {
         Fixture fixture = new Fixture();
         RuntimeException failure = new IllegalStateException("processing failed");
         AtomicReference<Throwable> nacknowledged = new AtomicReference<>();
@@ -192,7 +192,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void simple_givenBreakerOpensThenBecomesHalfOpen_expectsCancellationDisconnectionAndResubscription() {
+    public void alo_givenBreakerOpensThenBecomesHalfOpen_expectsCancellationDisconnectionAndResubscription() {
         Fixture fixture = new Fixture();
         AtomicReference<Alo<Integer>> first = new AtomicReference<>();
         AtomicInteger acknowledged = new AtomicInteger();
@@ -230,7 +230,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void simple_givenReusedPermitter_expectsSeparateConnectionAndMountCleanup() {
+    public void alo_givenReusedPermitter_expectsSeparateConnectionAndMountCleanup() {
         Fixture fixture = new Fixture();
         AtomicReference<Consumer<? super ReactiveCircuitBreaker.State>> stateConsumer = new AtomicReference<>();
         AtomicInteger connections = new AtomicInteger();
@@ -252,7 +252,7 @@ class AloCircuitBreakingTransformerTest {
         ReactiveCircuitBreaker breaker = consumer -> {
             stateConsumer.set(consumer);
             consumer.accept(BreakerState.CLOSED);
-            return new ReactiveCircuitBreaker.Mounted() {
+            return new ReactiveCircuitBreaker.Mount() {
                 @Override
                 public ReactiveCircuitBreaker.Permitter connect() {
                     connections.incrementAndGet();
@@ -266,7 +266,7 @@ class AloCircuitBreakingTransformerTest {
             };
         };
 
-        StepVerifier.create(fixture.sourceFlux().transform(AloCircuitBreakingTransformer.simple(breaker)))
+        StepVerifier.create(fixture.sourceFlux().transform(CircuitBreakingTransformer.alo(breaker)))
                 .then(() -> fixture.source.next(alo(1)))
                 .assertNext(Alo::acknowledge)
                 .then(() -> stateConsumer.get().accept(BreakerState.OPEN))
@@ -290,7 +290,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void simple_givenDownstreamCancellation_expectsDisconnectionAndForwardedLateOutcomes() {
+    public void alo_givenDownstreamCancellation_expectsDisconnectionAndForwardedLateOutcomes() {
         Fixture fixture = new Fixture();
         List<Alo<Integer>> received = new ArrayList<>();
         AtomicInteger acknowledged = new AtomicInteger();
@@ -326,7 +326,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void simple_givenSourceErrorWithDeniedBufferedItem_expectsImmediateErrorAndDisconnection() {
+    public void alo_givenSourceErrorWithDeniedBufferedItem_expectsImmediateErrorAndDisconnection() {
         Fixture fixture = new Fixture();
         RuntimeException failure = new IllegalStateException("source failed");
 
@@ -347,7 +347,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void simple_givenPermissionAcquirementFailure_expectsErrorAndSourceCancellation() {
+    public void alo_givenPermissionAcquirementFailure_expectsErrorAndSourceCancellation() {
         Fixture fixture = new Fixture();
         RuntimeException failure = new IllegalStateException("permission failed");
         fixture.breaker.acquirementFailure = Optional.of(failure);
@@ -364,7 +364,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void simple_givenSourceCompletion_expectsCompletionWithoutFurtherResubscription() {
+    public void alo_givenSourceCompletion_expectsCompletionWithoutFurtherResubscription() {
         Fixture fixture = new Fixture();
 
         StepVerifier.create(fixture.flux())
@@ -384,14 +384,14 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void simple_givenFinalAcknowledgementTripsBreakerDuringRecovery_expectsCompletionAndCleanup() {
+    public void alo_givenFinalAcknowledgementTripsBreakerDuringRecovery_expectsCompletionAndCleanup() {
         TestBreaker breaker = new TestBreaker();
         breaker.transition(BreakerState.OPEN);
         AtomicInteger subscriptions = new AtomicInteger();
         Alo<Integer> value = new ComposedAlo<>(1, () -> breaker.transition(BreakerState.OPEN), error -> {});
         Flux<Alo<Integer>> flux = Flux.just(value)
                 .doOnSubscribe(__ -> subscriptions.incrementAndGet())
-                .transform(AloCircuitBreakingTransformer.simple(breaker))
+                .transform(CircuitBreakingTransformer.alo(breaker))
                 .doOnNext(Alo::acknowledge);
 
         StepVerifier.create(flux)
@@ -412,7 +412,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void simple_givenMultipleDownstreamSubscriptions_expectsIndependentBreakerMounts() {
+    public void alo_givenMultipleDownstreamSubscriptions_expectsIndependentBreakerMounts() {
         Fixture fixture = new Fixture();
         Flux<Alo<Integer>> flux = fixture.flux();
         assertEquals(0, fixture.breaker.mounts.size());
@@ -439,7 +439,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void groups_givenInitiallyTrippedBreaker_expectsGroupSubscriptionWhenHalfOpen() {
+    public void aloGroups_givenInitiallyTrippedBreaker_expectsGroupSubscriptionWhenHalfOpen() {
         Fixture fixture = new Fixture();
         fixture.breaker.transition(BreakerState.OPEN);
 
@@ -464,7 +464,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void groups_expectsPreservedKeysAndSharedMountWithSeparatePermits() {
+    public void aloGroups_expectsPreservedKeysAndSharedMountWithSeparatePermits() {
         Fixture fixture = new Fixture();
         GenericAlo<Integer> first = new GenericAlo<>(1);
         GenericAlo<Integer> second = new GenericAlo<>(2);
@@ -509,7 +509,7 @@ class AloCircuitBreakingTransformerTest {
 
     @ParameterizedTest
     @ValueSource(ints = {1, 3})
-    public void groups_givenDeniedPermissions_expectsPrefetchPerGroupAndResumptionOnStateChange(int maxPrefetch) {
+    public void aloGroups_givenDeniedPermissions_expectsPrefetchPerGroupAndResumptionOnStateChange(int maxPrefetch) {
         Fixture fixture = new Fixture();
         fixture.breaker.allowed = false;
         Map<Integer, Long> requestedByGroup = new HashMap<>();
@@ -518,7 +518,7 @@ class AloCircuitBreakingTransformerTest {
                 .groupByRoundRobin(2)
                 .map(group -> group.unwrap().doOnRequest(n -> requestedByGroup.merge(group.key(), n, Long::sum)))
                 .unwrap()
-                .transform(AloCircuitBreakingTransformer.<Integer, Integer>groups(fixture.breaker)
+                .transform(CircuitBreakingTransformer.<Integer, Integer>aloGroups(fixture.breaker)
                         .withMaxPrefetch(maxPrefetch))
                 .flatMap(AloFlux::toFlux);
 
@@ -541,7 +541,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void aloGroups_givenBreakerOpensThenBecomesHalfOpen_expectsAllGroupsDisconnectedAndSourceResubscribed() {
+    public void aloGroups_givenBreakerOpensThenBecomesHalfOpen_expectsAllAloGroupsDisconnectedAndSourceResubscribed() {
         Fixture fixture = new Fixture();
 
         StepVerifier.create(fixture.groups().flatMapAlo().unwrap())
@@ -577,7 +577,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void aloGroups_givenSourceCompletion_expectsAllGroupsCompletedWithoutOuterCompletion() {
+    public void aloGroups_givenSourceCompletion_expectsAllAloGroupsCompletedWithoutOuterCompletion() {
         Fixture fixture = new Fixture();
         List<Integer> completedGroups = new ArrayList<>();
 
@@ -610,7 +610,7 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void aloGroups_givenSourceError_expectsErrorAndCleanupOfAllGroups() {
+    public void aloGroups_givenSourceError_expectsErrorAndCleanupOfAllAloGroups() {
         Fixture fixture = new Fixture();
         RuntimeException failure = new IllegalStateException("source failed");
 
@@ -630,11 +630,11 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void groups_givenGroupSequenceCompletesBeforeInnerSource_expectsInnerValuesWithoutOuterCompletion() {
+    public void aloGroups_givenGroupSequenceCompletesBeforeInnerSource_expectsInnerValuesWithoutOuterCompletion() {
         Fixture fixture = new Fixture();
         TestPublisher<AloGroupedFlux<Integer, Integer>> groups = TestPublisher.create();
         Flux<Alo<Integer>> flux = groups.flux()
-                .transform(AloCircuitBreakingTransformer.groups(fixture.breaker))
+                .transform(CircuitBreakingTransformer.aloGroups(fixture.breaker))
                 .flatMap(AloFlux::toFlux);
 
         StepVerifier.create(flux)
@@ -652,12 +652,12 @@ class AloCircuitBreakingTransformerTest {
     }
 
     @Test
-    public void groups_givenDeniedInnerItemAfterOuterCompletion_expectsResumptionOnStateChange() {
+    public void aloGroups_givenDeniedInnerItemAfterOuterCompletion_expectsResumptionOnStateChange() {
         Fixture fixture = new Fixture();
         fixture.breaker.allowed = false;
         TestPublisher<AloGroupedFlux<Integer, Integer>> groups = TestPublisher.create();
         Flux<Alo<Integer>> flux = groups.flux()
-                .transform(AloCircuitBreakingTransformer.groups(fixture.breaker))
+                .transform(CircuitBreakingTransformer.aloGroups(fixture.breaker))
                 .flatMap(AloFlux::toFlux);
 
         StepVerifier.create(flux)
@@ -682,7 +682,7 @@ class AloCircuitBreakingTransformerTest {
     @ParameterizedTest
     @ValueSource(ints = {0, -1, Integer.MIN_VALUE})
     public void withMaxPrefetch_givenNonPositivePrefetch_expectsIllegalArgumentException(int maxPrefetch) {
-        AloCircuitBreakingTransformer<?, ?> transformer = AloCircuitBreakingTransformer.simple(new TestBreaker());
+        CircuitBreakingTransformer<?> transformer = CircuitBreakingTransformer.alo(new TestBreaker());
         assertThrows(IllegalArgumentException.class, () -> transformer.withMaxPrefetch(maxPrefetch));
     }
 
@@ -714,11 +714,11 @@ class AloCircuitBreakingTransformerTest {
         private final AtomicLong requested = new AtomicLong();
 
         private Flux<Alo<Integer>> flux() {
-            return sourceFlux().transform(newSimpleTransformer());
+            return sourceFlux().transform(newTransformer());
         }
 
         private Flux<Alo<Integer>> flux(int maxPrefetch) {
-            return sourceFlux().transform(newSimpleTransformer().withMaxPrefetch(maxPrefetch));
+            return sourceFlux().transform(newTransformer().withMaxPrefetch(maxPrefetch));
         }
 
         private GroupFlux<Integer, Integer> groups() {
@@ -726,7 +726,7 @@ class AloCircuitBreakingTransformerTest {
                     .as(AloFlux::wrap)
                     .groupByRoundRobin(2)
                     .unwrap()
-                    .transform(AloCircuitBreakingTransformer.groups(breaker));
+                    .transform(CircuitBreakingTransformer.aloGroups(breaker));
             return GroupFlux.create(groupSource, 2);
         }
 
@@ -737,14 +737,14 @@ class AloCircuitBreakingTransformerTest {
                     .doOnRequest(requested::addAndGet);
         }
 
-        private AloCircuitBreakingTransformer<Alo<Integer>, Flux<Alo<Integer>>> newSimpleTransformer() {
-            return AloCircuitBreakingTransformer.simple(breaker);
+        private CircuitBreakingTransformer<Alo<Integer>> newTransformer() {
+            return CircuitBreakingTransformer.alo(breaker);
         }
     }
 
     private static final class TestBreaker implements ReactiveCircuitBreaker {
 
-        private final List<TestMounted> mounts = new ArrayList<>();
+        private final List<TestMount> mounts = new ArrayList<>();
 
         private State state = BreakerState.CLOSED;
 
@@ -755,8 +755,8 @@ class AloCircuitBreakingTransformerTest {
         private Optional<RuntimeException> acquirementFailure = Optional.empty();
 
         @Override
-        public Mounted mount(Consumer<? super State> currentStateConsumer) {
-            TestMounted mounted = new TestMounted(currentStateConsumer);
+        public Mount mount(Consumer<? super State> currentStateConsumer) {
+            TestMount mounted = new TestMount(currentStateConsumer);
             mounts.add(mounted);
             currentStateConsumer.accept(state);
             return mounted;
@@ -781,7 +781,7 @@ class AloCircuitBreakingTransformerTest {
                     .forEach(mounted -> mounted.currentStateConsumer.accept(state));
         }
 
-        private final class TestMounted implements Mounted {
+        private final class TestMount implements Mount {
 
             private final Consumer<? super State> currentStateConsumer;
 
@@ -789,7 +789,7 @@ class AloCircuitBreakingTransformerTest {
 
             private int unmounts;
 
-            private TestMounted(Consumer<? super State> currentStateConsumer) {
+            private TestMount(Consumer<? super State> currentStateConsumer) {
                 this.currentStateConsumer = currentStateConsumer;
             }
 
