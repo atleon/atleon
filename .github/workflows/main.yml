@@ -49,8 +49,6 @@ jobs:
         run: >-
           ./mvnw deploy --settings ./.mvn/settings/mvn-settings.xml -B -U -P oss-snapshot
           -DskipTests=true
-          -Daether.connector.basic.parallelPut.maven-central-snapshots=false
-          -Daether.connector.http.retryHandler.interval.maven-central-snapshots=30000
           -Daether.connector.http.retryHandler.intervalMax.maven-central-snapshots=1800000
         env:
           MAVEN_CENTRAL_TOKEN_USERNAME: ${{ secrets.MAVEN_CENTRAL_TOKEN_USERNAME }}
