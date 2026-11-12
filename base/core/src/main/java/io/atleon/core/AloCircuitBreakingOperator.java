@@ -33,7 +33,7 @@ final class AloCircuitBreakingOperator<T> extends FluxOperator<Alo<T>, Alo<T>> {
     private final int maxPrefetch;
 
     AloCircuitBreakingOperator(
-            Publisher<Alo<T>> source,
+            Publisher<? extends Alo<T>> source,
             Flux<? extends ReactiveCircuitBreaker.State> currentStates,
             Supplier<? extends ReactiveCircuitBreaker.Permitter> permitConnector,
             int maxPrefetch) {
