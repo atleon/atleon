@@ -14,5 +14,6 @@
 
     <modules>
         <module>resilience4j-circuitbreaker</module>
+        <module>resilience4j-ratelimiter</module>
     </modules>
 </project>
