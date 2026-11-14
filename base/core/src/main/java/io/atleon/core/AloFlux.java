@@ -700,6 +700,36 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
+     * Apply the provided throughput limiter to emitted elements.
+     *
+     * @param limiter Throughput limiter used to reserve capacity for each element
+     * @return A new {@link AloFlux} with throughput limiting applied
+     * @see #limitThroughput(ReactiveThroughputLimiter, int)
+     */
+    public AloFlux<T> limitThroughput(ReactiveThroughputLimiter<? super T> limiter) {
+        return limitThroughput(limiter, 0);
+    }
+
+    /**
+     * Apply the provided throughput limiter to emitted elements. Each downstream subscription
+     * mounts the limiter independently, and each element is emitted in order after its capacity
+     * reservation completes. The limiter is unmounted when the subscription terminates or is
+     * canceled.
+     * <p>
+     * The source is subscribed to when the limiter reports an unblocked state. If the limiter
+     * becomes blocked, the source subscription is canceled until the limiter becomes unblocked,
+     * at which point the source is resubscribed to. The source must therefore support
+     * resubscription. Normal source completion completes the resulting stream.
+     *
+     * @param limiter  Throughput limiter used to reserve capacity for each element
+     * @param prefetch Number of elements to prefetch for throughput-delayed emission
+     * @return A new {@link AloFlux} with throughput limiting applied
+     */
+    public AloFlux<T> limitThroughput(ReactiveThroughputLimiter<? super T> limiter, int prefetch) {
+        return new AloFlux<>(wrapped.transform(ThroughputLimitingTransformer.alo(limiter, prefetch)));
+    }
+
+    /**
      * Apply {@link AloFailureStrategy} processing to emitted elements that may be error containers
      * or otherwise indicate an error.
      *
@@ -914,14 +944,6 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
      */
     public <E extends Subscriber<? super Alo<T>>> E subscribeWith(E subscriber) {
         return wrapped.subscribeWith(subscriber);
-    }
-
-    private AloFlux<T> limitThroughput(ReactiveThroughputLimiter<? super T> limiter) {
-        return limitThroughput(limiter, 0);
-    }
-
-    private AloFlux<T> limitThroughput(ReactiveThroughputLimiter<? super T> limiter, int prefetch) {
-        return new AloFlux<>(wrapped.transform(ThroughputLimitingTransformer.alo(limiter, prefetch)));
     }
 
     private ReactiveThroughputLimiter<T> newThroughputLimiter(
