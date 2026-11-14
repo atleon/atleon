@@ -3,15 +3,12 @@ package io.atleon.resilience4j.circuitbreaker;
 import io.atleon.core.ReactiveCircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -21,7 +18,6 @@ import java.util.function.Consumer;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -31,8 +27,6 @@ class R4jCircuitBreakerTest {
 
     private final List<ReactiveCircuitBreaker.Permitter> connections = new ArrayList<>();
 
-    private final Map<CircuitBreaker, CircuitBreakerRegistry> registries = new IdentityHashMap<>();
-
     @AfterEach
     public void tearDown() {
         mounts.forEach(ReactiveCircuitBreaker.Mount::unmount);
@@ -40,28 +34,36 @@ class R4jCircuitBreakerTest {
     }
 
     @Test
-    public void register_givenAutomaticTransitionDisabled_expectsRejection() {
-        CircuitBreakerRegistry registry = CircuitBreakerRegistry.of(CircuitBreakerConfig.ofDefaults());
+    public void create_givenAutomaticTransitionDisabled_expectsRejection() {
+        CircuitBreaker breaker = newBreaker(CircuitBreakerConfig.ofDefaults());
 
-        assertThrows(IllegalArgumentException.class, () -> R4jCircuitBreaker.register(registry, "test"));
+        assertThrows(IllegalArgumentException.class, () -> R4jCircuitBreaker.create(breaker));
     }
 
     @Test
-    public void register_givenSameBreaker_expectsSharedAdapter() {
+    public void create_givenSameBreaker_expectsDistinctAdapters() {
         CircuitBreaker breaker = newBreaker();
-        CircuitBreakerRegistry registry = registries.get(breaker);
 
-        assertSame(R4jCircuitBreaker.register(registry, "test"), R4jCircuitBreaker.register(registry, "test"));
+        assertNotSame(R4jCircuitBreaker.create(breaker), R4jCircuitBreaker.create(breaker));
     }
 
     @Test
-    public void register_givenDistinctBreakersWithSameName_expectsIndependentAdapters() {
+    public void create_givenDistinctBreakersWithSameName_expectsIndependentStateAndPermissions() {
         CircuitBreaker first = newBreaker();
         CircuitBreaker second = newBreaker();
+        List<Boolean> firstStates = new ArrayList<>();
+        List<Boolean> secondStates = new ArrayList<>();
+        ReactiveCircuitBreaker.Permitter firstPermitter =
+                connect(mount(first, state -> firstStates.add(state.tripped())));
+        ReactiveCircuitBreaker.Permitter secondPermitter =
+                connect(mount(second, state -> secondStates.add(state.tripped())));
 
-        assertNotSame(
-                R4jCircuitBreaker.register(registries.get(first), "test"),
-                R4jCircuitBreaker.register(registries.get(second), "test"));
+        first.transitionToOpenState();
+
+        assertEquals(List.of(false, true), firstStates);
+        assertEquals(List.of(false), secondStates);
+        assertTrue(firstPermitter.tryAcquirePermit().isEmpty());
+        assertTrue(secondPermitter.tryAcquirePermit().isPresent());
     }
 
     @Test
@@ -327,6 +329,28 @@ class R4jCircuitBreakerTest {
     }
 
     @Test
+    public void disconnect_givenSeparateAdapters_expectsSharedRetryNotificationAndRestoredCapacity() {
+        CircuitBreaker breaker = newHalfOpenBreaker();
+        List<Boolean> firstStates = new ArrayList<>();
+        List<Boolean> secondStates = new ArrayList<>();
+        ReactiveCircuitBreaker.Permitter first = connect(mount(breaker, state -> firstStates.add(state.tripped())));
+        ReactiveCircuitBreaker.Permitter second = connect(mount(breaker, state -> secondStates.add(state.tripped())));
+        assertTrue(first.tryAcquirePermit().isPresent());
+        assertTrue(first.tryAcquirePermit().isPresent());
+        assertTrue(second.tryAcquirePermit().isEmpty());
+
+        first.disconnect();
+
+        assertEquals(List.of(false, false), firstStates);
+        assertEquals(List.of(false, false), secondStates);
+        assertEquals(CircuitBreaker.State.HALF_OPEN, breaker.getState());
+        assertEquals(0, breaker.getMetrics().getNumberOfBufferedCalls());
+        assertTrue(second.tryAcquirePermit().isPresent());
+        assertTrue(second.tryAcquirePermit().isPresent());
+        assertTrue(second.tryAcquirePermit().isEmpty());
+    }
+
+    @Test
     public void disconnect_givenOtherConnectionWithOutstandingPermit_expectsOnlyOwnPermitReleased() {
         CircuitBreaker breaker = newHalfOpenBreaker();
         ReactiveCircuitBreaker.Mount mount = mount(breaker, __ -> {});
@@ -397,8 +421,7 @@ class R4jCircuitBreakerTest {
 
     private ReactiveCircuitBreaker.Mount mount(
             CircuitBreaker breaker, Consumer<? super ReactiveCircuitBreaker.State> consumer) {
-        ReactiveCircuitBreaker.Mount mount = R4jCircuitBreaker.register(registries.get(breaker), breaker.getName())
-                .mount(consumer);
+        ReactiveCircuitBreaker.Mount mount = R4jCircuitBreaker.create(breaker).mount(consumer);
         mounts.add(mount);
         return mount;
     }
@@ -414,10 +437,7 @@ class R4jCircuitBreakerTest {
     }
 
     private CircuitBreaker newBreaker(CircuitBreakerConfig config) {
-        CircuitBreakerRegistry registry = CircuitBreakerRegistry.of(config);
-        CircuitBreaker breaker = registry.circuitBreaker("test");
-        registries.put(breaker, registry);
-        return breaker;
+        return CircuitBreaker.of("test", config);
     }
 
     private CircuitBreaker newHalfOpenBreaker() {

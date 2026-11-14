@@ -3,7 +3,6 @@ package io.atleon.resilience4j.circuitbreaker;
 import io.atleon.core.ReactiveCircuitBreaker;
 import io.atleon.core.SerialQueue;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.Disposable;
@@ -15,7 +14,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -31,56 +30,26 @@ public class R4jCircuitBreaker implements ReactiveCircuitBreaker {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(R4jCircuitBreaker.class);
 
-    private static final Set<CircuitBreakerRegistry> ATTACHED_REGISTRIES = ConcurrentHashMap.newKeySet();
-
-    private static final Map<CircuitBreaker, R4jCircuitBreaker> CANONICAL_POOL = new ConcurrentHashMap<>();
-
-    private final SerialQueue<Consumer<Sinks.Many<State>>> currentStateQueue;
-
-    private final Flux<State> currentStates;
+    // Weak keys allow unused breakers to be collected. ReactiveState must not store a strong
+    // reference back to its breaker; mounted subscribers must still be disposed via unmount().
+    private static final Map<CircuitBreaker, ReactiveState> REACTIVE_STATES =
+            Collections.synchronizedMap(new WeakHashMap<>());
 
     private final CircuitBreaker circuitBreaker;
 
-    private R4jCircuitBreaker(CircuitBreaker circuitBreaker) {
-        var sink = Sinks.unsafe().many().replay().<State>latest();
-        this.currentStateQueue = SerialQueue.on(sink);
-        this.currentStates = sink.asFlux();
+    private final ReactiveState reactiveState;
+
+    private R4jCircuitBreaker(CircuitBreaker circuitBreaker, ReactiveState reactiveState) {
         this.circuitBreaker = circuitBreaker;
-        circuitBreaker
-                .getEventPublisher()
-                .onStateTransition(__ -> emitCurrentState())
-                .onIgnoredError(__ -> emitCurrentState());
-        emitCurrentState();
+        this.reactiveState = reactiveState;
     }
 
-    /**
-     * Returns the shared adapter for a breaker in the supplied registry. Automatic transition
-     * from OPEN to HALF_OPEN is required so suspended processing can resume without requesting
-     * permission. The adapter is removed from the pool when the registry entry is removed or
-     * replaced.
-     *
-     * @param registry the registry containing the breaker
-     * @param name the breaker's name
-     * @return the existing or newly registered adapter
-     * @throws IllegalArgumentException if automatic transition from OPEN to HALF_OPEN is disabled
-     */
-    public static R4jCircuitBreaker register(CircuitBreakerRegistry registry, String name) {
-        CircuitBreaker circuitBreaker = registry.circuitBreaker(name);
+    public static R4jCircuitBreaker create(CircuitBreaker circuitBreaker) {
         if (!circuitBreaker.getCircuitBreakerConfig().isAutomaticTransitionFromOpenToHalfOpenEnabled()) {
             throw new IllegalArgumentException("Automatic transition from OPEN to HALF_OPEN must be enabled");
         }
-        if (ATTACHED_REGISTRIES.add(registry)) {
-            registry.getEventPublisher()
-                    .onEntryReplaced(event -> CANONICAL_POOL.remove(event.getOldEntry()))
-                    .onEntryRemoved(event -> CANONICAL_POOL.remove(event.getRemovedEntry()));
-        }
-        // Known race condition here: The CircuitBreaker being registered could be removed/replaced
-        // in the now-attached registry prior to completion of canonicalization. That could cause
-        // us to canonicalize a CircuitBreaker that is no longer used in any registry. There is not
-        // much we can do about it since Resilience4j's API does not support removing listeners
-        // after adding them, which is the only reason we need attachment and canonicalization.
-        // Otherwise, we'd be at risk of registering an unbounded number of listeners.
-        return CANONICAL_POOL.computeIfAbsent(circuitBreaker, R4jCircuitBreaker::new);
+        var reactiveState = REACTIVE_STATES.computeIfAbsent(circuitBreaker, ReactiveState::new);
+        return new R4jCircuitBreaker(circuitBreaker, reactiveState);
     }
 
     /**
@@ -94,8 +63,30 @@ public class R4jCircuitBreaker implements ReactiveCircuitBreaker {
         return new R4jMount(currentStateConsumer);
     }
 
-    private void emitCurrentState() {
-        currentStateQueue.addAndDrain(sink -> sink.tryEmitNext(new R4jState(circuitBreaker.getState())));
+    private static final class ReactiveState {
+
+        private final SerialQueue<Consumer<Sinks.Many<State>>> currentStateQueue;
+
+        private final Flux<State> currentStates;
+
+        public ReactiveState(CircuitBreaker circuitBreaker) {
+            var sink = Sinks.unsafe().many().replay().<State>latest();
+            this.currentStateQueue = SerialQueue.on(sink);
+            this.currentStates = sink.asFlux();
+            circuitBreaker
+                    .getEventPublisher()
+                    .onStateTransition(__ -> emitCurrentState(circuitBreaker))
+                    .onIgnoredError(__ -> emitCurrentState(circuitBreaker));
+            emitCurrentState(circuitBreaker);
+        }
+
+        public Disposable subscribe(Consumer<? super State> currentStateConsumer) {
+            return currentStates.subscribe(currentStateConsumer);
+        }
+
+        public void emitCurrentState(CircuitBreaker circuitBreaker) {
+            currentStateQueue.addAndDrain(sink -> sink.tryEmitNext(new R4jState(circuitBreaker.getState())));
+        }
     }
 
     private record R4jState(CircuitBreaker.State state) implements State {
@@ -111,7 +102,7 @@ public class R4jCircuitBreaker implements ReactiveCircuitBreaker {
         private final Disposable currentStateSubscription;
 
         public R4jMount(Consumer<? super State> currentStateConsumer) {
-            this.currentStateSubscription = currentStates.subscribe(currentStateConsumer);
+            this.currentStateSubscription = reactiveState.subscribe(currentStateConsumer);
         }
 
         @Override
@@ -148,7 +139,7 @@ public class R4jCircuitBreaker implements ReactiveCircuitBreaker {
                 if (size > 0) {
                     IntStream.range(0, size).forEach(__ -> circuitBreaker.releasePermission());
                     inFlightPermits.clear();
-                    emitCurrentState(); // Releasing permits might have freed up capacity
+                    reactiveState.emitCurrentState(circuitBreaker); // Releasing permits might have freed up capacity
                 }
             });
         }
