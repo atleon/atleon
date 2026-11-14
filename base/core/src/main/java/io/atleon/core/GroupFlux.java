@@ -296,6 +296,40 @@ public class GroupFlux<K, T> {
     }
 
     /**
+     * Apply the provided throughput limiter cumulatively across all inner grouped sequences..
+     *
+     * @param limiter Throughput limiter shared by all inner grouped sequences
+     * @return a transformed {@link GroupFlux}
+     * @see #limitCumulativeThroughput(ReactiveThroughputLimiter, int)
+     */
+    public GroupFlux<K, T> limitCumulativeThroughput(ReactiveThroughputLimiter<? super T> limiter) {
+        return limitCumulativeThroughput(limiter, 0);
+    }
+
+    /**
+     * Apply the provided throughput limiter cumulatively across all inner grouped sequences.
+     * Each downstream subscription mounts the limiter independently, sharing that mount across
+     * all of its groups. Elements are emitted in order within each group after their capacity
+     * reservations complete. The limiter is unmounted when the subscription terminates or is
+     * canceled.
+     * <p>
+     * The source is subscribed to when the limiter reports an unblocked state. If the limiter
+     * becomes blocked, the source and active inner group subscriptions are canceled, and those
+     * groups complete downstream. When the limiter becomes unblocked, the source is resubscribed
+     * to, creating fresh groups. The source must therefore support resubscription. Normal source
+     * completion allows existing groups to finish but does not complete the resulting grouped
+     * sequence, which remains active until canceled or errored.
+     *
+     * @param limiter  Throughput limiter shared by all inner grouped sequences
+     * @param prefetch Number of elements to prefetch from each inner grouped sequence
+     * @return a transformed {@link GroupFlux}
+     */
+    public GroupFlux<K, T> limitCumulativeThroughput(ReactiveThroughputLimiter<? super T> limiter, int prefetch) {
+        var transformer = ThroughputLimitingTransformer.<K, T>aloGroups(limiter, prefetch);
+        return new GroupFlux<>(wrapped.transform(transformer), cardinality);
+    }
+
+    /**
      * Transform the items emitted by this {@link GroupFlux} by applying a synchronous function
      * to each item.
      *
@@ -330,15 +364,6 @@ public class GroupFlux<K, T> {
      */
     public <V> AloFlux<V> flatMapAlo(Function<? super AloGroupedFlux<K, T>, ? extends Publisher<Alo<V>>> mapper) {
         return wrapped.flatMap(mapper, cardinality).as(AloFlux::wrap);
-    }
-
-    private GroupFlux<K, T> limitCumulativeThroughput(ReactiveThroughputLimiter<? super T> limiter) {
-        return limitCumulativeThroughput(limiter, 0);
-    }
-
-    private GroupFlux<K, T> limitCumulativeThroughput(ReactiveThroughputLimiter<? super T> limiter, int prefetch) {
-        var transformer = ThroughputLimitingTransformer.<K, T>aloGroups(limiter, prefetch);
-        return new GroupFlux<>(wrapped.transform(transformer), cardinality);
     }
 
     private ReactiveThroughputLimiter<T> newThroughputLimiter(
