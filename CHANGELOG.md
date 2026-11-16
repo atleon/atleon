@@ -3,6 +3,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+# [0.48.0]
+atleon `0.48.0` is a beta release containing updates outlined below
+
+### Additions
+
+* [#624] Core: Added `ReactiveCircuitBreaker` and `AloFlux::addAloCircuitBreaking` to suspend processing when a circuit breaker trips and report processing outcomes through `Alo` acknowledgements
+* [#627] Core: Refactored throughput limiting into improved, externalizable  `ReactiveThroughputLimiter` API (replacing `ThroughputGrantor` and `DelayAppliators` internal APIs)
+* [#627] Resiliency: Added `atleon-resilience4j-circuitbreaker` and `atleon-resilience4j-ratelimiter` modules, providing `R4jCircuitBreaker` and `R4jThroughputLimiter` adapters backed by Resilience4j
+
+### Fixes
+
+* [#622] Core: Propagate completion of finite throughput-limited sources even when the limits publisher remains active
+* [#630] Core: Make `AloFlux::groupByRoundRobin` assign elements in strict round-robin order without skipping back-pressured groups; create groups as elements arrive and complete the outer group sequence only when the source completes
+
 # [0.47.1]
 atleon `0.47.1` is a beta release containing updates outlined below
 
