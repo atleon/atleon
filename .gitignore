@@ -6,7 +6,9 @@ target
 *.ipr
 *.iml
 *.iws
+*.releaseBackup
 .idea
 .DS_Store
 AGENT.md
 AGENTS.md
+release.properties
