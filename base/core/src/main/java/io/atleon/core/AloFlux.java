@@ -1,5 +1,6 @@
 package io.atleon.core;
 
+import io.atleon.util.Defaults;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import reactor.core.Disposable;
@@ -628,42 +629,37 @@ public class AloFlux<T> implements Publisher<Alo<T>> {
     }
 
     /**
-     * @see AloFlux#limitPerSecond(RateLimitingConfig, Scheduler)
-     * @deprecated Use {@link #limitThroughput(Publisher)}
+     * @see AloFlux#limitPerSecond(double, Scheduler)
+     * @deprecated Use {@link #limitThroughput(Rate)}
      */
     @Deprecated
     public AloFlux<T> limitPerSecond(double limitPerSecond) {
-        return limitPerSecond(new RateLimitingConfig(limitPerSecond));
-    }
-
-    /**
-     * @see AloFlux#limitPerSecond(RateLimitingConfig, Scheduler)
-     * @deprecated Use {@link #limitThroughput(Publisher, Scheduler)}
-     */
-    @Deprecated
-    public AloFlux<T> limitPerSecond(double limitPerSecond, Scheduler scheduler) {
-        return limitPerSecond(new RateLimitingConfig(limitPerSecond), scheduler);
-    }
-
-    /**
-     * @see AloFlux#limitPerSecond(RateLimitingConfig, Scheduler)
-     * @deprecated Use {@link #limitThroughput(Publisher, Scheduler, int)}
-     */
-    @Deprecated
-    public AloFlux<T> limitPerSecond(RateLimitingConfig config) {
-        return limitPerSecond(config, Schedulers.boundedElastic());
+        return limitPerSecond(limitPerSecond, Schedulers.boundedElastic());
     }
 
     /**
      * Limits the rate at which items are emitted by this Publisher. Especially useful in cases
      * where processing requires interaction with resource-constrained I/O dependencies
-     * @deprecated Use {@link #limitThroughput(Publisher, Scheduler, int)}
+     * @deprecated Use {@link #limitThroughput(Rate, Scheduler)}
      */
     @Deprecated
-    public AloFlux<T> limitPerSecond(RateLimitingConfig config, Scheduler scheduler) {
-        double countPerSecond = config.getPermitsPerSecond();
-        Mono<Rate> limits = countPerSecond > 0 ? Mono.just(Rate.perSecond((long) countPerSecond)) : Mono.empty();
-        return limitThroughput(limits, scheduler, config.getPrefetch());
+    public AloFlux<T> limitPerSecond(double limitPerSecond, Scheduler scheduler) {
+        Mono<Rate> limits = limitPerSecond > 0 ? Mono.just(Rate.perSecond((long) limitPerSecond)) : Mono.empty();
+        return limitThroughput(limits, scheduler, Defaults.PREFETCH);
+    }
+
+    /**
+     * @see AloFlux#limitThroughput(Publisher, Scheduler, int)
+     */
+    public AloFlux<T> limitThroughput(Rate limit) {
+        return limitThroughput(Mono.just(limit));
+    }
+
+    /**
+     * @see AloFlux#limitThroughput(Publisher, Scheduler, int)
+     */
+    public AloFlux<T> limitThroughput(Rate limit, Scheduler scheduler) {
+        return limitThroughput(Mono.just(limit), scheduler);
     }
 
     /**
