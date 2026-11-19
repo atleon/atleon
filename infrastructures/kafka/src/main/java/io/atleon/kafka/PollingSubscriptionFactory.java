@@ -403,9 +403,8 @@ final class PollingSubscriptionFactory<K, V> {
             // offsets, and it becomes more desirable to attempt to honor that progress. Moreover,
             // it may be the case that commit metadata has changed, and committing with the most
             // recent acknowledged offset ensures that update.
-            Duration gracePeriod = options.revocationGracePeriod();
             Collection<AcknowledgedOffset> latestAcknowledgedOffsets = partitions.stream()
-                    .map(it -> it.deactivateLatest(gracePeriod, auxiliaryScheduler, terminated()))
+                    .map(it -> it.deactivateLatest(options.revocationGracePeriod(), auxiliaryScheduler, terminated()))
                     .collect(Collectors.collectingAndThen(Collectors.toList(), Publishing::mergeGreedily))
                     .filter(it -> !asyncOffsetCommitter.isCommitTrialExhausted(it.topicPartition()))
                     .collectList()

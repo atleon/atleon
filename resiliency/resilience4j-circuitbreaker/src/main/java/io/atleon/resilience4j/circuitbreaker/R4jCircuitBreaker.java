@@ -26,7 +26,7 @@ import java.util.stream.IntStream;
  * elapsed time since acquisition; disconnecting a permitter releases its outstanding permissions
  * without recording outcomes. Duplicate outcomes and outcomes received after release are ignored.
  */
-public class R4jCircuitBreaker implements ReactiveCircuitBreaker {
+public final class R4jCircuitBreaker implements ReactiveCircuitBreaker {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(R4jCircuitBreaker.class);
 
