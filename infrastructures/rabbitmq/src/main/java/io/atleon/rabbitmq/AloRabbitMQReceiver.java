@@ -77,8 +77,10 @@ public class AloRabbitMQReceiver<T> {
     }
 
     /**
-     * Alias for {@link #create(RabbitMQConfigSource)}. Will be deprecated in future release.
+     * Alias for {@link #create(RabbitMQConfigSource)}.
+     * @deprecated Use {@link #create(RabbitMQConfigSource)}
      */
+    @Deprecated
     public static <T> AloRabbitMQReceiver<T> from(RabbitMQConfigSource configSource) {
         return create(configSource);
     }

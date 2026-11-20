@@ -90,44 +90,4 @@ public final class RabbitMQSenderResult<T> implements SenderResult {
     public T correlationMetadata() {
         return correlationMetadata;
     }
-
-    /**
-     * @deprecated Use {@link #exchange()}
-     */
-    @Deprecated
-    public String getExchange() {
-        return exchange;
-    }
-
-    /**
-     * @deprecated Use {@link #routingKey()}
-     */
-    @Deprecated
-    public String getRoutingKey() {
-        return routingKey;
-    }
-
-    /**
-     * @deprecated Use {@link #properties()}
-     */
-    @Deprecated
-    public AMQP.BasicProperties getProperties() {
-        return properties;
-    }
-
-    /**
-     * @deprecated Use {@link #correlationMetadata()}
-     */
-    @Deprecated
-    public T getCorrelationMetadata() {
-        return correlationMetadata;
-    }
-
-    /**
-     * @deprecated Use complement of {@link #isFailure()}
-     */
-    @Deprecated
-    public boolean isAck() {
-        return error == null;
-    }
 }
