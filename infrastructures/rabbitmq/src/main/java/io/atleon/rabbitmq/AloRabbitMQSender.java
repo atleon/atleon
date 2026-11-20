@@ -63,8 +63,10 @@ public class AloRabbitMQSender<T> implements Closeable {
     }
 
     /**
-     * Alias for {@link #create(RabbitMQConfigSource)}. Will be deprecated in future release.
+     * Alias for {@link #create(RabbitMQConfigSource)}.
+     * @deprecated Use {@link #create(RabbitMQConfigSource)}
      */
+    @Deprecated
     public static <T> AloRabbitMQSender<T> from(RabbitMQConfigSource configSource) {
         return create(configSource);
     }

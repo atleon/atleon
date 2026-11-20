@@ -45,36 +45,4 @@ public class RabbitMQMessage<T> {
     public T body() {
         return body;
     }
-
-    /**
-     * @deprecated Use {@link #exchange()}
-     */
-    @Deprecated
-    public String getExchange() {
-        return exchange;
-    }
-
-    /**
-     * @deprecated Use {@link #routingKey()}
-     */
-    @Deprecated
-    public String getRoutingKey() {
-        return routingKey;
-    }
-
-    /**
-     * @deprecated Use {@link #properties()}
-     */
-    @Deprecated
-    public AMQP.BasicProperties getProperties() {
-        return properties;
-    }
-
-    /**
-     * @deprecated Use {@link #body()}
-     */
-    @Deprecated
-    public T getBody() {
-        return body;
-    }
 }

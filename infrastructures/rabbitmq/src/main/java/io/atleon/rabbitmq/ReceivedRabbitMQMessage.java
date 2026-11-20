@@ -20,12 +20,4 @@ public class ReceivedRabbitMQMessage<T> extends RabbitMQMessage<T> {
     public boolean redeliver() {
         return redeliver;
     }
-
-    /**
-     * @deprecated Use {@link #redeliver()}
-     */
-    @Deprecated
-    public boolean isRedeliver() {
-        return redeliver;
-    }
 }
